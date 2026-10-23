@@ -9,7 +9,7 @@ TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写�
 
 | # | 决策点 | 结论 |
 |---|--------|------|
-| 1 | 功能基线 | 严格对齐旧系统**活功能**：仪表盘+分享卡片、设置（设备管理/吊销）、wrapped、服务状态、`/device` 配对、全套 CLI API。排行榜/成就/pet/quota//selfhost 降级页**不做** |
+| 1 | 功能基线 | 严格对齐旧系统**活功能**：仪表盘+分享卡片、设置（设备管理/吊销）、wrapped、服务状态、`/device` 配对、全套 CLI API。排行榜/成就/pet/quota//selfhost 降级页**不做**。2026-10-24 新增：`/` 产品落地页（公开访问），仪表盘挪至 `/dashboard`，其余页面未登录跳登录（见 requirements 路由约定） |
 | 2 | 许可证 | MIT，保留 "Contains code derived from TokenTracker by xiufengsun (MIT)" |
 | 3 | CLI 策略 | 2026-10-23 翻案：fork 上游 CLI（MIT）改造为 **`tokenusage-cli`**——解析器继承上游并跟进 cherry-pick；`sync` 手动为主，`--watch` / `install-task` 可选自动档；自有客户端后契约冻结语义转为「CLI 版本 ↔ 服务端版本配对演进」，旧路径别名降级为过渡品 |
 | 4 | 品牌 | 仓库 `token-usage`，UI 显示 **Token Usage** |
@@ -83,7 +83,8 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 | **M0 脚手架清理**（已完成 2026-10-23；CI 随 M1 首次推送验证） | 删 HeroUI 模板演示页；package.json / 品牌文案改为 Token Usage；LICENSE 衍生声明；AGENTS.md；pnpm workspace（`apps/web`）+ src 目录结构；Maple Mono 字体；`.github/workflows/ci.yml`（typecheck + lint + build，test 自 M1 接入） | CI 绿；`apps/web/src` 无模板残留 |
 | **M1 契约层**（已完成 2026-10-24，实跑验收全绿） | `token_*` 表 migration（§3 全部实体表 + 可选 `token_allowed_emails`，RLS 零 policy，幂等可 `supabase db push`）；10 个 route handler（六个 series 由 `api/functions/[...slug]` catch-all 承接，见 `docs/cli-contract.md` §2.7）+ 旧路径别名 rewrites + proxy（OPTIONS 204 / 非 GET·POST 405）；数据访问经 `@supabase/supabase-js`（新 key 体系 env，§9）；移植 `api/_lib`（去重/聚合/定价为纯函数模块）；契约 golden 测试锁定 `docs/cli-contract.md` 第 3 节全部不变量（含服务器级别名等价）+ 单元测试 216 个；移植 seed-queue / verify-two-device / verify-cross-device 对账脚本并新增 accept-m1 实跑验收工具 | **verify 全绿**（lint + tsc + 216 测试 + build）；**实跑验收全绿**（accept-m1：真实项目建库 → 设备流 ×3 → 去重/聚合/定价/吊销语义 → 本机 queue.jsonl last-wins 6,479,004,696 == 新表设备过滤聚合，combined == fixture + queue 总数，重复种子幂等，测试数据零残留）；golden 测试覆盖每端点成功/错误路径与旧别名逐字等价 |
 | **M2 认证与设置** | @supabase/ssr middleware、登录（密码+魔法链接）、`/auth/callback`、邀请建号流程文档、设置页（改名/设备列表/吊销/登出）；管理员建号用 service-role 脚本 | 登录闭环可演示；吊销设备后其令牌立即 401（契约测试覆盖） |
-| **M3 仪表盘核心** | 主仪表盘：汇总卡、日/时图表（手写 SVG）、模型/来源/设备下钻、时间范围与时区切换；`/api/app/dashboard` 内部接口 | 数据与旧仪表盘同源对账一致（同一账号同窗口数值相等） |
+| **M2 认证与设置** | @supabase/ssr middleware、登录（密码+魔法链接）、`/auth/callback`、邀请建号流程文档、设置页（改名/设备列表/吊销/登出）；管理员建号用 service-role 脚本；路由守卫 + 产品落地页（2026-10-24 需求变更：`/` 公开落地页，其余页面未登录跳登录并回跳原目标，见 requirements 路由约定） | 登录闭环可演示；吊销设备后其令牌立即 401（契约测试覆盖）；未登录访问受保护页跳登录、登录后回跳（`?user_code=` 不丢失） |
+| **M3 仪表盘核心** | 主仪表盘（`/dashboard`）：汇总卡、日/时图表（recharts）、模型/来源/设备下钻、时间范围与时区切换；`/api/app/dashboard` 内部接口 | 数据与旧仪表盘同源对账一致（同一账号同窗口数值相等） |
 | **M4 wrapped + 分享 + 服务状态** | 年度回顾（简化视觉）、分享卡片（html-to-image 导出）、服务状态页 | 三页可用，中英 copy 齐全 |
 | **M5 配对页 + 部署文档** | `/device` 配对/批准页；中文部署指南（Supabase + Vercel 全流程）、`.env.example`、Deploy to Vercel 按钮；英文 README 摘要 | 全新 Supabase/Vercel 账号按文档从零跑通：建库 → 部署 → CLI 配对 → 上报 → 仪表盘可见 |
 | **M-CLI 采集端（独立排期，M2 后可插）** | fork 上游 CLI（MIT）改造为 `tokenusage-cli`（pnpm workspace 子包，二进制命令 `tokenusage`）：改名、指向新契约路径、`sync` 手动为主、`--watch` / `install-task` 可选自动档、剥离用不到的部分、npm 发布；采集机迁移（装新 CLI → 配对 → 撤旧计划任务） | 任一台采集机 `npm i -g tokenusage-cli` 完成配对 + `tokenusage sync`，数值与该机 queue.jsonl 对账一致；端到端契约测试全绿 |
