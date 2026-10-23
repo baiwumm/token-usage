@@ -1,0 +1,3 @@
+# Minimal Supabase CLI config. Deploy migrations to a fresh project with:
+#   supabase db push --db-url "$SUPABASE_DB_URL"
+project_id = "token-usage"
