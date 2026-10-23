@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Maple Mono CN — self-hosted subset font.
+ * Source: Maple Mono (OFL-1.1, https://github.com/subframe7536/maple-font v7.9).
+ * Subset: GB2312 common hanzi + ASCII + CJK punctuation (6,893 glyphs, ~1.7 MB).
+ * Characters outside the subset fall back to the system stack.
+ */
+@font-face {
+	font-family: "Maple Mono CN";
+	src: url("/fonts/maple-mono-cn-regular.woff2") format("woff2");
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	unicode-range: U+0020-007E, U+00B1, U+00B7, U+00D7, U+00F7, U+2014,
+		U+2018-2019, U+201C-201D, U+2026, U+3000-303F, U+4E00-9FFF, U+FF00-FFEF;
+}
+
+@theme {
+	--font-sans: "Maple Mono CN", system-ui, Avenir, Helvetica, Arial, sans-serif;
+	--font-mono: "Maple Mono CN", ui-monospace, SFMono-Regular, Menlo, monospace;
+}

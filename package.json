@@ -1,0 +1,13 @@
+{
+	"name": "token-usage",
+	"private": true,
+	"packageManager": "pnpm@12.11.2",
+	"scripts": {
+		"dev": "pnpm --filter @token-usage/web dev",
+		"build": "pnpm --filter @token-usage/web build",
+		"start": "pnpm --filter @token-usage/web start",
+		"lint": "pnpm --filter @token-usage/web lint",
+		"test": "pnpm -r test",
+		"verify": "pnpm --filter @token-usage/web verify"
+	}
+}

@@ -1,0 +1,49 @@
+{
+	"name": "@token-usage/web",
+	"version": "0.0.1",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "next dev",
+		"build": "next build",
+		"start": "next start",
+		"lint": "eslint --fix",
+		"verify": "pnpm lint && pnpm exec tsc --noEmit && pnpm build"
+	},
+	"dependencies": {
+		"@heroui/react": "3.2.6",
+		"@heroui/styles": "3.2.6",
+		"clsx": "2.1.1",
+		"intl-messageformat": "10.7.18",
+		"next": "16.3.6",
+		"next-themes": "0.4.6",
+		"react": "19.3.0",
+		"react-dom": "19.3.0"
+	},
+	"devDependencies": {
+		"@eslint/compat": "2.1.1",
+		"@eslint/eslintrc": "3.3.7",
+		"@eslint/js": "10.0.1",
+		"@next/eslint-plugin-next": "16.3.6",
+		"@tailwindcss/postcss": "4.3.3",
+		"@types/node": "26.6.5",
+		"@types/react": "19.3.0",
+		"@types/react-dom": "19.3.0",
+		"@typescript-eslint/eslint-plugin": "8.72.0",
+		"@typescript-eslint/parser": "8.72.0",
+		"eslint": "10.13.0",
+		"eslint-config-prettier": "10.1.8",
+		"eslint-plugin-import": "2.32.0",
+		"eslint-plugin-jsx-a11y": "6.10.2",
+		"eslint-plugin-prettier": "5.5.7",
+		"eslint-plugin-react": "7.37.5",
+		"eslint-plugin-react-hooks": "7.1.1",
+		"eslint-plugin-unused-imports": "4.4.1",
+		"globals": "17.13.0",
+		"postcss": "8.5.28",
+		"prettier": "3.9.9",
+		"tailwind-variants": "3.3.1",
+		"tailwindcss": "4.3.3",
+		"typescript": "5.9.3"
+	}
+}
