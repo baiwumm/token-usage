@@ -291,9 +291,10 @@ async function main() {
 
   // ---- 4. account aggregation semantics -------------------------------
   console.log("\n[3] account aggregation (cursor dedupe, trae-cn session, revoked device)");
-  const summary = await api(base, "account-summary", { token: deviceA.token });
+  const summary = await api(base, "account-summary", { token: deviceA.token, query: "?from=2026-01-01&to=2027-01-01" });
   check(summary.status === 200, "account-summary (device token) -> 200");
-  const expectedCombined = (1000 + 700 + 2000) + 900 + 600;
+  const EXPECTED_AFTER_REVOKE = (1000 + 700 + 2000) + 900 + 600;
+  const expectedCombined = EXPECTED_AFTER_REVOKE + 11111; // device C is still active here
   check(summary.data?.totals?.total_tokens === expectedCombined,
     `combined total == machine ${3700} + cursor(deduped) 900 + session 600 = ${expectedCombined} (got ${summary.data?.totals?.total_tokens})`);
   check(Number(summary.data?.totals?.total_cost_usd) === 0.501125,
@@ -301,14 +302,14 @@ async function main() {
 
   const byDevice = await api(base, "account-devices", { token: deviceA.token, query: "?from=2026-10-21&to=2026-10-21&tz_offset_minutes=0" });
   const deviceRows = byDevice.data?.devices || [];
-  check(deviceRows.length === 2, `revoked-free device list (got ${deviceRows.length}, expect 2 active)`);
+  check(deviceRows.length === 3, `all three devices active before revocation (got ${deviceRows.length})`);
   const deviceAView = deviceRows.find((d) => d.id === deviceA.deviceId);
   check(deviceAView?.total_tokens === 3700, `device-view A total == 3700 machine rows (got ${deviceAView?.total_tokens})`);
   const accountSources = byDevice.data?.account_sources || [];
   const cursorSource = accountSources.find((s) => s.source === "cursor");
   check(cursorSource?.total_tokens === 900, `cursor counted once across devices (got ${cursorSource?.total_tokens})`);
 
-  const summaryA = await api(base, "account-summary", { token: deviceA.token, query: `?device_id=${deviceA.deviceId}` });
+  const summaryA = await api(base, "account-summary", { token: deviceA.token, query: `?device_id=${deviceA.deviceId}&from=2026-01-01&to=2027-01-01` });
   check(summaryA.data?.totals?.total_tokens === 3700,
     `device_id filter drops account-level sources (got ${summaryA.data?.totals?.total_tokens}, expect 3700)`);
 
@@ -319,28 +320,57 @@ async function main() {
     body: { device_id: deviceA.deviceId, device_name: `Accept M1 ${STAMP}` },
   });
   check(renamed.status === 200 && renamed.data?.previous_name?.includes("PC-A"), "rename own device (device token scoping)");
-  const clash = await api(base, "device-rename", {
+  const deviceTokenScope = await api(base, "device-rename", {
     method: "POST", token: deviceA.token,
+    body: { device_id: deviceB.deviceId, device_name: "whatever" },
+  });
+  check(deviceTokenScope.status === 403, "device token cannot rename a sibling (403 device_token_scoped_to_own_device)");
+
+  // Dual-principal path: sign in the test user and act on any device via JWT.
+  const publishable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || secret;
+  const signIn = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: publishable, Authorization: `Bearer ${publishable}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const session = await signIn.json().catch(() => ({}));
+  const jwt = session?.access_token;
+  check(signIn.status === 200 && Boolean(jwt), "sign-in the test user (JWT dual-principal path)");
+
+  const jwtSummary = await api(base, "account-summary", { token: jwt, query: "?from=2026-01-01&to=2027-01-01" });
+  check(jwtSummary.status === 200, "account-summary accepts a Supabase JWT");
+
+  const clash = await api(base, "device-rename", {
+    method: "POST", token: jwt,
     body: { device_id: deviceB.deviceId, device_name: `Accept M1 ${STAMP}` },
   });
-  check(clash.status === 409, "rename to a sibling's active name -> 409 device_name_taken");
+  check(clash.status === 409, "JWT rename to a sibling's active name -> 409 device_name_taken");
 
-  const revoked = await api(base, "device-revoke", { method: "POST", token: deviceA.token, body: { device_id: deviceC.deviceId } });
+  const revoked = await api(base, "device-revoke", { method: "POST", token: jwt, body: { device_id: deviceC.deviceId } });
   check(revoked.status === 200 && revoked.data?.already_revoked === false && revoked.data?.revoked_tokens === 1,
     `revoke C (revoked_tokens=${revoked.data?.revoked_tokens})`);
-  const revokedAgain = await api(base, "device-revoke", { method: "POST", token: deviceA.token, body: { device_id: deviceC.deviceId } });
+  const revokedAgain = await api(base, "device-revoke", { method: "POST", token: jwt, body: { device_id: deviceC.deviceId } });
   check(revokedAgain.data?.already_revoked === true, "revoke is idempotent (already_revoked)");
   const revokedTokenUse = await api(base, "ingest", {
     method: "POST", token: deviceC.token,
     body: { hourly: [bucket({ hour_start: "2026-10-21T10:00:00.000Z", total_tokens: 5 })] },
   });
   check(revokedTokenUse.status === 401, "revoked device token fails auth immediately (401)");
-  const summaryAfterRevoke = await api(base, "account-summary", { token: deviceA.token });
-  check(summaryAfterRevoke.data?.totals?.total_tokens === expectedCombined,
-    `revoked device's machine rows leave the aggregation (still ${expectedCombined})`);
+  const summaryAfterRevoke = await api(base, "account-summary", { token: deviceA.token, query: "?from=2026-01-01&to=2027-01-01" });
+  check(summaryAfterRevoke.data?.totals?.total_tokens === EXPECTED_AFTER_REVOKE,
+    `revoked device's machine rows leave the aggregation (${EXPECTED_AFTER_REVOKE}, got ${summaryAfterRevoke.data?.totals?.total_tokens})`);
+
+  // Dashboard payload over the fixture window (before the queue lands).
+  const dash = await api(base, "dashboard", { token: jwt, query: "?from=2026-10-20T00:00:00.000Z&to=2026-10-22T00:00:00.000Z" });
+  check(dash.status === 200 && dash.data?.totals?.total_tokens === EXPECTED_AFTER_REVOKE,
+    `dashboard range total == ${EXPECTED_AFTER_REVOKE}`);
+  check(dash.data?.user?.email === email, "dashboard reports the JWT principal's account");
+  check(Array.isArray(dash.data?.daily) && dash.data.daily.length >= 1, "dashboard daily series present");
+  check((dash.data?.models || []).length <= 24, "dashboard models capped at 24");
 
   // ---- 6. queue reconciliation (the acceptance baseline) --------------
   console.log("\n[5] queue.jsonl reconciliation");
+  let deviceD = null;
   if (!fs.existsSync(queuePath)) {
     check(false, `queue not found: ${queuePath} (pass --queue)`);
   } else {
@@ -349,7 +379,7 @@ async function main() {
     const queueMachineTotal = sum(parsed.buckets.filter((b) => b.source !== "cursor" && b.source !== "trae-cn"));
     console.log(`  queue: ${parsed.buckets.length} buckets, last-wins total ${queueTotal.toLocaleString("en-US")} (machine-only ${queueMachineTotal.toLocaleString("en-US")})`);
 
-    const deviceD = await pairDevice(base, url, secret, userId, `${STAMP}-d`, "tokentracker accept-m1 PC-D");
+    deviceD = await pairDevice(base, url, secret, userId, `${STAMP}-d`, "tokentracker accept-m1 PC-D");
     const seed = spawnSync(process.execPath, [
       path.join(__dirname, "seed-queue.cjs"),
       "--queue", queuePath,
@@ -372,8 +402,8 @@ async function main() {
       token: deviceA.token,
       query: "?from=2020-01-01&to=2030-01-01",
     });
-    check(seededCombined.data?.totals?.total_tokens === expectedCombined + queueTotal,
-      `combined ${seededCombined.data?.totals?.total_tokens} == fixture ${expectedCombined} + queue last-wins ${queueTotal}`);
+    check(seededCombined.data?.totals?.total_tokens === EXPECTED_AFTER_REVOKE + queueTotal,
+      `combined ${seededCombined.data?.totals?.total_tokens} == fixture ${EXPECTED_AFTER_REVOKE} + queue last-wins ${queueTotal}`);
 
     // Idempotency: seeding again must not move anything.
     const reseed = spawnSync(process.execPath, [
@@ -390,15 +420,7 @@ async function main() {
       "re-seeding is idempotent (upsert, totals unchanged)");
   }
 
-  // ---- 7. dashboard sanity --------------------------------------------
-  console.log("\n[6] dashboard payload");
-  const dash = await api(base, "dashboard", { token: deviceA.token, query: "?from=2026-10-21T00:00:00.000Z&to=2026-10-22T00:00:00.000Z" });
-  check(dash.status === 200 && dash.data?.totals?.total_tokens === expectedCombined,
-    `dashboard range total == ${expectedCombined}`);
-  check(Array.isArray(dash.data?.daily) && dash.data.daily.length >= 1, "dashboard daily series present");
-  check((dash.data?.models || []).length <= 24, "dashboard models capped at 24");
-
-  // ---- 8. cleanup ------------------------------------------------------
+  // ---- 7. cleanup ------------------------------------------------------
   console.log("\n[7] cleanup");
   if (keep) {
     console.log("  --keep given: accept-m1 rows left in place.");
