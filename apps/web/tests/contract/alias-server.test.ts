@@ -37,7 +37,8 @@ function freePort(): Promise<number> {
 
 async function killChild(): Promise<void> {
   if (!child) return;
-  const pid = child.pid;
+  const proc = child;
+  const pid = proc.pid;
   child = null;
   if (pid == null) return;
   if (process.platform === "win32") {
@@ -47,7 +48,17 @@ async function killChild(): Promise<void> {
       killer.on("error", () => resolve());
     });
   } else {
-    process.kill(-pid, "SIGTERM");
+    // The server runs detached in its own process group; ESRCH means it
+    // already exited before we could signal it.
+    try {
+      process.kill(-pid, "SIGTERM");
+    } catch {
+      try {
+        proc.kill("SIGTERM");
+      } catch {
+        // already gone
+      }
+    }
   }
 }
 
@@ -70,6 +81,8 @@ async function startServer(): Promise<void> {
       },
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
+      // Own process group so the POSIX cleanup can signal the whole tree.
+      detached: process.platform !== "win32",
     },
   );
   child.stderr?.on("data", (chunk: Buffer) => {
