@@ -8,7 +8,10 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "eslint --fix",
-		"verify": "pnpm lint && pnpm exec tsc --noEmit && pnpm build"
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"clean:.next": "node -e \"require('node:fs').rmSync('.next', { recursive: true, force: true })\"",
+		"verify": "pnpm clean:.next && pnpm lint && pnpm exec tsc --noEmit && pnpm test && pnpm build"
 	},
 	"dependencies": {
 		"@heroui/react": "3.2.6",
@@ -44,6 +47,7 @@
 		"prettier": "3.9.9",
 		"tailwind-variants": "3.3.1",
 		"tailwindcss": "4.3.3",
-		"typescript": "5.9.3"
+		"typescript": "5.9.3",
+		"vitest": "^5.0.5"
 	}
 }
