@@ -63,16 +63,20 @@ function parseEnvFile(text) {
 }
 
 function loadEnv() {
-  const envFile = readArg("--env-file") || path.join(path.resolve(__dirname, "..", ".."), ".env.local");
+  const envFile =
+    readArg("--env-file")
+    || (fs.existsSync(path.join(path.resolve(__dirname, "..", "..", "..", "apps", "web"), ".env.local"))
+      ? path.join(path.resolve(__dirname, "..", "..", "..", "apps", "web"), ".env.local")
+      : path.join(path.resolve(__dirname, "..", ".."), ".env.local"));
   if (fs.existsSync(envFile)) {
     for (const [key, value] of Object.entries(parseEnvFile(fs.readFileSync(envFile, "utf8")))) {
       if (!process.env[key]) process.env[key] = value;
     }
   }
-  const supabaseUrl = String(process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
-  const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim().replace(/^"|"$/g, "");
+  const supabaseUrl = String(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
+  const serviceKey = String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim().replace(/^"|"$/g, "");
   if (!supabaseUrl || !serviceKey) {
-    throw new Error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (env or --env-file)");
+    throw new Error("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY (legacy SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY accepted) via env or --env-file");
   }
   return { supabaseUrl, serviceKey };
 }

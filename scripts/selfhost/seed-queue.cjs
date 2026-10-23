@@ -14,9 +14,9 @@
  *
  * Add --dry-run to calculate the last-wins total without writing.
  *
- * Required environment:
- *   SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
+ * Required environment (new Supabase key system, legacy names accepted):
+ *   NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL)
+ *   SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY)
  *
  * The last-wins parsing here is the reconciliation baseline: the bucket map's
  * total must equal what the new tables hold after seeding, and what
@@ -39,8 +39,9 @@ const queuePath = path.resolve(
 );
 const userId = String(readArg("--user-id") || "").trim();
 const deviceId = String(readArg("--device-id") || "").trim();
-const url = String(process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
-const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+// Current Supabase key system first, legacy names as fallback.
+const url = String(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
+const serviceKey = String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 
 function safeInt(value) {
   const number = Number(value);
@@ -155,7 +156,7 @@ async function main() {
     process.exit(1);
   }
   if (!dryRun && (!url || !serviceKey)) {
-    console.error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, or use --dry-run");
+    console.error("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY (or legacy SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY), or use --dry-run");
     process.exit(1);
   }
   if (!fs.existsSync(queuePath)) {
