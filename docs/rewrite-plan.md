@@ -21,7 +21,7 @@ TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写�
 | 10 | 环境策略 | 2026-10-23 修订：**新建独立 Supabase 项目**承载新系统（与旧系统项目物理分离，free 档两个活跃项目恰好各占一个）；开发期在新项目用测试专用用户/设备，切换前清理测试数据再导入真实数据 |
 | 11 | i18n | v1 中英双语，重建轻量 copy 管线，架构留扩展点 |
 | 12 | 文档 | 中文为主，代码注释英文 |
-| 13 | 视觉 | 功能对齐 + 视觉简化：HeroUI 重做到整洁可用；GSAP/Three/motion 动效不移植，图表手写 SVG，动画用 CSS |
+| 13 | 视觉 | 功能对齐 + 视觉简化：HeroUI 重做到整洁可用；GSAP/Three/motion 动效不移植，动画用 CSS。图表实现 2026-10-24 修订（操作者指令）：**recharts**，不再手写 SVG |
 | 14 | 里程碑 | 契约层先行（M1 先把 CLI 兼容层做绿） |
 | 15 | 旧系统 | 重写期间冻结新功能，只修 bug 和运维问题 |
 | 16 | 退役 | 生产接管后 14 天观察期 → 备份 → 删旧表；旧仓库 Archive（不删除，届时单独确认） |
@@ -55,6 +55,7 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
   Supabase。数据跨实例零共享，自部署者无需任何额外配置。
 - 账户级来源（cursor / trae-cn）的去重与会话状态聚合、读取时定价引擎（vendored LiteLLM 快照 + curated 覆盖）从旧仓库 `api/_lib/` 移植，作为**纯函数模块**保留并被两层共用。
 - Vercel Hobby 12 函数上限：`account-[series]` 一个动态路由覆盖 6 个 series，总计 10 个 route handler，余量 2。
+- 数据访问（2026-10-24 修订，操作者指令）：route.ts 经 **@supabase/supabase-js**（secret key 客户端）访问 PostgREST；封装层保持异常式错误语义（唯一约束 → 409，其余 → 500），与 CLI 契约 §1.3 对齐。
 
 ## 3. 新表结构（草案，M1 定稿成 migration）
 
@@ -73,7 +74,7 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 
 ## 4. 依赖预算（新依赖装前必须经操作者批准）
 
-运行时：`@supabase/supabase-js`、`@supabase/ssr`、`@gravity-ui/icons`（HeroUI v3 官方示例同款）、`date-fns`、`html-to-image`（分享卡片导出）。**图表零依赖**（手写 SVG），**动效零依赖**（CSS）。除此之外一律先问；任何新依赖统一选用当前**最流行、最新的稳定版本**。UI 一律 HeroUI 内置组件优先（项目 Skill `heroui-react` 为准），内置覆盖不了才自研。
+运行时：`@supabase/supabase-js`、`@supabase/ssr`、`@gravity-ui/icons`（HeroUI v3 官方示例同款）、`date-fns`、`html-to-image`（分享卡片导出）、`recharts`（2026-10-24 经操作者批准加入，替代原"图表手写 SVG"决策）。**动效零依赖**（CSS）。除此之外一律先问；任何新依赖统一选用当前**最流行、最新的稳定版本**（lockfile 锁定）。UI 一律 HeroUI 内置组件优先（项目 Skill `heroui-react` 为准），内置覆盖不了才自研。
 
 ## 5. 里程碑（契约层先行）
 
@@ -131,11 +132,19 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 | Vercel Hobby 函数超限 | 10 handler 固定配额，CI 里加函数计数检查 |
 | 依赖蔓延 | §4 预算制，装前报批 |
 
-## 9. 环境变量（server-only，无任何 NEXT_PUBLIC_*）
+## 9. 环境变量（2026-10-24 修订：切换到 Supabase 新 API key 体系）
+
+新 key 体系（`sb_publishable_*` / `sb_secret_*`，非 JWT）按官方推荐命名；旧
+`anon`/`service_role` JWT 名仍作为代码内回退兼容（legacy keys 2026 年底废弃）。
+`NEXT_PUBLIC_` 前缀仅用于 M2 浏览器端 `@supabase/ssr` 所需的 URL 与
+publishable key；secret key 无前缀、绝不进浏览器包。
 
 | 变量 | 用途 |
 |------|------|
-| `SUPABASE_URL` | Supabase 项目地址（服务端） |
-| `SUPABASE_ANON_KEY` | @supabase/ssr 认证客户端 + public-config 端点下发 |
-| `SUPABASE_SERVICE_ROLE_KEY` | route.ts 数据访问（绝不出服务端、绝不进浏览器包） |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目地址（回退：`SUPABASE_URL`） |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | publishable key：M2 认证客户端 + public-config 端点下发（回退：`SUPABASE_ANON_KEY`） |
+| `SUPABASE_SECRET_KEY` | secret key：route.ts 数据访问，绕过 RLS（回退：`SUPABASE_SERVICE_ROLE_KEY`）；绝不进浏览器包 |
 | `TOKEN_USAGE_DASHBOARD_URL` | 配对回调地址校验（device-flow-authorize 返回的 verification_uri） |
+
+契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），
+其值从 publishable key 取——公开客户端值的语义不变。
