@@ -1,0 +1,93 @@
+// Server-side account usage loader — ports the I/O half of
+// api/_lib/account-usage.js against the token_* tables.
+
+import type { UsageRow } from "@/lib/account/series";
+
+import { select, type RestRow } from "./supabase-rest";
+
+import { canonicalizeUsage } from "@/lib/account/usage";
+
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 1000;
+
+async function selectAll(
+  table: string,
+  {
+    columns = "*",
+    filters = [],
+    order = null,
+  }: {
+    columns?: string;
+    filters?: Array<[string, string, unknown]>;
+    order?: string | null;
+  } = {},
+): Promise<RestRow[]> {
+  const rows: RestRow[] = [];
+  let offset = 0;
+
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const batch = await select(table, {
+      select: columns,
+      filters,
+      order,
+      limit: PAGE_SIZE,
+      offset,
+    });
+
+    rows.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+    offset += batch.length;
+  }
+
+  return rows;
+}
+
+export type AccountUsage = {
+  hourly: UsageRow[];
+  sessionStates: UsageRow[];
+  deviceRows: UsageRow[];
+  tokenRows: UsageRow[];
+  activeDeviceIds: Set<string>;
+  canonicalRows: UsageRow[];
+};
+
+export async function loadAccountUsage(userId: string): Promise<AccountUsage> {
+  const [hourly, sessionStates, deviceRows, tokenRows] = await Promise.all([
+    selectAll("token_usage_hourly", {
+      columns:
+        "device_id,hour_start,source,model,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,conversations,total_cost_usd,updated_at",
+      filters: [["user_id", "eq", userId]],
+      order: "hour_start.asc,device_id.asc,source.asc,model.asc",
+    }),
+    selectAll("token_account_session_states", {
+      columns:
+        "source,session_id,model,bucket_start,snapshot_verified_at,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens",
+      filters: [["user_id", "eq", userId]],
+      order: "bucket_start.asc,source.asc,session_id.asc",
+    }),
+    selectAll("token_devices", {
+      columns: "id,device_name,platform,revoked_at,created_at,updated_at",
+      filters: [["user_id", "eq", userId]],
+      order: "created_at.asc",
+    }),
+    selectAll("token_device_tokens", {
+      columns: "device_id,last_used_at,created_at,revoked_at",
+      filters: [["user_id", "eq", userId]],
+    }),
+  ]);
+
+  const activeDeviceIds = new Set(
+    deviceRows
+      .filter((device) => !device.revoked_at)
+      .map((device) => String(device.id)),
+  );
+
+  return {
+    hourly,
+    sessionStates,
+    deviceRows,
+    tokenRows,
+    activeDeviceIds,
+    canonicalRows: canonicalizeUsage(hourly, sessionStates, activeDeviceIds),
+  };
+}

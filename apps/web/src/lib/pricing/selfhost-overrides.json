@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "note": "Self-host price additions for SKUs the upstream curated catalog lacks — this instance's unpriced queue tail. Same schema as curated-overrides.json (exact/alias/fuzzy/source_exact), merged in-memory by api/_lib/pricing/index.js at require time; each addition is cloned with a _selfhost flag, which getModelPricingInfo surfaces as source \"selfhost-curated\" so a rate's origin is always answerable. Upstream curated-overrides.json stays the price source of record and is never mutated or overridden: on a key collision the upstream entry wins and the selfhost entry is dropped. Every priced entry carries a note with the official source URL and verification date. SKUs without an official published price are intentionally absent (findings recorded in docs/selfhost-vercel-supabase.md, \"Pricing snapshot freshness & coverage\"): opencode/union-alpha (limited-time stealth-free window ended ~2026-10-10 and the model is no longer on the Zen catalog; its successor OpenRouter route is paid), dsh/space-bunny (revealed as MiniMax M3.1 Flash third-hand, with no MiniMax per-token list price; the dsh route is undisclosed), dsh/qfmodel (routed through Qoder CN allowance accounts per a community multiplexer observation — allowance-backed, not per-token billable), qoder/custom_model (undisclosed user route). Inventing prices is worse than unpriced.",
+    "units": "usd_per_million_tokens"
+  },
+  "exact": {
+    "step-5-preview": {
+      "input": 1,
+      "output": 2.7,
+      "cache_read": 0.1,
+      "cache_write": 1,
+      "note": "Self-host addition (P3-A): official StepFun platform pricing verified 2026-10-22 at https://platform.stepfun.ai/docs/en/guides/pricing/details — $1.00 / $0.10 (cache hit) / $2.70 per MTok in/read/out; output includes the reasoning trace, so there is no separate reasoning rate. The official cache-miss input price includes writing new content to the cache, so cache_write = input, the same convention upstream's step-3.7-flash entry applies. Launch-week third-party write-ups quoted $0.05 cache hit; the live official page is the rate of record — re-verify on refresh. Applies to every CLI source that routes the public model id (this queue: zcode, dsh, pi-stepfun, zed, workbuddy); OpenCode's own free SKU is the suffixed step-5-preview-free and stays zero via the existing opencode -free rule."
+    }
+  },
+  "alias": {},
+  "source_exact": {
+    "opencode": {
+      "big-pickle": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "note": "Self-host addition (P3-A): OpenCode Zen stealth model, officially free (\"Big Pickle is a stealth model that's free on OpenCode for a limited time\"). Verified 2026-10-22 on the OpenCode Console pricing table, where Big Pickle lists Free input / Free output / Free cached-read: https://opencode.ai/v2/docs/console/models; pi.dev's provider config mirrors cost {input:0, output:0, cacheRead:0, cacheWrite:0}. Source-scoped to opencode rows so the zero rate cannot silently follow the id to another provider; negative cache_write mirrors the official \"-\" column. Remove or re-point when the free preview window ends — the model collects feedback while free, so paid listing may follow."
+      }
+    }
+  },
+  "fuzzy": []
+}
