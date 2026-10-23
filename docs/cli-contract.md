@@ -155,7 +155,7 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 
 ### 2.5 `GET /api/functions/token-usage-public-config`（公开｜CLI 面）
 
-给新采集机的安装脚本用，只返回公开值：`200 { "supabase_url", "supabase_anon_key", "dashboard_url": string|null }`。未配置 → `503`。service-role key 永不出现在此响应。
+给新采集机的安装脚本用，只返回公开值：`200 { "supabase_url", "supabase_anon_key", "dashboard_url": string|null }`。未配置 → `503`。secret key 永不出现在此响应。（`supabase_anon_key` 字段名冻结；Supabase 新 key 体系下该字段的值是 publishable key，公开客户端值的语义不变。）
 
 ### 2.6 `GET /api/functions/token-usage-account-summary`（设备令牌或 JWT｜Dashboard 面）
 
@@ -183,7 +183,7 @@ Query：`from`、`to`（`YYYY-MM-DD`，缺省= 首日 / 调用方本地今天）
 
 ### 2.7 `GET /api/functions/token-usage-account-<series>`（设备令牌或 JWT｜Dashboard 面）
 
-六个只读序列，共享一套时区上下文参数（`tz` / `tz_offset_minutes`）与 `device_id` 过滤。Next.js 实现为**一个** `app/api/functions/token-usage-account-[series]/route.ts` 动态路由（对齐 Vercel Hobby 12 函数上限），series 既可来自路径也可来自 `?series=`。未知 series → `404 {"error":"Unknown account series: ...","series":[...]}`。
+六个只读序列，共享一套时区上下文参数（`tz` / `tz_offset_minutes`）与 `device_id` 过滤。Next.js 实现为**一个**动态路由（对齐 Vercel Hobby 12 函数上限）：`app/api/functions/[...slug]/route.ts` catch-all 承接 `token-usage-account-<series>` slug（App Router 的动态段必须独占整段，`token-usage-account-[series]` 形式的"半动态段"目录不成立），静态兄弟路由优先解析不受影响；series 既可来自路径也可来自 `?series=`。未知 series → `404 {"error":"Unknown account series: ...","series":[...]}`。
 
 | series | 参数 | 响应顶层 |
 |---|---|---|
