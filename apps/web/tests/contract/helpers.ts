@@ -228,8 +228,13 @@ export function seedScenario(fake: FakeSupabase): void {
 
 /** Standard env setup for handler-level contract tests. */
 export function initContractEnv(fakeUrl: string): void {
-  process.env.SUPABASE_URL = fakeUrl;
-  process.env.SUPABASE_SERVICE_ROLE_KEY = "fake-service-role-key";
-  process.env.SUPABASE_ANON_KEY = "fake-anon-key";
+  // Current Supabase key system; legacy names are scrubbed so the new-name
+  // precedence is what every contract test actually exercises.
+  delete process.env.SUPABASE_URL;
+  delete process.env.SUPABASE_ANON_KEY;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.NEXT_PUBLIC_SUPABASE_URL = fakeUrl;
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "fake-publishable-key";
+  process.env.SUPABASE_SECRET_KEY = "fake-secret-key";
   process.env.TOKEN_USAGE_DASHBOARD_URL = "http://dashboard.test";
 }

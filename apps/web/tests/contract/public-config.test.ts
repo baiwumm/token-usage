@@ -32,24 +32,24 @@ describe("GET public-config", () => {
     const text = await res.text();
     expect(JSON.parse(text)).toEqual({
       supabase_url: fake.url,
-      supabase_anon_key: "fake-anon-key",
+      supabase_anon_key: "fake-publishable-key",
       dashboard_url: "http://dashboard.test",
     });
     expect(res.headers.get("cache-control")).toBe("no-store");
-    expect(text).not.toContain("fake-service-role-key");
+    expect(text).not.toContain("fake-secret-key");
   });
 
   it("reports 503 without the public configuration", async () => {
-    const previousUrl = process.env.SUPABASE_URL;
-    const previousKey = process.env.SUPABASE_ANON_KEY;
-    delete process.env.SUPABASE_URL;
+    const previousUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const previousKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     try {
       const res = await publicConfigGet();
       expect(res.status).toBe(503);
       expect(await res.json()).toEqual({ error: "Supabase public configuration is not set" });
     } finally {
-      process.env.SUPABASE_URL = previousUrl;
-      process.env.SUPABASE_ANON_KEY = previousKey;
+      process.env.NEXT_PUBLIC_SUPABASE_URL = previousUrl;
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = previousKey;
     }
   });
 

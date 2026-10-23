@@ -63,9 +63,9 @@ async function startServer(): Promise<void> {
       env: {
         ...process.env,
         NEXT_TELEMETRY_DISABLED: "1",
-        SUPABASE_URL: fake.url,
-        SUPABASE_SERVICE_ROLE_KEY: "fake-service-role-key",
-        SUPABASE_ANON_KEY: "fake-anon-key",
+        NEXT_PUBLIC_SUPABASE_URL: fake.url,
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "fake-publishable-key",
+        SUPABASE_SECRET_KEY: "fake-secret-key",
         TOKEN_USAGE_DASHBOARD_URL: `http://127.0.0.1:${port}`,
       },
       stdio: ["ignore", "pipe", "pipe"],
