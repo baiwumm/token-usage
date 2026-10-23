@@ -65,8 +65,8 @@ function parseEnvFile(text) {
 function loadEnv() {
   const envFile =
     readArg("--env-file")
-    || (fs.existsSync(path.join(path.resolve(__dirname, "..", "..", "..", "apps", "web"), ".env.local"))
-      ? path.join(path.resolve(__dirname, "..", "..", "..", "apps", "web"), ".env.local")
+    || (fs.existsSync(path.join(path.resolve(__dirname, "..", "..", "apps", "web"), ".env.local"))
+      ? path.join(path.resolve(__dirname, "..", "..", "apps", "web"), ".env.local")
       : path.join(path.resolve(__dirname, "..", ".."), ".env.local"));
   if (fs.existsSync(envFile)) {
     for (const [key, value] of Object.entries(parseEnvFile(fs.readFileSync(envFile, "utf8")))) {
