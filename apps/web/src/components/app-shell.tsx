@@ -1,22 +1,39 @@
 "use client";
 
-// App shell for the authenticated pages (2026-10-24 rework): fixed sidebar
-// with user block, collapsible (icons-only), pill-shaped active states,
-// Settings grouped at the bottom, sign-out with an AlertDialog confirm, and
-// a top actions row (collapse / GitHub / language / theme mode / theme
-// color). Drawer below lg. The CLI API and /login stay outside.
+// App shell for the authenticated pages — layout mirrors the better-admin
+// sidebar: brand row with a collapse chevron, scrollable nav (pill states),
+// bottom user block that opens an upward popover (profile header + menu with
+// edit-profile and danger sign-out behind an AlertDialog). Drawer below lg.
+// The CLI API and /login stay outside this shell.
 
 import {
   ArrowRightFromSquare,
   Calendar,
+  ArrowUpArrowDown,
   Display,
   Gear,
   Tachometer,
 } from "@gravity-ui/icons";
-import { AlertDialog, Avatar, Button, Drawer, Typography } from "@heroui/react";
+import {
+  AlertDialog,
+  Avatar,
+  Button,
+  Drawer,
+  Dropdown,
+  Label,
+  ScrollShadow,
+  Separator,
+  Typography,
+} from "@heroui/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type Key,
+  type ReactNode,
+} from "react";
 
 import { useProfile } from "@/lib/auth/profile";
 import { authBrowserClient } from "@/lib/auth/browser";
@@ -40,23 +57,39 @@ function initialsFor(name: string, email: string | null): string {
   return "?";
 }
 
+/**
+ * Brand row: logo mark + name (ChevronsUpDown mirrors the reference layout's
+ * affordance; the brand itself is static here).
+ */
+function SidebarBrand({ collapsed }: { collapsed: boolean }) {
+  return (
+    <div className="border-default-100 flex h-16 shrink-0 items-center border-b px-4">
+      <div className="bg-primary flex size-8 shrink-0 items-center justify-center rounded-lg">
+        <Display aria-hidden="true" className="text-accent-foreground size-5" />
+      </div>
+      {collapsed ? null : (
+        <Typography className="ml-3 min-w-0 truncate" type="h5" weight="bold">
+          Token Usage
+        </Typography>
+      )}
+    </div>
+  );
+}
+
 function NavItems({
   collapsed,
-  group,
   onNavigate,
 }: {
   collapsed: boolean;
-  group: "main" | "settings";
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const [locale] = useLocale();
   const copy = NAV_COPY[locale];
-  const items = NAV_ITEMS;
 
   return (
     <nav aria-label={copy.menu} className="flex flex-col gap-1">
-      {items.map((item) => {
+      {NAV_ITEMS.map((item) => {
         const active =
           item.href === "/"
             ? pathname === "/"
@@ -69,11 +102,11 @@ function NavItems({
             key={item.href}
             aria-current={active ? "page" : undefined}
             className={`flex items-center gap-2.5 text-sm ${
-              collapsed ? "justify-center px-0 py-2" : "rounded-full px-3 py-2"
+              collapsed ? "justify-center px-2 py-2" : "rounded-3xl px-2.5 py-2"
             } ${
               active
-                ? "bg-content2 text-foreground font-medium"
-                : "text-foreground/60 hover:bg-content2/60 hover:text-foreground"
+                ? "bg-default text-foreground font-medium"
+                : "text-foreground/60 hover:bg-default hover:text-foreground"
             }`}
             href={item.href}
             title={collapsed ? label : undefined}
@@ -88,55 +121,155 @@ function NavItems({
   );
 }
 
-function UserBlock({ collapsed }: { collapsed: boolean }) {
+/**
+ * Bottom user block (better-admin SidebarUser pattern): trigger opens an
+ * upward dropdown with the profile header, an edit-profile item and a danger
+ * sign-out that raises the AlertDialog confirm. Collapsed shows avatar only.
+ */
+function SidebarUser({ collapsed }: { collapsed: boolean }) {
+  const router = useRouter();
   const { profile } = useProfile();
+  const [locale] = useLocale();
+  const copy = NAV_COPY[locale];
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
   const name = profile?.displayName || "";
   const email = profile?.email ?? null;
+  const displayName = name || email || "…";
 
-  if (collapsed) {
-    return (
-      <Link
-        aria-label="Profile"
-        className="flex justify-center px-0 py-1"
-        href="/settings"
-        title={email ?? undefined}
-      >
-        <Avatar className="size-9">
-          {profile?.avatarUrl ? (
-            <Avatar.Image
-              alt={name || email || "avatar"}
-              src={profile.avatarUrl}
-            />
-          ) : null}
-          <Avatar.Fallback>{initialsFor(name, email)}</Avatar.Fallback>
-        </Avatar>
-      </Link>
-    );
+  async function signOut() {
+    setSigningOut(true);
+
+    try {
+      await authBrowserClient()?.auth.signOut();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setSigningOut(false);
+      setSignOutOpen(false);
+    }
   }
 
+  const avatar = (
+    <Avatar className="size-8 shrink-0">
+      {profile?.avatarUrl ? (
+        <Avatar.Image alt={displayName} src={profile.avatarUrl} />
+      ) : null}
+      <Avatar.Fallback>{initialsFor(name, email)}</Avatar.Fallback>
+    </Avatar>
+  );
+
+  const handleAction = (key: Key) => {
+    if (key === "profile") {
+      router.push("/settings");
+    } else if (key === "signout") {
+      setSignOutOpen(true);
+    }
+  };
+
   return (
-    <Link
-      className="hover:bg-content2/60 flex items-center gap-2.5 rounded-full px-3 py-2"
-      href="/settings"
+    <div
+      className={`border-default-100 border-t p-3 ${collapsed ? "flex justify-center" : ""}`}
     >
-      <Avatar className="size-9 shrink-0">
-        {profile?.avatarUrl ? (
-          <Avatar.Image
-            alt={name || email || "avatar"}
-            src={profile.avatarUrl}
-          />
-        ) : null}
-        <Avatar.Fallback>{initialsFor(name, email)}</Avatar.Fallback>
-      </Avatar>
-      <span className="flex min-w-0 flex-col">
-        <span className="truncate text-sm font-medium">
-          {name || email || "…"}
-        </span>
-        {name && email ? (
-          <span className="text-foreground/50 truncate text-xs">{email}</span>
-        ) : null}
-      </span>
-    </Link>
+      <Dropdown>
+        <Dropdown.Trigger
+          className={`hover:bg-default flex w-full items-center gap-3 rounded-3xl px-3 py-2 text-start ${
+            collapsed ? "w-auto justify-center px-2" : ""
+          }`}
+        >
+          {avatar}
+          {collapsed ? null : (
+            <>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-sm font-medium">
+                  {displayName}
+                </span>
+                {email ? (
+                  <span className="text-foreground/50 truncate text-xs">
+                    {email}
+                  </span>
+                ) : null}
+              </span>
+              <ArrowUpArrowDown className="text-foreground/50 size-4 shrink-0" />
+            </>
+          )}
+        </Dropdown.Trigger>
+
+        <Dropdown.Popover className="min-w-56">
+          {/* Popover header: same user info as the trigger. */}
+          <div className="flex items-center gap-3 px-3 pb-1 pt-3">
+            {avatar}
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-medium">
+                {displayName}
+              </span>
+              {email ? (
+                <span className="text-foreground/50 truncate text-xs">
+                  {email}
+                </span>
+              ) : null}
+            </span>
+          </div>
+
+          <Separator />
+
+          <Dropdown.Menu onAction={handleAction}>
+            <Dropdown.Item id="profile" textValue={copy.myProfile}>
+              <Gear className="text-foreground/60 size-4 shrink-0" />
+              <Label>{copy.myProfile}</Label>
+            </Dropdown.Item>
+
+            <Separator />
+
+            <Dropdown.Item
+              id="signout"
+              textValue={copy.signOut}
+              variant="danger"
+            >
+              <ArrowRightFromSquare className="text-danger size-4 shrink-0" />
+              <Label>{copy.signOut}</Label>
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown>
+
+      {/* Sign-out confirmation lives inside SidebarUser: the menu action only
+          reaches this component's state, not the shell's. */}
+      <AlertDialog>
+        <AlertDialog.Backdrop
+          isDismissable={!signingOut}
+          isOpen={signOutOpen}
+          onOpenChange={(open) => {
+            if (!open) setSignOutOpen(false);
+          }}
+        >
+          <AlertDialog.Container>
+            <AlertDialog.Dialog>
+              <AlertDialog.Header>
+                <AlertDialog.Icon status="danger" />
+                <AlertDialog.Heading>{copy.signOut}</AlertDialog.Heading>
+              </AlertDialog.Header>
+              <AlertDialog.Body>
+                <p>{copy.signOutConfirm}</p>
+              </AlertDialog.Body>
+              <AlertDialog.Footer>
+                <Button isDisabled={signingOut} slot="close" variant="tertiary">
+                  {copy.cancel}
+                </Button>
+                <Button
+                  isPending={signingOut}
+                  variant="danger"
+                  onPress={() => void signOut()}
+                >
+                  {copy.signOut}
+                </Button>
+              </AlertDialog.Footer>
+            </AlertDialog.Dialog>
+          </AlertDialog.Container>
+        </AlertDialog.Backdrop>
+      </AlertDialog>
+    </div>
   );
 }
 
@@ -184,65 +317,38 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
-  const sidebar = (mobile: boolean) => {
-    const collapsedNow = !mobile && collapsed;
-
-    return (
-      <div className="flex h-full flex-col gap-4 px-3 py-5">
-        <div className={collapsedNow ? "flex justify-center" : "px-2"}>
-          <Typography weight="semibold">
-            {collapsedNow ? "TU" : "Token Usage"}
-          </Typography>
-        </div>
-        <NavItems collapsed={collapsedNow} group="main" />
-        {mobile ? (
-          <div className="px-1">
-            <LanguageDropdown />
-          </div>
-        ) : null}
-        <div className="mt-auto flex flex-col gap-3">
-          <UserBlock collapsed={collapsedNow} />
-          <Button
-            aria-label={navCopy.signOut}
-            className={
-              collapsedNow ? "justify-center px-0" : "justify-start px-3"
-            }
-            variant="ghost"
-            onPress={() => setSignOutOpen(true)}
-          >
-            <ArrowRightFromSquare
-              aria-hidden="true"
-              className="size-4 shrink-0"
-            />
-            {collapsedNow ? null : navCopy.signOut}
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen">
       {/* Desktop sidebar (lg+) — fixed: full viewport height, collapsible. */}
       <aside
-        className={`border-default-100 fixed inset-y-0 left-0 z-30 hidden flex-col overflow-y-auto border-r bg-background transition-all lg:flex ${
-          collapsed ? "w-[68px]" : "w-60"
+        className={`border-default-100 fixed inset-y-0 left-0 z-30 hidden flex-col overflow-hidden border-r bg-surface transition-all lg:flex ${
+          collapsed ? "w-16" : "w-64"
         }`}
       >
-        {sidebar(false)}
+        <SidebarBrand collapsed={collapsed} />
+        <ScrollShadow className="min-h-0 flex-1 px-3 py-2" size={24}>
+          <NavItems collapsed={collapsed} />
+        </ScrollShadow>
+        <SidebarUser collapsed={collapsed} />
       </aside>
 
       <div
         className={`flex min-h-screen flex-col transition-all ${
-          collapsed ? "lg:pl-[68px]" : "lg:pl-60"
+          collapsed ? "lg:pl-16" : "lg:pl-64"
         }`}
       >
-        {/* Top actions row: collapse toggle + global controls. */}
-        <div className="border-default-100 bg-background/90 sticky top-0 z-20 flex items-center justify-end border-b px-4 py-2.5">
-          <TopActions
-            collapsed={collapsed}
-            onCollapseToggle={toggleCollapsed}
-          />
+        {/* Top bar: collapse toggle LEFT, global controls RIGHT. */}
+        <div className="border-default-100 bg-background/90 sticky top-0 z-20 flex items-center justify-between border-b px-4 py-2.5">
+          <Button
+            isIconOnly
+            aria-label="Toggle sidebar"
+            size="sm"
+            variant="ghost"
+            onPress={toggleCollapsed}
+          >
+            <ArrowUpArrowDown className="size-4" />
+          </Button>
+          <TopActions />
         </div>
 
         {children}
@@ -263,12 +369,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div className="flex flex-col gap-3">
                   <NavItems
                     collapsed={false}
-                    group="main"
                     onNavigate={() => setMenuOpen(false)}
                   />
                 </div>
                 <div className="mt-4 flex flex-col gap-3">
-                  <UserBlock collapsed={false} />
                   <Button
                     aria-label={navCopy.signOut}
                     className="justify-start px-3"
@@ -284,6 +388,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     />
                     {navCopy.signOut}
                   </Button>
+                  <LanguageDropdown />
                 </div>
               </Drawer.Body>
             </Drawer.Dialog>

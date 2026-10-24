@@ -5,14 +5,7 @@
 // palette picker (HeroUI "primary" = the --accent variable, recolored via
 // [data-theme-color] overrides in globals.css).
 
-import {
-  ChevronsCollapseHorizontal,
-  LogoGithub,
-  Moon,
-  Sun,
-  Palette,
-  Display,
-} from "@gravity-ui/icons";
+import { LogoGithub, Moon, Sun, Palette, Display } from "@gravity-ui/icons";
 import { Button, Dropdown, Header } from "@heroui/react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -130,26 +123,9 @@ function ThemeColorPicker() {
   );
 }
 
-export function TopActions({
-  collapsed,
-  onCollapseToggle,
-}: {
-  collapsed: boolean;
-  onCollapseToggle: () => void;
-}) {
+export function TopActions() {
   return (
     <div className="flex items-center gap-1.5">
-      <Button
-        isIconOnly
-        aria-label="Toggle sidebar"
-        size="sm"
-        variant="ghost"
-        onPress={onCollapseToggle}
-      >
-        <ChevronsCollapseHorizontal
-          className={collapsed ? "rotate-180" : undefined}
-        />
-      </Button>
       <GitHubLink />
       <LanguageDropdown />
       <ThemeModeToggle />

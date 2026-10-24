@@ -9,6 +9,7 @@ export interface NavCopy {
   signOut: string;
   signOutConfirm: string;
   cancel: string;
+  myProfile: string;
 }
 
 export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
@@ -21,6 +22,7 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     signOut: "登出",
     signOutConfirm: "确定要退出当前账号吗？",
     cancel: "取消",
+    myProfile: "编辑资料",
   },
   en: {
     dashboard: "Dashboard",
@@ -31,6 +33,7 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     signOut: "Sign out",
     signOutConfirm: "Sign out of this account?",
     cancel: "Cancel",
+    myProfile: "Edit profile",
   },
 };
 
