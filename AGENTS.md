@@ -34,8 +34,12 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
    （`tokentracker-*`，§1.5）行为冻结。变更顺序：先改契约文档与 golden 测试 → 操作者确认 →
    再改实现（实现位于 `apps/web/src/app/api/functions/`）。仪表盘自有接口走 `/api/app/*`。
 2. 运行时依赖以 `docs/rewrite-plan.md` §4 预算为准；新增依赖先报操作者批准，获准后同步
-   修订预算文档，并选当前最流行、最新的稳定版本（lockfile 锁定）。图表用手写 SVG，动效用 CSS。
-3. UI 组件选取顺序：HeroUI 内置 → HeroUI 组合 → 自研（沿用 HeroUI 主题体系）。
+   修订预算文档，并选当前最流行、最新的稳定版本（lockfile 锁定）。图表用 recharts
+   （2026-10-24 裁决），动效用 CSS、零依赖。
+3. UI 组件选取顺序：HeroUI 内置 → HeroUI 组合 → 自研（沿用 HeroUI 主题体系）。组件有复合
+   结构时优先使用复合结构（如 Card.Header/Title/Description、TextField/Label/Input），不手写
+   等价 DOM；标题/说明/错误等文本用语义组件（Typography / Label / Description / ErrorMessage /
+   FieldError），不用裸 h1–h6/p 标签。细则见 `docs/ui-spec.md`。
 4. 框架与组件 API 以项目内真实来源为准：HeroUI 查 `.agents/skills/heroui-react/` 的文档脚本，
    React/Next 规范查 `.agents/skills/vercel-react-best-practices/`，其余以 `node_modules`
    内随版本安装的类型与文档为准。

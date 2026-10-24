@@ -17,10 +17,17 @@
 - 选取顺序：HeroUI 内置（75+，`node scripts/list_components.mjs` 查清单）→ HeroUI 组合 →
   自研；自研组件沿用主题变量与 tailwind-variants。
 - HeroUI 组件的交互回调统一 `onPress`；原生 `onClick` 仅用于非 HeroUI 元素。
+- 复合结构优先：提供复合 anatomy 的组件（Card、TextField、Modal、Table、Tabs 等）一律使用
+  其复合结构（如 `Card.Header / Card.Title / Card.Description / Card.Content / Card.Footer`），
+  不手写等价 DOM 包裹（2026-10-24 操作者指令）。
+- 裸标签换语义组件：标题/正文用 `Typography`，表单字段提示用 `Description`，错误用
+  `ErrorMessage`（表单级）/ `FieldError`（字段级），不用裸 `h1`–`h6` / `p` 标签
+  （2026-10-24 操作者指令）。
 - 浮层（Modal / Drawer / Popover / Tooltip / Toast）使用 HeroUI 内置组件及其触发器组件，
   受控用法遵循各组件文档，不自建浮层机制。
 - 图标：`@gravity-ui/icons`（与 HeroUI v3 官方示例一致），尺寸对齐 HeroUI 插槽惯例。
-- 图表：手写 SVG；动效：CSS。二者零依赖（依赖预算见 `docs/rewrite-plan.md` §4）。
+- 图表：recharts（2026-10-24 裁决，替代原"手写 SVG"）；动效：CSS 零依赖
+  （依赖预算见 `docs/rewrite-plan.md` §4）。
 
 ## 三态与响应式
 
