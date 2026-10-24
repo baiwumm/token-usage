@@ -8,7 +8,7 @@
 // legs so mutating endpoints see identical starting state.
 
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -74,6 +74,10 @@ async function startServer(): Promise<void> {
       env: {
         ...process.env,
         NEXT_TELEMETRY_DISABLED: "1",
+        // Isolated build dir: a developer's dev server may be running from
+        // this tree concurrently; two next instances on the same .next dir
+        // lock each other out (next.config.mjs honors NEXT_DIST_DIR).
+        NEXT_DIST_DIR: ".next-alias-test",
         NEXT_PUBLIC_SUPABASE_URL: fake.url,
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "fake-publishable-key",
         SUPABASE_SECRET_KEY: "fake-secret-key",
@@ -113,6 +117,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await killChild();
   await fake.close();
+  rmSync(path.join(webRoot, ".next-alias-test"), { recursive: true, force: true });
 });
 
 function normalize(text: string): string {

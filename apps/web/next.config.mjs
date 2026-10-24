@@ -16,9 +16,13 @@ const legacyApiRewrites = [
 ];
 
 const nextConfig = {
-  async rewrites() {
-    return legacyApiRewrites;
-  },
+	// Tests that boot their own server (tests/contract/alias-server.test.ts)
+	// set NEXT_DIST_DIR so two dev instances on this tree never contend for
+	// the same build directory. Unset in every other environment.
+	distDir: process.env.NEXT_DIST_DIR || ".next",
+	async rewrites() {
+		return legacyApiRewrites;
+	},
 };
 
 export default nextConfig;
