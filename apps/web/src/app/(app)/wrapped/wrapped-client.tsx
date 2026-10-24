@@ -16,7 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { DailyChart } from "../dashboard/charts";
+import { DailyChart } from "../../dashboard/charts";
 
 import { authBrowserClient } from "@/lib/auth/browser";
 import { LOGIN_PATH } from "@/lib/auth/next-path";

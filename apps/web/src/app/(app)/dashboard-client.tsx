@@ -16,14 +16,14 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { DailyChart, HourlyChart } from "./dashboard/charts";
+import { DailyChart, HourlyChart } from "../dashboard/charts";
 import {
   DevicePanel,
   Heatmap,
   ModelPanel,
   SourcePanel,
   TotalsCards,
-} from "./dashboard/panels";
+} from "../dashboard/panels";
 
 import { authBrowserClient } from "@/lib/auth/browser";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
