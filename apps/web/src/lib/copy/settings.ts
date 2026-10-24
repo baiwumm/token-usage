@@ -5,6 +5,16 @@
 export interface SettingsCopy {
   pageTitle: string;
   accountHeading: string;
+  profileHeading: string;
+  profileHint: string;
+  profileNameLabel: string;
+  profileNamePlaceholder: string;
+  profileAvatarLabel: string;
+  profileAvatarHint: string;
+  profileEmailLabel: string;
+  profileSave: string;
+  profileSaved: string;
+  profileSaveFailed: string;
   signedInAs: string;
   signOut: string;
   devicesHeading: string;
@@ -45,6 +55,16 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
   zh: {
     pageTitle: "设置",
     accountHeading: "账户",
+    profileHeading: "编辑资料",
+    profileHint: "名称与头像显示在侧边栏；邮箱由管理员分配，不可修改。",
+    profileNameLabel: "名称",
+    profileNamePlaceholder: "你的名字",
+    profileAvatarLabel: "头像 URL",
+    profileAvatarHint: "填写图片地址；留空则显示名称首字。",
+    profileEmailLabel: "邮箱（不可修改）",
+    profileSave: "保存",
+    profileSaved: "资料已更新。",
+    profileSaveFailed: "保存失败。",
     signedInAs: "登录账号",
     signOut: "登出",
     devicesHeading: "设备",
@@ -83,6 +103,18 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
   en: {
     pageTitle: "Settings",
     accountHeading: "Account",
+    profileHeading: "Edit profile",
+    profileHint:
+      "Name and avatar show in the sidebar; the email is admin-assigned and read-only.",
+    profileNameLabel: "Name",
+    profileNamePlaceholder: "Your name",
+    profileAvatarLabel: "Avatar URL",
+    profileAvatarHint:
+      "An image URL; leave empty to show the first character of your name.",
+    profileEmailLabel: "Email (read-only)",
+    profileSave: "Save",
+    profileSaved: "Profile updated.",
+    profileSaveFailed: "Saving failed.",
     signedInAs: "Signed in as",
     signOut: "Sign out",
     devicesHeading: "Devices",

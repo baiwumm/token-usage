@@ -6,9 +6,11 @@
 // Supabase JWT — the dual-principal path, never a browser→table connection.
 
 import {
+  Avatar,
   Button,
   Card,
   Chip,
+  Description,
   ErrorMessage,
   FieldError,
   Form,
@@ -22,9 +24,10 @@ import {
   toast,
 } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { authBrowserClient } from "@/lib/auth/browser";
+import { useProfile } from "@/lib/auth/profile";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
 import { SETTINGS_COPY, type SettingsCopy } from "@/lib/copy/settings";
 import { useLocale } from "@/lib/copy/locale";
@@ -84,7 +87,6 @@ export function SettingsClient() {
 
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [devices, setDevices] = useState<DeviceRow[]>([]);
-  const [email, setEmail] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<DeviceRow | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
@@ -152,7 +154,6 @@ export function SettingsClient() {
         return;
       }
       setAccessToken(session.access_token);
-      setEmail(session.user.email ?? null);
       await loadDevices(session.access_token);
     })();
   }, [loadDevices, redirectToLogin]);
@@ -253,43 +254,15 @@ export function SettingsClient() {
     );
   }
 
-  async function signOut() {
-    const supabase = authBrowserClient();
-
-    await supabase?.auth.signOut();
-    // Straight to /login: the dashboard at / is login-gated, a detour through
-    // it would only bounce.
-    router.replace(LOGIN_PATH);
-    router.refresh();
-  }
-
   const dateFormatter = (iso: string) => formatDate(iso, locale);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <Typography type="h3">{copy.pageTitle}</Typography>
-        <div className="flex items-center gap-3">
-          {email ? (
-            <Typography color="muted" type="body-sm">
-              {email}
-            </Typography>
-          ) : null}
-          <Button size="sm" variant="outline" onPress={signOut}>
-            {copy.signOut}
-          </Button>
-        </div>
       </header>
 
-      <Card className="p-6">
-        <Card.Header>
-          <Card.Title>{copy.accountHeading}</Card.Title>
-          <Card.Description>
-            {copy.signedInAs}
-            {email ? `：${email}` : ""}
-          </Card.Description>
-        </Card.Header>
-      </Card>
+      <ProfileCard />
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
@@ -514,5 +487,102 @@ export function SettingsClient() {
         </Modal.Backdrop>
       </Modal>
     </main>
+  );
+}
+
+// Profile editing: display name + avatar URL persisted to auth user_metadata
+// (email is admin-assigned and read-only). The sidebar reflects updates via
+// the USER_UPDATED auth event.
+function ProfileCard() {
+  const { profile, updateProfile } = useProfile();
+  const [name, setName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const loadedFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!profile || loadedFor.current === profile.email) return;
+    loadedFor.current = profile.email;
+    setName(profile.displayName);
+    setAvatarUrl(profile.avatarUrl ?? "");
+  }, [profile]);
+
+  const [locale] = useLocale();
+  const copy = SETTINGS_COPY[locale];
+
+  async function save() {
+    if (saving) return;
+    setSaving(true);
+
+    const { error } = await updateProfile({
+      display_name: name.trim(),
+      avatar_url: avatarUrl.trim() || undefined,
+    });
+
+    setSaving(false);
+    if (error) {
+      toast(`${copy.profileSaveFailed} (${error})`);
+    } else {
+      toast.success(copy.profileSaved);
+    }
+  }
+
+  const initial = (name.trim() || profile?.email || "?")
+    .charAt(0)
+    .toUpperCase();
+
+  return (
+    <Card className="p-6">
+      <Card.Header>
+        <Card.Title>{copy.profileHeading}</Card.Title>
+        <Card.Description>{copy.profileHint}</Card.Description>
+      </Card.Header>
+      <Card.Content className="flex flex-col gap-4 md:flex-row md:items-start">
+        <Avatar className="size-20 shrink-0">
+          {avatarUrl.trim() ? (
+            <Avatar.Image alt={initial} src={avatarUrl.trim()} />
+          ) : null}
+          <Avatar.Fallback className="text-2xl">{initial}</Avatar.Fallback>
+        </Avatar>
+        <Form
+          className="flex w-full flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void save();
+          }}
+        >
+          <TextField
+            isRequired
+            name="display_name"
+            value={name}
+            onChange={setName}
+          >
+            <Label>{copy.profileNameLabel}</Label>
+            <Input
+              placeholder={copy.profileNamePlaceholder}
+              variant="secondary"
+            />
+          </TextField>
+          <TextField
+            name="avatar_url"
+            value={avatarUrl}
+            onChange={setAvatarUrl}
+          >
+            <Label>{copy.profileAvatarLabel}</Label>
+            <Input placeholder="https://…" type="url" variant="secondary" />
+            <Description>{copy.profileAvatarHint}</Description>
+          </TextField>
+          <TextField isDisabled name="email" value={profile?.email ?? ""}>
+            <Label>{copy.profileEmailLabel}</Label>
+            <Input variant="secondary" />
+          </TextField>
+          <div>
+            <Button isPending={saving} onPress={() => void save()}>
+              {copy.profileSave}
+            </Button>
+          </div>
+        </Form>
+      </Card.Content>
+    </Card>
   );
 }

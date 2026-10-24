@@ -6,6 +6,9 @@ export interface NavCopy {
   wrapped: string;
   status: string;
   menu: string;
+  signOut: string;
+  signOutConfirm: string;
+  cancel: string;
 }
 
 export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
@@ -15,6 +18,9 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     wrapped: "年度回顾",
     status: "服务状态",
     menu: "菜单",
+    signOut: "登出",
+    signOutConfirm: "确定要退出当前账号吗？",
+    cancel: "取消",
   },
   en: {
     dashboard: "Dashboard",
@@ -22,6 +28,9 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     wrapped: "Wrapped",
     status: "Service status",
     menu: "Menu",
+    signOut: "Sign out",
+    signOutConfirm: "Sign out of this account?",
+    cancel: "Cancel",
   },
 };
 

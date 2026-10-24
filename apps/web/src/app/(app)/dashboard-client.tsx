@@ -156,26 +156,6 @@ export function DashboardClient() {
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-4 py-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <Typography type="h3">{copy.pageTitle}</Typography>
-        <div className="flex items-center gap-3">
-          {payload?.user.email ? (
-            <Typography color="muted" type="body-sm">
-              {payload.user.email}
-            </Typography>
-          ) : null}
-          <Button
-            size="sm"
-            variant="outline"
-            onPress={() => {
-              void (async () => {
-                await authBrowserClient()?.auth.signOut();
-                router.replace(LOGIN_PATH);
-                router.refresh();
-              })();
-            }}
-          >
-            {copy.signOut}
-          </Button>
-        </div>
       </header>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -282,6 +262,7 @@ export function DashboardClient() {
             <TotalsCards
               allTime={payload.all_time}
               copy={copy}
+              daily={daily}
               totals={payload.totals}
             />
 
@@ -327,13 +308,7 @@ export function DashboardClient() {
               <SourcePanel copy={copy} sources={payload.sources} />
             </div>
 
-            <DevicePanel
-              copy={copy}
-              devices={payload.devices}
-              onManage={() => {
-                router.push("/settings");
-              }}
-            />
+            <DevicePanel copy={copy} devices={payload.devices} />
           </>
         ) : (
           <Card className="p-10">

@@ -6,6 +6,7 @@
 
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 import type {
+  DashboardDay,
   DashboardDevice,
   DashboardModel,
   DashboardSource,
@@ -13,7 +14,15 @@ import type {
   HeatmapPayload,
 } from "@/lib/dashboard/api";
 
-import { Button, Card, Chip, Table, Typography } from "@heroui/react";
+import { ChartColumn, Clock, ListCheck, Wallet } from "@gravity-ui/icons";
+import dynamic from "next/dynamic";
+import { Card, Chip, Table, Typography } from "@heroui/react";
+
+import { DonutChart, seriesColor, Sparkline } from "./mini-charts";
+
+// number-flow is a custom element; loading it client-only avoids its style
+// handling during static prerendering (React 19 + custom element quirk).
+const NumberFlow = dynamic(() => import("@number-flow/react"), { ssr: false });
 
 export function formatTokens(value: number): string {
   return value.toLocaleString("en-US");
@@ -30,52 +39,101 @@ function formatRelativeDay(iso: string | null, never: string): string {
   return day;
 }
 
+const CARD_ICONS = {
+  totalTokens: ChartColumn,
+  billableTokens: ChartColumn,
+  cost: Wallet,
+  conversations: ListCheck,
+  activeDays: Clock,
+} as const;
+
 export function TotalsCards({
   totals,
   allTime,
+  daily,
   copy,
 }: {
   totals: DashboardTotals;
   allTime: DashboardTotals;
+  daily: DashboardDay[];
   copy: DashboardCopy;
 }) {
-  const cards: Array<{ label: string; value: string; sub?: string }> = [
+  // Last 14 days as the mini trend per card.
+  const trend = daily.slice(-14).map((day) => ({
+    label: day.date,
+    value: day.total_tokens,
+  }));
+  const costTrend = daily.slice(-14).map((day) => ({
+    label: day.date,
+    value: day.total_cost_usd,
+  }));
+
+  const cards: Array<{
+    label: string;
+    icon: (typeof CARD_ICONS)[keyof typeof CARD_ICONS];
+    value: React.ReactElement;
+    sub?: string;
+    spark?: Array<{ label: string; value: number }>;
+  }> = [
     {
       label: copy.cards.totalTokens,
-      value: formatTokens(totals.total_tokens),
+      icon: CARD_ICONS.totalTokens,
+      value: <NumberFlow value={totals.total_tokens} />,
       sub: `${copy.cards.allTimeSuffix} ${formatTokens(allTime.total_tokens)}`,
+      spark: trend,
     },
     {
       label: copy.cards.billableTokens,
-      value: formatTokens(totals.billable_total_tokens),
+      icon: CARD_ICONS.billableTokens,
+      value: <NumberFlow value={totals.billable_total_tokens} />,
     },
     {
       label: copy.cards.cost,
-      value: formatCost(totals.total_cost_usd),
+      icon: CARD_ICONS.cost,
+      value: (
+        <NumberFlow
+          format={{ style: "currency", currency: "USD" }}
+          value={totals.total_cost_usd}
+        />
+      ),
       sub: `${copy.cards.allTimeSuffix} ${formatCost(allTime.total_cost_usd)}`,
+      spark: costTrend,
     },
     {
       label: copy.cards.conversations,
-      value: formatTokens(totals.conversations),
+      icon: CARD_ICONS.conversations,
+      value: <NumberFlow value={totals.conversations} />,
     },
-    { label: copy.cards.activeDays, value: String(totals.active_days) },
+    {
+      label: copy.cards.activeDays,
+      icon: CARD_ICONS.activeDays,
+      value: <NumberFlow value={totals.active_days} />,
+    },
   ];
 
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
       {cards.map((card) => (
         <Card key={card.label} className="gap-1 p-4">
-          <Typography color="muted" type="body-xs">
-            {card.label}
-          </Typography>
+          <div className="flex items-center justify-between">
+            <Typography color="muted" type="body-xs">
+              {card.label}
+            </Typography>
+            <card.icon aria-hidden="true" className="text-primary/70 size-4" />
+          </div>
           <Typography className="tabular-nums" type="h4" weight="semibold">
             {card.value}
           </Typography>
-          {card.sub ? (
-            <Typography color="muted" type="body-xs">
-              {card.sub}
-            </Typography>
-          ) : null}
+          <div className="flex items-end justify-between gap-2">
+            {card.sub ? (
+              <Typography color="muted" type="body-xs">
+                {card.sub}
+              </Typography>
+            ) : (
+              <span />
+            )}
+            {card.spark ? <Sparkline values={card.spark} /> : null}
+          </div>
         </Card>
       ))}
     </div>
@@ -137,10 +195,12 @@ export function Heatmap({
   payload,
   title,
   months,
+  locale = "zh",
 }: {
   payload: HeatmapPayload;
   title: string;
   months: string;
+  locale?: "zh" | "en";
 }) {
   const columns = alignHeatmapWeeks(payload);
 
@@ -158,14 +218,14 @@ export function Heatmap({
           {formatCost(payload.total_cost_usd)}
         </Card.Description>
       </Card.Header>
-      <Card.Content>
+      <Card.Content className="gap-3">
         <div className="flex gap-[3px] overflow-x-auto pb-1">
           {columns.map((column, columnIndex) => (
             <div key={columnIndex} className="flex flex-col gap-[3px]">
               {column.map((cell, cellIndex) => (
                 <div
                   key={cellIndex}
-                  className={`size-[11px] rounded-[2px] ${cell.day ? (HEATMAP_LEVELS[cell.level] ?? HEATMAP_LEVELS[0]) : "bg-transparent"}`}
+                  className={`size-3 rounded-[3px] ${cell.day ? (HEATMAP_LEVELS[cell.level] ?? HEATMAP_LEVELS[0]) : "bg-transparent"}`}
                   title={
                     cell.day
                       ? `${cell.day} · ${formatTokens(cell.total_tokens)}`
@@ -175,6 +235,16 @@ export function Heatmap({
               ))}
             </div>
           ))}
+        </div>
+        <div className="text-foreground/50 flex items-center justify-end gap-1.5 text-xs">
+          <span>{locale === "zh" ? "少" : "less"}</span>
+          {HEATMAP_LEVELS.map((className) => (
+            <div
+              key={className}
+              className={`size-3 rounded-[3px] ${className}`}
+            />
+          ))}
+          <span>{locale === "zh" ? "多" : "more"}</span>
         </div>
       </Card.Content>
     </Card>
@@ -238,19 +308,48 @@ export function SourcePanel({
       <Card.Header>
         <Card.Title>{copy.panels.sourcesTitle}</Card.Title>
       </Card.Header>
-      <Card.Content className="flex flex-wrap gap-2">
+      <Card.Content className="flex items-center gap-5">
         {sources.length === 0 ? (
           <Typography color="muted" type="body-sm">
             —
           </Typography>
         ) : (
-          sources.map((entry) => (
-            <Chip key={entry.source} size="sm" variant="secondary">
-              {entry.source} · {formatTokens(entry.total_tokens)}
-            </Chip>
-          ))
+          <>
+            <DonutChart
+              centerLabel="Tokens"
+              centerValue={formatTokens(
+                sources.reduce((acc, entry) => acc + entry.total_tokens, 0),
+              )}
+              entries={sources.map((entry) => ({
+                name: entry.source,
+                value: entry.total_tokens,
+              }))}
+            />
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              {sources.map((entry, index) => (
+                <div
+                  key={entry.source}
+                  className="flex items-center justify-between gap-2 text-sm"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ background: seriesColor(index) }}
+                    />
+                    <span className="truncate">{entry.source}</span>
+                  </span>
+                  <span className="text-foreground/60 tabular-nums text-xs">
+                    {formatTokens(entry.total_tokens)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
         )}
-        <Typography className="mt-1 w-full" color="muted" type="body-xs">
+      </Card.Content>
+      <Card.Content>
+        <Typography color="muted" type="body-xs">
           {copy.panels.sharedNote}
         </Typography>
       </Card.Content>
@@ -261,11 +360,9 @@ export function SourcePanel({
 export function DevicePanel({
   devices,
   copy,
-  onManage,
 }: {
   devices: DashboardDevice[];
   copy: DashboardCopy;
-  onManage: () => void;
 }) {
   return (
     <Card className="p-6">
@@ -321,11 +418,6 @@ export function DevicePanel({
           </Table.ScrollContainer>
         </Table>
       </Card.Content>
-      <Card.Footer>
-        <Button size="sm" variant="outline" onPress={onManage}>
-          {copy.panels.devicesManage}
-        </Button>
-      </Card.Footer>
     </Card>
   );
 }

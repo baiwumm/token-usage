@@ -23,3 +23,30 @@
 	--font-sans: "Maple Mono CN", system-ui, Avenir, Helvetica, Arial, sans-serif;
 	--font-mono: "Maple Mono CN", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+
+/*
+ * Theme color palettes (2026-10-24 operator request): HeroUI's "primary" is
+ * the --accent variable, and every derived tone (hover/soft) is a color-mix
+ * over it — overriding --accent + --accent-foreground recolors the app.
+ * Selected via <html data-theme-color="id"> (lib/ui/theme-color.ts).
+ */
+[data-theme-color="violet"] {
+	--accent: oklch(0.62 0.21 295);
+	--accent-foreground: oklch(0.98 0.01 300);
+}
+[data-theme-color="mint"] {
+	--accent: oklch(0.62 0.15 160);
+	--accent-foreground: oklch(0.98 0.01 160);
+}
+[data-theme-color="orange"] {
+	--accent: oklch(0.66 0.17 55);
+	--accent-foreground: oklch(0.99 0.01 80);
+}
+[data-theme-color="rose"] {
+	--accent: oklch(0.62 0.2 10);
+	--accent-foreground: oklch(0.98 0.01 10);
+}
+[data-theme-color="cyan"] {
+	--accent: oklch(0.62 0.12 215);
+	--accent-foreground: oklch(0.98 0.01 215);
+}

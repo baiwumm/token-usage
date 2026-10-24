@@ -17,6 +17,7 @@
 		"@gravity-ui/icons": "^2.23.0",
 		"@heroui/react": "3.2.6",
 		"@heroui/styles": "3.2.6",
+		"@number-flow/react": "^0.6.2",
 		"@supabase/ssr": "^0.12.7",
 		"@supabase/supabase-js": "^2.118.0",
 		"clsx": "2.1.1",

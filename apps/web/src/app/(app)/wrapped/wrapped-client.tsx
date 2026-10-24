@@ -4,6 +4,7 @@
 // highlights, and a Canvas-2D share card export. Data comes from the
 // frozen Dashboard-face endpoints (dashboard payload + account-monthly).
 
+import { ArrowDownToLine } from "@gravity-ui/icons";
 import {
   Button,
   Card,
@@ -269,7 +270,7 @@ export function WrappedClient() {
           <Typography type="h3">{copy.pageTitle}</Typography>
           <Select
             aria-label={copy.yearSuffix}
-            className="w-28"
+            className="w-36"
             selectedKey={String(year)}
             onSelectionChange={(key) => {
               if (key != null) setYear(Number(key));
@@ -296,8 +297,22 @@ export function WrappedClient() {
             </Select.Popover>
           </Select>
         </div>
-        <Button size="sm" variant="secondary" onPress={() => void exportCard()}>
-          {exporting ? copy.share.exporting : copy.share.button}
+        <Button
+          isPending={exporting}
+          size="sm"
+          variant="secondary"
+          onPress={() => void exportCard()}
+        >
+          {({ isPending }) => (
+            <>
+              {isPending ? (
+                <Spinner color="current" size="sm" />
+              ) : (
+                <ArrowDownToLine className="size-4" />
+              )}
+              {copy.share.button}
+            </>
+          )}
         </Button>
       </header>
 
@@ -342,7 +357,7 @@ export function WrappedClient() {
           {/* Share card preview — the export draws this design to canvas. */}
           <div
             ref={cardRef}
-            className="bg-surface border-default-200 flex flex-col gap-4 rounded-large border p-8"
+            className="bg-surface border-default-200 rounded-large flex flex-col gap-4 border p-8"
           >
             <div className="flex items-center justify-between">
               <div>
