@@ -54,7 +54,8 @@ upsert 键与 last-wins 语义跨版本保持不变（对账基线）。
 - `pnpm verify`（lint + tsc + build；test 自 M1 纳入）全绿；
 - 涉及数据的里程碑：新系统聚合值 = `queue.jsonl`（采集机本地缓冲队列
   `$HOME/.tokentracker/tracker/queue.jsonl`）经 last-wins 去重后的总量；
-- 浏览器网络面板零 Supabase 直连请求。
+- 浏览器网络面板零 Supabase **数据表**直连请求（RLS 全拒姿态下浏览器不可达表数据）；
+  @supabase/ssr 的浏览器认证流量（token 刷新等）属认证链路，2026-10-24 裁决豁免。
 
 分项验收线：`docs/rewrite-plan.md` §5 里程碑表。
 上线与退役的放行条件：`docs/rewrite-plan.md` §7 闸门表。
