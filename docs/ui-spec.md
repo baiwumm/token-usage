@@ -34,24 +34,153 @@
 ## 三态与响应式
 
 - 每个数据面必须设计 Loading（Skeleton / Spinner）、Empty、Error 三态；Error 态提供重试。
+- 仪表盘按区块独立加载：单个区块失败不阻塞其他区块，失败区块在自己的 Card 内重试。
 - 响应式：`lg` 以下使用抽屉导航（对齐旧系统行为）；关键页面在 375px 宽度可用。
+- 页面级不得出现横向滚动；表格/代码块需要横向滚动时，滚动容器限定在 Card 内。
+
+## 页面规范（2026-10-25 增量）
+
+所有新增文案走 `lib/copy` 的 typed 字典（zh / en），不硬编码；Sessions 与外观各自建 copy
+模块，错误码到文案的映射与现有设置页一致。
+
+### 仪表盘（`/`，A：官方核心）
+
+桌面自上而下；移动端单列：
+
+1. **筛选条**：范围（7d / 30d / 90d / 12m / 自定义）、时区、设备。筛选写入 URL
+   （`range` / `from` / `to` / `tz` / `device_id`），刷新与分享保持；变更只重取数据，
+   不整页刷新。`from` / `to` 为所选时区的日键（`YYYY-MM-DD`），与契约的日粒度序列一致。
+2. **KPI 网格**（HeroUI `Card` 复合结构）：总 Token、计费 Token、成本、会话数、活跃
+   天数；下一行 rolling 7d / 30d / 日均（来自 `account-summary.rolling`）。口径：总 Token
+   = `totals.total_tokens`，计费 = `totals.billable_total_tokens`，成本 =
+   `totals.total_cost_usd`，会话数 = `totals.conversation_count`，活跃天数 = `days`；
+   rolling 用 `rolling.last_7d` / `last_30d`，卡片显示计费 Token + 会话数；日均（30d）用
+   `rolling.last_30d.avg_per_active_day`（计费 Token ÷ 活跃天）。大数一律走统一 format
+   provider，卡片内不自算格式。
+3. **趋势**：日/月切换（`Tabs`）+ 指标切换（Token / 成本），recharts；范围跟随筛选条。
+4. **双栏**：Top 模型（名称、Token、占比 `Meter`、成本，前 8 条 + “查看全部”打开成本
+   分析）；活跃热力图（保留 CSS grid，周一起始，tooltip 显示日总量/成本）。
+5. **来源与设备**：来源卡（占比 + 成本，随设备筛选，取 `model-breakdown`）、设备卡
+   （名称/平台/最后上报/Token/成本，取 `dashboard.devices`，仅活跃设备且不随设备筛选
+   收窄）；点击设备卡把 `device_id` 写入筛选条。
+6. **明细**：`Tabs` 日 / 时 / 月；`Table` 列（时间、Token、计费 Token、成本、会话、
+   模型数）；列头排序、`Pagination`（默认 20/页）；时视图先选日期（默认今天）；时区
+   切换即时重算日/时，月视图按契约固定 UTC；空窗口显示空态。
+7. **成本分析**：从成本卡或 Top 模型“查看全部”打开 `Modal`；`Tabs` 按模型 / 按来源；
+   总成本、日成本趋势、未定价模型提示；只读，不提供导出。
+8. **分享卡片**入口保留在页头操作区，不因 A 改造移除。
+
+状态与可访问性：
+
+- 首屏 `Skeleton` 保持卡片/图表尺寸，避免布局跳动；无数据时给配对与 CLI 上报引导；
+  筛选无结果时给“清除筛选”。
+- 图表容器带 `aria-label` 与文本摘要；颜色不是唯一信息（模型占比同时显示数字）。
+- 数字使用 `tabular-nums`；表格列头可排序并暴露 `aria-sort`。
+- `<lg`：KPI 两列、筛选条换行、图表高度约 220px；`Modal` 使用全屏尺寸；表格横向滚动
+  只发生在 Card 内。
+
+### Sessions（`/sessions`，B）
+
+- 导航：侧边栏与抽屉在仪表盘后新增“Sessions”（`ListUl` 图标），页面标题取菜单名。
+- 数据源：`account-sessions`。筛选条：范围（7 / 30 / 90 / 自定义）、设备、来源、项目
+  搜索（`q`）；设备/来源选项来自响应的 `facets`；筛选与分页偏移（`offset`）全部写入 URL；
+  默认近 30 天、全部设备、全部来源。范围含今天（`to` 为明日 00:00 本地），按浏览器本地
+  时区换算为 ISO 瞬时，服务端窗口为 `[from, to)`。
+- 汇总卡：会话数、总 Token、成本、平均时长（`totals.duration_ms / totals.sessions`，
+  0 会话显示 `—`）。
+- 列表：`≥md` 用 `Table`，`<md` 用 Card 列表。列：结束时间、来源 `Chip`、项目、设备、
+  时长、Token、成本、模型（前 3 个 `Chip` + `+N`）。v1 固定按结束时间倒序；服务端分页
+  50/页，`Pagination` 组件；不做列排序。
+- 详情：行尾“详情”按钮打开 `Modal`（整行点击为增强，键盘焦点落在按钮上）；头部为来源、
+  项目、设备、结束时间；Token 拆分（input / cached / cache creation / output / reasoning /
+  total / billable）；模型表（模型、Token、占比、成本）；时长；隐私提示“仅用量元数据，
+  不含对话内容、路径或命令”；成本脚注“按模型定价估算，可能与仪表盘 provider 上报成本
+  存在差异”。
+  `session_id` 只作内部键，不在 UI 展示。
+- 空态两分：
+  - 无会话且无筛选 → “等待新版采集器”说明 + 配对设备 / 升级文档链接；不得从小时桶
+    生成假会话。
+  - 筛选无结果 → 清除筛选。
+- 错误：401 跳登录并回跳 `/sessions`；其他错误在列表区重试。
+- 隐私：页面不出现 prompt、正文、标题、绝对路径、resume command；项目列只显示 basename。
+
+### 设置 · 外观（`/settings?section=appearance`）
+
+设置页用 `Tabs` / 分段导航：账户 / 外观 / 设备；`section` 查询参数深链，默认账户。
+外观分区用 `Card` 复合结构，逐行 label + control + `Description`：
+
+| 行 | 控件 | 选项 / 行为 |
+|---|---|---|
+| 主题 | `ToggleButtonGroup`（Sun / Moon / Display） | 浅色 / 深色 / 跟随系统；next-themes，默认 system |
+| 语言 | `Select` | 跟随系统 / 中文 / English；`system` 行内提示当前解析结果；写 locale cookie |
+| 货币 | `Select` | USD / EUR / GBP / CNY / JPY / HKD；下方 `Description` 显示 `1 USD = 6.6849 CNY`（非 USD）与“参考汇率 · as_of” |
+| Token 显示 | `ToggleButtonGroup` | 紧凑 / 完整 |
+| 数字单位 | `ToggleButtonGroup` | K/M/B / 万/亿；仅紧凑模式生效，完整模式置灰并提示 |
+| 数字分组 | `ToggleButtonGroup` | 3 位 / 4 位；仅完整模式生效，紧凑模式置灰并提示 |
+
+- 全部即时生效，无“保存”按钮；提供“恢复默认”（主题 system、语言 system、USD、紧凑、
+  K/M/B、3 位），只重置外观，不影响账户与设备。
+- 设置页底部说明：“外观偏好只保存在本浏览器，不写入账户；换设备需重设。”
+- 控件旁的示例数字使用当前格式实时预览；切换时容器宽度稳定，不抖动。
+
+## 数字、货币与时间格式
+
+- 唯一入口是统一 format provider（`useFormat`）；Dashboard、Sessions、Wrapped、Settings、
+  分享卡片全部使用。组件内禁止散落 `toFixed` / `Intl.NumberFormat` / 手写单位。万/亿与
+  4 位分组也在 provider 内实现，数字与分隔符仍取自 `Intl.NumberFormat` 的 locale 规则。
+- 存储值始终是 USD 与原始整数；货币只改显示，不写回 API、不入库。
+- Token 显示：
+  - 紧凑 + K/M/B：<1000 原样；1e3 `K`、1e6 `M`、1e9 `B`、1e12 `T`；1 位小数，去掉
+    尾随 `.0`；999.95 进位到下一单位。
+  - 紧凑 + 万/亿：<1e4 原样；1e4 `万`、1e8 `亿`、1e12 `万亿`；1 位小数，去掉尾随 `.0`。
+  - 完整 + 3 位：`1,234,567`；完整 + 4 位：`123,4567`（每 4 位一组，分隔符随 UI 语言）。
+  - 单位只作用于紧凑，分组只作用于完整/明细整数；两者互斥提示。
+- 成本：默认 2 位小数；`0 < |v| < 0.01` 显示 `<¥0.01`（或所选币种）；0 显示 `¥0.00`；
+  负数符号在货币符号前（`-¥1.23`）。契约的 6dp 字符串只用于传输，UI 不直接展示 6dp。
+- 汇率：`1 USD = <rate 4dp> <CODE>`；内置快照 + `TOKEN_USAGE_FX_RATES` 覆盖；UI 标注
+  “参考汇率”和 `as_of`；不做实时刷新、不调用外部 API。
+- 日期/时间：按 UI locale 与所选时区格式化；Sessions 详情显示绝对时间 + 相对时间；
+  表格数字使用 `tabular-nums`。
+- 空值：`null` / `undefined` / 空字符串显示 `—`，不显示 0；0 是有效值。
+
+## 语言、主题与偏好持久化
+
+- 语言 preference：`system | zh | en`；cookie `token-usage.locale`。缺省或 `system` 时
+  服务端按 `Accept-Language` 的 q 值取首个受支持语言（zh / en），否则 en；显式 zh / en
+  优先。SSR 用同一解析结果设置 `<html lang>` 与首帧字典；客户端切换写 cookie、更新
+  provider 与 `<html lang>`，无需整页刷新。
+- `system` 在设置页显示“跟随系统（当前：中文 / English）”；shell 语言菜单与设置页共用
+  同一偏好，两处切换互相同步。
+- 主题：next-themes，`attribute="class"`、`enableSystem`，沿用默认 storageKey
+  `theme`（不重置现有偏好）；默认 system；设置页与顶栏明暗切换共用。
+- 货币 / Token 显示 / 单位 / 分组：localStorage，键 `token-usage.currency` /
+  `token-usage.token-format` / `token-usage.token-unit` / `token-usage.token-grouping`；
+  值分别为 ISO 4217 代码、`compact|full`、`kmb|wan`、`3|4`；只影响本浏览器，不写数据库。
+- Hydration：locale cookie 保证 SSR 首帧；主题由 next-themes 首屏脚本避免闪烁；
+  localStorage 显示偏好在挂载后读取，设置页可先渲染默认值；数字使用 `tabular-nums`
+  且容器预留宽度，不允许明显跳动。仪表盘 / Sessions 数据本身客户端加载，不存在服务端
+  数字与客户端不一致。
+- 无偏好或存储损坏：回退 `system` / USD / 紧凑 / K-M-B / 3 位，不抛错。
 
 ## UI 基准
 
-- M3 交付的仪表盘首页即视觉与行为基准：其余页面复用其模式，不自创；确需偏离时先回写本文。
+- M5.5 起以新版仪表盘为视觉与行为基准（M3 版仅历史参考）：其余页面复用其模式，不自创；
+  确需偏离时先回写本文。
 - App Shell（2026-10-24 操作者要求，参照 better-admin 截图重做；2026-10-25 二轮调整）：
   - 桌面侧边栏自顶向下为品牌、胶囊导航、底部用户块（头像 + 名称 + 下拉：账户设置 /
     退出登录）；侧边栏无背景色与右边框，与页面共用底色。折叠态 76px 仅留图标，状态存
     localStorage。退出登录只保留用户块下拉一处（含确认对话框），不再有「帮助与信息」及
-    独立的退出登录入口。
+    独立的退出登录入口。导航项：仪表盘、Sessions、年度回顾、服务状态、设置；Sessions
+    位于仪表盘之后，使用 `ListUl` 图标。
   - 顶栏持有页面标题（仪表盘为按时段的问候语，其余页面取菜单名），页面正文不再重复
     标题；顶栏无下边框，底色与页面一致；右侧固定为 GitHub / 语言 / 主题色 / 明暗切换 /
-    配对设备主操作。明暗切换用 HeroUI `Tabs` 实现，整控件 32px 对齐图标按钮；语言为
+    配对设备主操作。明暗切换用 HeroUI `Tabs` 实现（浅 / 深 / 系统，系统用 `Display`
+    图标），整控件 32px 对齐图标按钮；语言为
     `Globe` 图标 ghost 按钮 + 单选下拉；主题色为 `Popover` + `ColorSwatchPicker` 色板
     （含随机切换），色板变量见 `apps/web/src/styles/theme-palettes.css`。
   - `lg` 以下侧边栏换为抽屉，结构与桌面侧边栏一致：导航在上，语言 / 主题色 / 明暗与
     用户块在下。
-  - 语言偏好写 `token-usage.locale` cookie；根布局据此设置 `<html lang>` 并渲染首帧，
-    切换即时生效、刷新不闪烁。
+  - 语言偏好写 `token-usage.locale` cookie（`system | zh | en`，缺省 `system`）；根布局
+    据此解析并设置 `<html lang>` 与首帧字典，切换即时生效、刷新不闪烁。
 - 审查：UI 代码提交前用 web-design-guidelines Skill 对照最新 Web Interface Guidelines，
   输出 `file:line` 问题清单并修复。
