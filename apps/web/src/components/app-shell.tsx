@@ -20,6 +20,23 @@ const NAV_ICONS = {
   status: Tachometer,
 } as const;
 
+function LocaleSwitcher() {
+  const [locale, setLocale] = useLocale();
+
+  return (
+    <Button
+      aria-label="Switch language"
+      size="sm"
+      variant="ghost"
+      onPress={() => {
+        setLocale(locale === "zh" ? "en" : "zh");
+      }}
+    >
+      {locale === "zh" ? "EN" : "中文"}
+    </Button>
+  );
+}
+
 function NavLinkList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const [locale] = useLocale();
@@ -77,6 +94,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside className="border-default-100 hidden w-56 shrink-0 flex-col gap-6 border-r px-3 py-6 lg:flex">
         <Brand />
         <NavLinkList />
+        <div className="mt-auto px-3">
+          <LocaleSwitcher />
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -118,6 +138,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Drawer.Header>
               <Drawer.Body>
                 <NavLinkList onNavigate={() => setMenuOpen(false)} />
+                <div className="mt-4">
+                  <LocaleSwitcher />
+                </div>
               </Drawer.Body>
               <Drawer.Footer>
                 <Button size="sm" slot="close" variant="secondary">

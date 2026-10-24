@@ -1,8 +1,9 @@
 "use client";
 
 // Lightweight zh/en copy pipeline (docs/rewrite-plan.md 决策 11): typed
-// dictionaries per page + a localStorage-backed locale hook. No i18n
-// framework; new pages add a dictionary module and read both languages.
+// dictionaries per page + a localStorage-backed locale hook. All useLocale()
+// instances share one module-level state so a switch in the app shell
+// re-renders every mounted page (no i18n framework).
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -11,6 +12,10 @@ export type Locale = "zh" | "en";
 export const LOCALES: Locale[] = ["zh", "en"];
 
 const STORAGE_KEY = "token-usage.locale";
+
+let current: Locale | null = null;
+let resolved = false;
+const listeners = new Set<() => void>();
 
 export function resolveLocale(
   stored: unknown,
@@ -27,35 +32,22 @@ export function resolveLocale(
   return "en";
 }
 
-/** zh/en toggle state, persisted; defaults follow the browser language. */
-export function useLocale(): [Locale, (locale: Locale) => void] {
-  const [locale, setLocale] = useState<Locale>("zh");
+function ensureResolved(): void {
+  if (resolved) return;
+  resolved = true;
+  let stored: string | null = null;
 
-  useEffect(() => {
-    let stored: string | null = null;
-
-    try {
-      stored = window.localStorage.getItem(STORAGE_KEY);
-    } catch {
-      // storage unavailable (private mode) — fall through to navigator
-    }
-    setLocale(resolveLocale(stored, window.navigator.language));
-  }, []);
-
-  const update = useCallback((next: Locale) => {
-    setLocale(next);
-
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      // best effort only
-    }
-  }, []);
-
-  return [locale, update];
+  try {
+    stored = window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    // storage unavailable (private mode) — fall through to navigator
+  }
+  current = resolveLocale(stored, window.navigator.language);
 }
 
-export type Dictionary = Record<Locale, Record<string, string>>;
+function emit(): void {
+  for (const listener of listeners) listener();
+}
 
 /** Pick a dictionary entry; the zh/en keys must stay in sync. */
 export function copyFor<T extends Record<string, string>>(
@@ -64,3 +56,41 @@ export function copyFor<T extends Record<string, string>>(
 ): T {
   return dictionary[locale];
 }
+
+/**
+ * Shared zh/en toggle state, persisted; defaults follow the browser language.
+ * Every mount subscribes to the same module state, so one switch updates the
+ * whole app. First paint stays "zh" for SSR/CSR consistency; the resolved
+ * value is adopted right after mount (same flash-for-en-users as before).
+ */
+export function useLocale(): [Locale, (locale: Locale) => void] {
+  const [locale, setLocale] = useState<Locale>("zh");
+
+  useEffect(() => {
+    ensureResolved();
+    setLocale(current ?? "zh");
+    const listener = () => setLocale(current ?? "zh");
+
+    listeners.add(listener);
+
+    return () => {
+      listeners.delete(listener);
+    };
+  }, []);
+
+  const update = useCallback((next: Locale) => {
+    current = next;
+    resolved = true;
+
+    try {
+      window.localStorage.setItem(STORAGE_KEY, next);
+    } catch {
+      // best effort only
+    }
+    emit();
+  }, []);
+
+  return [locale, update];
+}
+
+export type Dictionary = Record<Locale, Record<string, string>>;
