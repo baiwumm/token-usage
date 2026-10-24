@@ -14,8 +14,10 @@
 		"verify": "pnpm clean:.next && pnpm lint && pnpm exec tsc --noEmit && pnpm test && pnpm build"
 	},
 	"dependencies": {
+		"@gravity-ui/icons": "^2.23.0",
 		"@heroui/react": "3.2.6",
 		"@heroui/styles": "3.2.6",
+		"@supabase/ssr": "^0.12.7",
 		"@supabase/supabase-js": "^2.118.0",
 		"clsx": "2.1.1",
 		"intl-messageformat": "10.7.18",
