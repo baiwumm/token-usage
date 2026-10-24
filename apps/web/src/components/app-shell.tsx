@@ -90,8 +90,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      {/* Desktop sidebar (lg+) — pinned to the viewport while content scrolls. */}
-      <aside className="border-default-100 sticky top-0 hidden h-screen w-56 shrink-0 flex-col gap-6 overflow-y-auto border-r px-3 py-6 lg:flex">
+      {/* Desktop sidebar (lg+) — fixed: full viewport height, always visible. */}
+      <aside className="border-default-100 fixed inset-y-0 left-0 z-30 hidden w-56 flex-col gap-6 overflow-y-auto border-r bg-background px-3 py-6 lg:flex">
         <Brand />
         <NavLinkList />
         <div className="mt-auto px-3">
@@ -99,7 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col lg:pl-56">
         {/* Mobile top bar with the drawer trigger (<lg) — stays pinned too. */}
         <header className="border-default-100 sticky top-0 z-20 bg-background flex items-center gap-3 border-b px-4 py-3 lg:hidden">
           <Button
