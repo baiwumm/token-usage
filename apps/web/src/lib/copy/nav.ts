@@ -36,7 +36,7 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
 
 export const NAV_ITEMS = [
   { href: "/", key: "dashboard" },
-  { href: "/settings", key: "settings" },
   { href: "/wrapped", key: "wrapped" },
   { href: "/service-status", key: "status" },
+  { href: "/settings", key: "settings" },
 ] as const;

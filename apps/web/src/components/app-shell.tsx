@@ -6,7 +6,13 @@
 // a top actions row (collapse / GitHub / language / theme mode / theme
 // color). Drawer below lg. The CLI API and /login stay outside.
 
-import { Calendar, Display, Gear, Tachometer } from "@gravity-ui/icons";
+import {
+  ArrowRightFromSquare,
+  Calendar,
+  Display,
+  Gear,
+  Tachometer,
+} from "@gravity-ui/icons";
 import { AlertDialog, Avatar, Button, Drawer, Typography } from "@heroui/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -46,10 +52,7 @@ function NavItems({
   const pathname = usePathname();
   const [locale] = useLocale();
   const copy = NAV_COPY[locale];
-  const items =
-    group === "main"
-      ? NAV_ITEMS.filter((item) => item.key !== "settings")
-      : NAV_ITEMS.filter((item) => item.key === "settings");
+  const items = NAV_ITEMS;
 
   return (
     <nav aria-label={copy.menu} className="flex flex-col gap-1">
@@ -191,23 +194,27 @@ export function AppShell({ children }: { children: ReactNode }) {
             {collapsedNow ? "TU" : "Token Usage"}
           </Typography>
         </div>
-        <UserBlock collapsed={collapsedNow} />
         <NavItems collapsed={collapsedNow} group="main" />
+        {mobile ? (
+          <div className="px-1">
+            <LanguageDropdown />
+          </div>
+        ) : null}
         <div className="mt-auto flex flex-col gap-3">
-          <NavItems collapsed={collapsedNow} group="settings" />
-          {mobile ? (
-            <div className="px-1">
-              <LanguageDropdown />
-            </div>
-          ) : null}
+          <UserBlock collapsed={collapsedNow} />
           <Button
+            aria-label={navCopy.signOut}
             className={
               collapsedNow ? "justify-center px-0" : "justify-start px-3"
             }
             variant="ghost"
             onPress={() => setSignOutOpen(true)}
           >
-            {navCopy.signOut}
+            <ArrowRightFromSquare
+              aria-hidden="true"
+              className="size-4 shrink-0"
+            />
+            {collapsedNow ? null : navCopy.signOut}
           </Button>
         </div>
       </div>
@@ -253,19 +260,17 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Drawer.Heading>Token Usage</Drawer.Heading>
               </Drawer.Header>
               <Drawer.Body>
-                <UserBlock collapsed={false} />
-                <div className="mt-4 flex flex-col gap-3">
+                <div className="flex flex-col gap-3">
                   <NavItems
                     collapsed={false}
                     group="main"
                     onNavigate={() => setMenuOpen(false)}
                   />
-                  <NavItems
-                    collapsed={false}
-                    group="settings"
-                    onNavigate={() => setMenuOpen(false)}
-                  />
+                </div>
+                <div className="mt-4 flex flex-col gap-3">
+                  <UserBlock collapsed={false} />
                   <Button
+                    aria-label={navCopy.signOut}
                     className="justify-start px-3"
                     variant="ghost"
                     onPress={() => {
@@ -273,6 +278,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                       setSignOutOpen(true);
                     }}
                   >
+                    <ArrowRightFromSquare
+                      aria-hidden="true"
+                      className="size-4 shrink-0"
+                    />
                     {navCopy.signOut}
                   </Button>
                 </div>

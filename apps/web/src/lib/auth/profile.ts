@@ -79,7 +79,7 @@ export function useProfile(): {
   }, []);
 
   const updateProfile = useCallback(
-    async (data: { display_name?: string; avatar_url?: string }) => {
+    async (data: { display_name?: string; avatar_url?: string | null }) => {
       const supabase = authBrowserClient();
 
       if (!supabase) return { error: "no client" };
@@ -91,4 +91,84 @@ export function useProfile(): {
   );
 
   return { profile, updateProfile };
+}
+
+const AVATAR_BUCKET = "avatars";
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Upload a user-provided image to the avatars bucket under the user's own
+ * prefix (storage policies scope writes to avatars/<uid>/) and persist the
+ * public URL in user_metadata.avatar_url.
+ */
+export function useAvatarUpload(): {
+  uploadAvatar: (file: File) => Promise<{ error: string | null }>;
+  deleteAvatar: () => Promise<{ error: string | null }>;
+} {
+  const supabase = authBrowserClient();
+
+  const uploadAvatar = useCallback(
+    async (file: File) => {
+      if (!supabase) return { error: "no client" };
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return { error: "no session" };
+      if (!file.type.startsWith("image/")) {
+        return { error: "not an image" };
+      }
+      if (file.size > MAX_AVATAR_BYTES) {
+        return { error: "file too large (max 2 MB)" };
+      }
+
+      const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") || "png";
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) return { error: uploadError.message };
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl },
+      });
+
+      if (updateError) return { error: updateError.message };
+
+      return { error: null };
+    },
+    [supabase],
+  );
+
+  const deleteAvatar = useCallback(async () => {
+    if (!supabase) return { error: "no client" };
+    const url = (await supabase.auth.getUser()).data.user?.user_metadata
+      ?.avatar_url as string | undefined;
+
+    if (url) {
+      // Strip the public URL prefix down to the bucket-relative path.
+      const marker = "/object/public/avatars/";
+
+      if (url.includes(marker)) {
+        await supabase.storage
+          .from(AVATAR_BUCKET)
+          .remove([url.split(marker)[1]]);
+      }
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { avatar_url: null },
+    });
+
+    if (updateError) return { error: updateError.message };
+
+    return { error: null };
+  }, [supabase]);
+
+  return { uploadAvatar, deleteAvatar };
 }

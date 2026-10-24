@@ -5,12 +5,12 @@
 // / device-revoke, docs/cli-contract.md §2.7–2.9) with the browser session's
 // Supabase JWT — the dual-principal path, never a browser→table connection.
 
+import { Camera } from "@gravity-ui/icons";
 import {
   Avatar,
   Button,
   Card,
   Chip,
-  Description,
   ErrorMessage,
   FieldError,
   Form,
@@ -27,7 +27,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { authBrowserClient } from "@/lib/auth/browser";
-import { useProfile } from "@/lib/auth/profile";
+import { useAvatarUpload, useProfile } from "@/lib/auth/profile";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
 import { SETTINGS_COPY, type SettingsCopy } from "@/lib/copy/settings";
 import { useLocale } from "@/lib/copy/locale";
@@ -495,20 +495,48 @@ export function SettingsClient() {
 // the USER_UPDATED auth event.
 function ProfileCard() {
   const { profile, updateProfile } = useProfile();
+  const { uploadAvatar: runUploadInner, deleteAvatar: runDeleteInner } =
+    useAvatarUpload();
   const [name, setName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const loadedFor = useRef<string | null>(null);
 
   useEffect(() => {
     if (!profile || loadedFor.current === profile.email) return;
     loadedFor.current = profile.email;
     setName(profile.displayName);
-    setAvatarUrl(profile.avatarUrl ?? "");
   }, [profile]);
 
   const [locale] = useLocale();
   const copy = SETTINGS_COPY[locale];
+
+  async function runUpload(file: File) {
+    setUploading(true);
+
+    const { error } = await runUploadInner(file);
+
+    setUploading(false);
+    if (error) {
+      toast(`${copy.profileSaveFailed} (${error})`);
+    } else {
+      toast.success(copy.profileSaved);
+    }
+  }
+
+  async function runDelete() {
+    setUploading(true);
+
+    const { error } = await runDeleteInner();
+
+    setUploading(false);
+    if (error) {
+      toast(`${copy.profileSaveFailed} (${error})`);
+    } else {
+      toast.success(copy.profileSaved);
+    }
+  }
 
   async function save() {
     if (saving) return;
@@ -516,7 +544,6 @@ function ProfileCard() {
 
     const { error } = await updateProfile({
       display_name: name.trim(),
-      avatar_url: avatarUrl.trim() || undefined,
     });
 
     setSaving(false);
@@ -538,12 +565,51 @@ function ProfileCard() {
         <Card.Description>{copy.profileHint}</Card.Description>
       </Card.Header>
       <Card.Content className="flex flex-col gap-4 md:flex-row md:items-start">
-        <Avatar className="size-20 shrink-0">
-          {avatarUrl.trim() ? (
-            <Avatar.Image alt={initial} src={avatarUrl.trim()} />
-          ) : null}
-          <Avatar.Fallback className="text-2xl">{initial}</Avatar.Fallback>
-        </Avatar>
+        <div className="flex shrink-0 flex-row items-center gap-3">
+          <Avatar key={profile?.avatarUrl ?? "fallback"} className="size-20">
+            {profile?.avatarUrl ? (
+              <Avatar.Image alt={initial} src={profile.avatarUrl} />
+            ) : null}
+            <Avatar.Fallback className="text-2xl">{initial}</Avatar.Fallback>
+          </Avatar>
+          <div className="flex flex-col gap-2">
+            <input
+              ref={fileInputRef}
+              accept="image/*"
+              className="hidden"
+              type="file"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+
+                if (file) void runUpload(file);
+                event.target.value = "";
+              }}
+            />
+            <Button
+              isDisabled={uploading}
+              size="sm"
+              variant="outline"
+              onPress={() => fileInputRef.current?.click()}
+            >
+              {uploading ? (
+                <Spinner color="current" size="sm" />
+              ) : (
+                <Camera aria-hidden="true" className="size-4" />
+              )}
+              {copy.profileAvatarChange}
+            </Button>
+            {profile?.avatarUrl ? (
+              <Button
+                isDisabled={uploading}
+                size="sm"
+                variant="danger-soft"
+                onPress={() => void runDelete()}
+              >
+                {copy.profileAvatarDelete}
+              </Button>
+            ) : null}
+          </div>
+        </div>
         <Form
           className="flex w-full flex-col gap-3"
           onSubmit={(event) => {
@@ -562,15 +628,6 @@ function ProfileCard() {
               placeholder={copy.profileNamePlaceholder}
               variant="secondary"
             />
-          </TextField>
-          <TextField
-            name="avatar_url"
-            value={avatarUrl}
-            onChange={setAvatarUrl}
-          >
-            <Label>{copy.profileAvatarLabel}</Label>
-            <Input placeholder="https://…" type="url" variant="secondary" />
-            <Description>{copy.profileAvatarHint}</Description>
           </TextField>
           <TextField isDisabled name="email" value={profile?.email ?? ""}>
             <Label>{copy.profileEmailLabel}</Label>

@@ -11,6 +11,9 @@ export interface SettingsCopy {
   profileNamePlaceholder: string;
   profileAvatarLabel: string;
   profileAvatarHint: string;
+  profileAvatarChange: string;
+  profileAvatarDelete: string;
+  profileAvatarTooLarge: string;
   profileEmailLabel: string;
   profileSave: string;
   profileSaved: string;
@@ -59,8 +62,11 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     profileHint: "名称与头像显示在侧边栏；邮箱由管理员分配，不可修改。",
     profileNameLabel: "名称",
     profileNamePlaceholder: "你的名字",
-    profileAvatarLabel: "头像 URL",
-    profileAvatarHint: "填写图片地址；留空则显示名称首字。",
+    profileAvatarLabel: "头像",
+    profileAvatarHint: "上传图片作为头像；删除后显示名称首字。",
+    profileAvatarChange: "更换头像",
+    profileAvatarDelete: "删除",
+    profileAvatarTooLarge: "图片超过 2 MB。",
     profileEmailLabel: "邮箱（不可修改）",
     profileSave: "保存",
     profileSaved: "资料已更新。",
@@ -108,9 +114,12 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
       "Name and avatar show in the sidebar; the email is admin-assigned and read-only.",
     profileNameLabel: "Name",
     profileNamePlaceholder: "Your name",
-    profileAvatarLabel: "Avatar URL",
+    profileAvatarLabel: "Avatar",
     profileAvatarHint:
-      "An image URL; leave empty to show the first character of your name.",
+      "Upload an image; delete it to fall back to your initial.",
+    profileAvatarChange: "Change avatar",
+    profileAvatarDelete: "Delete",
+    profileAvatarTooLarge: "Image exceeds 2 MB.",
     profileEmailLabel: "Email (read-only)",
     profileSave: "Save",
     profileSaved: "Profile updated.",
