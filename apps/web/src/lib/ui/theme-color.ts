@@ -1,25 +1,36 @@
 "use client";
 
-// Theme color palette switcher state (2026-10-24): persists to localStorage
-// and mirrors onto <html data-theme-color="id">, which globals.css maps to
-// HeroUI accent variable overrides ("default" clears the attribute).
+// Theme color palette switcher state (2026-10-24, extended 2026-10-25):
+// persists to localStorage and mirrors onto <html data-theme-color="id">,
+// which theme-palettes.css maps to HeroUI variable overrides ("default" clears
+// the attribute and keeps the base theme).
 
 import { useCallback, useEffect, useState } from "react";
 
 export interface ThemeColorPalette {
   id: string;
+  /** Display name — the presets are brands, so it is not localized. */
   label: string;
   /** Accent hex for the picker swatch. */
   hex: string;
 }
 
+/**
+ * Preset order mirrors better-admin's color-palettes.ts; ids must match the
+ * [data-theme-color="id"] blocks in styles/theme-palettes.css.
+ */
 export const THEME_COLOR_PALETTES: ThemeColorPalette[] = [
-  { id: "default", label: "Blue", hex: "#3b82f6" },
-  { id: "violet", label: "Violet", hex: "#8b5cf6" },
-  { id: "mint", label: "Mint", hex: "#2fbf8f" },
-  { id: "orange", label: "Orange", hex: "#f59e0b" },
-  { id: "rose", label: "Rose", hex: "#f43f5e" },
-  { id: "cyan", label: "Cyan", hex: "#0ea5e9" },
+  { id: "default", label: "Blue", hex: "#0485f7" },
+  { id: "sky", label: "Sky", hex: "#00cbff" },
+  { id: "lavender", label: "Lavender", hex: "#c79ef7" },
+  { id: "mint", label: "Mint", hex: "#80dba2" },
+  { id: "netflix", label: "Netflix", hex: "#e50914" },
+  { id: "uber", label: "Uber", hex: "#000000" },
+  { id: "spotify", label: "Spotify", hex: "#1ed760" },
+  { id: "coinbase", label: "Coinbase", hex: "#0052ff" },
+  { id: "airbnb", label: "Airbnb", hex: "#ff385c" },
+  { id: "discord", label: "Discord", hex: "#5865f2" },
+  { id: "rabbit", label: "Rabbit", hex: "#ff6600" },
 ];
 
 const STORAGE_KEY = "token-usage.theme-color";

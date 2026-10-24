@@ -3,7 +3,6 @@
 
 export interface DashboardCopy {
   pageTitle: string;
-  signOut: string;
   rangeLabel: string;
   tzLabel: string;
   tzBrowser: string;
@@ -57,7 +56,6 @@ export interface DashboardCopy {
 export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
   zh: {
     pageTitle: "仪表盘",
-    signOut: "登出",
     rangeLabel: "时间范围",
     tzLabel: "时区",
     tzBrowser: "浏览器时区",
@@ -115,7 +113,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
   },
   en: {
     pageTitle: "Dashboard",
-    signOut: "Sign out",
     rangeLabel: "Range",
     tzLabel: "Timezone",
     tzBrowser: "Browser timezone",

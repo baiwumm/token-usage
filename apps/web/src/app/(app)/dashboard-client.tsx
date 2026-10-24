@@ -153,11 +153,7 @@ export function DashboardClient() {
   const hasData = (payload?.totals.total_tokens ?? 0) > 0;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-4 py-8">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <Typography type="h3">{copy.pageTitle}</Typography>
-      </header>
-
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 md:px-8">
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
           <Typography color="muted" type="body-xs">

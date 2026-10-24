@@ -18,8 +18,6 @@ export interface SettingsCopy {
   profileSave: string;
   profileSaved: string;
   profileSaveFailed: string;
-  signedInAs: string;
-  signOut: string;
   devicesHeading: string;
   devicesHint: string;
   columnDevice: string;
@@ -71,8 +69,6 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     profileSave: "保存",
     profileSaved: "资料已更新。",
     profileSaveFailed: "保存失败。",
-    signedInAs: "登录账号",
-    signOut: "登出",
     devicesHeading: "设备",
     devicesHint:
       "已配对的采集设备。吊销会立即失效该设备的所有令牌，已上报的用量保留。",
@@ -124,8 +120,6 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     profileSave: "Save",
     profileSaved: "Profile updated.",
     profileSaveFailed: "Saving failed.",
-    signedInAs: "Signed in as",
-    signOut: "Sign out",
     devicesHeading: "Devices",
     devicesHint:
       "Paired collectors. Revoking instantly invalidates the device's tokens; reported usage is kept.",
