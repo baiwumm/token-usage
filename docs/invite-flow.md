@@ -53,7 +53,7 @@ node scripts/admin/create-user.cjs --email user@example.com --password --passwor
 ### 密码登录
 
 1. 输入管理员下发的邮箱与临时密码 → 「登录」；
-2. 成功后跳转 `?next=` 指定的原目标页（缺省进设置页，M3 后缺省进仪表盘）。
+2. 成功后跳转 `?next=` 指定的原目标页（缺省进仪表盘 `/`）。
 
 ### 魔法链接
 
