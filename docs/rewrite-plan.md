@@ -27,6 +27,7 @@ TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写�
 | 16 | 退役 | 生产接管后 14 天观察期 → 备份 → 删旧表；旧仓库 Archive（不删除，届时单独确认） |
 | 17 | 契约分档 | 2026-10-23 评审增补：两档制——CLI 面（7 端点）硬冻结；Dashboard 面（account-*×7 + dashboard）可演进、消费者仅新 UI，v1 复用现有形状，变更回写契约并同步 golden 测试与前端 |
 | 18 | 分支与门禁 | 直推 main；本地 `pnpm verify` + GitHub Actions CI 兜底（test 自 M1 接入）；`.vscode/` 入库 |
+| 19 | 官方域名 | 2026-10-24 注册 **token-usage.cc**（腾讯云，.cc 可备案）——开源项目官方站：落地页、文档（`docs.` 子域）、可选 demo 实例；操作者自部署实例仍为 `token-usage.baiwumm.com`，与官方站相互独立。命名注意：tokenusage.org 为同类 Rust 工具，无横杠的 tokenusage 域名/品牌一律避开 |
 
 ## 2. 目标架构
 
@@ -87,7 +88,7 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 | **M3 仪表盘核心** | 主仪表盘（`/dashboard`）：汇总卡、日/时图表（recharts）、模型/来源/设备下钻、时间范围与时区切换；`/api/app/dashboard` 内部接口 | 数据与旧仪表盘同源对账一致（同一账号同窗口数值相等） |
 | **M4 wrapped + 分享 + 服务状态** | 年度回顾（简化视觉）、分享卡片（html-to-image 导出）、服务状态页 | 三页可用，中英 copy 齐全 |
 | **M5 配对页 + 部署文档** | `/device` 配对/批准页；中文部署指南（Supabase + Vercel 全流程）、`.env.example`、Deploy to Vercel 按钮；英文 README 摘要 | 全新 Supabase/Vercel 账号按文档从零跑通：建库 → 部署 → CLI 配对 → 上报 → 仪表盘可见 |
-| **M-CLI 采集端（独立排期，M2 后可插）** | fork 上游 CLI（MIT）改造为 `tokenusage-cli`（pnpm workspace 子包，二进制命令 `tokenusage`）：改名、指向新契约路径、`sync` 手动为主、`--watch` / `install-task` 可选自动档、剥离用不到的部分、npm 发布；采集机迁移（装新 CLI → 配对 → 撤旧计划任务） | 任一台采集机 `npm i -g tokenusage-cli` 完成配对 + `tokenusage sync`，数值与该机 queue.jsonl 对账一致；端到端契约测试全绿 |
+| **M-CLI 采集端（独立排期，M2 后可插）** | fork 上游 CLI（MIT）改造为 `tokenusage-cli`（pnpm workspace 子包，二进制命令 `tokenusage`）：改名、指向新契约路径、`sync` 手动为主、`--watch` / `install-task` 可选自动档、剥离用不到的部分、npm 发布；采集机迁移（装新 CLI → 配对 → 撤旧计划任务）。命名复查：tokenusage.org 为同类 Rust 工具（crates.io `tokenusage`），npm 发布前需重新评估包名与品牌（见 §1#19） | 任一台采集机 `npm i -g tokenusage-cli` 完成配对 + `tokenusage sync`，数值与该机 queue.jsonl 对账一致；端到端契约测试全绿 |
 | **M6 数据迁移与切换** | 迁移演练（见 §6）→ 生产切换 → 观察期 → 退役 | 见 §7 闸门清单逐项打勾 |
 
 工期参考：M1 约 2–4 天，M2–M4 各 2–5 天，M5 1–2 天，M-CLI 约 1–2 天（fork 改造）+ 联调；全程 Agent 开发，每个里程碑结束由操作者验收后再进下一个。桌面端（backlog）待 CLI 与 Web 稳定后单独立项。
