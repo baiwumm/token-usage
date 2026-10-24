@@ -26,8 +26,9 @@
 - 浮层（Modal / Drawer / Popover / Tooltip / Toast）使用 HeroUI 内置组件及其触发器组件，
   受控用法遵循各组件文档，不自建浮层机制。
 - 图标：`@gravity-ui/icons`（与 HeroUI v3 官方示例一致），尺寸对齐 HeroUI 插槽惯例。
-- 图表：recharts（2026-10-24 裁决，替代原"手写 SVG"）；动效：CSS 零依赖
-  （依赖预算见 `docs/rewrite-plan.md` §4）。
+- 图表：recharts（2026-10-24 裁决，替代原"手写 SVG"）。
+- 动效：优先 CSS（零依赖）；确有必要时可用 `motion`（`motion/react`，2026-10-24 批准，按需
+  安装；预算见 `docs/rewrite-plan.md` §4）。GSAP / Three.js 仍不移植。
 
 ## 三态与响应式
 

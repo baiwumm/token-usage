@@ -21,7 +21,7 @@ TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写�
 | 10 | 环境策略 | 2026-10-23 修订：**新建独立 Supabase 项目**承载新系统（与旧系统项目物理分离，free 档两个活跃项目恰好各占一个）；开发期在新项目用测试专用用户/设备，切换前清理测试数据再导入真实数据 |
 | 11 | i18n | v1 中英双语，重建轻量 copy 管线，架构留扩展点 |
 | 12 | 文档 | 中文为主，代码注释英文 |
-| 13 | 视觉 | 功能对齐 + 视觉简化：HeroUI 重做到整洁可用；GSAP/Three/motion 动效不移植，动画用 CSS。图表实现 2026-10-24 修订（操作者指令）：**recharts**，不再手写 SVG |
+| 13 | 视觉 | 功能对齐 + 视觉简化：HeroUI 重做到整洁可用；GSAP/Three 不移植；动画优先 CSS，确有必要时可用 **motion**（`motion/react`，2026-10-24 操作者批准，按需安装）。图表实现 2026-10-24 修订（操作者指令）：**recharts**，不再手写 SVG |
 | 14 | 里程碑 | 契约层先行（M1 先把 CLI 兼容层做绿） |
 | 15 | 旧系统 | 重写期间冻结新功能，只修 bug 和运维问题 |
 | 16 | 退役 | 生产接管后 14 天观察期 → 备份 → 删旧表；旧仓库 Archive（不删除，届时单独确认） |
@@ -75,7 +75,7 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 
 ## 4. 依赖预算（新依赖装前必须经操作者批准）
 
-运行时：`@supabase/supabase-js`、`@supabase/ssr`、`@gravity-ui/icons`（HeroUI v3 官方示例同款）、`date-fns`、`html-to-image`（分享卡片导出）、`recharts`（2026-10-24 经操作者批准加入，替代原"图表手写 SVG"决策）。**动效零依赖**（CSS）。除此之外一律先问；任何新依赖统一选用当前**最流行、最新的稳定版本**（lockfile 锁定）。UI 一律 HeroUI 内置组件优先（项目 Skill `heroui-react` 为准），内置覆盖不了才自研。
+运行时：`@supabase/supabase-js`、`@supabase/ssr`、`@gravity-ui/icons`（HeroUI v3 官方示例同款）、`date-fns`、`html-to-image`（分享卡片导出）、`recharts`（2026-10-24 经操作者批准加入，替代原"图表手写 SVG"决策）、`motion`（`motion/react`，2026-10-24 经操作者批准，动效确有必要时安装）。动画优先 CSS（零依赖）；除此之外一律先问；任何新依赖统一选用当前**最流行、最新的稳定版本**（lockfile 锁定）。UI 一律 HeroUI 内置组件优先（项目 Skill `heroui-react` 为准），内置覆盖不了才自研。
 
 ## 5. 里程碑（契约层先行）
 
