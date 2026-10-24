@@ -16,7 +16,6 @@ import {
   TextField,
   Typography,
 } from "@heroui/react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 
@@ -245,15 +244,6 @@ function LoginFormInner() {
             </div>
           )}
         </Card.Content>
-
-        <Card.Footer>
-          <Link
-            className="text-foreground/40 hover:text-foreground text-xs underline underline-offset-4"
-            href="/"
-          >
-            {copy.backToLanding}
-          </Link>
-        </Card.Footer>
       </Card>
     </main>
   );

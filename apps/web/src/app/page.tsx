@@ -1,7 +1,14 @@
-import { Landing } from "./landing";
+import type { Metadata } from "next";
 
-// Public product landing page (docs/requirements.md 范围表)：hero + 功能点 +
-// 自部署 / 登录入口 + footer，单屏轻量。
-export default function HomePage() {
-  return <Landing />;
+import { DashboardClient } from "./dashboard-client";
+
+// Dashboard at / — requires login (route guard in src/proxy.ts). The product
+// landing page is a separate site on token-usage.cc (docs/requirements.md
+// 路由约定, 2026-10-24 二次修订).
+export const metadata: Metadata = {
+  title: "仪表盘",
+};
+
+export default function DashboardPage() {
+  return <DashboardClient />;
 }

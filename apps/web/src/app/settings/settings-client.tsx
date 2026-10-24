@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { authBrowserClient } from "@/lib/auth/browser";
-import { LOGIN_PATH, resolvePostLoginPath } from "@/lib/auth/next-path";
+import { LOGIN_PATH } from "@/lib/auth/next-path";
 import { SETTINGS_COPY, type SettingsCopy } from "@/lib/copy/settings";
 import { useLocale } from "@/lib/copy/locale";
 
@@ -257,7 +257,9 @@ export function SettingsClient() {
     const supabase = authBrowserClient();
 
     await supabase?.auth.signOut();
-    router.replace(resolvePostLoginPath(null));
+    // Straight to /login: the dashboard at / is login-gated, a detour through
+    // it would only bounce.
+    router.replace(LOGIN_PATH);
     router.refresh();
   }
 

@@ -11,9 +11,9 @@
 //    the session: CLI traffic follows the contract's own auth rules.
 // 2. Page guard (M2): protected pages redirect unauthenticated browsers to
 //    /login, carrying the original path + query in ?next= (the pairing link's
-//    ?user_code= must survive the hop — docs/requirements.md 路由约定). The
-//    landing page, /login and /auth/callback are public and outside the
-//    matcher.
+//    ?user_code= must survive the hop — docs/requirements.md 路由约定,
+//    2026-10-24 二次修订). The dashboard at / requires login; only /login,
+//    /auth/callback and the CLI API are public and outside the guard.
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
@@ -31,10 +31,11 @@ const CORS_HEADERS: Record<string, string> = {
 
 const CONTRACT_API_PREFIX = "/api/functions/";
 
-// Protected pages per docs/requirements.md 范围表 (everything except the
-// public landing page and the CLI API).
+// Protected pages per docs/requirements.md 范围表 (2026-10-24 二次修订):
+// the dashboard IS / — everything except /login, /auth/callback and the CLI
+// API requires login.
 const PROTECTED_PAGES = [
-  "/dashboard",
+  "/",
   "/settings",
   "/wrapped",
   "/service-status",
@@ -124,7 +125,7 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/api/functions/:path*",
-    "/dashboard/:path*",
+    "/",
     "/settings/:path*",
     "/wrapped/:path*",
     "/service-status/:path*",

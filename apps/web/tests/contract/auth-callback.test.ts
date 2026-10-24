@@ -85,6 +85,7 @@ describe("GET /auth/callback", () => {
 		);
 
 		expect(response.status).toBe(307);
+		// Explicit ?next= is honored; a bare sign-in defaults to "/" (dashboard).
 		expect(response.headers.get("location")).toBe("http://localhost:3000/settings");
 
 		// Session cookies ride on the redirect response.
@@ -114,7 +115,7 @@ describe("GET /auth/callback", () => {
 		);
 
 		expect(first.status).toBe(307);
-		expect(first.headers.get("location")).toBe("http://localhost:3000/settings");
+		expect(first.headers.get("location")).toBe("http://localhost:3000/");
 
 		const replay = await callbackGet(callbackRequest(`?code=${authCode}`, cookies));
 
@@ -126,7 +127,7 @@ describe("GET /auth/callback", () => {
 
 	it("bounces a missing code to /login", async () => {
 		const response = await callbackGet(
-			callbackRequest("?next=%2Fsettings", []),
+			callbackRequest("", []),
 		);
 
 		expect(response.status).toBe(307);
@@ -134,7 +135,7 @@ describe("GET /auth/callback", () => {
 
 		expect(target.pathname).toBe("/login");
 		expect(target.searchParams.get("error")).toBe("auth_code_missing");
-		expect(target.searchParams.get("next")).toBe("/settings");
+		expect(target.searchParams.get("next")).toBe("/");
 	});
 
 	it("bounces an unknown code to /login", async () => {
@@ -176,7 +177,7 @@ describe("GET /auth/callback", () => {
 			// Falls back to the default destination; /login never loops.
 			expect(response.status).toBe(307);
 			expect(new URL(response.headers.get("location") || "").pathname).toBe(
-				"/settings",
+				"/",
 			);
 		}
 	});

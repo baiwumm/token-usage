@@ -20,7 +20,6 @@ export interface LoginCopy {
   errorRateLimited: string;
   errorCallback: string;
   errorGeneric: string;
-  backToLanding: string;
 }
 
 export const LOGIN_COPY: Record<"zh" | "en", LoginCopy> = {
@@ -46,7 +45,6 @@ export const LOGIN_COPY: Record<"zh" | "en", LoginCopy> = {
     errorRateLimited: "尝试过于频繁，请稍后再试。",
     errorCallback: "登录链接无效或已过期，请重新登录。",
     errorGeneric: "登录失败，请稍后再试。",
-    backToLanding: "返回首页",
   },
   en: {
     pageTitle: "Sign in",
@@ -71,6 +69,5 @@ export const LOGIN_COPY: Record<"zh" | "en", LoginCopy> = {
     errorCallback:
       "That sign-in link is invalid or expired. Please sign in again.",
     errorGeneric: "Sign-in failed. Please try again later.",
-    backToLanding: "Back to home",
   },
 };

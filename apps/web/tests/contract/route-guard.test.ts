@@ -100,10 +100,11 @@ function redirectTarget(response: Response): URL {
 }
 
 describe("proxy config", () => {
-	it("guards every protected page in the matcher", () => {
+	it("guards every protected page in the matcher (dashboard IS /)", () => {
 		const matcher = config.matcher;
 
-		for (const page of ["/dashboard", "/settings", "/wrapped", "/service-status", "/device"]) {
+		expect(matcher).toContain("/");
+		for (const page of ["/settings", "/wrapped", "/service-status", "/device"]) {
 			expect(matcher).toContain(`${page}/:path*`);
 		}
 		expect(matcher).toContain("/api/functions/:path*");
@@ -111,7 +112,7 @@ describe("proxy config", () => {
 });
 
 describe("public pages", () => {
-	it.each(["/", "/login", "/auth/callback", "/login?next=%2Fsettings"])(
+	it.each(["/login", "/auth/callback", "/login?next=%2F"])(
 		"never guards %s",
 		async (path) => {
 			expectNext(await proxy(guardRequest(path)));
@@ -121,7 +122,7 @@ describe("public pages", () => {
 
 describe("page guard redirects", () => {
 	it.each([
-		"/dashboard",
+		"/",
 		"/settings",
 		"/wrapped",
 		"/service-status",
@@ -134,15 +135,6 @@ describe("page guard redirects", () => {
 	});
 
 	it("preserves path AND query in ?next= (pairing user_code survives)", async () => {
-		const target = redirectTarget(
-			await proxy(guardRequest("/dashboard?user_code=AAAA-BBBB&tab=day")),
-		);
-
-		expect(target.pathname).toBe("/login");
-		expect(target.searchParams.get("next")).toBe(
-			"/dashboard?user_code=AAAA-BBBB&tab=day",
-		);
-
 		const device = redirectTarget(
 			await proxy(guardRequest("/device?user_code=XXXX-YYYY")),
 		);
@@ -153,7 +145,7 @@ describe("page guard redirects", () => {
 
 describe("page guard pass-through", () => {
 	it("lets a session cookie through to protected pages", async () => {
-		for (const path of ["/dashboard", "/settings", "/device?user_code=XXXX-YYYY"]) {
+		for (const path of ["/", "/settings", "/device?user_code=XXXX-YYYY"]) {
 			expectNext(await proxy(guardRequest(path, sessionCookies)));
 		}
 	});

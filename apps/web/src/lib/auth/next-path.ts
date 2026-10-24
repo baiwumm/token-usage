@@ -2,9 +2,9 @@
 // path + query (e.g. /device?user_code=XXXX-XXXX) through ?next=; both the
 // login page and /auth/callback sanitize it before honoring it.
 
-// M2 note: the dashboard page itself lands in M3, so the default post-login
-// destination is the settings page. Flip to /dashboard when M3 ships.
-export const DEFAULT_POST_LOGIN_PATH = "/settings";
+// The dashboard lives at / and requires login (docs/requirements.md 路由约定,
+// 2026-10-24 二次修订): a bare sign-in lands there.
+export const DEFAULT_POST_LOGIN_PATH = "/";
 
 export const LOGIN_PATH = "/login";
 
