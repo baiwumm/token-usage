@@ -4,7 +4,15 @@
 // Auth traffic goes through the exempted browser Supabase client; the ?next=
 // target is sanitized before it is honored anywhere.
 
-import { Button, Card, Form, Input, Label, TextField } from "@heroui/react";
+import {
+  Button,
+  Card,
+  Form,
+  Input,
+  Label,
+  Spinner,
+  TextField,
+} from "@heroui/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
@@ -111,7 +119,11 @@ function LoginFormInner() {
       onChange={setEmail}
     >
       <Label>{copy.emailLabel}</Label>
-      <Input autoComplete="email" placeholder={copy.emailPlaceholder} />
+      <Input
+        autoComplete="email"
+        placeholder={copy.emailPlaceholder}
+        variant="secondary"
+      />
     </TextField>
   );
 
@@ -142,7 +154,12 @@ function LoginFormInner() {
                   void submitMagic();
                 }}
               >
-                {copy.sentResend}
+                {({ isPending }) => (
+                  <>
+                    {isPending ? <Spinner color="current" size="sm" /> : null}
+                    {copy.sentResend}
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -185,10 +202,16 @@ function LoginFormInner() {
                   <Input
                     autoComplete="current-password"
                     placeholder={copy.passwordPlaceholder}
+                    variant="secondary"
                   />
                 </TextField>
                 <Button isPending={busy} type="submit">
-                  {copy.passwordSubmit}
+                  {({ isPending }) => (
+                    <>
+                      {isPending ? <Spinner color="current" size="sm" /> : null}
+                      {copy.passwordSubmit}
+                    </>
+                  )}
                 </Button>
               </Form>
             ) : (
@@ -202,7 +225,12 @@ function LoginFormInner() {
                 {emailField}
                 <p className="text-foreground/50 text-xs">{copy.magicHint}</p>
                 <Button isPending={busy} type="submit">
-                  {copy.magicSubmit}
+                  {({ isPending }) => (
+                    <>
+                      {isPending ? <Spinner color="current" size="sm" /> : null}
+                      {copy.magicSubmit}
+                    </>
+                  )}
                 </Button>
               </Form>
             )}

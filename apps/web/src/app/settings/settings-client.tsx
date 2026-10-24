@@ -410,7 +410,10 @@ export function SettingsClient() {
                     onChange={setRenameDraft}
                   >
                     <Label>{copy.renameLabel}</Label>
-                    <Input placeholder={renaming?.device_name ?? ""} />
+                    <Input
+                      placeholder={renaming?.device_name ?? ""}
+                      variant="secondary"
+                    />
                     {renameError ? (
                       <p className="text-danger text-sm" role="alert">
                         {renameError}
@@ -433,7 +436,12 @@ export function SettingsClient() {
                     void submitRename();
                   }}
                 >
-                  {copy.renameSave}
+                  {({ isPending }) => (
+                    <>
+                      {isPending ? <Spinner color="current" size="sm" /> : null}
+                      {copy.renameSave}
+                    </>
+                  )}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>
@@ -472,7 +480,12 @@ export function SettingsClient() {
                   variant="danger"
                   onPress={submitRevoke}
                 >
-                  {copy.revokeConfirm}
+                  {({ isPending }) => (
+                    <>
+                      {isPending ? <Spinner color="current" size="sm" /> : null}
+                      {copy.revokeConfirm}
+                    </>
+                  )}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>
