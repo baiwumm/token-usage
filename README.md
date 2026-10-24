@@ -22,6 +22,12 @@
 </p>
 
 <p align="center">
+  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbaiwumm%2Ftoken-usage&project-name=token-usage&repository-name=token-usage">
+    <img src="https://vercel.com/button" alt="Deploy with Vercel" />
+  </a>
+</p>
+
+<p align="center">
   📖 <a href="docs/cli-contract.md">API 契约</a> ·
   📌 <a href="docs/requirements.md">需求真源</a> ·
   🧭 <a href="docs/rewrite-plan.md">计划</a> ·
@@ -39,7 +45,7 @@
 - **一个账户、多台设备**：桌面 / 笔记本各自的采集端独立配对、独立吊销，用量按账户聚合、按设备下钻
 - **数据自主**：每个部署实例绑定自己的 Supabase 项目，采集端只向配对实例上报，跨实例零共享
 - **契约先行**：CLI 采集契约两档制——采集面硬冻结、仪表盘面随 UI 演进（[`docs/cli-contract.md`](docs/cli-contract.md)）
-- **开源自部署**：Vercel free + Supabase free 即可跑通，部署指南随 M5 发布
+- **开源自部署**：Vercel free + Supabase free 即可跑通，见[部署指南](docs/deploy-guide.md)
 
 ## 🧱 技术栈
 
@@ -85,7 +91,20 @@ M-CLI 采集端（`tokenusage-cli`）→ M6 数据迁移与切换。详见 [`doc
 | [`docs/cli-contract.md`](docs/cli-contract.md) | API 契约（两档制）：CLI 面硬冻结 + Dashboard 面可演进 |
 | [`docs/ui-spec.md`](docs/ui-spec.md) | UI 规范：Design Tokens、组件规则、三态与响应式 |
 | [`docs/rewrite-plan.md`](docs/rewrite-plan.md) | 计划：表结构、里程碑、数据迁移与切换闸门 |
+| [`docs/deploy-guide.md`](docs/deploy-guide.md) | 部署指南：Supabase + Vercel 从零跑通 |
 | [`docs/launch-runbook.md`](docs/launch-runbook.md) | 发布手册：部署顺序、冒烟清单、回滚 |
+
+## 🌍 English
+
+**Token Usage** is a community rewrite of [TokenTracker](https://github.com/xiufengsun/TokenTracker) (MIT):
+a self-hosted AI token usage tracker — one account, many collector devices, CLI-based
+reporting, aggregated usage & cost dashboards. All data lives in **your own Supabase**
+project; nothing is shared across instances.
+
+- **Stack**: Next.js 16 (App Router) · React 19 · HeroUI 3 · Tailwind CSS 4 · Supabase (Auth + Postgres, RLS denies all client roles) · pnpm workspace
+- **Deploy**: Supabase (free tier) + Vercel (Hobby) is enough — see the [English-friendly deploy guide](docs/deploy-guide.md) (Chinese, step by step) or use the Deploy button above
+- **Pairing**: the collector CLI prints a `XXXX-XXXX` code and opens `/device?user_code=...`; you approve it after signing in, and reporting starts immediately
+- **CLI contract**: two-tier — the collector-facing API is frozen, the dashboard API evolves with the UI ([`docs/cli-contract.md`](docs/cli-contract.md))
 
 ## ⚖️ License
 
