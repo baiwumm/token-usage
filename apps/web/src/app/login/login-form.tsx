@@ -132,124 +132,128 @@ function LoginFormInner() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm gap-5 p-8">
-        <header className="flex flex-col gap-1">
-          <Typography type="h4">{copy.pageTitle}</Typography>
-          <Typography color="muted" type="body-sm">
-            {copy.pageSubtitle}
-          </Typography>
-        </header>
+      <Card className="w-full max-w-sm p-8">
+        <Card.Header>
+          <Card.Title>{copy.pageTitle}</Card.Title>
+          <Card.Description>{copy.pageSubtitle}</Card.Description>
+        </Card.Header>
 
-        {magicSent ? (
-          <div className="flex flex-col gap-4">
-            <Typography type="h4" weight="medium">
-              {copy.sentTitle}
-            </Typography>
-            <Typography color="muted" type="body-sm">
-              {copy.sentBody}
-            </Typography>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onPress={() => {
-                  setMagicSent(false);
-                }}
-              >
-                {copy.sentBack}
-              </Button>
-              <Button
-                isPending={busy}
-                onPress={() => {
-                  void submitMagic();
-                }}
-              >
-                {({ isPending }) => (
-                  <>
-                    {isPending ? <Spinner color="current" size="sm" /> : null}
-                    {copy.sentResend}
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            <div
-              className="flex gap-1 rounded-large bg-content2 p-1"
-              role="tablist"
-            >
-              {(["password", "magic"] as const).map((target) => (
+        <Card.Content>
+          {magicSent ? (
+            <div className="flex flex-col gap-4">
+              <Typography type="h4" weight="medium">
+                {copy.sentTitle}
+              </Typography>
+              <Typography color="muted" type="body-sm">
+                {copy.sentBody}
+              </Typography>
+              <div className="flex gap-2">
                 <Button
-                  key={target}
-                  size="sm"
-                  variant={mode === target ? "secondary" : "ghost"}
-                  onPress={() => switchMode(target)}
+                  variant="secondary"
+                  onPress={() => {
+                    setMagicSent(false);
+                  }}
                 >
-                  {target === "password" ? copy.passwordMode : copy.magicMode}
+                  {copy.sentBack}
                 </Button>
-              ))}
+                <Button
+                  isPending={busy}
+                  onPress={() => {
+                    void submitMagic();
+                  }}
+                >
+                  {({ isPending }) => (
+                    <>
+                      {isPending ? <Spinner color="current" size="sm" /> : null}
+                      {copy.sentResend}
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-
-            {error ? <ErrorMessage role="alert">{error}</ErrorMessage> : null}
-
-            {mode === "password" ? (
-              <Form className="flex flex-col gap-4" onSubmit={submitPassword}>
-                {emailField}
-                <TextField
-                  isRequired
-                  className="flex flex-col gap-1.5"
-                  name="password"
-                  type="password"
-                  value={password}
-                  onChange={setPassword}
-                >
-                  <Label>{copy.passwordLabel}</Label>
-                  <Input
-                    autoComplete="current-password"
-                    placeholder={copy.passwordPlaceholder}
-                    variant="secondary"
-                  />
-                </TextField>
-                <Button isPending={busy} type="submit">
-                  {({ isPending }) => (
-                    <>
-                      {isPending ? <Spinner color="current" size="sm" /> : null}
-                      {copy.passwordSubmit}
-                    </>
-                  )}
-                </Button>
-              </Form>
-            ) : (
-              <Form
-                className="flex flex-col gap-4"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void submitMagic();
-                }}
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div
+                className="flex gap-1 rounded-large bg-content2 p-1"
+                role="tablist"
               >
-                {emailField}
-                <Description>{copy.magicHint}</Description>
-                <Button isPending={busy} type="submit">
-                  {({ isPending }) => (
-                    <>
-                      {isPending ? <Spinner color="current" size="sm" /> : null}
-                      {copy.magicSubmit}
-                    </>
-                  )}
-                </Button>
-              </Form>
-            )}
-          </div>
-        )}
+                {(["password", "magic"] as const).map((target) => (
+                  <Button
+                    key={target}
+                    size="sm"
+                    variant={mode === target ? "secondary" : "ghost"}
+                    onPress={() => switchMode(target)}
+                  >
+                    {target === "password" ? copy.passwordMode : copy.magicMode}
+                  </Button>
+                ))}
+              </div>
 
-        <footer className="text-foreground/40 text-xs">
+              {error ? <ErrorMessage role="alert">{error}</ErrorMessage> : null}
+
+              {mode === "password" ? (
+                <Form className="flex flex-col gap-4" onSubmit={submitPassword}>
+                  {emailField}
+                  <TextField
+                    isRequired
+                    className="flex flex-col gap-1.5"
+                    name="password"
+                    type="password"
+                    value={password}
+                    onChange={setPassword}
+                  >
+                    <Label>{copy.passwordLabel}</Label>
+                    <Input
+                      autoComplete="current-password"
+                      placeholder={copy.passwordPlaceholder}
+                      variant="secondary"
+                    />
+                  </TextField>
+                  <Button isPending={busy} type="submit">
+                    {({ isPending }) => (
+                      <>
+                        {isPending ? (
+                          <Spinner color="current" size="sm" />
+                        ) : null}
+                        {copy.passwordSubmit}
+                      </>
+                    )}
+                  </Button>
+                </Form>
+              ) : (
+                <Form
+                  className="flex flex-col gap-4"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void submitMagic();
+                  }}
+                >
+                  {emailField}
+                  <Description>{copy.magicHint}</Description>
+                  <Button isPending={busy} type="submit">
+                    {({ isPending }) => (
+                      <>
+                        {isPending ? (
+                          <Spinner color="current" size="sm" />
+                        ) : null}
+                        {copy.magicSubmit}
+                      </>
+                    )}
+                  </Button>
+                </Form>
+              )}
+            </div>
+          )}
+        </Card.Content>
+
+        <Card.Footer>
           <Link
-            className="hover:text-foreground underline underline-offset-4"
+            className="text-foreground/40 hover:text-foreground text-xs underline underline-offset-4"
             href="/"
           >
             {copy.backToLanding}
           </Link>
-        </footer>
+        </Card.Footer>
       </Card>
     </main>
   );
