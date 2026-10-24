@@ -47,7 +47,7 @@ export interface SettingsCopy {
   revokeConfirm: string;
   revokeCancel: string;
   revokeSuccess: string;
-  revokedTokensSuffix: string;
+  revokedTokensSummary: string;
   sessionExpired: string;
   // Stable contract error codes → friendly text.
   errorDeviceNameTaken: string;
@@ -101,7 +101,7 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     revokeConfirm: "确认吊销",
     revokeCancel: "取消",
     revokeSuccess: "设备已吊销",
-    revokedTokensSuffix: "个令牌已失效",
+    revokedTokensSummary: "{count} 个令牌已失效",
     sessionExpired: "登录状态已失效，请重新登录。",
     errorDeviceNameTaken: "该名称已被账户内其他活跃设备使用。",
     errorGeneric: "操作失败，请稍后再试。",
@@ -155,7 +155,8 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     revokeConfirm: "Revoke device",
     revokeCancel: "Cancel",
     revokeSuccess: "Device revoked",
-    revokedTokensSuffix: "token(s) invalidated",
+    revokedTokensSummary:
+      "{count, plural, one {# token invalidated} other {# tokens invalidated}}",
     sessionExpired: "Your session has expired. Please sign in again.",
     errorDeviceNameTaken: "That name is already used by another active device.",
     errorGeneric: "Something went wrong. Please try again later.",

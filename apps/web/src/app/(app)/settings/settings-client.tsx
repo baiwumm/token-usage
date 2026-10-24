@@ -29,8 +29,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authBrowserClient } from "@/lib/auth/browser";
 import { useAvatarUpload, useProfile } from "@/lib/auth/profile";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
-import { SETTINGS_COPY, type SettingsCopy } from "@/lib/copy/settings";
 import { useLocale } from "@/lib/copy/locale";
+import { formatMessage } from "@/lib/copy/message";
+import { SETTINGS_COPY, type SettingsCopy } from "@/lib/copy/settings";
 
 interface DeviceRow {
   id: string;
@@ -250,7 +251,13 @@ export function SettingsClient() {
     setDevices((rows) => rows.filter((row) => row.id !== target.id));
     setRevoking(null);
     toast.success(
-      `${copy.revokeSuccess} · ${payload.revoked_tokens ?? 0} ${copy.revokedTokensSuffix}`,
+      `${copy.revokeSuccess} · ${formatMessage(
+        copy.revokedTokensSummary,
+        locale,
+        {
+          count: payload.revoked_tokens ?? 0,
+        },
+      )}`,
     );
   }
 

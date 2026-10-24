@@ -1,8 +1,17 @@
 import type { Metadata, Viewport } from "next";
 
+import { cookies, headers } from "next/headers";
+
 import "@/styles/globals.css";
 
 import { Providers } from "./providers";
+
+import { LocaleProvider } from "@/lib/copy/locale";
+import {
+  LOCALE_COOKIE,
+  htmlLangFor,
+  resolveLocale,
+} from "@/lib/copy/locale-config";
 
 export const metadata: Metadata = {
   title: {
@@ -22,17 +31,27 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Resolve the UI language before rendering so the SSR markup, <html lang>
+  // and the client's first render all agree (no zh → en flash on reload).
+  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+  const initialLocale = resolveLocale(
+    cookieStore.get(LOCALE_COOKIE)?.value,
+    headerStore.get("accept-language"),
+  );
+
   return (
-    <html suppressHydrationWarning lang="zh-CN">
+    <html suppressHydrationWarning lang={htmlLangFor(initialLocale)}>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
-        <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
-          {children}
-        </Providers>
+        <LocaleProvider initialLocale={initialLocale}>
+          <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
+            {children}
+          </Providers>
+        </LocaleProvider>
       </body>
     </html>
   );
