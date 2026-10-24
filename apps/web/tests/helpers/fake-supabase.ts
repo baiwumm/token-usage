@@ -7,9 +7,27 @@
 // (including last-wins upserts) without a live Supabase project.
 
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 export type Row = Record<string, unknown>;
+
+export interface AuthUserRecord {
+	id: string;
+	email: string;
+}
+
+export interface IssuedSession {
+	accessToken: string;
+	refreshToken: string;
+	userId: string;
+	grant: string;
+}
+
+export interface OtpChallenge {
+	authCode: string;
+	email: string;
+	challenge: string;
+}
 
 type UniqueConstraint = {
   name: string;
@@ -107,8 +125,30 @@ export class FakeSupabase {
   tables = defaultTables();
   // device token → auth user accepted by /auth/v1/user
   authUsers = new Map<string, { id: string; email: string | null }>();
+  // Supabase Auth surface (M2): email+password accounts, refresh tokens,
+  // pending PKCE magic-link challenges, and every session minted so far.
+  authPasswordUsers = new Map<string, AuthUserRecord & { password: string }>();
+  usersByEmail = new Map<string, AuthUserRecord>();
+  refreshTokens = new Map<string, AuthUserRecord>();
+  otpChallenges = new Map<string, OtpChallenge>();
+  issuedSessions: IssuedSession[] = [];
+  // Most recent magic-link request, exposed so tests can play the role of the
+  // email body (the auth code the user would click).
+  lastOtp: OtpChallenge | null = null;
   // Test hook: force N inserts into a table to fail with 409 (unique violation).
   conflictInjection: { table: string; times: number } | null = null;
+
+  reset(): void {
+    this.tables = defaultTables();
+    this.conflictInjection = null;
+    this.authUsers.clear();
+    this.authPasswordUsers.clear();
+    this.usersByEmail.clear();
+    this.refreshTokens.clear();
+    this.otpChallenges.clear();
+    this.issuedSessions = [];
+    this.lastOtp = null;
+  }
 
   async listen(): Promise<string> {
     this.server = createServer((req, res) => {
@@ -132,13 +172,167 @@ export class FakeSupabase {
     this.server = null;
   }
 
-  reset(): void {
-    this.tables = defaultTables();
-    this.conflictInjection = null;
-  }
-
   table(name: string): Row[] {
     return this.tables[name]?.rows ?? [];
+  }
+
+  // ---- Supabase Auth surface (M2) -------------------------------------
+
+  /** Register an email+password account (and make the user resolvable). */
+  registerPasswordUser(email: string, password: string, id = randomUUID()): AuthUserRecord {
+    const record = { id, email, password };
+
+    this.authPasswordUsers.set(email, record);
+    this.usersByEmail.set(email, { id, email });
+
+    return record;
+  }
+
+  private base64url(value: string): string {
+    return Buffer.from(value, "utf8").toString("base64url");
+  }
+
+  /** Mint a 3-part JWT access token bound to the user (GoTrue-shaped). */
+  private mintAccessToken(user: AuthUserRecord): string {
+    const header = this.base64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+    const payload = this.base64url(
+      JSON.stringify({
+        sub: user.id,
+        email: user.email,
+        aud: "authenticated",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      }),
+    );
+
+    return `${header}.${payload}.fakesig`;
+  }
+
+  /**
+   * Issue a full session for the user: access token resolvable by
+   * /auth/v1/user, refresh token accepted by grant_type=refresh_token.
+   */
+  mintSession(user: AuthUserRecord, grant: string): IssuedSession {
+    const accessToken = this.mintAccessToken(user);
+    const refreshToken = `fake-refresh-${randomUUID()}`;
+
+    this.authUsers.set(accessToken, { id: user.id, email: user.email });
+    this.refreshTokens.set(refreshToken, user);
+    const session = { accessToken, refreshToken, userId: user.id, grant };
+
+    this.issuedSessions.push(session);
+
+    return session;
+  }
+
+  private goTrueUser(user: AuthUserRecord): Row {
+    return {
+      id: user.id,
+      aud: "authenticated",
+      email: user.email,
+      email_confirmed_at: new Date().toISOString(),
+      phone: "",
+      app_metadata: { provider: "email", providers: ["email"] },
+      user_metadata: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  private sessionPayload(session: IssuedSession, user: AuthUserRecord): Row {
+    return {
+      access_token: session.accessToken,
+      token_type: "bearer",
+      expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      refresh_token: session.refreshToken,
+      user: this.goTrueUser(user),
+    };
+  }
+
+  private async readJsonBody(req: IncomingMessage): Promise<Row> {
+    const raw = await this.readBody(req);
+
+    try {
+      return JSON.parse(raw) as Row;
+    } catch {
+      return {};
+    }
+  }
+
+  private invalidGrant(res: ServerResponse, description: string): void {
+    this.json(res, 400, { error: "invalid_grant", error_description: description });
+  }
+
+  private async handleOtp(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const body = await this.readJsonBody(req);
+    const email = String(body.email || "").trim();
+
+    if (!email) return this.invalidGrant(res, "Email is required");
+
+    // GoTrue magic-link PKCE: the email carries the S256 challenge; the
+    // returned auth code is what the user would click in the email body.
+    const authCode = randomUUID().replace(/-/g, "");
+    const otp: OtpChallenge = {
+      authCode,
+      email,
+      challenge: String(body.code_challenge || ""),
+    };
+
+    this.otpChallenges.set(authCode, otp);
+    this.lastOtp = otp;
+
+    return this.json(res, 200, {});
+  }
+
+  private async handleTokenGrant(
+    grantType: string,
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> {
+    const body = await this.readJsonBody(req);
+
+    if (grantType === "password") {
+      const email = String(body.email || "").trim();
+      const account = this.authPasswordUsers.get(email);
+
+      if (!account || account.password !== String(body.password || "")) {
+        return this.invalidGrant(res, "Invalid login credentials");
+      }
+
+      return this.json(res, 200, this.sessionPayload(this.mintSession(account, grantType), account));
+    }
+
+    if (grantType === "pkce") {
+      const authCode = String(body.auth_code || "");
+      const otp = this.otpChallenges.get(authCode);
+
+      if (!otp) return this.invalidGrant(res, "Invalid flow state, no valid flow found");
+
+      const expected = createHash("sha256").update(String(body.code_verifier || "")).digest("base64url");
+
+      if (expected !== otp.challenge) {
+        return this.invalidGrant(res, "PKCE code verifier does not match");
+      }
+      this.otpChallenges.delete(authCode);
+
+      const user = this.usersByEmail.get(otp.email) ?? { id: randomUUID(), email: otp.email };
+
+      this.usersByEmail.set(user.email, user);
+
+      return this.json(res, 200, this.sessionPayload(this.mintSession(user, grantType), user));
+    }
+
+    if (grantType === "refresh_token") {
+      const refreshToken = String(body.refresh_token || "");
+      const user = this.refreshTokens.get(refreshToken);
+
+      if (!user) return this.invalidGrant(res, "Invalid Refresh Token");
+      this.refreshTokens.delete(refreshToken);
+
+      return this.json(res, 200, this.sessionPayload(this.mintSession(user, grantType), user));
+    }
+
+    return this.invalidGrant(res, `Unsupported grant type: ${grantType || "(none)"}`);
   }
 
   private json(res: ServerResponse, status: number, body: unknown): void {
@@ -188,6 +382,18 @@ export class FakeSupabase {
       const user = this.authUsers.get(token);
       if (!user) return this.json(res, 401, { message: "Invalid token" });
       return this.json(res, 200, { id: user.id, email: user.email, aud: "authenticated" });
+    }
+
+    if (path === "/auth/v1/logout" && req.method === "POST") {
+      return this.json(res, 204, null);
+    }
+
+    if (path === "/auth/v1/otp" && req.method === "POST") {
+      return this.handleOtp(req, res);
+    }
+
+    if (path === "/auth/v1/token" && req.method === "POST") {
+      return this.handleTokenGrant(url.searchParams.get("grant_type") || "", req, res);
     }
 
     const restMatch = path.match(/^\/rest\/v1\/([^/]+)$/);
