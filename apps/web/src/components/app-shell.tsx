@@ -337,17 +337,40 @@ export function AppShell({ children }: { children: ReactNode }) {
           collapsed ? "lg:pl-16" : "lg:pl-64"
         }`}
       >
-        {/* Top bar: collapse toggle LEFT, global controls RIGHT. */}
+        {/* Top bar: drawer trigger (<lg) / collapse toggle (lg+) LEFT, global
+            controls RIGHT. */}
         <div className="border-default-100 bg-background/90 sticky top-0 z-20 flex items-center justify-between border-b px-4 py-2.5">
-          <Button
-            isIconOnly
-            aria-label="Toggle sidebar"
-            size="sm"
-            variant="ghost"
-            onPress={toggleCollapsed}
-          >
-            <ArrowUpArrowDown className="size-4" />
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              isIconOnly
+              aria-label="Menu"
+              className="lg:hidden"
+              size="sm"
+              variant="ghost"
+              onPress={() => setMenuOpen(true)}
+            >
+              <svg
+                aria-hidden="true"
+                className="size-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+              </svg>
+            </Button>
+            <Button
+              isIconOnly
+              aria-label="Toggle sidebar"
+              className="hidden lg:flex"
+              size="sm"
+              variant="ghost"
+              onPress={toggleCollapsed}
+            >
+              <ArrowUpArrowDown className="size-4" />
+            </Button>
+          </div>
           <TopActions />
         </div>
 
