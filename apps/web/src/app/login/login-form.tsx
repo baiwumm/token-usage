@@ -7,11 +7,14 @@
 import {
   Button,
   Card,
+  Description,
+  ErrorMessage,
   Form,
   Input,
   Label,
   Spinner,
   TextField,
+  Typography,
 } from "@heroui/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -131,14 +134,20 @@ function LoginFormInner() {
     <main className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm gap-5 p-8">
         <header className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold">{copy.pageTitle}</h1>
-          <p className="text-foreground/60 text-sm">{copy.pageSubtitle}</p>
+          <Typography type="h4">{copy.pageTitle}</Typography>
+          <Typography color="muted" type="body-sm">
+            {copy.pageSubtitle}
+          </Typography>
         </header>
 
         {magicSent ? (
           <div className="flex flex-col gap-4">
-            <h2 className="font-medium">{copy.sentTitle}</h2>
-            <p className="text-foreground/60 text-sm">{copy.sentBody}</p>
+            <Typography type="h4" weight="medium">
+              {copy.sentTitle}
+            </Typography>
+            <Typography color="muted" type="body-sm">
+              {copy.sentBody}
+            </Typography>
             <div className="flex gap-2">
               <Button
                 variant="secondary"
@@ -181,11 +190,7 @@ function LoginFormInner() {
               ))}
             </div>
 
-            {error ? (
-              <p className="text-danger text-sm" role="alert">
-                {error}
-              </p>
-            ) : null}
+            {error ? <ErrorMessage role="alert">{error}</ErrorMessage> : null}
 
             {mode === "password" ? (
               <Form className="flex flex-col gap-4" onSubmit={submitPassword}>
@@ -223,7 +228,7 @@ function LoginFormInner() {
                 }}
               >
                 {emailField}
-                <p className="text-foreground/50 text-xs">{copy.magicHint}</p>
+                <Description>{copy.magicHint}</Description>
                 <Button isPending={busy} type="submit">
                   {({ isPending }) => (
                     <>

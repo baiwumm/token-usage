@@ -7,7 +7,7 @@ import {
   ShieldCheck,
   Wallet,
 } from "@gravity-ui/icons";
-import { Button, Card, Link } from "@heroui/react";
+import { Button, Card, Link, Typography } from "@heroui/react";
 import { useRouter } from "next/navigation";
 
 import { DEPLOY_GUIDE_URL, GITHUB_URL, LANDING_COPY } from "@/lib/copy/landing";
@@ -45,10 +45,12 @@ export function Landing() {
     <div className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between px-6 py-4">
         <div className="flex flex-col">
-          <span className="font-semibold">Token Usage</span>
-          <span className="text-foreground/50 text-xs">
+          <Typography type="body" weight="semibold">
+            Token Usage
+          </Typography>
+          <Typography color="muted" type="body-xs">
             {copy.brandTagline}
-          </span>
+          </Typography>
         </div>
         <div className="flex items-center gap-2">
           <LocaleSwitcher locale={locale} onToggle={setLocale} />
@@ -65,12 +67,12 @@ export function Landing() {
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-14 px-6 py-12">
         <section className="flex flex-col items-center gap-5 text-center">
-          <h1 className="max-w-2xl text-4xl font-semibold leading-tight md:text-5xl">
+          <Typography className="max-w-2xl leading-tight" type="h1">
             {copy.heroTitle}
-          </h1>
-          <p className="text-foreground/60 max-w-2xl text-base leading-relaxed">
+          </Typography>
+          <Typography className="max-w-2xl leading-relaxed" color="muted">
             {copy.heroSubtitle}
-          </p>
+          </Typography>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button
               size="lg"
@@ -96,20 +98,24 @@ export function Landing() {
         </section>
 
         <section className="flex flex-col gap-6">
-          <h2 className="text-foreground/60 text-center text-sm tracking-wide uppercase">
+          <Typography
+            className="text-center tracking-wide uppercase"
+            color="muted"
+            type="body-sm"
+          >
             {copy.featuresHeading}
-          </h2>
+          </Typography>
           <div className="grid gap-4 md:grid-cols-3">
             {copy.features.map((feature, index) => {
               const Icon = FEATURE_ICONS[index] ?? Display;
 
               return (
-                <Card key={feature.title} className="flex-col gap-3 p-6">
+                <Card key={feature.title} className="p-6">
                   <Icon aria-hidden="true" className="text-primary size-6" />
-                  <h3 className="font-medium">{feature.title}</h3>
-                  <p className="text-foreground/60 text-sm leading-relaxed">
-                    {feature.description}
-                  </p>
+                  <Card.Header>
+                    <Card.Title>{feature.title}</Card.Title>
+                    <Card.Description>{feature.description}</Card.Description>
+                  </Card.Header>
                 </Card>
               );
             })}
@@ -117,13 +123,17 @@ export function Landing() {
         </section>
       </main>
 
-      <footer className="border-default-100 flex items-center justify-between border-t px-6 py-4 text-foreground/40 text-xs">
-        <span>{copy.footerNote}</span>
+      <footer className="border-default-100 flex items-center justify-between border-t px-6 py-4">
+        <Typography color="muted" type="body-xs">
+          {copy.footerNote}
+        </Typography>
         <div className="flex items-center gap-4">
           <Link href={GITHUB_URL} rel="noopener noreferrer" target="_blank">
             {copy.github}
           </Link>
-          <span>{copy.footerLicense}</span>
+          <Typography color="muted" type="body-xs">
+            {copy.footerLicense}
+          </Typography>
         </div>
       </footer>
     </div>

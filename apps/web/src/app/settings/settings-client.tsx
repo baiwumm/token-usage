@@ -9,6 +9,8 @@ import {
   Button,
   Card,
   Chip,
+  ErrorMessage,
+  FieldError,
   Form,
   Input,
   Label,
@@ -16,6 +18,7 @@ import {
   Spinner,
   Table,
   TextField,
+  Typography,
   toast,
 } from "@heroui/react";
 import { useRouter } from "next/navigation";
@@ -263,10 +266,12 @@ export function SettingsClient() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{copy.pageTitle}</h1>
+        <Typography type="h3">{copy.pageTitle}</Typography>
         <div className="flex items-center gap-3">
           {email ? (
-            <span className="text-foreground/60 text-sm">{email}</span>
+            <Typography color="muted" type="body-sm">
+              {email}
+            </Typography>
           ) : null}
           <Button size="sm" variant="outline" onPress={signOut}>
             {copy.signOut}
@@ -274,46 +279,62 @@ export function SettingsClient() {
         </div>
       </header>
 
-      <Card className="flex flex-col gap-3 p-6">
-        <h2 className="font-medium">{copy.accountHeading}</h2>
-        <p className="text-foreground/60 text-sm">
-          {copy.signedInAs}
-          {email ? `：${email}` : ""}
-        </p>
+      <Card className="p-6">
+        <Card.Header>
+          <Card.Title>{copy.accountHeading}</Card.Title>
+          <Card.Description>
+            {copy.signedInAs}
+            {email ? `：${email}` : ""}
+          </Card.Description>
+        </Card.Header>
       </Card>
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
-          <h2 className="font-medium">{copy.devicesHeading}</h2>
-          <p className="text-foreground/60 text-sm">{copy.devicesHint}</p>
+          <Typography type="h4" weight="medium">
+            {copy.devicesHeading}
+          </Typography>
+          <Typography color="muted" type="body-sm">
+            {copy.devicesHint}
+          </Typography>
         </div>
 
         {status === "loading" ? (
-          <Card className="items-center gap-2 p-10">
-            <Spinner />
-            <p className="text-foreground/60 text-sm">{copy.loading}</p>
+          <Card className="p-10">
+            <Card.Content className="flex items-center justify-center gap-2">
+              <Spinner />
+              <Typography color="muted" type="body-sm">
+                {copy.loading}
+              </Typography>
+            </Card.Content>
           </Card>
         ) : null}
 
         {status === "error" ? (
-          <Card className="flex-col gap-3 p-6">
-            <p className="text-danger text-sm">{copy.loadError}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onPress={() => {
-                if (accessToken) void loadDevices(accessToken);
-              }}
-            >
-              {copy.retry}
-            </Button>
+          <Card className="p-6">
+            <Card.Content>
+              <ErrorMessage>{copy.loadError}</ErrorMessage>
+            </Card.Content>
+            <Card.Footer>
+              <Button
+                size="sm"
+                variant="outline"
+                onPress={() => {
+                  if (accessToken) void loadDevices(accessToken);
+                }}
+              >
+                {copy.retry}
+              </Button>
+            </Card.Footer>
           </Card>
         ) : null}
 
         {status === "ready" && devices.length === 0 ? (
-          <Card className="flex-col gap-2 p-10">
-            <p className="font-medium">{copy.emptyTitle}</p>
-            <p className="text-foreground/60 text-sm">{copy.emptyBody}</p>
+          <Card className="p-10">
+            <Card.Header>
+              <Card.Title>{copy.emptyTitle}</Card.Title>
+              <Card.Description>{copy.emptyBody}</Card.Description>
+            </Card.Header>
           </Card>
         ) : null}
 
@@ -415,9 +436,7 @@ export function SettingsClient() {
                       variant="secondary"
                     />
                     {renameError ? (
-                      <p className="text-danger text-sm" role="alert">
-                        {renameError}
-                      </p>
+                      <FieldError>{renameError}</FieldError>
                     ) : null}
                   </TextField>
                 </Form>
