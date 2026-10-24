@@ -10,6 +10,7 @@ import {
   rangeForPreset,
   startOfDayUtcMs,
   tzOffsetMinutes,
+  yearRange,
 } from "@/lib/dashboard/ranges";
 
 describe("dayKeyInTz", () => {
@@ -84,5 +85,23 @@ describe("isValidDayKey", () => {
     expect(isValidDayKey("2026-10-2")).toBe(false);
     expect(isValidDayKey("garbage")).toBe(false);
     expect(isValidDayKey(42)).toBe(false);
+  });
+});
+
+describe("yearRange", () => {
+  it("spans the calendar year in UTC", () => {
+    const range = yearRange(2026, "UTC");
+
+    expect(range.fromIso).toBe("2026-01-01T00:00:00.000Z");
+    expect(range.toIso).toBe("2027-01-01T00:00:00.000Z");
+    expect(range.fromDay).toBe("2026-01-01");
+    expect(range.toDay).toBe("2026-12-31");
+  });
+
+  it("shifts with a fixed-offset zone", () => {
+    const range = yearRange(2026, "Asia/Shanghai");
+
+    expect(range.fromIso).toBe("2025-12-31T16:00:00.000Z");
+    expect(range.toIso).toBe("2026-12-31T16:00:00.000Z");
   });
 });

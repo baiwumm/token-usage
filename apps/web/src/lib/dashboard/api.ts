@@ -180,3 +180,29 @@ export function fetchHeatmap(
 
   return callContract<HeatmapPayload>("account-heatmap", `?${query}`, token);
 }
+
+export interface MonthlyPoint {
+  month: string;
+  total_tokens: number;
+  billable_total_tokens: number;
+  total_cost_usd: number;
+  conversations: number;
+}
+
+// account-monthly buckets are UTC-fixed (docs/cli-contract.md §2.7); from/to
+// are day keys.
+export function fetchMonthly(
+  token: string,
+  params: { fromDay: string; toDay: string },
+): Promise<{ from: string; to: string; data: MonthlyPoint[] }> {
+  const query = new URLSearchParams({
+    from: params.fromDay,
+    to: params.toDay,
+  });
+
+  return callContract<{ from: string; to: string; data: MonthlyPoint[] }>(
+    "account-monthly",
+    `?${query}`,
+    token,
+  );
+}

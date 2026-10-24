@@ -126,6 +126,19 @@ export function rangeFromDayKeys(
   };
 }
 
+/** Calendar-year window (Jan 1 .. Dec 31 inclusive) in the zone. */
+export function yearRange(year: number, timeZone: string): DashboardRange {
+  return rangeFromDayKeys(`${year}-01-01`, `${year}-12-31`, timeZone);
+}
+
+/** The monthly series' UTC day-key window for a calendar year. */
+export function yearMonthlyWindow(year: number): {
+  fromDay: string;
+  toDay: string;
+} {
+  return { fromDay: `${year}-01-01`, toDay: `${year}-12-31` };
+}
+
 /** Curated tz picker entries; the browser zone rides along by default. */
 export const TIMEZONE_OPTIONS = [
   "UTC",
