@@ -1,11 +1,12 @@
 "use client";
 
 // Chart wrappers for the dashboard (recharts 3.x). Colors stay on HeroUI
-// theme tokens via CSS variables; tooltips format through Intl.
-
-import type { DashboardDay, HourlyPoint } from "@/lib/dashboard/api";
+// theme tokens via CSS variables; every number goes through useFormat so the
+// appearance preferences apply to axes and tooltips too.
 
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -15,16 +16,17 @@ import {
   YAxis,
 } from "recharts";
 
-function compact(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
+import { useFormat } from "@/lib/format/format";
+
+export interface TrendPoint {
+  key: string;
+  label: string;
+  tokens: number;
+  cost: number;
+  conversations: number;
 }
 
-function usd(value: number): string {
-  return `$${value.toFixed(4)}`;
-}
+export type TrendMetric = "tokens" | "cost";
 
 const AXIS_STYLE = { fontSize: 11, fill: "currentColor", opacity: 0.55 };
 
@@ -33,11 +35,22 @@ interface TooltipRow {
   value: string;
 }
 
-// recharts v3 tooltip content props carry a readonly payload of entries whose
-// `.payload` is the original datum; cast at the boundary, never inside.
 interface RechartsTooltipProps {
   active?: boolean;
   payload?: ReadonlyArray<{ payload?: unknown } | undefined>;
+}
+
+function TooltipBox({ rows }: { rows: TooltipRow[] }) {
+  return (
+    <div className="bg-surface text-foreground border-border rounded-xl border p-3 text-xs shadow-sm">
+      {rows.map((row) => (
+        <div key={row.label} className="flex justify-between gap-4">
+          <span className="text-foreground/60">{row.label}</span>
+          <span className="font-medium tabular-nums">{row.value}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function ChartTooltip({
@@ -50,64 +63,79 @@ function ChartTooltip({
 
   if (datum == null) return null;
 
-  return (
-    <div className="bg-surface text-foreground border-default-200 rounded-medium border p-3 text-xs shadow-sm">
-      {rows(datum).map((row) => (
-        <div key={row.label} className="flex justify-between gap-4">
-          <span className="text-foreground/60">{row.label}</span>
-          <span className="font-medium">{row.value}</span>
-        </div>
-      ))}
-    </div>
-  );
+  return <TooltipBox rows={rows(datum)} />;
 }
 
-export function DailyChart({
-  days,
-  onSelectDay,
+export function TrendChart({
+  data,
+  metric,
+  ariaLabel,
+  emptyLabel,
+  labels,
+  onSelect,
 }: {
-  days: DashboardDay[];
-  onSelectDay?: (day: string) => void;
+  data: TrendPoint[];
+  metric: TrendMetric;
+  ariaLabel: string;
+  emptyLabel: string;
+  labels: { tokens: string; cost: string; conversations: string };
+  onSelect?: (key: string) => void;
 }) {
+  const { formatTokens, formatTokensExact, formatCost, formatNumber } =
+    useFormat();
+
+  if (data.length === 0) {
+    return (
+      <div className="text-muted flex h-72 items-center justify-center text-sm">
+        {emptyLabel}
+      </div>
+    );
+  }
+
   return (
-    <div className="text-foreground/40 h-72 w-full">
+    <div
+      aria-label={ariaLabel}
+      className="text-foreground/40 h-72 w-full"
+      role="img"
+    >
       <ResponsiveContainer height="100%" width="100%">
         <BarChart
-          data={days}
+          data={data}
           margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
           onClick={(state) => {
             const label = (
               state as { activeLabel?: string | number | undefined }
             )?.activeLabel;
 
-            if (typeof label === "string") onSelectDay?.(label);
+            if (typeof label === "string") onSelect?.(label);
           }}
         >
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis
-            dataKey="date"
-            minTickGap={24}
+          <XAxis dataKey="label" minTickGap={24} tick={{ ...AXIS_STYLE }} />
+          <YAxis
             tick={{ ...AXIS_STYLE }}
-            tickFormatter={(value: string) => value.slice(5)}
+            tickFormatter={(value: number) =>
+              metric === "cost" ? formatCost(value) : formatTokens(value)
+            }
+            width={64}
           />
-          <YAxis tick={{ ...AXIS_STYLE }} tickFormatter={compact} width={56} />
           <Tooltip
             content={(props) => (
               <ChartTooltip
                 {...(props as unknown as RechartsTooltipProps)}
                 rows={(item) => {
-                  const day = item as DashboardDay;
+                  const point = item as TrendPoint;
 
                   return [
-                    { label: "day", value: day.date },
+                    { label: point.key, value: "" },
                     {
-                      label: "tokens",
-                      value: day.total_tokens.toLocaleString("en-US"),
+                      label: labels.tokens,
+                      value: formatTokensExact(point.tokens),
                     },
-                    { label: "cost", value: usd(day.total_cost_usd) },
+                    { label: labels.cost, value: formatCost(point.cost) },
                     {
-                      label: "conversations",
-                      value: String(day.conversations),
+                      label: labels.conversations,
+                      value: formatNumber(point.conversations),
                     },
                   ];
                 }}
@@ -116,9 +144,9 @@ export function DailyChart({
             cursor={{ opacity: 0.08 }}
           />
           <Bar
-            className="fill-primary"
-            cursor="pointer"
-            dataKey="total_tokens"
+            cursor={onSelect ? "pointer" : undefined}
+            dataKey={metric}
+            fill="var(--color-chart-3)"
             radius={[3, 3, 0, 0]}
           />
         </BarChart>
@@ -127,50 +155,69 @@ export function DailyChart({
   );
 }
 
-export function HourlyChart({ points }: { points: HourlyPoint[] }) {
-  const data = points.map((point) => ({
-    ...point,
-    label: point.hour.slice(11, 13),
-  }));
+export function CostTrendChart({
+  data,
+  ariaLabel,
+  labels,
+}: {
+  data: Array<{ label: string; cost: number }>;
+  ariaLabel: string;
+  labels: { cost: string };
+}) {
+  const { formatCost } = useFormat();
+
+  if (data.length === 0) return null;
 
   return (
-    <div className="text-foreground/40 h-56 w-full">
+    <div
+      aria-label={ariaLabel}
+      className="h-40 w-full"
+      role="img"
+      style={{ color: "var(--color-chart-3)" }}
+    >
       <ResponsiveContainer height="100%" width="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <AreaChart
+          data={data}
+          margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+        >
+          <defs>
+            <linearGradient id="cost-fill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="currentColor" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
+            </linearGradient>
+          </defs>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis
-            dataKey="label"
-            minTickGap={8}
+          <XAxis dataKey="label" minTickGap={24} tick={{ ...AXIS_STYLE }} />
+          <YAxis
             tick={{ ...AXIS_STYLE }}
-            tickFormatter={(value: string) => `${value}h`}
+            tickFormatter={(value: number) => formatCost(value)}
+            width={64}
           />
-          <YAxis tick={{ ...AXIS_STYLE }} tickFormatter={compact} width={56} />
           <Tooltip
             content={(props) => (
               <ChartTooltip
                 {...(props as unknown as RechartsTooltipProps)}
                 rows={(item) => {
-                  const point = item as HourlyPoint;
+                  const point = item as { label: string; cost: number };
 
                   return [
-                    { label: "hour", value: point.hour.slice(11, 16) },
-                    {
-                      label: "tokens",
-                      value: point.total_tokens.toLocaleString("en-US"),
-                    },
-                    { label: "cost", value: usd(point.total_cost_usd) },
+                    { label: point.label, value: "" },
+                    { label: labels.cost, value: formatCost(point.cost) },
                   ];
                 }}
               />
             )}
             cursor={{ opacity: 0.08 }}
           />
-          <Bar
-            className="fill-secondary"
-            dataKey="total_tokens"
-            radius={[3, 3, 0, 0]}
+          <Area
+            dataKey="cost"
+            fill="url(#cost-fill)"
+            fillOpacity={1}
+            stroke="currentColor"
+            strokeWidth={2}
+            type="monotone"
           />
-        </BarChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

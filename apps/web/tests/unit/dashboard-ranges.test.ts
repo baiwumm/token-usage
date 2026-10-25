@@ -70,11 +70,11 @@ describe("rangeForPreset", () => {
     expect(range.toIso).toBe("2026-10-24T16:00:00.000Z");
   });
 
-  it("12m spans 365 local days", () => {
+  it("all reaches back to the sentinel start (server clamps the series)", () => {
     const now = new Date("2026-10-24T10:00:00Z");
-    const range = rangeForPreset("12m", "UTC", now);
+    const range = rangeForPreset("all", "UTC", now);
 
-    expect(range.fromDay).toBe("2025-10-25");
+    expect(range.fromDay).toBe("2000-01-01");
     expect(range.toDay).toBe("2026-10-24");
   });
 });

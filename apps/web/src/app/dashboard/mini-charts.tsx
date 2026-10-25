@@ -1,9 +1,8 @@
 "use client";
 
 // Dashboard chart helpers: mini sparkline for the summary cards and a donut
-// chart for source/model distribution (recharts 3.x).
-
-import type { MonthlyPoint } from "@/lib/dashboard/api";
+// chart for source/model distribution (recharts 3.x). Tooltips format through
+// the shared format provider.
 
 import {
   Area,
@@ -15,12 +14,7 @@ import {
   Tooltip,
 } from "recharts";
 
-function compact(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
+import { useFormat } from "@/lib/format/format";
 
 /** Tiny trend line for summary cards (no axes). Uses CSS currentColor. */
 export function Sparkline({
@@ -29,7 +23,7 @@ export function Sparkline({
   values: Array<{ label: string; value: number }>;
 }) {
   return (
-    <div className="h-10 w-24 text-danger">
+    <div className="h-10 w-24" style={{ color: "var(--color-chart-3)" }}>
       <ResponsiveContainer height="100%" width="100%">
         <AreaChart
           data={values}
@@ -49,16 +43,17 @@ export function Sparkline({
   );
 }
 
-/** Categorical palette for distribution charts (fixed order). */
+/**
+ * Categorical palette for distribution charts (fixed order). Charts read the
+ * accent-tinted chart tokens from globals.css so the palette follows the
+ * theme (and the operator's accent picker) instead of hardcoded hexes.
+ */
 export const SERIES_COLORS = [
-  "#3b82f6",
-  "#f59e0b",
-  "#22c55e",
-  "#a855f7",
-  "#ef4444",
-  "#14b8a6",
-  "#eab308",
-  "#ec4899",
+  "var(--color-chart-1)",
+  "var(--color-chart-4)",
+  "var(--color-chart-2)",
+  "var(--color-chart-5)",
+  "var(--color-chart-3)",
 ] as const;
 
 export function seriesColor(index: number): string {
@@ -74,6 +69,8 @@ export function DonutChart({
   centerLabel: string;
   centerValue: string;
 }) {
+  const { formatTokens } = useFormat();
+
   return (
     <div className="relative h-44 w-44 shrink-0">
       <ResponsiveContainer height="100%" width="100%">
@@ -105,8 +102,8 @@ export function DonutChart({
               const datum = payload[0]?.payload;
 
               return (
-                <div className="bg-surface text-foreground border-default-200 rounded-medium border p-2 text-xs shadow-sm">
-                  {datum?.name}: {compact(datum?.value ?? 0)}
+                <div className="bg-surface text-foreground border-border rounded-xl border p-2 text-xs shadow-sm">
+                  {datum?.name}: {formatTokens(datum?.value ?? 0)}
                 </div>
               );
             }}
@@ -122,6 +119,3 @@ export function DonutChart({
     </div>
   );
 }
-
-// MonthlyPoint re-exported for typed call sites.
-export type { MonthlyPoint };

@@ -6,16 +6,24 @@
 // the only tz source (date-fns alone cannot convert zones; date-fns-tz is not
 // in the dependency budget).
 
-export type RangePreset = "7d" | "30d" | "90d" | "12m";
+export type RangePreset = "7d" | "30d" | "90d" | "all";
 
-export const RANGE_PRESETS: RangePreset[] = ["7d", "30d", "90d", "12m"];
+export type RangeKey = RangePreset | "custom";
 
-export const PRESET_DAYS: Record<RangePreset, number> = {
+export const RANGE_PRESETS: RangePreset[] = ["7d", "30d", "90d", "all"];
+
+export const PRESET_DAYS: Record<Exclude<RangePreset, "all">, number> = {
   "7d": 7,
   "30d": 30,
   "90d": 90,
-  "12m": 365,
 };
+
+/**
+ * Lower bound for the "all" preset. The contract endpoints clamp series
+ * starts server-side (MAX_RANGE_DAYS), so a sentinel far in the past simply
+ * yields everything the account has; day-key string compares stay correct.
+ */
+export const ALL_RANGE_START = "2000-01-01";
 
 /** YYYY-MM-DD for the given instant in the target zone. */
 export function dayKeyInTz(date: Date, timeZone: string): string {
@@ -87,15 +95,18 @@ export interface DashboardRange {
 /**
  * Window for a preset ending TODAY in the zone. 7d = today + the six days
  * before it; the `to` bound is the exclusive local midnight after today.
+ * "all" reaches back to ALL_RANGE_START (the server clamps the series).
  */
 export function rangeForPreset(
   preset: RangePreset,
   timeZone: string,
   now: Date = new Date(),
 ): DashboardRange {
-  const days = PRESET_DAYS[preset];
   const toDay = dayKeyInTz(now, timeZone);
-  const fromDay = addDays(toDay, -(days - 1));
+  const fromDay =
+    preset === "all"
+      ? ALL_RANGE_START
+      : addDays(toDay, -(PRESET_DAYS[preset] - 1));
 
   return {
     fromIso: new Date(startOfDayUtcMs(fromDay, timeZone)).toISOString(),
@@ -131,6 +142,29 @@ export function yearRange(year: number, timeZone: string): DashboardRange {
   return rangeFromDayKeys(`${year}-01-01`, `${year}-12-31`, timeZone);
 }
 
+/**
+ * Window for a filter-bar selection. Custom ranges fall back to the 30-day
+ * preset when either day key is invalid or the order is reversed.
+ */
+export function rangeForSelection(
+  key: RangeKey,
+  timeZone: string,
+  customFrom?: string | null,
+  customTo?: string | null,
+  now: Date = new Date(),
+): DashboardRange {
+  if (
+    key === "custom" &&
+    isValidDayKey(customFrom) &&
+    isValidDayKey(customTo) &&
+    customFrom <= customTo
+  ) {
+    return rangeFromDayKeys(customFrom, customTo, timeZone);
+  }
+
+  return rangeForPreset(key === "custom" ? "30d" : key, timeZone, now);
+}
+
 /** The monthly series' UTC day-key window for a calendar year. */
 export function yearMonthlyWindow(year: number): {
   fromDay: string;
@@ -152,6 +186,21 @@ export const TIMEZONE_OPTIONS = [
   "America/New_York",
   "America/Los_Angeles",
 ] as const;
+
+/** "UTC+08:00" style label for a IANA zone (heatmap footer). */
+export function tzLabel(timeZone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      timeZoneName: "longOffset",
+    }).formatToParts(new Date());
+    const name = parts.find((part) => part.type === "timeZoneName")?.value;
+
+    return name && name !== "GMT" ? name.replace("GMT", "UTC") : "UTC+00:00";
+  } catch {
+    return "UTC";
+  }
+}
 
 export function browserTimezone(): string {
   try {

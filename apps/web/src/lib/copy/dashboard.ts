@@ -1,12 +1,20 @@
-// Dashboard copy at / (docs/requirements.md 范围表). The M3 dashboard uses
-// the shared zh/en pipeline; device management lives in Settings copy.
+// Dashboard copy at / (docs/ui-spec.md 仪表盘). The M5.5 dashboard follows the
+// official core information architecture: filters, KPI + rolling, trend,
+// models/heatmap, sources/devices, detail tabs and the cost modal.
 
 export interface DashboardCopy {
   pageTitle: string;
   rangeLabel: string;
   tzLabel: string;
   tzBrowser: string;
-  ranges: Record<"7d" | "30d" | "90d" | "12m" | "custom", string>;
+  deviceLabel: string;
+  allDevices: string;
+  customFrom: string;
+  customTo: string;
+  clearFilters: string;
+  refresh: string;
+  share: string;
+  ranges: Record<"7d" | "30d" | "90d" | "all" | "custom", string>;
   cards: {
     totalTokens: string;
     billableTokens: string;
@@ -14,22 +22,53 @@ export interface DashboardCopy {
     conversations: string;
     activeDays: string;
     allTimeSuffix: string;
+    rolling7d: string;
+    rolling30d: string;
+    avgPerActiveDay: string;
+    rollingHint: string;
+    perActiveDay: string;
+    openCostAnalysis: string;
+    heroAll: string;
+    heroModelsCount: string;
+    heroCostApprox: string;
+    heroCostNote: string;
   };
   charts: {
-    dailyTitle: string;
-    dailyBar: string;
+    trendTitle: string;
+    daily: string;
+    monthly: string;
+    tokens: string;
+    cost: string;
     hourlyTitle: string;
     hourlyEmpty: string;
     heatmapTitle: string;
     heatmapMonths: string;
+    heatmapActiveDays: string;
+    heatmapLess: string;
+    heatmapMore: string;
+    heatmapAllPlatforms: string;
+    heatmapAll: string;
+    heatmapClear: string;
+    heatmapPickOne: string;
+    heatmapFiltered: string;
+    heatmapSelectedCount: string;
+    noData: string;
+    ariaLabel: string;
   };
   panels: {
     modelsTitle: string;
+    modelsHint: string;
+    viewAll: string;
+    noModels: string;
     sourcesTitle: string;
+    sourcesHint: string;
     devicesTitle: string;
     devicesHint: string;
     devicesManage: string;
     sharedNote: string;
+    lastReport: string;
+    never: string;
+    selected: string;
     columnModel: string;
     columnTokens: string;
     columnCost: string;
@@ -41,7 +80,41 @@ export interface DashboardCopy {
     columnStatus: string;
     statusActive: string;
     statusRevoked: string;
-    never: string;
+  };
+  detail: {
+    title: string;
+    daily: string;
+    hourly: string;
+    monthly: string;
+    dayLabel: string;
+    columnTime: string;
+    columnTokens: string;
+    columnBillable: string;
+    columnCost: string;
+    columnConversations: string;
+    columnModels: string;
+    empty: string;
+    loadError: string;
+    retry: string;
+    pageSummary: string;
+    previous: string;
+    next: string;
+  };
+  cost: {
+    title: string;
+    description: string;
+    byModel: string;
+    bySource: string;
+    total: string;
+    dailyTrend: string;
+    unpriced: string;
+    unpricedHint: string;
+    noData: string;
+    columnName: string;
+    columnTokens: string;
+    columnShare: string;
+    columnCost: string;
+    close: string;
   };
   states: {
     loading: string;
@@ -49,7 +122,18 @@ export interface DashboardCopy {
     retry: string;
     emptyTitle: string;
     emptyBody: string;
+    filterEmptyTitle: string;
+    filterEmptyBody: string;
     sessionExpired: string;
+  };
+  shareCard: {
+    title: string;
+    note: string;
+    save: string;
+    copyImage: string;
+    copied: string;
+    copyFailed: string;
+    close: string;
   };
 }
 
@@ -59,36 +143,75 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     rangeLabel: "时间范围",
     tzLabel: "时区",
     tzBrowser: "浏览器时区",
+    deviceLabel: "设备",
+    allDevices: "全部设备",
+    customFrom: "开始日期",
+    customTo: "结束日期",
+    clearFilters: "清除筛选",
+    refresh: "刷新",
+    share: "分享",
     ranges: {
       "7d": "近 7 天",
       "30d": "近 30 天",
       "90d": "近 90 天",
-      "12m": "近 12 个月",
+      all: "总计",
       custom: "自定义",
     },
     cards: {
       totalTokens: "总 Tokens",
       billableTokens: "计费 Tokens",
-      cost: "成本（USD）",
+      cost: "成本",
       conversations: "会话数",
       activeDays: "活跃天数",
       allTimeSuffix: "全部时间",
+      rolling7d: "滚动 7 天",
+      rolling30d: "滚动 30 天",
+      avgPerActiveDay: "日均（30 天）",
+      rollingHint: "计费 Token · 会话数",
+      perActiveDay: "每活跃天",
+      openCostAnalysis: "查看成本分析",
+      heroAll: "全部",
+      heroModelsCount: "{count, plural, other {# 个模型}}",
+      heroCostApprox: "≥ 为估算下限：未定价模型按 0 计，实际费用可能更高。",
+      heroCostNote:
+        "按读取时定价估算；未定价模型计 0，可能与 provider 上报成本存在差异。",
     },
     charts: {
-      dailyTitle: "每日用量",
-      dailyBar: "Tokens",
+      trendTitle: "用量趋势",
+      daily: "按日",
+      monthly: "按月",
+      tokens: "Token",
+      cost: "成本",
       hourlyTitle: "当日分时",
-      hourlyEmpty: "点击上方柱形查看该日分时用量。",
+      hourlyEmpty: "选择日期查看分时用量。",
       heatmapTitle: "活跃热力图",
-      heatmapMonths: "近半年",
+      heatmapMonths: "近一年",
+      heatmapActiveDays: "{count} 个活跃日",
+      heatmapLess: "少",
+      heatmapMore: "多",
+      heatmapAllPlatforms: "全部平台",
+      heatmapAll: "全部",
+      heatmapClear: "清空",
+      heatmapPickOne: "请至少选择一个平台。",
+      heatmapFiltered: "筛选后用量",
+      heatmapSelectedCount: "已选 {count} 个平台",
+      noData: "该时间范围内没有数据",
+      ariaLabel: "{title}：{from} 至 {to}",
     },
     panels: {
-      modelsTitle: "模型分布",
-      sourcesTitle: "来源分布",
+      modelsTitle: "Top 模型",
+      modelsHint: "按 Token 用量排序，前 8 个。",
+      viewAll: "查看全部",
+      noModels: "该时间范围内没有模型数据。",
+      sourcesTitle: "来源",
+      sourcesHint: "随设备筛选收窄；占比按 Token。",
       devicesTitle: "设备",
-      devicesHint: "管理与吊销在设置页进行。",
+      devicesHint: "点击设备可只看该设备的数据。",
       devicesManage: "前往设置",
       sharedNote: "cursor / trae-cn 为账户级来源，跨设备已去重。",
+      lastReport: "最后上报",
+      never: "从未",
+      selected: "已筛选",
       columnModel: "模型",
       columnTokens: "Tokens",
       columnCost: "成本",
@@ -100,7 +223,42 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnStatus: "状态",
       statusActive: "活跃",
       statusRevoked: "已吊销",
-      never: "从未",
+    },
+    detail: {
+      title: "用量明细",
+      daily: "日",
+      hourly: "时",
+      monthly: "月",
+      dayLabel: "日期",
+      columnTime: "时间",
+      columnTokens: "Token",
+      columnBillable: "计费 Token",
+      columnCost: "成本",
+      columnConversations: "会话",
+      columnModels: "模型数",
+      empty: "该时间范围内没有明细数据。",
+      loadError: "明细加载失败。",
+      retry: "重试",
+      pageSummary: "{start}–{end} / {total}",
+      previous: "上一页",
+      next: "下一页",
+    },
+    cost: {
+      title: "成本分析",
+      description:
+        "按读取时定价估算；未知模型计 0，可能与 provider 上报成本存在差异。",
+      byModel: "按模型",
+      bySource: "按来源",
+      total: "总成本",
+      dailyTrend: "每日成本",
+      unpriced: "未定价模型",
+      unpricedHint: "以下模型没有匹配到定价，成本按 0 计：{models}",
+      noData: "该时间范围内没有成本数据。",
+      columnName: "名称",
+      columnTokens: "Token",
+      columnShare: "占比",
+      columnCost: "成本",
+      close: "关闭",
     },
     states: {
       loading: "正在加载仪表盘…",
@@ -108,7 +266,18 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       retry: "重试",
       emptyTitle: "该时间范围内没有用量数据",
       emptyBody: "在采集机上完成配对并 sync 后，数据会出现在这里。",
+      filterEmptyTitle: "当前筛选没有结果",
+      filterEmptyBody: "换一个时间范围或设备，或清除筛选。",
       sessionExpired: "登录状态已失效，请重新登录。",
+    },
+    shareCard: {
+      title: "分享用量卡片",
+      note: "卡片只包含聚合数字与热力图，不含明细数据。",
+      save: "保存图片",
+      copyImage: "复制图片",
+      copied: "图片已复制到剪贴板。",
+      copyFailed: "复制失败，请改用「保存图片」。",
+      close: "关闭",
     },
   },
   en: {
@@ -116,37 +285,77 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     rangeLabel: "Range",
     tzLabel: "Timezone",
     tzBrowser: "Browser timezone",
+    deviceLabel: "Device",
+    allDevices: "All devices",
+    customFrom: "Start date",
+    customTo: "End date",
+    clearFilters: "Clear filters",
+    refresh: "Refresh",
+    share: "Share",
     ranges: {
       "7d": "Last 7 days",
       "30d": "Last 30 days",
       "90d": "Last 90 days",
-      "12m": "Last 12 months",
+      all: "All time",
       custom: "Custom",
     },
     cards: {
       totalTokens: "Total tokens",
       billableTokens: "Billable tokens",
-      cost: "Cost (USD)",
+      cost: "Cost",
       conversations: "Conversations",
       activeDays: "Active days",
       allTimeSuffix: "all time",
+      rolling7d: "Rolling 7 days",
+      rolling30d: "Rolling 30 days",
+      avgPerActiveDay: "Daily average (30d)",
+      rollingHint: "billable tokens · conversations",
+      perActiveDay: "per active day",
+      openCostAnalysis: "Open cost analysis",
+      heroAll: "All",
+      heroModelsCount: "{count, plural, one {# model} other {# models}}",
+      heroCostApprox:
+        "≥ is a lower bound: unpriced models count as 0; actual cost may be higher.",
+      heroCostNote:
+        "Estimated with read-time pricing; unpriced models count as 0 and may differ from provider-reported cost.",
     },
     charts: {
-      dailyTitle: "Daily usage",
-      dailyBar: "Tokens",
+      trendTitle: "Usage trend",
+      daily: "Daily",
+      monthly: "Monthly",
+      tokens: "Tokens",
+      cost: "Cost",
       hourlyTitle: "Intraday",
-      hourlyEmpty: "Click a bar above to see that day's hourly usage.",
+      hourlyEmpty: "Pick a date to see hourly usage.",
       heatmapTitle: "Activity heatmap",
-      heatmapMonths: "last 6 months",
+      heatmapMonths: "last 12 months",
+      heatmapActiveDays: "{count} active days",
+      heatmapLess: "less",
+      heatmapMore: "more",
+      heatmapAllPlatforms: "All platforms",
+      heatmapAll: "All",
+      heatmapClear: "Clear",
+      heatmapPickOne: "Select at least one platform.",
+      heatmapFiltered: "Filtered usage",
+      heatmapSelectedCount: "{count} selected",
+      noData: "No data in this range",
+      ariaLabel: "{title}: {from} to {to}",
     },
     panels: {
-      modelsTitle: "Models",
+      modelsTitle: "Top models",
+      modelsHint: "Ranked by tokens, top 8.",
+      viewAll: "View all",
+      noModels: "No model data in this range.",
       sourcesTitle: "Sources",
+      sourcesHint: "Narrowed by the device filter; share by tokens.",
       devicesTitle: "Devices",
-      devicesHint: "Manage and revoke in Settings.",
+      devicesHint: "Select a device to filter the dashboard.",
       devicesManage: "Open Settings",
       sharedNote:
         "cursor / trae-cn are account-level sources, deduped across devices.",
+      lastReport: "Last report",
+      never: "never",
+      selected: "Filtered",
       columnModel: "Model",
       columnTokens: "Tokens",
       columnCost: "Cost",
@@ -158,7 +367,42 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnStatus: "Status",
       statusActive: "Active",
       statusRevoked: "Revoked",
-      never: "never",
+    },
+    detail: {
+      title: "Usage detail",
+      daily: "Daily",
+      hourly: "Hourly",
+      monthly: "Monthly",
+      dayLabel: "Date",
+      columnTime: "Time",
+      columnTokens: "Tokens",
+      columnBillable: "Billable",
+      columnCost: "Cost",
+      columnConversations: "Conversations",
+      columnModels: "Models",
+      empty: "No detail rows in this range.",
+      loadError: "Failed to load detail.",
+      retry: "Retry",
+      pageSummary: "{start}–{end} / {total}",
+      previous: "Previous",
+      next: "Next",
+    },
+    cost: {
+      title: "Cost analysis",
+      description:
+        "Estimated with read-time pricing; unknown models count as 0 and may differ from provider-reported cost.",
+      byModel: "By model",
+      bySource: "By source",
+      total: "Total cost",
+      dailyTrend: "Daily cost",
+      unpriced: "Unpriced models",
+      unpricedHint: "No pricing matched for: {models}",
+      noData: "No cost data in this range.",
+      columnName: "Name",
+      columnTokens: "Tokens",
+      columnShare: "Share",
+      columnCost: "Cost",
+      close: "Close",
     },
     states: {
       loading: "Loading dashboard…",
@@ -166,7 +410,18 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       retry: "Retry",
       emptyTitle: "No usage in this range",
       emptyBody: "Pair a collector and sync — data will show up here.",
+      filterEmptyTitle: "No results for these filters",
+      filterEmptyBody: "Try another range or device, or clear the filters.",
       sessionExpired: "Your session has expired. Please sign in again.",
+    },
+    shareCard: {
+      title: "Share usage card",
+      note: "The card contains aggregate numbers and the heatmap only — no row-level data.",
+      save: "Save image",
+      copyImage: "Copy image",
+      copied: "Image copied to the clipboard.",
+      copyFailed: "Copy failed — use Save image instead.",
+      close: "Close",
     },
   },
 };
