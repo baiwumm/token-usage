@@ -71,21 +71,34 @@ function validSessionId(value) {
  * Returns null when the row must not be uploaded (account-level source,
  * missing identity/timestamps, or a token identity that the server would
  * reject with a whole-batch 400 — dropping one bad row beats failing 200).
+ *
+ * Field locations on the sidecar row: the six token counters live nested in
+ * row.tokens (the top level only mirrors total_tokens), and the stable id is
+ * row.session_id when the vendor log carried one (Claude/Codex), else the
+ * locally-computed sha256 fingerprint row.session_hash (source\0id, 24 hex)
+ * — both are opaque stable keys without path leakage, valid as the contract
+ * session_id.
  */
 function mapSessionRow(row) {
   if (!row || typeof row !== "object") return null;
   const source = String(row.source || "").trim().toLowerCase();
   if (!source || ACCOUNT_LEVEL_SOURCES.has(source)) return null;
-  if (!validSessionId(row.session_id)) return null;
+  const sessionId = typeof row.session_id === "string" && row.session_id.trim()
+    ? row.session_id.trim()
+    : typeof row.session_hash === "string" && row.session_hash.trim()
+      ? row.session_hash.trim()
+      : null;
+  if (!validSessionId(sessionId)) return null;
 
   const startedMs = Date.parse(row.started_at || "");
   const endedMs = Date.parse(row.ended_at || "");
   if (!Number.isFinite(startedMs) || !Number.isFinite(endedMs)) return null;
   if (endedMs < startedMs) return null;
 
+  const nested = row.tokens && typeof row.tokens === "object" ? row.tokens : {};
   const tokens = {};
   for (const field of TOKEN_FIELDS) {
-    const value = safeInt(row[field]);
+    const value = safeInt(field === "total_tokens" ? row.total_tokens : nested[field]);
     if (value === null) return null;
     tokens[field] = value;
   }
@@ -133,7 +146,7 @@ function mapSessionRow(row) {
   if (!modelsValid) models = [];
 
   return {
-    session_id: String(row.session_id).trim(),
+    session_id: sessionId,
     source,
     started_at: new Date(startedMs).toISOString(),
     ended_at: new Date(endedMs).toISOString(),

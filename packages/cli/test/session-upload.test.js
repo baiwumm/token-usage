@@ -39,12 +39,16 @@ function validRow(overrides = {}) {
     started_at: "2026-10-25T01:00:00.000Z",
     ended_at: "2026-10-25T02:00:00.000Z",
     project_key: "token-usage",
-    input_tokens: 100,
-    cached_input_tokens: 10,
-    cache_creation_input_tokens: 5,
-    output_tokens: 50,
-    reasoning_output_tokens: 20,
-    total_tokens: 165, // 100 + 10 + 5 + 50
+    // Sidecar shape: counters nested in row.tokens, total mirrored on top.
+    tokens: {
+      input_tokens: 100,
+      cached_input_tokens: 10,
+      cache_creation_input_tokens: 5,
+      output_tokens: 50,
+      reasoning_output_tokens: 20,
+      total_tokens: 165, // 100 + 10 + 5 + 50
+    },
+    total_tokens: 165,
     model_usage: [
       {
         model: "glm-5.3",
@@ -131,6 +135,7 @@ test("drops rows failing the token identity instead of failing the batch", () =>
 });
 
 test("drops rows with missing/invalid identity fields", () => {
+  const badTokens = (patch) => ({ tokens: { ...validRow().tokens, ...patch } });
   const cases = [
     validRow({ session_id: "  " }),
     validRow({ session_id: "a/b".repeat(200) }), // path separators + too long
@@ -138,13 +143,24 @@ test("drops rows with missing/invalid identity fields", () => {
     validRow({ started_at: "not-a-date" }),
     validRow({ ended_at: "" }),
     validRow({ started_at: "2026-10-25T03:00:00Z" }), // ended before started
-    validRow({ input_tokens: -1 }),
-    validRow({ input_tokens: 1.5 }),
+    validRow(badTokens({ input_tokens: -1 })),
+    validRow(badTokens({ input_tokens: 1.5 })),
     validRow({ total_tokens: null }),
   ];
   for (const row of cases) {
     assert.equal(mapSessionRow(row), null, JSON.stringify(row.session_id || row));
   }
+});
+
+test("falls back to the stable session_hash when no vendor session_id exists", () => {
+  const { rows } = buildSessionUploadRows([
+    validRow({ session_id: undefined, session_hash: "af80fc70a69f557" }),
+  ]);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].session_id, "af80fc70a69f557");
+  // And a row with neither identifier is dropped.
+  const none = buildSessionUploadRows([validRow({ session_id: undefined })]);
+  assert.equal(none.rows.length, 0);
 });
 
 test("project_key falls back to basename and handles empty forms", () => {
@@ -182,10 +198,14 @@ test("sessions with more than 32 models omit the models array (contract cannot a
     total_tokens: i + 1,
   }));
   const row = validRow({
-    input_tokens: 820, // sum of 1..40
-    cached_input_tokens: 0,
-    cache_creation_input_tokens: 0,
-    output_tokens: 0,
+    tokens: {
+      input_tokens: 820, // sum of 1..40
+      cached_input_tokens: 0,
+      cache_creation_input_tokens: 0,
+      output_tokens: 0,
+      reasoning_output_tokens: 0,
+      total_tokens: 820,
+    },
     total_tokens: 820,
     model_usage: usage,
   });
