@@ -11,7 +11,7 @@ import type {
   SeriesPoint,
 } from "@/lib/dashboard/api";
 
-import { Button, Chip, Modal, Tabs, Typography } from "@heroui/react";
+import { Chip, Modal, Tabs, Typography } from "@heroui/react";
 import { useMemo } from "react";
 
 import { CostTrendChart } from "./charts";
@@ -280,15 +280,6 @@ export function CostAnalysisModal({
                 </Tabs.Panel>
               </Tabs>
             </Modal.Body>
-            <Modal.Footer>
-              <Button
-                slot="close"
-                variant="secondary"
-                onPress={() => onOpenChange(false)}
-              >
-                {copy.cost.close}
-              </Button>
-            </Modal.Footer>
           </Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>

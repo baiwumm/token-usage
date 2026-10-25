@@ -429,6 +429,7 @@ export function SettingsClient() {
           <Modal.Container>
             <Modal.Dialog>
               <Modal.Header>
+                <Modal.CloseTrigger isDisabled={renameBusy} />
                 <Modal.Heading>{copy.renameTitle}</Modal.Heading>
               </Modal.Header>
               <Modal.Body>
@@ -495,6 +496,7 @@ export function SettingsClient() {
           <Modal.Container>
             <Modal.Dialog>
               <Modal.Header>
+                <Modal.CloseTrigger isDisabled={revokeBusy} />
                 <Modal.Heading>{copy.revokeTitle}</Modal.Heading>
               </Modal.Header>
               <Modal.Body>

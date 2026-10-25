@@ -292,6 +292,7 @@ function SessionDetailModal({
             {session ? (
               <>
                 <Modal.Header>
+                  <Modal.CloseTrigger />
                   <Modal.Heading>{copy.detail.title}</Modal.Heading>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <Chip size="sm" variant="soft">
@@ -407,15 +408,6 @@ function SessionDetailModal({
                     </Typography>
                   </div>
                 </Modal.Body>
-                <Modal.Footer>
-                  <Button
-                    slot="close"
-                    variant="secondary"
-                    onPress={() => onOpenChange(false)}
-                  >
-                    {copy.detail.close}
-                  </Button>
-                </Modal.Footer>
               </>
             ) : null}
           </Modal.Dialog>

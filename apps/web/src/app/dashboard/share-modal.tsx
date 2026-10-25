@@ -5,7 +5,7 @@
 // only aggregated numbers leave the page — no row-level data.
 
 import { Button, Modal, Spinner, Typography, toast } from "@heroui/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   copyPngDataUrl,
@@ -29,6 +29,22 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
   const copy = DASHBOARD_COPY[locale];
   const { formatDate } = useFormat();
   const [busy, setBusy] = useState(false);
+  // Graceful close: the canvas preview tears down with the dialog, so a
+  // click on close shows a brief loading beat before the modal disappears.
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    if (open) setClosing(false);
+  }, [open]);
+
+  const requestClose = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(() => {
+      setClosing(false);
+      onOpenChange(false);
+    }, 400);
+  };
   const dataUrl = useMemo(
     () => (open && input ? drawShareCard(input) : null),
     [input, open],
@@ -36,13 +52,27 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
 
   return (
     <Modal>
-      <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
+      <Modal.Backdrop
+        isOpen={open}
+        onOpenChange={(next) => {
+          if (!next) requestClose();
+        }}
+      >
         <Modal.Container>
           <Modal.Dialog className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-2xl">
             <Modal.Header>
+              <Modal.CloseTrigger />
               <Modal.Heading>{copy.shareCard.title}</Modal.Heading>
             </Modal.Header>
-            <Modal.Body className="flex flex-col items-center gap-4">
+            <Modal.Body className="relative flex flex-col items-center gap-4">
+              {closing ? (
+                <div
+                  aria-hidden="true"
+                  className="bg-surface/70 absolute inset-0 z-10 flex items-center justify-center backdrop-blur-[2px]"
+                >
+                  <Spinner size="sm" />
+                </div>
+              ) : null}
               {dataUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -58,11 +88,8 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
               </Typography>
             </Modal.Body>
             <Modal.Footer>
-              <Button slot="close" variant="secondary">
-                {copy.shareCard.close}
-              </Button>
               <Button
-                isDisabled={!dataUrl || busy}
+                isDisabled={!dataUrl || busy || closing}
                 onPress={() => {
                   if (!dataUrl) return;
                   setBusy(true);
@@ -80,7 +107,7 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
                 {copy.shareCard.copyImage}
               </Button>
               <Button
-                isDisabled={!dataUrl}
+                isDisabled={!dataUrl || closing}
                 onPress={() => {
                   if (!dataUrl) return;
                   const stamp = formatDate(new Date(), { dateStyle: "short" });

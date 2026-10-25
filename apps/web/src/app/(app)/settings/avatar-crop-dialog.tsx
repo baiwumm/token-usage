@@ -105,6 +105,7 @@ export function AvatarCropDialog({
         <Modal.Container>
           <Modal.Dialog className="sm:max-w-md">
             <Modal.Header>
+              {!uploading ? <Modal.CloseTrigger /> : null}
               <Modal.Heading>{copy.cropTitle}</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
