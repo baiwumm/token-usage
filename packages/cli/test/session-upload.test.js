@@ -187,6 +187,27 @@ test("models are omitted when the sum disagrees with the session total", () => {
   assert.equal(mapped.models, undefined);
 });
 
+test("elided zero-value counters on model rows fill as 0 (fresh sidecars omit them)", () => {
+  // zcode sidecar rows drop cache_creation/reasoning keys entirely; the
+  // identity still holds and the wire must carry explicit zeros.
+  const row = validRow({
+    model_usage: [
+      {
+        model: "glm-5.3",
+        input_tokens: 100,
+        cached_input_tokens: 15,
+        output_tokens: 50,
+        total_tokens: 165,
+      },
+    ],
+  });
+  const mapped = mapSessionRow(row);
+  assert.equal(mapped.models.length, 1);
+  assert.equal(mapped.models[0].cache_creation_input_tokens, 0);
+  assert.equal(mapped.models[0].reasoning_output_tokens, 0);
+  assert.equal(mapped.models[0].total_tokens, 165);
+});
+
 test("sessions with more than 32 models omit the models array (contract cannot accept a partial sum)", () => {
   const usage = Array.from({ length: 40 }, (_, i) => ({
     model: `model-${i}`,

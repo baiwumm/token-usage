@@ -95,10 +95,16 @@ function mapSessionRow(row) {
   if (!Number.isFinite(startedMs) || !Number.isFinite(endedMs)) return null;
   if (endedMs < startedMs) return null;
 
+  // Sidecar rows omit zero-valued counters on some sources (zcode drops
+  // cache_creation/reasoning keys entirely). The contract requires every
+  // field present, so missing keys fill as 0 — the identity check below is
+  // the real gate; dropping a whole models array over an elided zero would
+  // let a later last-wins upload erase previously stored models.
   const nested = row.tokens && typeof row.tokens === "object" ? row.tokens : {};
   const tokens = {};
   for (const field of TOKEN_FIELDS) {
-    const value = safeInt(field === "total_tokens" ? row.total_tokens : nested[field]);
+    const raw = field === "total_tokens" ? row.total_tokens : nested[field];
+    const value = safeInt(raw === undefined || raw === null ? 0 : raw);
     if (value === null) return null;
     tokens[field] = value;
   }
@@ -121,7 +127,8 @@ function mapSessionRow(row) {
     for (const usage of usageRows) {
       const modelTokens = {};
       for (const field of TOKEN_FIELDS) {
-        const value = safeInt(usage?.[field]);
+        const raw = usage?.[field];
+        const value = safeInt(raw === undefined || raw === null ? 0 : raw);
         if (value === null) {
           modelsValid = false;
           break;
