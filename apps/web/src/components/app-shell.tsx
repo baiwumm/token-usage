@@ -11,10 +11,11 @@ import {
   ArrowRightFromSquare,
   Bars,
   Calendar,
-  ChevronDown,
+  ChevronsExpandVertical,
   Display,
   Gear,
   LayoutSideContent,
+  ListUl,
   Tachometer,
 } from "@gravity-ui/icons";
 import {
@@ -27,7 +28,9 @@ import {
   Label,
   ScrollShadow,
   Separator,
+  Spinner,
   Typography,
+  Popover,
 } from "@heroui/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -52,6 +55,7 @@ import { useLocale } from "@/lib/copy/locale";
 
 const NAV_ICONS = {
   dashboard: Display,
+  sessions: ListUl,
   wrapped: Calendar,
   status: Tachometer,
   settings: Gear,
@@ -60,7 +64,7 @@ const NAV_ICONS = {
 const COLLAPSE_KEY = "token-usage.sidebar-collapsed";
 
 const NAV_ITEM_BASE =
-  "group flex h-9 items-center gap-2.5 rounded-xl text-sm transition-colors";
+  "group flex h-9 items-center gap-2.5 rounded-3xl text-sm transition-colors";
 
 function initialsFor(name: string, email: string | null): string {
   if (name.trim()) return name.trim().charAt(0).toUpperCase();
@@ -91,6 +95,7 @@ function useLocalHour(): number | null {
 }
 
 function titleForPath(pathname: string, copy: NavCopy): string {
+  if (pathname.startsWith("/sessions")) return copy.sessions;
   if (pathname.startsWith("/wrapped")) return copy.wrapped;
   if (pathname.startsWith("/service-status")) return copy.status;
   if (pathname.startsWith("/settings")) return copy.settings;
@@ -129,7 +134,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
     <div className="flex h-16 shrink-0 items-center px-3">
       <Link
         aria-label="Token Usage"
-        className={`hover:bg-default/60 flex min-w-0 items-center gap-2.5 rounded-xl p-1 transition-colors ${
+        className={`hover:bg-default/60 flex min-w-0 items-center gap-2.5 rounded-3xl p-1 transition-colors ${
           collapsed ? "w-full justify-center" : "w-full"
         }`}
         href="/"
@@ -197,7 +202,7 @@ function NavItems({
               aria-hidden="true"
               className={`size-4.5 shrink-0 ${
                 active
-                  ? "text-accent"
+                  ? "text-foreground"
                   : "text-muted group-hover:text-foreground"
               }`}
             />
@@ -252,7 +257,7 @@ function SidebarProfile({
       <Dropdown>
         <Dropdown.Trigger
           aria-label={collapsed ? displayName : undefined}
-          className={`hover:bg-default/70 flex items-center gap-2.5 rounded-2xl p-2 text-start transition-colors ${
+          className={`hover:bg-default/70 flex items-center gap-2.5 rounded-3xl p-2 text-start transition-colors ${
             collapsed ? "justify-center" : "w-full"
           }`}
         >
@@ -273,12 +278,13 @@ function SidebarProfile({
                   </span>
                 ) : null}
               </span>
-              <ChevronDown className="text-muted size-3.5 shrink-0" />
+              <ChevronsExpandVertical className="text-muted size-3.5 shrink-0" />
             </>
           )}
         </Dropdown.Trigger>
 
-        <Dropdown.Popover className="min-w-60">
+        <Dropdown.Popover className="min-w-60 scrollbar-none">
+          <Popover.Arrow />
           <div className="flex items-center gap-3 px-3 pt-3 pb-1">
             <ProfileAvatar
               displayName={displayName}
@@ -390,7 +396,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Desktop sidebar (lg+) — fixed, transparent over the page background. */}
       <aside
         className={`fixed inset-y-0 left-0 z-30 hidden flex-col transition-[width] duration-200 lg:flex ${
-          collapsed ? "w-[76px]" : "w-[264px]"
+          collapsed ? "w-19" : "w-66"
         }`}
       >
         <Brand collapsed={collapsed} />
@@ -406,7 +412,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div
         className={`flex min-h-screen flex-col transition-[padding] duration-200 ${
-          collapsed ? "lg:pl-[76px]" : "lg:pl-[264px]"
+          collapsed ? "lg:pl-19" : "lg:pl-66"
         }`}
       >
         {/* Top bar: navigation toggle LEFT, contextual page title, controls RIGHT. */}
@@ -419,7 +425,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             variant="ghost"
             onPress={() => setMenuOpen(true)}
           >
-            <Bars className="size-[18px]" />
+            <Bars className="size-4.5" />
           </Button>
           <Button
             isIconOnly
@@ -430,7 +436,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             variant="ghost"
             onPress={toggleCollapsed}
           >
-            <LayoutSideContent className="size-[18px]" />
+            <LayoutSideContent className="size-4.5" />
           </Button>
           <Typography
             truncate
@@ -452,7 +458,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Drawer.Content placement="left">
             <Drawer.Dialog
               aria-label="Token Usage"
-              className="bg-surface w-[288px] max-w-[86vw] p-0"
+              className="bg-surface w-72 max-w-[86vw] p-0"
             >
               <Drawer.Header className="flex h-16 flex-row items-center gap-1 pr-12">
                 <div className="min-w-0 flex-1">
@@ -515,7 +521,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                   variant="danger"
                   onPress={() => void signOut()}
                 >
-                  {copy.signOut}
+                  {({ isPending }) => (
+                    <>
+                      {isPending ? <Spinner color="current" size="sm" /> : null}
+                      {copy.signOut}
+                    </>
+                  )}
                 </Button>
               </AlertDialog.Footer>
             </AlertDialog.Dialog>

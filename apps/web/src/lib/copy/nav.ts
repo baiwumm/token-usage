@@ -3,6 +3,7 @@
 
 export interface NavCopy {
   dashboard: string;
+  sessions: string;
   settings: string;
   wrapped: string;
   status: string;
@@ -20,6 +21,10 @@ export interface NavCopy {
   appearance: string;
   randomColor: string;
   language: string;
+  languageSystem: string;
+  languageZh: string;
+  languageEn: string;
+  languageCurrent: string;
   themeMode: string;
   themeLight: string;
   themeDark: string;
@@ -32,7 +37,8 @@ export interface NavCopy {
 export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
   zh: {
     dashboard: "仪表盘",
-    settings: "设置",
+    sessions: "Sessions",
+    settings: "账户设置",
     wrapped: "年度回顾",
     status: "服务状态",
     device: "设备配对",
@@ -49,6 +55,10 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     appearance: "主题色",
     randomColor: "随机主题色",
     language: "语言",
+    languageSystem: "跟随系统",
+    languageZh: "简体中文",
+    languageEn: "English",
+    languageCurrent: "当前",
     themeMode: "主题模式",
     themeLight: "浅色",
     themeDark: "深色",
@@ -59,7 +69,8 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
   },
   en: {
     dashboard: "Dashboard",
-    settings: "Settings",
+    sessions: "Sessions",
+    settings: "Account settings",
     wrapped: "Wrapped",
     status: "Service status",
     device: "Device pairing",
@@ -77,6 +88,10 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     appearance: "Accent color",
     randomColor: "Random accent color",
     language: "Language",
+    languageSystem: "Follow system",
+    languageZh: "简体中文",
+    languageEn: "English",
+    languageCurrent: "current",
     themeMode: "Theme mode",
     themeLight: "Light",
     themeDark: "Dark",
@@ -89,6 +104,7 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
 
 export const NAV_ITEMS = [
   { href: "/", key: "dashboard" },
+  { href: "/sessions", key: "sessions" },
   { href: "/wrapped", key: "wrapped", badge: true },
   { href: "/service-status", key: "status" },
   { href: "/settings", key: "settings" },
