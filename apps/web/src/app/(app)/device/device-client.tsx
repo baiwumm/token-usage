@@ -146,7 +146,7 @@ function DeviceClientInner() {
               <input
                 aria-label={copy.codeLabel}
                 autoComplete="off"
-                className="border-default-200 bg-content2 rounded-medium px-3 py-2 text-center font-mono text-lg tracking-[0.3em] uppercase outline-none focus:border-primary"
+                className="border-border bg-default rounded-xl px-3 py-2 text-center font-mono text-lg tracking-[0.3em] uppercase outline-none focus:border-accent"
                 inputMode="text"
                 maxLength={9}
                 placeholder={copy.codePlaceholder}
@@ -170,7 +170,7 @@ function DeviceClientInner() {
           </Card.Header>
           <Card.Content className="flex flex-col items-center gap-4">
             <Typography
-              className="text-primary tabular-nums"
+              className="text-accent tabular-nums"
               type="h2"
               weight="bold"
             >

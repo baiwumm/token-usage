@@ -3,18 +3,19 @@
 // Top-right action cluster for the app shell: GitHub, language, accent color,
 // light/dark/system mode, and the primary "pair device" action. Controls are
 // round ghost buttons so the page title stays the loudest element in the bar.
-
+import { buttonVariants } from "@heroui/styles";
 import {
   Display,
   Globe,
   LogoGithub,
   Moon,
-  Palette,
   Plus,
   Shuffle,
   Sun,
+  BucketPaint,
 } from "@gravity-ui/icons";
 import {
+  Badge,
   Button,
   ColorSwatchPicker,
   Dropdown,
@@ -30,17 +31,14 @@ import { useTheme } from "next-themes";
 import { useCallback, useEffect, useState } from "react";
 
 import { NAV_COPY } from "@/lib/copy/nav";
-import { useLocale } from "@/lib/copy/locale";
+import { useLocalePreference, type LocalePreference } from "@/lib/copy/locale";
 import { THEME_COLOR_PALETTES, useThemeColor } from "@/lib/ui/theme-color";
-
-const GHOST_ICON =
-  "text-muted hover:bg-default hover:text-foreground size-8 shrink-0 rounded-full transition-colors";
 
 function GitHubLink() {
   return (
     <Link
       aria-label="GitHub"
-      className={`${GHOST_ICON} hidden items-center justify-center md:inline-flex`}
+      className={`${buttonVariants({ isIconOnly: true, size: "sm", variant: "tertiary" })} hidden md:inline-flex`}
       href="https://github.com/baiwumm/token-usage"
       rel="noopener noreferrer"
       target="_blank"
@@ -50,39 +48,54 @@ function GitHubLink() {
   );
 }
 
-/** Globe icon button, opening a single-select menu of 简体中文 / English. */
+/** Globe icon button, opening a single-select menu of system / 中文 / English. */
 export function LanguageDropdown() {
-  const [locale, setLocale] = useLocale();
+  const { locale, preference, setPreference } = useLocalePreference();
   const copy = NAV_COPY[locale];
+  const currentLabel = locale === "zh" ? copy.languageZh : copy.languageEn;
 
   return (
     <Dropdown>
-      <Dropdown.Trigger
-        aria-label={copy.language}
-        className={`${GHOST_ICON} inline-flex items-center justify-center`}
+      <Button
+        isIconOnly
+        aria-label="LanguageDropdown"
+        size="sm"
+        variant="tertiary"
       >
-        <Globe className="size-4" />
-      </Dropdown.Trigger>
-      <Dropdown.Popover className="min-w-44">
+        <Globe className="text-muted" />
+      </Button>
+      <Dropdown.Popover className="min-w-56 scrollbar-none">
+        <Popover.Arrow />
         <Dropdown.Menu
-          selectedKeys={[locale]}
+          selectedKeys={[preference]}
           selectionMode="single"
           onSelectionChange={(keys) => {
             if (keys === "all") return;
             const key = [...keys][0];
 
-            if (typeof key === "string") setLocale(key as "zh" | "en");
+            if (typeof key === "string") {
+              setPreference(key as LocalePreference);
+            }
           }}
         >
           <Dropdown.Section>
             <Header>{copy.language}</Header>
-            <Dropdown.Item id="zh" textValue="简体中文">
+            <Dropdown.Item id="system" textValue={copy.languageSystem}>
               <Dropdown.ItemIndicator />
-              <Label>简体中文</Label>
+              <Label>
+                {copy.languageSystem}
+                <span className="text-muted ml-1.5 text-xs">
+                  {copy.languageCurrent}: {currentLabel}
+                </span>
+              </Label>
             </Dropdown.Item>
-            <Dropdown.Item id="en" textValue="English">
+            <Dropdown.Item id="zh" textValue={copy.languageZh}>
               <Dropdown.ItemIndicator />
-              <Label>English</Label>
+              <Label>{copy.languageZh}</Label>
+            </Dropdown.Item>
+            <Dropdown.Item id="en" textValue={copy.languageEn}>
+              <Dropdown.ItemIndicator />
+              <Label>{copy.languageEn}</Label>
             </Dropdown.Item>
           </Dropdown.Section>
         </Dropdown.Menu>
@@ -104,14 +117,14 @@ export function ThemeModeToggle({
   alwaysVisible?: boolean;
 }) {
   const { theme, setTheme } = useTheme();
-  const [locale] = useLocale();
+  const { locale } = useLocalePreference();
   const copy = NAV_COPY[locale];
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    return <div aria-hidden="true" className="h-8 w-[92px] shrink-0" />;
+    return <div aria-hidden="true" className="h-8 w-23 shrink-0" />;
   }
 
   return (
@@ -152,7 +165,7 @@ export function ThemeColorPicker({
 }: {
   alwaysVisible?: boolean;
 }) {
-  const [locale] = useLocale();
+  const { locale } = useLocalePreference();
   const copy = NAV_COPY[locale];
   const [paletteId, setPaletteId] = useThemeColor();
   const active =
@@ -184,58 +197,66 @@ export function ThemeColorPicker({
   }, [paletteId, setPaletteId]);
 
   return (
-    <Popover>
-      <Popover.Trigger
-        aria-label={`${copy.appearance}: ${active.label}`}
-        className={`${GHOST_ICON} items-center justify-center ${
-          alwaysVisible ? "inline-flex" : "hidden md:inline-flex"
-        }`}
-      >
-        <span className="relative flex items-center justify-center">
-          <Palette className="text-muted size-4" />
-          <span
-            aria-hidden="true"
-            className="ring-background absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2"
-            style={{ backgroundColor: active.hex }}
-          />
-        </span>
-      </Popover.Trigger>
-      <Popover.Content className="w-64">
-        <Popover.Dialog className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-2">
-            <Popover.Heading>{copy.appearance}</Popover.Heading>
-            <Button
-              isIconOnly
-              aria-label={copy.randomColor}
-              className="text-muted"
-              size="sm"
-              variant="ghost"
-              onPress={shuffle}
+    <Badge.Anchor>
+      <Popover>
+        <Button
+          isIconOnly
+          aria-label={`${copy.appearance}: ${active.label}`}
+          className={`${
+            alwaysVisible ? "inline-flex" : "hidden md:inline-flex"
+          } size-8 min-w-8`}
+          size="sm"
+          variant="tertiary"
+        >
+          <BucketPaint className="text-muted size-4" />
+        </Button>
+        <Popover.Content className="w-72">
+          <Popover.Arrow />
+          <Popover.Dialog className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <Popover.Heading>{copy.appearance}</Popover.Heading>
+              <Button
+                isIconOnly
+                aria-label={copy.randomColor}
+                className="text-muted"
+                size="sm"
+                variant="ghost"
+                onPress={shuffle}
+              >
+                <Shuffle className="size-4" />
+              </Button>
+            </div>
+            <ColorSwatchPicker
+              aria-label={copy.appearance}
+              value={parseColor(active.hex)}
+              onChange={handleColorChange}
             >
-              <Shuffle className="size-4" />
-            </Button>
-          </div>
-          <ColorSwatchPicker
-            aria-label={copy.appearance}
-            value={parseColor(active.hex)}
-            onChange={handleColorChange}
-          >
-            {THEME_COLOR_PALETTES.map((palette) => (
-              <ColorSwatchPicker.Item key={palette.id} color={palette.hex}>
-                <ColorSwatchPicker.Swatch />
-                <ColorSwatchPicker.Indicator />
-              </ColorSwatchPicker.Item>
-            ))}
-          </ColorSwatchPicker>
-        </Popover.Dialog>
-      </Popover.Content>
-    </Popover>
+              {THEME_COLOR_PALETTES.map((palette) => (
+                <ColorSwatchPicker.Item key={palette.id} color={palette.hex}>
+                  <ColorSwatchPicker.Swatch />
+                  <ColorSwatchPicker.Indicator />
+                </ColorSwatchPicker.Item>
+              ))}
+            </ColorSwatchPicker>
+          </Popover.Dialog>
+        </Popover.Content>
+      </Popover>
+      {/* Accent dot: the primary+accent badge tracks the live --accent token. */}
+      <Badge
+        aria-hidden="true"
+        className="size-3 rounded-full min-h-3! min-w-3!"
+        color="accent"
+        placement="bottom-right"
+        size="sm"
+        variant="primary"
+      />
+    </Badge.Anchor>
   );
 }
 
 export function TopActions() {
   const router = useRouter();
-  const [locale] = useLocale();
+  const { locale } = useLocalePreference();
   const copy = NAV_COPY[locale];
 
   return (

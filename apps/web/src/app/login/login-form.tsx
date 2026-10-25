@@ -1,9 +1,11 @@
 "use client";
 
-// Login form: email+password or magic link (docs/rewrite-plan.md 决策 5).
-// Auth traffic goes through the exempted browser Supabase client; the ?next=
-// target is sanitized before it is honored anywhere.
+// Login form: email+password or magic link (docs/rewrite-plan.md 决策 5),
+// switched via HeroUI Tabs. Auth traffic goes through the exempted browser
+// Supabase client; the ?next= target is sanitized before it is honored
+// anywhere.
 
+import { Envelope, Lock } from "@gravity-ui/icons";
 import {
   Button,
   Card,
@@ -13,6 +15,7 @@ import {
   Input,
   Label,
   Spinner,
+  Tabs,
   TextField,
   Typography,
 } from "@heroui/react";
@@ -57,7 +60,7 @@ function LoginFormInner() {
   const [error, setError] = useState<string | null>(
     callbackError ? copy.errorCallback : null,
   );
-  const [magicSent, setMagicSent] = useState(false);
+  const [sentKind, setSentKind] = useState<null | "magic" | "reset">(null);
 
   function switchMode(target: Mode) {
     if (target === mode) return;
@@ -108,7 +111,33 @@ function LoginFormInner() {
 
       return;
     }
-    setMagicSent(true);
+    setSentKind("magic");
+  }
+
+  // Recovery email: opening the link signs the user in (recovery session) and
+  // lands on 账户设置, where the password card sets a new password. Works for
+  // magic-link-only accounts that never had a password.
+  async function submitPasswordReset() {
+    const supabase = authBrowserClient();
+
+    if (!supabase || busy) return;
+    setBusy(true);
+    setError(null);
+
+    const { error: authError } = await supabase.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings")}`,
+      },
+    );
+
+    setBusy(false);
+    if (authError) {
+      setError(mapAuthError(authError.status ?? 0, locale));
+
+      return;
+    }
+    setSentKind("reset");
   }
 
   const emailField = (
@@ -129,28 +158,33 @@ function LoginFormInner() {
     </TextField>
   );
 
+  const sentCopy =
+    sentKind === "reset"
+      ? { title: copy.resetSentTitle, body: copy.resetSentBody }
+      : { title: copy.sentTitle, body: copy.sentBody };
+
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm p-8">
+      <Card className="w-full max-w-md p-8">
         <Card.Header>
           <Card.Title>{copy.pageTitle}</Card.Title>
           <Card.Description>{copy.pageSubtitle}</Card.Description>
         </Card.Header>
 
         <Card.Content>
-          {magicSent ? (
+          {sentKind ? (
             <div className="flex flex-col gap-4">
               <Typography type="h4" weight="medium">
-                {copy.sentTitle}
+                {sentCopy.title}
               </Typography>
               <Typography color="muted" type="body-sm">
-                {copy.sentBody}
+                {sentCopy.body}
               </Typography>
               <div className="flex gap-2">
                 <Button
                   variant="secondary"
                   onPress={() => {
-                    setMagicSent(false);
+                    setSentKind(null);
                   }}
                 >
                   {copy.sentBack}
@@ -158,7 +192,8 @@ function LoginFormInner() {
                 <Button
                   isPending={busy}
                   onPress={() => {
-                    void submitMagic();
+                    if (sentKind === "magic") void submitMagic();
+                    else void submitPasswordReset();
                   }}
                 >
                   {({ isPending }) => (
@@ -172,21 +207,29 @@ function LoginFormInner() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <div
-                className="flex gap-1 rounded-large bg-content2 p-1"
-                role="tablist"
+              <Tabs
+                selectedKey={mode}
+                onSelectionChange={(key) => switchMode(String(key) as Mode)}
               >
-                {(["password", "magic"] as const).map((target) => (
-                  <Button
-                    key={target}
-                    size="sm"
-                    variant={mode === target ? "secondary" : "ghost"}
-                    onPress={() => switchMode(target)}
-                  >
-                    {target === "password" ? copy.passwordMode : copy.magicMode}
-                  </Button>
-                ))}
-              </div>
+                <Tabs.ListContainer className="bg-default rounded-2xl p-1">
+                  <Tabs.List aria-label={copy.pageTitle} className="w-auto p-0">
+                    <Tabs.Tab id="password">
+                      <span className="flex items-center gap-1.5">
+                        <Lock aria-hidden="true" className="size-4" />
+                        {copy.passwordMode}
+                      </span>
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                    <Tabs.Tab id="magic">
+                      <span className="flex items-center gap-1.5">
+                        <Envelope aria-hidden="true" className="size-4" />
+                        {copy.magicMode}
+                      </span>
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                  </Tabs.List>
+                </Tabs.ListContainer>
+              </Tabs>
 
               {error ? <ErrorMessage role="alert">{error}</ErrorMessage> : null}
 
@@ -208,7 +251,7 @@ function LoginFormInner() {
                       variant="secondary"
                     />
                   </TextField>
-                  <Button isPending={busy} type="submit">
+                  <Button fullWidth isPending={busy} type="submit">
                     {({ isPending }) => (
                       <>
                         {isPending ? (
@@ -217,6 +260,15 @@ function LoginFormInner() {
                         {copy.passwordSubmit}
                       </>
                     )}
+                  </Button>
+                  <Button
+                    className="h-auto min-w-0 self-start p-0 text-xs"
+                    isDisabled={busy || email.length === 0}
+                    size="sm"
+                    variant="ghost"
+                    onPress={() => void submitPasswordReset()}
+                  >
+                    {copy.forgotPassword}
                   </Button>
                 </Form>
               ) : (
@@ -229,7 +281,7 @@ function LoginFormInner() {
                 >
                   {emailField}
                   <Description>{copy.magicHint}</Description>
-                  <Button isPending={busy} type="submit">
+                  <Button fullWidth isPending={busy} type="submit">
                     {({ isPending }) => (
                       <>
                         {isPending ? (

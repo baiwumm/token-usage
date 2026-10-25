@@ -4,6 +4,9 @@
 
 export interface SettingsCopy {
   pageTitle: string;
+  sectionAccount: string;
+  sectionAppearance: string;
+  sectionDevices: string;
   accountHeading: string;
   profileHeading: string;
   profileHint: string;
@@ -14,6 +17,23 @@ export interface SettingsCopy {
   profileAvatarChange: string;
   profileAvatarDelete: string;
   profileAvatarTooLarge: string;
+  avatarHeading: string;
+  avatarHint: string;
+  passwordHeading: string;
+  passwordHint: string;
+  passwordNewLabel: string;
+  passwordNewPlaceholder: string;
+  passwordConfirmLabel: string;
+  passwordMismatch: string;
+  passwordLengthError: string;
+  passwordSave: string;
+  passwordSaved: string;
+  cropTitle: string;
+  cropZoom: string;
+  cropRotateLeft: string;
+  cropRotateRight: string;
+  cropUpload: string;
+  cropUploading: string;
   profileEmailLabel: string;
   profileSave: string;
   profileSaved: string;
@@ -54,10 +74,31 @@ export interface SettingsCopy {
 
 export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
   zh: {
-    pageTitle: "设置",
+    pageTitle: "账户设置",
+    sectionAccount: "账户",
+    sectionAppearance: "外观",
+    sectionDevices: "设备",
     accountHeading: "账户",
-    profileHeading: "编辑资料",
-    profileHint: "名称与头像显示在侧边栏；邮箱由管理员分配，不可修改。",
+    avatarHeading: "头像",
+    avatarHint: "上传图片作为头像；删除后显示名称首字。",
+    passwordHeading: "密码",
+    passwordHint:
+      "设置密码后即可用邮箱 + 密码登录；魔法链接登录的账号也能在此开启密码登录。长度至少 8 位。",
+    passwordNewLabel: "新密码",
+    passwordNewPlaceholder: "至少 8 位",
+    passwordConfirmLabel: "确认新密码",
+    passwordMismatch: "两次输入的密码不一致。",
+    passwordLengthError: "密码至少 8 位。",
+    passwordSave: "更新密码",
+    passwordSaved: "密码已更新。",
+    cropTitle: "裁剪头像",
+    cropZoom: "缩放",
+    cropRotateLeft: "左转 90°",
+    cropRotateRight: "右转 90°",
+    cropUpload: "上传",
+    cropUploading: "上传中…",
+    profileHeading: "个人信息",
+    profileHint: "名称显示在侧边栏；邮箱由管理员分配，不可修改。",
     profileNameLabel: "名称",
     profileNamePlaceholder: "你的名字",
     profileAvatarLabel: "头像",
@@ -103,11 +144,33 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     errorGeneric: "操作失败，请稍后再试。",
   },
   en: {
-    pageTitle: "Settings",
+    pageTitle: "Account settings",
+    sectionAccount: "Account",
+    sectionAppearance: "Appearance",
+    sectionDevices: "Devices",
     accountHeading: "Account",
-    profileHeading: "Edit profile",
+    avatarHeading: "Avatar",
+    avatarHint:
+      "Upload an image as your avatar; deleting it falls back to your initial.",
+    passwordHeading: "Password",
+    passwordHint:
+      "Set a password to sign in with email + password — including accounts created via magic link. At least 8 characters.",
+    passwordNewLabel: "New password",
+    passwordNewPlaceholder: "At least 8 characters",
+    passwordConfirmLabel: "Confirm new password",
+    passwordMismatch: "Passwords do not match.",
+    passwordLengthError: "The password must be at least 8 characters.",
+    passwordSave: "Update password",
+    passwordSaved: "Password updated.",
+    cropTitle: "Crop avatar",
+    cropZoom: "Zoom",
+    cropRotateLeft: "Rotate left 90°",
+    cropRotateRight: "Rotate right 90°",
+    cropUpload: "Upload",
+    cropUploading: "Uploading…",
+    profileHeading: "Profile",
     profileHint:
-      "Name and avatar show in the sidebar; the email is admin-assigned and read-only.",
+      "The name shows in the sidebar; the email is admin-assigned and read-only.",
     profileNameLabel: "Name",
     profileNamePlaceholder: "Your name",
     profileAvatarLabel: "Avatar",

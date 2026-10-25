@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { SettingsClient } from "./settings-client";
 
 export const metadata: Metadata = {
-  title: "设置",
+  title: "账户设置",
 };
 
 export default function SettingsPage() {

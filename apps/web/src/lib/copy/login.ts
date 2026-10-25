@@ -16,6 +16,9 @@ export interface LoginCopy {
   sentBody: string;
   sentResend: string;
   sentBack: string;
+  forgotPassword: string;
+  resetSentTitle: string;
+  resetSentBody: string;
   errorInvalidCredentials: string;
   errorRateLimited: string;
   errorCallback: string;
@@ -31,7 +34,7 @@ export const LOGIN_COPY: Record<"zh" | "en", LoginCopy> = {
     emailLabel: "邮箱",
     emailPlaceholder: "you@example.com",
     passwordLabel: "密码",
-    passwordPlaceholder: "管理员下发的临时密码",
+    passwordPlaceholder: "你的密码",
     passwordSubmit: "登录",
     magicSubmit: "发送魔法链接",
     magicHint:
@@ -41,6 +44,10 @@ export const LOGIN_COPY: Record<"zh" | "en", LoginCopy> = {
       "请查收邮箱，点击邮件中的链接完成登录。链接有效期有限，请尽快使用。",
     sentResend: "重新发送",
     sentBack: "返回重新填写",
+    forgotPassword: "忘记密码？通过邮箱重置",
+    resetSentTitle: "重置链接已发送",
+    resetSentBody:
+      "请查收邮箱，点击重置链接后会在浏览器中登录，并跳转到「账户设置」设置新密码。",
     errorInvalidCredentials: "邮箱或密码错误。",
     errorRateLimited: "尝试过于频繁，请稍后再试。",
     errorCallback: "登录链接无效或已过期，请重新登录。",
@@ -54,7 +61,7 @@ export const LOGIN_COPY: Record<"zh" | "en", LoginCopy> = {
     emailLabel: "Email",
     emailPlaceholder: "you@example.com",
     passwordLabel: "Password",
-    passwordPlaceholder: "Temporary password from your admin",
+    passwordPlaceholder: "Your password",
     passwordSubmit: "Sign in",
     magicSubmit: "Send magic link",
     magicHint:
@@ -64,6 +71,10 @@ export const LOGIN_COPY: Record<"zh" | "en", LoginCopy> = {
       "Check your inbox and open the link to finish signing in. The link expires, so use it soon.",
     sentResend: "Resend",
     sentBack: "Edit email",
+    forgotPassword: "Forgot password? Reset via email",
+    resetSentTitle: "Reset link sent",
+    resetSentBody:
+      "Check your inbox — opening the reset link signs you in and takes you to Account settings to set a new password.",
     errorInvalidCredentials: "Wrong email or password.",
     errorRateLimited: "Too many attempts — try again shortly.",
     errorCallback:

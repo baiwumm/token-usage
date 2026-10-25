@@ -13,11 +13,12 @@ import {
   Spinner,
   Typography,
   toast,
+  Popover,
 } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { DailyChart } from "../../dashboard/charts";
+import { TrendChart } from "../../dashboard/charts";
 
 import { authBrowserClient } from "@/lib/auth/browser";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
@@ -30,7 +31,7 @@ import {
   type DashboardPayload,
   type MonthlyPoint,
 } from "@/lib/dashboard/api";
-import { formatCost, formatTokens } from "@/app/dashboard/panels";
+import { useFormat } from "@/lib/format/format";
 import { yearMonthlyWindow, yearRange } from "@/lib/dashboard/ranges";
 
 type LoadStatus = "loading" | "ready" | "error";
@@ -41,6 +42,7 @@ export function WrappedClient() {
   const router = useRouter();
   const [locale] = useLocale();
   const copy = WRAPPED_COPY[locale];
+  const { formatTokens, formatCost } = useFormat();
 
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -269,9 +271,9 @@ export function WrappedClient() {
         <div className="flex items-center gap-3">
           <Select
             aria-label={copy.yearSuffix}
-            className="w-36"
-            selectedKey={String(year)}
-            onSelectionChange={(key) => {
+            className="w-48"
+            value={String(year)}
+            onChange={(key) => {
               if (key != null) setYear(Number(key));
             }}
           >
@@ -280,6 +282,7 @@ export function WrappedClient() {
               <Select.Indicator />
             </Select.Trigger>
             <Select.Popover>
+              <Popover.Arrow />
               <ListBox>
                 {[CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2].map(
                   (candidate) => (
@@ -356,7 +359,7 @@ export function WrappedClient() {
           {/* Share card preview — the export draws this design to canvas. */}
           <div
             ref={cardRef}
-            className="bg-surface border-default-200 rounded-large flex flex-col gap-4 border p-8"
+            className="bg-surface rounded-3xl flex flex-col gap-4 p-8"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -367,7 +370,7 @@ export function WrappedClient() {
                   {copy.share.cardCaption}
                 </Typography>
               </div>
-              <Typography className="text-primary" type="h3" weight="bold">
+              <Typography className="text-accent" type="h3" weight="bold">
                 {formatTokens(totals.total_tokens)}
               </Typography>
             </div>
@@ -377,7 +380,7 @@ export function WrappedClient() {
                 [copy.cards.cost, formatCost(totals.total_cost_usd)],
                 [copy.cards.conversations, formatTokens(totals.conversations)],
               ].map(([label, value]) => (
-                <div key={label} className="bg-content2 rounded-medium p-3">
+                <div key={label} className="bg-default rounded-xl p-3">
                   <Typography color="muted" type="body-xs">
                     {label}
                   </Typography>
@@ -430,14 +433,22 @@ export function WrappedClient() {
               <Card.Title>{copy.monthlyTitle}</Card.Title>
             </Card.Header>
             <Card.Content>
-              <DailyChart
-                days={monthly.map((point) => ({
-                  date: point.month.slice(0, 7),
-                  total_tokens: point.total_tokens,
-                  billable_total_tokens: point.billable_total_tokens,
-                  total_cost_usd: point.total_cost_usd,
-                  conversations: point.conversations,
+              <TrendChart
+                ariaLabel={copy.monthlyTitle}
+                data={monthly.map((point) => ({
+                  key: point.month,
+                  label: point.month.slice(0, 7),
+                  tokens: point.total_tokens,
+                  cost: point.total_cost_usd,
+                  conversations: point.conversation_count,
                 }))}
+                emptyLabel={copy.monthlyTitle}
+                labels={{
+                  tokens: copy.cards.totalTokens,
+                  cost: copy.cards.cost,
+                  conversations: copy.cards.conversations,
+                }}
+                metric="tokens"
               />
             </Card.Content>
           </Card>

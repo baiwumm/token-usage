@@ -23,5 +23,65 @@
 @theme {
 	--font-sans: "Maple Mono CN", system-ui, Avenir, Helvetica, Arial, sans-serif;
 	--font-mono: "Maple Mono CN", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+	/*
+	 * Chart palette (Tailwind only emits color utilities / CSS variables for
+	 * the --color-* namespace, so --chart-N alone generates nothing — that is
+	 * why the first attempt "did not take effect"). Tints of the accent.
+	 */
+	--color-chart-1: oklch(from var(--accent) calc(l - 0.24) c h);
+	--color-chart-2: oklch(from var(--accent) calc(l - 0.12) c h);
+	--color-chart-3: var(--accent);
+	--color-chart-4: oklch(from var(--accent) calc(l + 0.12) c h);
+	--color-chart-5: oklch(from var(--accent) calc(l + 0.24) c h);
 }
 
+	/*
+	 * Card hierarchy: HeroUI ships title/description both at text-sm (only
+	 * weight + color differ) — too flat. Title steps up to base/semibold so the
+	 * headline is the loudest element in the card; description stays muted.
+	 * Must live in @layer components (same as @heroui/styles): later source
+	 * order wins inside the layer, while per-instance utilities (KPI tiles etc.)
+	 * keep beating it from the utilities layer.
+	 */
+	@layer components {
+	.card__title {
+		@apply text-base leading-6 font-semibold text-foreground;
+	}
+
+	.card__description {
+		@apply text-xs leading-5 text-muted;
+	}
+
+	/*
+	 * HeroUI renders themed scrollbars (track = --scrollbar-track, a light
+	 * surface) inside dropdown/select popovers, which shows as a white strip
+	 * even for barely-overflowing menus on Windows. Thin bar + transparent
+	 * track keeps scrolling discoverable without the strip.
+	 */
+	.dropdown__popover,
+	.select__popover {
+		scrollbar-width: thin;
+		scrollbar-color: var(--scrollbar-thumb) transparent;
+	}
+}
+
+/*
+ * Activity heatmap level stops (read by the heatmap via var(--heatmap-N)).
+ * Light theme: deeper accent = more usage; dark theme: brighter = more.
+ */
+:root {
+	--heatmap-0: var(--default);
+	--heatmap-1: oklch(from var(--accent) calc(l + 0.30) calc(c * 0.25) h);
+	--heatmap-2: oklch(from var(--accent) calc(l + 0.15) calc(c * 0.45) h);
+	--heatmap-3: oklch(from var(--accent) l calc(c * 0.70) h);
+	--heatmap-4: oklch(from var(--accent) calc(l - 0.12) c h);
+}
+
+.dark {
+	--heatmap-0: var(--default);
+	--heatmap-1: oklch(from var(--accent) calc(l - 0.25) calc(c * 0.35) h);
+	--heatmap-2: oklch(from var(--accent) calc(l - 0.12) calc(c * 0.60) h);
+	--heatmap-3: oklch(from var(--accent) l calc(c * 0.80) h);
+	--heatmap-4: oklch(from var(--accent) calc(l + 0.15) c h);
+}

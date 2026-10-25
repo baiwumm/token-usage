@@ -22,7 +22,9 @@ describe("resolveLocale", () => {
 
   it("handles malformed or missing headers", () => {
     expect(resolveLocale(null, "")).toBe("en");
-    expect(resolveLocale(null, " ,zh-CN")).toBe("en");
+    // Empty list entries are skipped, so the next tag still wins.
+    expect(resolveLocale(null, " ,zh-CN")).toBe("zh");
+    expect(resolveLocale(null, "garbage")).toBe("en");
     expect(resolveLocale(null, undefined)).toBe("en");
   });
 });

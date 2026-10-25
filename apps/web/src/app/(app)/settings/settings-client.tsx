@@ -5,7 +5,7 @@
 // / device-revoke, docs/cli-contract.md §2.7–2.9) with the browser session's
 // Supabase JWT — the dual-principal path, never a browser→table connection.
 
-import { Camera } from "@gravity-ui/icons";
+import { Camera, Display, Palette, Person, TrashBin } from "@gravity-ui/icons";
 import {
   Avatar,
   Button,
@@ -19,12 +19,23 @@ import {
   Modal,
   Spinner,
   Table,
+  Tabs,
   TextField,
   Typography,
   toast,
 } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+
+import { AppearancePanel } from "./appearance-panel";
+import { AvatarCropDialog } from "./avatar-crop-dialog";
 
 import { authBrowserClient } from "@/lib/auth/browser";
 import { useAvatarUpload, useProfile } from "@/lib/auth/profile";
@@ -32,6 +43,7 @@ import { LOGIN_PATH } from "@/lib/auth/next-path";
 import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
 import { SETTINGS_COPY, type SettingsCopy } from "@/lib/copy/settings";
+import { useFormat } from "@/lib/format/format";
 
 interface DeviceRow {
   id: string;
@@ -59,22 +71,6 @@ function usageWindow(): { from: string; to: string } {
   return { from: dayKey(from), to: dayKey(to) };
 }
 
-function formatNumber(value: number, locale: string): string {
-  return new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US").format(
-    value,
-  );
-}
-
-function formatDate(iso: string, locale: string): string {
-  const date = new Date(iso);
-
-  if (Number.isNaN(date.getTime())) return iso;
-
-  return new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
-    dateStyle: "medium",
-  }).format(date);
-}
-
 function friendlyDeviceError(code: string, copy: SettingsCopy): string {
   if (code === "device_name_taken") return copy.errorDeviceNameTaken;
 
@@ -85,6 +81,13 @@ export function SettingsClient() {
   const router = useRouter();
   const [locale] = useLocale();
   const copy = SETTINGS_COPY[locale];
+  const { formatDate, formatTokens } = useFormat();
+
+  // Tab state is component-local; the ?section= URL param was dropped —
+  // nothing deep-links to a non-default section anymore.
+  const [section, setSection] = useState<"account" | "appearance" | "devices">(
+    "account",
+  );
 
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [devices, setDevices] = useState<DeviceRow[]>([]);
@@ -261,124 +264,159 @@ export function SettingsClient() {
     );
   }
 
-  const dateFormatter = (iso: string) => formatDate(iso, locale);
-
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-8">
-      <ProfileCard />
+      <Tabs
+        selectedKey={section}
+        onSelectionChange={(key) => setSection(String(key) as typeof section)}
+      >
+        <Tabs.ListContainer>
+          <Tabs.List aria-label={copy.pageTitle}>
+            <Tabs.Tab id="account">
+              <span className="flex items-center gap-1.5">
+                <Person aria-hidden="true" className="size-4" />
+                {copy.sectionAccount}
+              </span>
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="appearance">
+              <span className="flex items-center gap-1.5">
+                <Palette aria-hidden="true" className="size-4" />
+                {copy.sectionAppearance}
+              </span>
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="devices">
+              <span className="flex items-center gap-1.5">
+                <Display aria-hidden="true" className="size-4" />
+                {copy.sectionDevices}
+              </span>
+              <Tabs.Indicator />
+            </Tabs.Tab>
+          </Tabs.List>
+        </Tabs.ListContainer>
+      </Tabs>
 
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <Typography type="h4" weight="medium">
-            {copy.devicesHeading}
-          </Typography>
-          <Typography color="muted" type="body-sm">
-            {copy.devicesHint}
-          </Typography>
+      {section === "account" ? (
+        <div className="flex flex-col gap-4">
+          <ProfileCard />
+          <AvatarCard />
+          <PasswordCard />
         </div>
+      ) : null}
+      {section === "appearance" ? <AppearancePanel /> : null}
 
-        {status === "loading" ? (
-          <Card className="p-10">
-            <Card.Content className="flex items-center justify-center gap-2">
-              <Spinner />
-              <Typography color="muted" type="body-sm">
-                {copy.loading}
-              </Typography>
-            </Card.Content>
-          </Card>
-        ) : null}
+      {section === "devices" ? (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <Typography type="h4" weight="medium">
+              {copy.devicesHeading}
+            </Typography>
+            <Typography color="muted" type="body-sm">
+              {copy.devicesHint}
+            </Typography>
+          </div>
 
-        {status === "error" ? (
-          <Card className="p-6">
-            <Card.Content>
-              <ErrorMessage>{copy.loadError}</ErrorMessage>
-            </Card.Content>
-            <Card.Footer>
-              <Button
-                size="sm"
-                variant="outline"
-                onPress={() => {
-                  if (accessToken) void loadDevices(accessToken);
-                }}
-              >
-                {copy.retry}
-              </Button>
-            </Card.Footer>
-          </Card>
-        ) : null}
+          {status === "loading" ? (
+            <Card className="p-10">
+              <Card.Content className="flex items-center justify-center gap-2">
+                <Spinner />
+                <Typography color="muted" type="body-sm">
+                  {copy.loading}
+                </Typography>
+              </Card.Content>
+            </Card>
+          ) : null}
 
-        {status === "ready" && devices.length === 0 ? (
-          <Card className="p-10">
-            <Card.Header>
-              <Card.Title>{copy.emptyTitle}</Card.Title>
-              <Card.Description>{copy.emptyBody}</Card.Description>
-            </Card.Header>
-          </Card>
-        ) : null}
+          {status === "error" ? (
+            <Card className="p-6">
+              <Card.Content>
+                <ErrorMessage>{copy.loadError}</ErrorMessage>
+              </Card.Content>
+              <Card.Footer>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onPress={() => {
+                    if (accessToken) void loadDevices(accessToken);
+                  }}
+                >
+                  {copy.retry}
+                </Button>
+              </Card.Footer>
+            </Card>
+          ) : null}
 
-        {status === "ready" && devices.length > 0 ? (
-          <Table>
-            <Table.ScrollContainer>
-              <Table.Content aria-label={copy.devicesHeading}>
-                <Table.Header>
-                  <Table.Column isRowHeader>{copy.columnDevice}</Table.Column>
-                  <Table.Column>{copy.columnPlatform}</Table.Column>
-                  <Table.Column>{copy.columnJoined}</Table.Column>
-                  <Table.Column>
-                    {copy.columnUsage}（{copy.usageWindowLabel}）
-                  </Table.Column>
-                  <Table.Column>{copy.columnActions}</Table.Column>
-                </Table.Header>
-                <Table.Body>
-                  {devices.map((device) => (
-                    <Table.Row key={device.id}>
-                      <Table.Cell className="font-medium">
-                        {device.device_name}
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Chip size="sm" variant="secondary">
-                          {device.platform}
-                        </Chip>
-                      </Table.Cell>
-                      <Table.Cell>
-                        {dateFormatter(device.created_at)}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {formatNumber(device.total_tokens ?? 0, locale)}{" "}
-                        {copy.usageUnit}
-                      </Table.Cell>
-                      <Table.Cell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onPress={() => {
-                              setRenaming(device);
-                              setRenameDraft(device.device_name);
-                              setRenameError(null);
-                            }}
-                          >
-                            {copy.renameAction}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger-soft"
-                            onPress={() => {
-                              setRevoking(device);
-                            }}
-                          >
-                            {copy.revokeAction}
-                          </Button>
-                        </div>
-                      </Table.Cell>
-                    </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table.Content>
-            </Table.ScrollContainer>
-          </Table>
-        ) : null}
-      </section>
+          {status === "ready" && devices.length === 0 ? (
+            <Card className="p-10">
+              <Card.Header>
+                <Card.Title>{copy.emptyTitle}</Card.Title>
+                <Card.Description>{copy.emptyBody}</Card.Description>
+              </Card.Header>
+            </Card>
+          ) : null}
+
+          {status === "ready" && devices.length > 0 ? (
+            <Table>
+              <Table.ScrollContainer>
+                <Table.Content aria-label={copy.devicesHeading}>
+                  <Table.Header>
+                    <Table.Column isRowHeader>{copy.columnDevice}</Table.Column>
+                    <Table.Column>{copy.columnPlatform}</Table.Column>
+                    <Table.Column>{copy.columnJoined}</Table.Column>
+                    <Table.Column>
+                      {copy.columnUsage}（{copy.usageWindowLabel}）
+                    </Table.Column>
+                    <Table.Column>{copy.columnActions}</Table.Column>
+                  </Table.Header>
+                  <Table.Body>
+                    {devices.map((device) => (
+                      <Table.Row key={device.id}>
+                        <Table.Cell className="font-medium">
+                          {device.device_name}
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Chip size="sm" variant="secondary">
+                            {device.platform}
+                          </Chip>
+                        </Table.Cell>
+                        <Table.Cell>{formatDate(device.created_at)}</Table.Cell>
+                        <Table.Cell className="tabular-nums">
+                          {formatTokens(device.total_tokens ?? 0)}
+                        </Table.Cell>
+                        <Table.Cell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onPress={() => {
+                                setRenaming(device);
+                                setRenameDraft(device.device_name);
+                                setRenameError(null);
+                              }}
+                            >
+                              {copy.renameAction}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="danger-soft"
+                              onPress={() => {
+                                setRevoking(device);
+                              }}
+                            >
+                              {copy.revokeAction}
+                            </Button>
+                          </div>
+                        </Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Content>
+              </Table.ScrollContainer>
+            </Table>
+          ) : null}
+        </section>
+      ) : null}
 
       {/* Rename dialog */}
       <Modal>
@@ -493,17 +531,144 @@ export function SettingsClient() {
   );
 }
 
-// Profile editing: display name + avatar URL persisted to auth user_metadata
-// (email is admin-assigned and read-only). The sidebar reflects updates via
-// the USER_UPDATED auth event.
+// Account section: the avatar card (crop + upload) and the profile card
+// (display name + read-only email) are separate cards. Avatar/profile state
+// lives in Supabase auth user_metadata; the sidebar reflects updates via the
+// USER_UPDATED auth event.
+function AvatarCard() {
+  const { profile } = useProfile();
+  const { uploadAvatar, deleteAvatar } = useAvatarUpload();
+  const [locale] = useLocale();
+  const copy = SETTINGS_COPY[locale];
+  const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const initial = (profile?.displayName || profile?.email || "?")
+    .charAt(0)
+    .toUpperCase();
+
+  function pickImage(file: File) {
+    // Revoke the previous objectURL before replacing it.
+    if (imageSrc) URL.revokeObjectURL(imageSrc);
+    setImageSrc(URL.createObjectURL(file));
+    setCropOpen(true);
+  }
+
+  function closeCrop() {
+    setCropOpen(false);
+    if (imageSrc) URL.revokeObjectURL(imageSrc);
+    setImageSrc(null);
+  }
+
+  async function runUpload(file: File) {
+    setUploading(true);
+
+    const { error } = await uploadAvatar(file);
+
+    setUploading(false);
+    if (error) {
+      toast(`${copy.profileSaveFailed} (${error})`);
+
+      return { error };
+    }
+    toast.success(copy.profileSaved);
+
+    return { error: null };
+  }
+
+  async function runDelete() {
+    setDeleting(true);
+
+    const { error } = await deleteAvatar();
+
+    setDeleting(false);
+    if (error) {
+      toast(`${copy.profileSaveFailed} (${error})`);
+    } else {
+      toast.success(copy.profileSaved);
+    }
+  }
+
+  return (
+    <Card className="p-6">
+      <Card.Header>
+        <Card.Title>{copy.avatarHeading}</Card.Title>
+        <Card.Description>{copy.avatarHint}</Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <div className="flex items-center gap-4">
+          {/* key rebuilds the subtree after delete so the Fallback (initial)
+              renders immediately instead of the removed image */}
+          <Avatar key={profile?.avatarUrl ?? "fallback"} className="size-20">
+            {profile?.avatarUrl ? (
+              <Avatar.Image alt={initial} src={profile.avatarUrl} />
+            ) : null}
+            <Avatar.Fallback className="text-2xl">{initial}</Avatar.Fallback>
+          </Avatar>
+          <div className="flex flex-row gap-2">
+            <input
+              ref={fileInputRef}
+              accept="image/*"
+              className="hidden"
+              type="file"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+
+                // Clear the value so picking the same file twice re-fires.
+                event.target.value = "";
+                if (file) pickImage(file);
+              }}
+            />
+            <Button
+              isDisabled={uploading || deleting}
+              size="sm"
+              variant="outline"
+              onPress={() => fileInputRef.current?.click()}
+            >
+              <Camera aria-hidden="true" className="size-4" />
+              {copy.profileAvatarChange}
+            </Button>
+            {profile?.avatarUrl ? (
+              <Button
+                isDisabled={uploading || deleting}
+                size="sm"
+                variant="danger-soft"
+                onPress={() => void runDelete()}
+              >
+                {deleting ? (
+                  <Spinner color="current" size="sm" />
+                ) : (
+                  <TrashBin aria-hidden="true" className="size-4" />
+                )}
+                {copy.profileAvatarDelete}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </Card.Content>
+      <AvatarCropDialog
+        imageSrc={imageSrc}
+        isOpen={cropOpen}
+        upload={runUpload}
+        onFailed={() => {
+          /* toast already shown by runUpload */
+        }}
+        onOpenChange={(open) => {
+          if (!open) closeCrop();
+        }}
+        onUploaded={closeCrop}
+      />
+    </Card>
+  );
+}
+
 function ProfileCard() {
   const { profile, updateProfile } = useProfile();
-  const { uploadAvatar: runUploadInner, deleteAvatar: runDeleteInner } =
-    useAvatarUpload();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const loadedFor = useRef<string | null>(null);
 
   useEffect(() => {
@@ -514,32 +679,6 @@ function ProfileCard() {
 
   const [locale] = useLocale();
   const copy = SETTINGS_COPY[locale];
-
-  async function runUpload(file: File) {
-    setUploading(true);
-
-    const { error } = await runUploadInner(file);
-
-    setUploading(false);
-    if (error) {
-      toast(`${copy.profileSaveFailed} (${error})`);
-    } else {
-      toast.success(copy.profileSaved);
-    }
-  }
-
-  async function runDelete() {
-    setUploading(true);
-
-    const { error } = await runDeleteInner();
-
-    setUploading(false);
-    if (error) {
-      toast(`${copy.profileSaveFailed} (${error})`);
-    } else {
-      toast.success(copy.profileSaved);
-    }
-  }
 
   async function save() {
     if (saving) return;
@@ -557,62 +696,13 @@ function ProfileCard() {
     }
   }
 
-  const initial = (name.trim() || profile?.email || "?")
-    .charAt(0)
-    .toUpperCase();
-
   return (
     <Card className="p-6">
       <Card.Header>
         <Card.Title>{copy.profileHeading}</Card.Title>
         <Card.Description>{copy.profileHint}</Card.Description>
       </Card.Header>
-      <Card.Content className="flex flex-col gap-4 md:flex-row md:items-start">
-        <div className="flex shrink-0 flex-row items-center gap-3">
-          <Avatar key={profile?.avatarUrl ?? "fallback"} className="size-20">
-            {profile?.avatarUrl ? (
-              <Avatar.Image alt={initial} src={profile.avatarUrl} />
-            ) : null}
-            <Avatar.Fallback className="text-2xl">{initial}</Avatar.Fallback>
-          </Avatar>
-          <div className="flex flex-col gap-2">
-            <input
-              ref={fileInputRef}
-              accept="image/*"
-              className="hidden"
-              type="file"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-
-                if (file) void runUpload(file);
-                event.target.value = "";
-              }}
-            />
-            <Button
-              isDisabled={uploading}
-              size="sm"
-              variant="outline"
-              onPress={() => fileInputRef.current?.click()}
-            >
-              {uploading ? (
-                <Spinner color="current" size="sm" />
-              ) : (
-                <Camera aria-hidden="true" className="size-4" />
-              )}
-              {copy.profileAvatarChange}
-            </Button>
-            {profile?.avatarUrl ? (
-              <Button
-                isDisabled={uploading}
-                size="sm"
-                variant="danger-soft"
-                onPress={() => void runDelete()}
-              >
-                {copy.profileAvatarDelete}
-              </Button>
-            ) : null}
-          </div>
-        </div>
+      <Card.Content>
         <Form
           className="flex w-full flex-col gap-3"
           onSubmit={(event) => {
@@ -638,7 +728,118 @@ function ProfileCard() {
           </TextField>
           <div>
             <Button isPending={saving} onPress={() => void save()}>
-              {copy.profileSave}
+              {({ isPending }) => (
+                <>
+                  {isPending ? <Spinner color="current" size="sm" /> : null}
+                  {copy.profileSave}
+                </>
+              )}
+            </Button>
+          </div>
+        </Form>
+      </Card.Content>
+    </Card>
+  );
+}
+
+// Password card: set or change the login password via auth updateUser —
+// this is how magic-link-only accounts enable password sign-in. Auth traffic
+// goes through the exempted browser Supabase client.
+function PasswordCard() {
+  const [locale] = useLocale();
+  const copy = SETTINGS_COPY[locale];
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    if (password.length < 8) {
+      setError(copy.passwordLengthError);
+
+      return;
+    }
+    if (password !== confirm) {
+      setError(copy.passwordMismatch);
+
+      return;
+    }
+    setBusy(true);
+    setError(null);
+
+    const supabase = authBrowserClient();
+
+    if (!supabase) {
+      setBusy(false);
+      setError(copy.profileSaveFailed);
+
+      return;
+    }
+    const { error: authError } = await supabase.auth.updateUser({ password });
+
+    setBusy(false);
+    if (authError) {
+      setError(authError.message);
+
+      return;
+    }
+    setPassword("");
+    setConfirm("");
+    toast.success(copy.passwordSaved);
+  }
+
+  return (
+    <Card className="p-6">
+      <Card.Header>
+        <Card.Title>{copy.passwordHeading}</Card.Title>
+        <Card.Description>{copy.passwordHint}</Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <Form
+          className="flex w-full flex-col gap-3"
+          onSubmit={(event) => {
+            void save(event);
+          }}
+        >
+          <TextField
+            isRequired
+            className="flex flex-col gap-1.5"
+            minLength={8}
+            name="password"
+            type="password"
+            value={password}
+            onChange={setPassword}
+          >
+            <Label>{copy.passwordNewLabel}</Label>
+            <Input
+              autoComplete="new-password"
+              placeholder={copy.passwordNewPlaceholder}
+              variant="secondary"
+            />
+          </TextField>
+          <TextField
+            isRequired
+            className="flex flex-col gap-1.5"
+            minLength={8}
+            name="password_confirm"
+            type="password"
+            value={confirm}
+            onChange={setConfirm}
+          >
+            <Label>{copy.passwordConfirmLabel}</Label>
+            <Input autoComplete="new-password" variant="secondary" />
+          </TextField>
+          {error ? <ErrorMessage role="alert">{error}</ErrorMessage> : null}
+          <div>
+            <Button isPending={busy} type="submit">
+              {({ isPending }) => (
+                <>
+                  {isPending ? <Spinner color="current" size="sm" /> : null}
+                  {copy.passwordSave}
+                </>
+              )}
             </Button>
           </div>
         </Form>
