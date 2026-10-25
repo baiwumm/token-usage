@@ -96,9 +96,10 @@ function mapSessionRow(row) {
     tokens.output_tokens;
   if (tokens.total_tokens !== identity) return null;
 
-  // Per-model rows follow the same identity rule; any bad model row (or a
-  // sum mismatch with the session total) drops the whole models array — the
-  // contract allows omitting it and prices the session as 0.
+  // Per-model rows follow the same identity rule. The contract caps models
+  // at 32 AND requires sum(models.total_tokens) === session total, so a
+  // session with more than 32 models cannot carry a valid array at all —
+  // omit it (the contract allows missing models; the session prices as 0).
   let models = [];
   const usageRows = Array.isArray(row.model_usage) ? row.model_usage : [];
   let modelsValid = usageRows.length > 0 && usageRows.length <= 32;
@@ -130,10 +131,6 @@ function mapSessionRow(row) {
     if (modelsValid && modelsSum !== tokens.total_tokens) modelsValid = false;
   }
   if (!modelsValid) models = [];
-  if (models.length > 32) {
-    models.sort((a, b) => b.total_tokens - a.total_tokens);
-    models = models.slice(0, 32);
-  }
 
   return {
     session_id: String(row.session_id).trim(),
@@ -231,6 +228,7 @@ async function uploadSessions({
   const watermarks = loadWatermarks(watermarkPath);
   const pending = selectSessionsForUpload(sessions, watermarks);
   const size = Math.min(Math.max(1, batchSize), MAX_SESSIONS_PER_BATCH);
+  const uploadId = crypto.randomUUID();
   let upserted = 0;
   let skippedServer = 0;
   let batches = 0;
@@ -250,7 +248,7 @@ async function uploadSessions({
           ...(anonKey ? { apikey: anonKey } : {}),
         },
         body: JSON.stringify({
-          upload_id: crypto.randomUUID(),
+          upload_id: uploadId,
           sessions: batch,
         }),
       },
