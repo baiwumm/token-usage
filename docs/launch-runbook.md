@@ -34,6 +34,24 @@
 - 仪表盘数值与 `queue.jsonl` last-wins 对账一致；
 - 浏览器网络面板零 Supabase 直连请求。
 
+## 新 CLI 迁移（M-CLI，tokenusage-cli）
+
+新版采集器 `packages/cli`（fork 上游 CLI，命名/契约已对齐本仓库）。与旧 CLI 的差异：
+数据目录 `~/.tokenusage`（旧为 `~/.tokentracker`）、命令名 `tokenusage`、契约路径
+`token-usage-*`（旧 `tokentracker-*` 别名仅服务端兼容保留）、新增会话元数据上报
+（`/sessions` 页面的数据源）。
+
+逐台迁移（每台完成后进下一台；属于 G1 闸门，操作者放行）：
+
+1. `npm i -g tokenusage-cli`（发布后）或从仓库 `packages/cli` 安装；
+2. `tokenusage device-login` → 浏览器登录新站点 → `/device` 批准 `user_code`；
+3. `tokenusage sync --drain` → 仪表盘/Sessions 出现该设备数据；
+4. 对账：`tokenusage sessions --format json` 汇总与 /sessions 页一致（token、会话数），
+   无标题/绝对路径等敏感字段；
+5. 对账一致后撤旧计划任务/停旧 tokentracker CLI（该机 G1 完成）。
+
+回滚：停新 CLI、恢复旧计划任务即可——两套数据目录互不干扰，旧 CLI 的队列与偏移原样保留。
+
 ## 回滚
 
 任何一台采集机迁移后异常：把该机 base URL 改回 `https://tokentracker.baiwumm.com/api`
