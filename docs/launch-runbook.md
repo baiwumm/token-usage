@@ -52,6 +52,37 @@
 
 回滚：停新 CLI、恢复旧计划任务即可——两套数据目录互不干扰，旧 CLI 的队列与偏移原样保留。
 
+### 第二台机器（公司机）迁移 + 历史补齐（2026-10-26 待执行）
+
+本机（DESKTOP）已完成迁移与历史重放；公司机（旧库 device `a2527d9b`，约 13.67B）步骤：
+
+0. **带两样东西去公司**：
+   - `Desktop/company-legacy-hourly.json`（历史桶行导出，已按最终格式打好包）；
+   - tokenusage-cli 安装包：`packages/cli` 下 `npm pack` 生成的 `tokenusage-cli-0.1.0.tgz`
+     （npm 尚未发布，公司机装这个 tarball），以及本仓库的
+     `scripts/replay-legacy-history.mjs`。
+1. 公司机安装：`npm i -g tokenusage-cli-0.1.0.tgz`；
+2. 配对：`tokenusage device-login` → 浏览器登录 `https://token-usage.baiwumm.com/device`
+   批准 user_code（公司机成为第二台设备）；
+3. 首次采集：`tokenusage sync --drain`（上传公司机现存本地数据）；
+4. 历史补齐：在公司机执行（任意目录）：
+   ```bash
+   node replay-legacy-history.mjs company-legacy-hourly.json
+   ```
+   （读公司机刚配对好的设备令牌，把 13.67B 历史以该公司设备的归属重放；幂等，重跑安全。）
+5. 每小时采集（管理员 PowerShell，node 与全局包路径按公司机实际情况替换）：
+   ```powershell
+   schtasks /create /tn TokenUsageSync /tr "cmd /c node.exe <npm全局prefix>
+ode_modules	okenusage-cliin	okenusage.js sync >> %USERPROFILE%\.tokenusage\logs\sync.log 2>&1" /sc hourly /mo 1 /f
+   ```
+6. 停公司机旧 CLI：移除其 Claude / Codex 的 tokentracker hook（本机的形态是
+   `~/.claude/settings.json` 里的 notify 命令；移除前备份）；
+7. 验收：`https://token-usage.baiwumm.com` 设备列表 2 台、总量 ≈ 20.86B
+   （本机 7.21B + 公司机 13.67B）。
+
+迁移完成后旧库（tokentracker.baiwumm.com + Supabase）不再有增量，按 §7 走 G2（删旧表）/
+G3（旧仓库处置）闸门前保持只读即可。
+
 ## 回滚
 
 任何一台采集机迁移后异常：把该机 base URL 改回 `https://tokentracker.baiwumm.com/api`
