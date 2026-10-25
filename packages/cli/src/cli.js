@@ -43,6 +43,10 @@ async function run(argv) {
       await cmdInit(rest);
       return;
     case "sync":
+      if (rest.includes("--watch")) {
+        await watchSync(rest);
+        return;
+      }
       await cmdSync(rest);
       return;
     case "status":
@@ -65,6 +69,34 @@ async function run(argv) {
       return;
     default:
       throw new Error(`Unknown command: ${command}`);
+  }
+}
+
+// --watch: keep the process alive and re-run sync on an interval. Each pass
+// reuses the session-analytics sidecar cache and the upload watermarks, so a
+// pass with nothing new is cheap (a directory signature stat + a no-op).
+async function watchSync(rest) {
+  const args = rest.filter((arg) => arg !== "--watch");
+  const intervalIndex = args.indexOf("--interval");
+  let intervalMs = 15 * 60_000;
+  if (intervalIndex >= 0) {
+    const value = Number(args[intervalIndex + 1]);
+    if (Number.isFinite(value) && value >= 60_000) {
+      intervalMs = value;
+      args.splice(intervalIndex, 2);
+    }
+  }
+
+  process.stdout.write(`tokenusage sync --watch: every ${Math.round(intervalMs / 60_000)} min (Ctrl+C to stop)\n`);
+  for (;;) {
+    try {
+      await cmdSync(args);
+    } catch (error) {
+      // A failed pass (offline, backend 5xx) must not kill the watcher; the
+      // queue and watermarks retain everything for the next pass.
+      process.stderr.write(`sync pass failed: ${error?.message || error}\n`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
 }
 

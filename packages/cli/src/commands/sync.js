@@ -3726,6 +3726,42 @@ async function cmdSync(argv, context = {}) {
       }
     }
 
+    // Session metadata upload (docs/cli-contract.md section 2.4 `sessions`):
+    // strictly-newer-than-watermark increments, batches of <=200, best-effort —
+    // an hourly-bucket sync must not be reported as failed by a sessions error.
+    if (canUpload() && runtime.deviceToken && runtime.baseUrl && !opts.noSessions &&
+        (!isBackgroundLightweightSync || opts.publishAccount)) {
+      try {
+        const analytics = await buildSessionAnalytics({ force: false, home });
+        const watermarkPath = path.join(trackerDir, "session-upload-watermarks.json");
+        const result = await uploadSessions({
+          baseUrl: runtime.baseUrl,
+          anonKey: runtime.anonKey,
+          deviceToken: runtime.deviceToken,
+          sessions: analytics,
+          watermarkPath,
+          canUpload,
+        });
+        if (!opts.auto && result.pending > 0) {
+          const sessionSuffix =
+            result.upserted || result.skippedServer
+              ? ` (upserted ${result.upserted}, skipped ${result.skippedServer})`
+              : "";
+          process.stdout.write(
+            `Sessions: ${result.uploaded}/${result.pending} uploaded${sessionSuffix}\n`,
+          );
+        }
+      } catch (sessionError) {
+        if (!opts.auto) {
+          const detail = sessionError?.message || String(sessionError);
+          process.stderr.write(
+            `Session upload error (hourly buckets are unaffected): ${detail}\n`,
+          );
+        }
+        if (opts.drain) throw sessionError;
+      }
+    }
+
     const afterState = (await readJson(queueStatePath)) || { offset: 0 };
     const queueSize = await safeStatSize(queuePath);
     // Only the main queue is uploaded by drainQueueToCloud. project.queue.jsonl
@@ -3802,10 +3838,12 @@ function parseArgs(argv) {
     publishAccount: false,
     allLocalSources: false,
     repairGrok: false,
+    noSessions: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--auto") out.auto = true;
+    else if (a === "--no-sessions") out.noSessions = true;
     else if (a === "--from-notify") out.fromNotify = true;
     else if (a === "--from-retry") out.fromRetry = true;
     else if (a === "--from-openclaw") out.fromOpenclaw = true;
@@ -4394,6 +4432,8 @@ const AUTO_RETRY_FILENAME = "auto.retry.json";
 const AUTO_RETRY_MAX_DELAY_MS = 2 * 60 * 60 * 1000;
 
 const INGEST_SLUG = "token-usage-ingest";
+const { buildSessionAnalytics } = require("../lib/session-analytics");
+const { uploadSessions } = require("../lib/session-upload");
 const MAX_INGEST_BUCKETS = 500;
 
 async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, queueStatePath, maxBatches = 5, batchSize = 200, maxDurationMs = UPLOAD_BUDGET_MS, canUpload = () => true }) {
