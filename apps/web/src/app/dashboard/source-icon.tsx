@@ -129,7 +129,7 @@ export function SourceIcon({
   return (
     <span
       aria-hidden="true"
-      className="inline-flex shrink-0 items-center justify-center rounded-[4px] font-semibold text-white select-none"
+      className="inline-flex shrink-0 items-center justify-center rounded-lg font-semibold text-white select-none"
       style={{
         background: colorFor(label),
         fontSize: Math.round(size * 0.62),

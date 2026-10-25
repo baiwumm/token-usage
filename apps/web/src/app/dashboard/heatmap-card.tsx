@@ -625,7 +625,7 @@ export function HeatmapCard({
                   <span
                     key={color}
                     aria-hidden="true"
-                    className="size-3 rounded-[3px]"
+                    className="size-3 rounded-md"
                     style={{ background: color }}
                   />
                 ))}
