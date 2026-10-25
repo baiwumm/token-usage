@@ -29,10 +29,10 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
   const copy = DASHBOARD_COPY[locale];
   const { formatDate } = useFormat();
   const [busy, setBusy] = useState(false);
-  const dataUrl = useMemo(
-    () => (open && input ? drawShareCard(input) : null),
-    [input, open],
-  );
+  // Derived from `input` only — keying it on `open` too would null the image
+  // the moment close starts, flashing a spinner through the exit animation.
+  // Redraws happen when the dashboard refreshes the input (rare, and cheap).
+  const dataUrl = useMemo(() => (input ? drawShareCard(input) : null), [input]);
 
   return (
     <Modal>
