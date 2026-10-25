@@ -371,21 +371,6 @@ export function HeatmapCard({
     [showFor],
   );
 
-  const toggleSource = (source: string) => {
-    setSelectedSources((previous) => {
-      const base = previous ?? new Set(sourceTotals.map(([source]) => source));
-      const next = new Set(base);
-
-      if (next.has(source)) {
-        next.delete(source);
-      } else {
-        next.add(source);
-      }
-
-      return next;
-    });
-  };
-
   const filteredTotal = useMemo(
     () => visible.flat().reduce((sum, cell) => sum + (cell?.total ?? 0), 0),
     [visible],

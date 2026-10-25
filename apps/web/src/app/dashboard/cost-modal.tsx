@@ -15,6 +15,7 @@ import { Button, Chip, Modal, Tabs, Typography } from "@heroui/react";
 import { useMemo } from "react";
 
 import { CostTrendChart } from "./charts";
+import { SourceIcon } from "./source-icon";
 
 import { FlowNumber } from "@/components/flow-number";
 import { useFormat } from "@/lib/format/format";
@@ -189,8 +190,11 @@ export function CostAnalysisModal({
                           className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-baseline gap-3 border-b py-2 text-sm last:border-b-0"
                         >
                           <span className="flex min-w-0 flex-col">
-                            <span className="truncate font-medium">
-                              {entry.model}
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <SourceIcon label={entry.model} size={14} />
+                              <span className="truncate font-medium">
+                                {entry.model}
+                              </span>
                             </span>
                             <span className="text-muted truncate text-xs">
                               {entry.sources.join(", ")}
@@ -232,8 +236,11 @@ export function CostAnalysisModal({
                           key={entry.source}
                           className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-baseline gap-3 border-b py-2 text-sm last:border-b-0"
                         >
-                          <span className="truncate font-medium">
-                            {entry.source}
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <SourceIcon label={entry.source} size={14} />
+                            <span className="truncate font-medium">
+                              {entry.source}
+                            </span>
                           </span>
                           <span className="tabular-nums">
                             {formatTokens(entry.totals.total_tokens)}

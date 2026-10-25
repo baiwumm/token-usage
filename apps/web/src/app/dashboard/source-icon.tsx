@@ -64,6 +64,10 @@ const SOURCE_LOGOS: Record<string, string> = {
  * back to the tile rather than showing a wrong brand.
  */
 const MODEL_PREFIX_LOGOS: Array<[prefix: string, file: string]> = [
+  // Zhipu GLM is the ZCode mark (operator call, 2026-10-25).
+  ["glm", "zcode.svg"],
+  ["z-ai", "zcode.svg"],
+  ["zai", "zcode.svg"],
   ["deepseek", "deepseek.svg"],
   ["kimi", "kimi.svg"],
   ["gemini", "gemini.svg"],

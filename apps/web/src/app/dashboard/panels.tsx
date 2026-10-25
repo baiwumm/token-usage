@@ -18,6 +18,7 @@ import {
   ChartColumn,
   CircleInfo,
   Clock,
+  Layers,
   ListCheck,
   ListUl,
   Wallet,
@@ -143,9 +144,9 @@ export function TotalTokensHero({
             <div className="grid w-full grid-cols-2 gap-2 pt-2 sm:grid-cols-4 lg:grid-cols-6">
               <div className="border-border/60 flex flex-col gap-1 rounded-xl border p-3">
                 <span className="text-muted flex items-center gap-1.5 text-xs font-medium">
-                  <span
+                  <Layers
                     aria-hidden="true"
-                    className="bg-foreground/70 size-2.5 rounded-full"
+                    className="text-muted size-3.5 shrink-0"
                   />
                   {copy.cards.heroAll}
                 </span>
@@ -450,7 +451,7 @@ export function SourcePanel({
               }))}
             />
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              {sources.map((entry, index) => (
+              {sources.map((entry) => (
                 <div
                   key={entry.source}
                   className="flex items-center justify-between gap-2 text-sm"

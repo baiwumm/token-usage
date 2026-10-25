@@ -491,6 +491,10 @@ export function DashboardClient() {
         tokens: point.total_tokens,
         cost: point.total_cost_usd,
         conversations: point.conversation_count,
+        input: point.input_tokens,
+        cached: point.cached_input_tokens,
+        cacheCreation: point.cache_creation_input_tokens,
+        output: point.output_tokens,
       }));
     }
 
@@ -500,18 +504,12 @@ export function DashboardClient() {
       tokens: point.total_tokens,
       cost: point.total_cost_usd,
       conversations: point.conversation_count,
+      input: point.input_tokens,
+      cached: point.cached_input_tokens,
+      cacheCreation: point.cache_creation_input_tokens,
+      output: point.output_tokens,
     }));
   }, [daily, formatMonth, monthly, trendMode]);
-
-  const costByDay = useMemo<Record<string, number>>(() => {
-    const map: Record<string, number> = {};
-
-    for (const point of daily) {
-      if (point.day) map[point.day] = point.total_cost_usd;
-    }
-
-    return map;
-  }, [daily]);
 
   const detailRows = useMemo<DetailRow[]>(() => {
     if (detailView === "hourly") {
@@ -519,6 +517,10 @@ export function DashboardClient() {
         id: point.hour ?? "",
         time: (point.hour ?? "").slice(11, 16),
         tokens: point.total_tokens,
+        input: point.input_tokens,
+        cached: point.cached_input_tokens,
+        cacheCreation: point.cache_creation_input_tokens,
+        output: point.output_tokens,
         billable: point.billable_total_tokens,
         cost: point.total_cost_usd,
         conversations: point.conversation_count,
@@ -530,6 +532,10 @@ export function DashboardClient() {
         id: point.month,
         time: formatMonth(point.month),
         tokens: point.total_tokens,
+        input: point.input_tokens,
+        cached: point.cached_input_tokens,
+        cacheCreation: point.cache_creation_input_tokens,
+        output: point.output_tokens,
         billable: point.billable_total_tokens,
         cost: point.total_cost_usd,
         conversations: point.conversation_count,
@@ -543,6 +549,10 @@ export function DashboardClient() {
         ? formatDate(`${point.day}T12:00:00Z`, { dateStyle: "medium" })
         : "—",
       tokens: point.total_tokens,
+      input: point.input_tokens,
+      cached: point.cached_input_tokens,
+      cacheCreation: point.cache_creation_input_tokens,
+      output: point.output_tokens,
       billable: point.billable_total_tokens,
       cost: point.total_cost_usd,
       conversations: point.conversation_count,
@@ -963,6 +973,10 @@ export function DashboardClient() {
                       tokens: copy.charts.tokens,
                       cost: copy.charts.cost,
                       conversations: copy.cards.conversations,
+                      input: copy.charts.inputTokens,
+                      cached: copy.charts.cachedTokens,
+                      cacheCreation: copy.charts.cacheCreationTokens,
+                      output: copy.charts.outputTokens,
                     }}
                     metric={trendMetric}
                     onSelect={(key) => {

@@ -21,6 +21,10 @@ export interface DetailRow {
   id: string;
   time: string;
   tokens: number;
+  input: number;
+  cached: number;
+  cacheCreation: number;
+  output: number;
   billable: number;
   cost: number;
   conversations: number;
@@ -161,6 +165,18 @@ export function DetailTable({
                   <Table.Cell className="font-medium">{row.time}</Table.Cell>
                   <Table.Cell className="tabular-nums">
                     {formatTokensExact(row.tokens)}
+                  </Table.Cell>
+                  <Table.Cell className="text-foreground/70 tabular-nums">
+                    {formatTokensExact(row.input)}
+                  </Table.Cell>
+                  <Table.Cell className="text-foreground/70 tabular-nums">
+                    {formatTokensExact(row.cached)}
+                  </Table.Cell>
+                  <Table.Cell className="text-foreground/70 tabular-nums">
+                    {formatTokensExact(row.cacheCreation)}
+                  </Table.Cell>
+                  <Table.Cell className="text-foreground/70 tabular-nums">
+                    {formatTokensExact(row.output)}
                   </Table.Cell>
                   <Table.Cell className="tabular-nums">
                     {formatTokensExact(row.billable)}

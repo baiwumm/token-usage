@@ -39,6 +39,10 @@ export interface DashboardCopy {
     monthly: string;
     tokens: string;
     cost: string;
+    inputTokens: string;
+    cachedTokens: string;
+    cacheCreationTokens: string;
+    outputTokens: string;
     hourlyTitle: string;
     hourlyEmpty: string;
     heatmapTitle: string;
@@ -89,6 +93,10 @@ export interface DashboardCopy {
     dayLabel: string;
     columnTime: string;
     columnTokens: string;
+    columnInput: string;
+    columnCached: string;
+    columnCacheCreation: string;
+    columnOutput: string;
     columnBillable: string;
     columnCost: string;
     columnConversations: string;
@@ -182,6 +190,10 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       monthly: "按月",
       tokens: "Token",
       cost: "成本",
+      inputTokens: "输入",
+      cachedTokens: "缓存读",
+      cacheCreationTokens: "缓存写",
+      outputTokens: "输出",
       hourlyTitle: "当日分时",
       hourlyEmpty: "选择日期查看分时用量。",
       heatmapTitle: "活跃热力图",
@@ -232,6 +244,10 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       dayLabel: "日期",
       columnTime: "时间",
       columnTokens: "Token",
+      columnInput: "输入",
+      columnCached: "缓存读",
+      columnCacheCreation: "缓存写",
+      columnOutput: "输出",
       columnBillable: "计费 Token",
       columnCost: "成本",
       columnConversations: "会话",
@@ -325,6 +341,10 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       monthly: "Monthly",
       tokens: "Tokens",
       cost: "Cost",
+      inputTokens: "Input",
+      cachedTokens: "Cache read",
+      cacheCreationTokens: "Cache write",
+      outputTokens: "Output",
       hourlyTitle: "Intraday",
       hourlyEmpty: "Pick a date to see hourly usage.",
       heatmapTitle: "Activity heatmap",
@@ -376,6 +396,10 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       dayLabel: "Date",
       columnTime: "Time",
       columnTokens: "Tokens",
+      columnInput: "Input",
+      columnCached: "Cache read",
+      columnCacheCreation: "Cache write",
+      columnOutput: "Output",
       columnBillable: "Billable",
       columnCost: "Cost",
       columnConversations: "Conversations",

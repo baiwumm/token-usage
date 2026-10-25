@@ -441,11 +441,21 @@ export function WrappedClient() {
                   tokens: point.total_tokens,
                   cost: point.total_cost_usd,
                   conversations: point.conversation_count,
+                  // Wrapped monthly rows carry no per-type split; the stacked
+                  // metric renders a single-series look via zero fills.
+                  input: 0,
+                  cached: 0,
+                  cacheCreation: 0,
+                  output: 0,
                 }))}
                 emptyLabel={copy.monthlyTitle}
                 labels={{
                   tokens: copy.cards.totalTokens,
                   cost: copy.cards.cost,
+                  input: copy.cards.totalTokens,
+                  cached: copy.cards.totalTokens,
+                  cacheCreation: copy.cards.totalTokens,
+                  output: copy.cards.totalTokens,
                   conversations: copy.cards.conversations,
                 }}
                 metric="tokens"

@@ -10,6 +10,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -24,7 +25,27 @@ export interface TrendPoint {
   tokens: number;
   cost: number;
   conversations: number;
+  // Token composition (stacked tokens metric). total = the four below;
+  // reasoning is a sub-view of output and is not stacked separately.
+  input: number;
+  cached: number;
+  cacheCreation: number;
+  output: number;
 }
+
+/** Stacked composition series for the tokens metric (chart tokens view). */
+const COMPOSITION_KEYS = [
+  "input",
+  "cached",
+  "cacheCreation",
+  "output",
+] as const;
+const COMPOSITION_COLORS = {
+  input: "var(--color-chart-1)",
+  cached: "var(--color-chart-3)",
+  cacheCreation: "var(--color-chart-4)",
+  output: "var(--color-chart-5)",
+} as const;
 
 export type TrendMetric = "tokens" | "cost";
 
@@ -78,7 +99,15 @@ export function TrendChart({
   metric: TrendMetric;
   ariaLabel: string;
   emptyLabel: string;
-  labels: { tokens: string; cost: string; conversations: string };
+  labels: {
+    tokens: string;
+    cost: string;
+    conversations: string;
+    input: string;
+    cached: string;
+    cacheCreation: string;
+    output: string;
+  };
   onSelect?: (key: string) => void;
 }) {
   const { formatTokens, formatTokensExact, formatCost, formatNumber } =
@@ -132,6 +161,22 @@ export function TrendChart({
                       label: labels.tokens,
                       value: formatTokensExact(point.tokens),
                     },
+                    {
+                      label: labels.input,
+                      value: formatTokensExact(point.input),
+                    },
+                    {
+                      label: labels.cached,
+                      value: formatTokensExact(point.cached),
+                    },
+                    {
+                      label: labels.cacheCreation,
+                      value: formatTokensExact(point.cacheCreation),
+                    },
+                    {
+                      label: labels.output,
+                      value: formatTokensExact(point.output),
+                    },
                     { label: labels.cost, value: formatCost(point.cost) },
                     {
                       label: labels.conversations,
@@ -143,12 +188,46 @@ export function TrendChart({
             )}
             cursor={{ opacity: 0.08 }}
           />
-          <Bar
-            cursor={onSelect ? "pointer" : undefined}
-            dataKey={metric}
-            fill="var(--color-chart-3)"
-            radius={[3, 3, 0, 0]}
-          />
+          {metric === "tokens" ? (
+            <Legend
+              formatter={(value) => {
+                const key = String(value) as (typeof COMPOSITION_KEYS)[number];
+
+                return (
+                  <span
+                    style={{ color: COMPOSITION_COLORS[key], fontSize: 11 }}
+                  >
+                    {labels[key]}
+                  </span>
+                );
+              }}
+              iconSize={8}
+              iconType="circle"
+            />
+          ) : null}
+          {metric === "tokens" ? (
+            COMPOSITION_KEYS.map((key, index) => (
+              <Bar
+                key={key}
+                cursor={onSelect ? "pointer" : undefined}
+                dataKey={key}
+                fill={COMPOSITION_COLORS[key]}
+                radius={
+                  index === COMPOSITION_KEYS.length - 1
+                    ? [3, 3, 0, 0]
+                    : undefined
+                }
+                stackId="composition"
+              />
+            ))
+          ) : (
+            <Bar
+              cursor={onSelect ? "pointer" : undefined}
+              dataKey={metric}
+              fill="var(--color-chart-3)"
+              radius={[3, 3, 0, 0]}
+            />
+          )}
         </BarChart>
       </ResponsiveContainer>
     </div>
