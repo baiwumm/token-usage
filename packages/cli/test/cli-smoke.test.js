@@ -35,13 +35,18 @@ test("device-flow authorize request matches the contract shape", async () => {
   const { functionUrlFor } = require("../src/lib/function-url");
 
   assert.equal(
-    functionUrlFor("https://token-usage-delta.vercel.app", "token-usage-device-flow-authorize"),
-    "https://token-usage-delta.vercel.app/api/functions/token-usage-device-flow-authorize",
+    functionUrlFor("https://token-usage.baiwumm.com", "token-usage-device-flow-authorize"),
+    "https://token-usage.baiwumm.com/api/functions/token-usage-device-flow-authorize",
   );
 
   const { resolveRuntimeConfig } = require("../src/lib/runtime-config");
   const runtime = resolveRuntimeConfig({});
-  assert.equal(runtime.baseUrl, "https://token-usage-delta.vercel.app");
+  assert.equal(runtime.baseUrl, "https://token-usage.baiwumm.com");
+  // Pre-GA deployments fall back to the production domain.
+  assert.equal(
+    resolveRuntimeConfig({ config: { baseUrl: "https://token-usage-delta.vercel.app" } }).baseUrl,
+    "https://token-usage.baiwumm.com",
+  );
   assert.ok(runtime.anonKey && runtime.anonKey.startsWith("sb_publishable_"));
   assert.equal(runtime.configurationError, null);
   assert.ok(captured.length === 0);

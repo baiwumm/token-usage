@@ -1,6 +1,6 @@
 // token-usage production deployment (docs/m-cli-task.md, operator-approved
 // 2026-10-25). Override per invocation with --base-url or TOKENUSAGE_BASE_URL.
-const DEFAULT_BASE_URL = "https://token-usage-delta.vercel.app";
+const DEFAULT_BASE_URL = "https://token-usage.baiwumm.com";
 // Retired hosts from the upstream (InsForge) era; a persisted config pointing
 // at one of these must fall back to the current default instead of uploading
 // into a dead backend.
@@ -8,6 +8,9 @@ const LEGACY_INSFORGE_HOSTS = new Set([
   "b46ug8xu.us-east.insforge.app",
   "srctyff5.us-east.insforge.app",
 ]);
+// The pre-GA Vercel deployment; installs pinned to it during acceptance move
+// to the production domain like every other host change.
+const LEGACY_TOKEN_USAGE_HOSTS = new Set(["token-usage-delta.vercel.app"]);
 const DEFAULT_DASHBOARD_URL = DEFAULT_BASE_URL;
 const DEFAULT_HTTP_TIMEOUT_MS = 20_000;
 // Public InsForge anon key (JWT, role=anon). Mirrors dashboard/src/lib/insforge-config.ts
@@ -195,6 +198,7 @@ function normalizePersistedBaseUrl(value) {
     const hostname = new URL(normalized).hostname.toLowerCase();
     if (hostname === "example.invalid") return undefined;
     if (LEGACY_INSFORGE_HOSTS.has(hostname)) return undefined;
+    if (LEGACY_TOKEN_USAGE_HOSTS.has(hostname)) return undefined;
   } catch {
     // Preserve the existing resolver behavior for arbitrary custom values.
   }
