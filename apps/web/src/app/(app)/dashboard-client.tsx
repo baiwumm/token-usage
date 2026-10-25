@@ -492,8 +492,7 @@ export function DashboardClient() {
         cost: point.total_cost_usd,
         conversations: point.conversation_count,
         input: point.input_tokens,
-        cached: point.cached_input_tokens,
-        cacheCreation: point.cache_creation_input_tokens,
+        cached: point.cached_input_tokens + point.cache_creation_input_tokens,
         output: point.output_tokens,
       }));
     }
@@ -505,8 +504,7 @@ export function DashboardClient() {
       cost: point.total_cost_usd,
       conversations: point.conversation_count,
       input: point.input_tokens,
-      cached: point.cached_input_tokens,
-      cacheCreation: point.cache_creation_input_tokens,
+      cached: point.cached_input_tokens + point.cache_creation_input_tokens,
       output: point.output_tokens,
     }));
   }, [daily, formatMonth, monthly, trendMode]);
@@ -518,8 +516,7 @@ export function DashboardClient() {
         time: (point.hour ?? "").slice(11, 16),
         tokens: point.total_tokens,
         input: point.input_tokens,
-        cached: point.cached_input_tokens,
-        cacheCreation: point.cache_creation_input_tokens,
+        cached: point.cached_input_tokens + point.cache_creation_input_tokens,
         output: point.output_tokens,
         billable: point.billable_total_tokens,
         cost: point.total_cost_usd,
@@ -533,8 +530,7 @@ export function DashboardClient() {
         time: formatMonth(point.month),
         tokens: point.total_tokens,
         input: point.input_tokens,
-        cached: point.cached_input_tokens,
-        cacheCreation: point.cache_creation_input_tokens,
+        cached: point.cached_input_tokens + point.cache_creation_input_tokens,
         output: point.output_tokens,
         billable: point.billable_total_tokens,
         cost: point.total_cost_usd,
@@ -975,7 +971,6 @@ export function DashboardClient() {
                       conversations: copy.cards.conversations,
                       input: copy.charts.inputTokens,
                       cached: copy.charts.cachedTokens,
-                      cacheCreation: copy.charts.cacheCreationTokens,
                       output: copy.charts.outputTokens,
                     }}
                     metric={trendMetric}

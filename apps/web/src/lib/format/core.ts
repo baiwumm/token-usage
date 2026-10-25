@@ -284,17 +284,17 @@ export function formatTokens(
     : compactKmb(parsed, locale);
 }
 
-/** Always-full integer (detail tables), grouped per the preference. */
+/**
+ * Token count for detail surfaces (tables, tooltips, modals). Historically
+ * always full digits; now follows the Token 显示 preference like everywhere
+ * else — compact renders K/M/B or 万/亿, full keeps every digit grouped.
+ */
 export function formatTokensExact(
   value: unknown,
   preferences: FormatPreferences,
   locale: Locale,
 ): string {
-  const parsed = numeric(value);
-
-  return parsed == null
-    ? "—"
-    : groupDigits(parsed, locale, preferences.tokenGrouping);
+  return formatTokens(value, preferences, locale);
 }
 
 export function formatNumber(

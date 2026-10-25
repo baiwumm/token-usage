@@ -454,7 +454,6 @@ export function WrappedClient() {
                   cost: copy.cards.cost,
                   input: copy.cards.totalTokens,
                   cached: copy.cards.totalTokens,
-                  cacheCreation: copy.cards.totalTokens,
                   output: copy.cards.totalTokens,
                   conversations: copy.cards.conversations,
                 }}

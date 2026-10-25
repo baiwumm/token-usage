@@ -25,26 +25,20 @@ export interface TrendPoint {
   tokens: number;
   cost: number;
   conversations: number;
-  // Token composition (stacked tokens metric). total = the four below;
-  // reasoning is a sub-view of output and is not stacked separately.
+  // Token composition (stacked tokens metric): total = input + cached
+  // (cache read + write merged) + output. Reasoning is a sub-view of output
+  // and is not stacked separately.
   input: number;
   cached: number;
-  cacheCreation: number;
   output: number;
 }
 
 /** Stacked composition series for the tokens metric (chart tokens view). */
-const COMPOSITION_KEYS = [
-  "input",
-  "cached",
-  "cacheCreation",
-  "output",
-] as const;
+const COMPOSITION_KEYS = ["input", "cached", "output"] as const;
 const COMPOSITION_COLORS = {
   input: "var(--color-chart-1)",
   cached: "var(--color-chart-3)",
-  cacheCreation: "var(--color-chart-4)",
-  output: "var(--color-chart-5)",
+  output: "var(--color-chart-2)",
 } as const;
 
 export type TrendMetric = "tokens" | "cost";
@@ -105,7 +99,6 @@ export function TrendChart({
     conversations: string;
     input: string;
     cached: string;
-    cacheCreation: string;
     output: string;
   };
   onSelect?: (key: string) => void;
@@ -168,10 +161,6 @@ export function TrendChart({
                     {
                       label: labels.cached,
                       value: formatTokensExact(point.cached),
-                    },
-                    {
-                      label: labels.cacheCreation,
-                      value: formatTokensExact(point.cacheCreation),
                     },
                     {
                       label: labels.output,

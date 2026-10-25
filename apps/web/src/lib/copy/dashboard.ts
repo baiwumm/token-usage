@@ -41,7 +41,6 @@ export interface DashboardCopy {
     cost: string;
     inputTokens: string;
     cachedTokens: string;
-    cacheCreationTokens: string;
     outputTokens: string;
     hourlyTitle: string;
     hourlyEmpty: string;
@@ -95,7 +94,6 @@ export interface DashboardCopy {
     columnTokens: string;
     columnInput: string;
     columnCached: string;
-    columnCacheCreation: string;
     columnOutput: string;
     columnBillable: string;
     columnCost: string;
@@ -191,8 +189,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       tokens: "Token",
       cost: "成本",
       inputTokens: "输入",
-      cachedTokens: "缓存读",
-      cacheCreationTokens: "缓存写",
+      cachedTokens: "缓存",
       outputTokens: "输出",
       hourlyTitle: "当日分时",
       hourlyEmpty: "选择日期查看分时用量。",
@@ -245,8 +242,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnTime: "时间",
       columnTokens: "Token",
       columnInput: "输入",
-      columnCached: "缓存读",
-      columnCacheCreation: "缓存写",
+      columnCached: "缓存",
       columnOutput: "输出",
       columnBillable: "计费 Token",
       columnCost: "成本",
@@ -342,8 +338,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       tokens: "Tokens",
       cost: "Cost",
       inputTokens: "Input",
-      cachedTokens: "Cache read",
-      cacheCreationTokens: "Cache write",
+      cachedTokens: "Cache",
       outputTokens: "Output",
       hourlyTitle: "Intraday",
       hourlyEmpty: "Pick a date to see hourly usage.",
@@ -397,8 +392,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnTime: "Time",
       columnTokens: "Tokens",
       columnInput: "Input",
-      columnCached: "Cache read",
-      columnCacheCreation: "Cache write",
+      columnCached: "Cache",
       columnOutput: "Output",
       columnBillable: "Billable",
       columnCost: "Cost",

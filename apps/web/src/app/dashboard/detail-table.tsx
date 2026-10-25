@@ -23,7 +23,6 @@ export interface DetailRow {
   tokens: number;
   input: number;
   cached: number;
-  cacheCreation: number;
   output: number;
   billable: number;
   cost: number;
@@ -86,10 +85,6 @@ export function DetailTable({
     });
   }, [rows, sortDescriptor]);
 
-  // zcode/codex never report cache writes — hide the column when the whole
-  // window is zero instead of shipping a dead column.
-  const hasCacheCreation = rows.some((row) => row.cacheCreation > 0);
-
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const visible = sorted.slice(
@@ -148,15 +143,7 @@ export function DetailTable({
                   </Table.SortableColumnHeader>
                 )}
               </Table.Column>
-              {hasCacheCreation ? (
-                <Table.Column allowsSorting id="cacheCreation">
-                  {({ sortDirection }) => (
-                    <Table.SortableColumnHeader sortDirection={sortDirection}>
-                      {copy.detail.columnCacheCreation}
-                    </Table.SortableColumnHeader>
-                  )}
-                </Table.Column>
-              ) : null}
+
               <Table.Column allowsSorting id="output">
                 {({ sortDirection }) => (
                   <Table.SortableColumnHeader sortDirection={sortDirection}>
@@ -206,11 +193,7 @@ export function DetailTable({
                   <Table.Cell className="text-foreground/70 tabular-nums">
                     {formatTokensExact(row.cached)}
                   </Table.Cell>
-                  {hasCacheCreation ? (
-                    <Table.Cell className="text-foreground/70 tabular-nums">
-                      {formatTokensExact(row.cacheCreation)}
-                    </Table.Cell>
-                  ) : null}
+
                   <Table.Cell className="text-foreground/70 tabular-nums">
                     {formatTokensExact(row.output)}
                   </Table.Cell>
