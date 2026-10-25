@@ -2,10 +2,12 @@
 
 // Source / model icon: brand logo first (public/brand-logos, MIT assets from
 // TokenTracker + juejin-usage), deterministic colored tile as the fallback
-// for anything without a shipped logo. Drop a `<name>.svg` into
-// public/brand-logos and add it to the map to light up a new brand.
+// for anything without a shipped logo. Identity resolution (aliases, display
+// labels, white-logo backdrops) lives in ./sources.
 
 import { useMemo } from "react";
+
+import { logoNeedsBackdrop, modelLogoFile, sourceLogoFile } from "./sources";
 
 const TILE_COLORS = [
   "#2563eb",
@@ -18,66 +20,6 @@ const TILE_COLORS = [
   "#0f766e",
 ] as const;
 
-/** Collector source → logo file under public/brand-logos. */
-const SOURCE_LOGOS: Record<string, string> = {
-  zcode: "zcode.svg",
-  codex: "codex.svg",
-  opencode: "opencode.svg",
-  cursor: "cursor.svg",
-  "trae-cn": "trae.svg",
-  trae: "trae.svg",
-  qoder: "qoder.svg",
-  "qoder-cn": "qoder-cn.svg",
-  reasonix: "reasonix.png",
-  antigravity: "antigravity.svg",
-  mimo: "mimo.svg",
-  kimi: "kimi.svg",
-  gemini: "gemini.svg",
-  "gemini-cli": "gemini.svg",
-  grok: "grok.svg",
-  copilot: "copilot.svg",
-  cline: "cline.png",
-  deepseek: "deepseek.svg",
-  pi: "pi.svg",
-  "pi-zai-coding-cn": "pi.svg",
-  "pi-stepfun": "pi.svg",
-  workbuddy: "workbuddy.svg",
-  codebuddy: "codebuddy.svg",
-  commandcode: "commandcode.svg",
-  command_code: "commandcode.svg",
-  kiro: "kiro.svg",
-  devin: "devin.svg",
-  lmstudio: "lmstudio.svg",
-  openclaw: "openclaw.svg",
-  hermes: "hermes.svg",
-  kilo: "kilo.svg",
-  acode: "acode.png",
-  anythingllm: "anythingllm.svg",
-  unsloth: "unsloth.svg",
-  dsh: "volcano-ark.svg",
-  zai: "zcode.svg",
-};
-
-/**
- * Model-name prefixes that carry a recognizable vendor mark. Only unambiguous
- * vendors map; everything else (glm / step / hy / qwen / minimax …) falls
- * back to the tile rather than showing a wrong brand.
- */
-const MODEL_PREFIX_LOGOS: Array<[prefix: string, file: string]> = [
-  // Zhipu GLM is the ZCode mark (operator call, 2026-10-25).
-  ["glm", "zcode.svg"],
-  ["z-ai", "zcode.svg"],
-  ["zai", "zcode.svg"],
-  ["deepseek", "deepseek.svg"],
-  ["kimi", "kimi.svg"],
-  ["gemini", "gemini.svg"],
-  ["grok", "grok.svg"],
-  ["mimo", "mimo.svg"],
-  ["gpt", "codex.svg"],
-  ["composer", "cursor.svg"],
-  ["claude", "claude-code.svg"],
-];
-
 function colorFor(label: string): string {
   let hash = 0;
 
@@ -88,19 +30,6 @@ function colorFor(label: string): string {
   return TILE_COLORS[hash % TILE_COLORS.length];
 }
 
-function logoFor(label: string): string | null {
-  const key = label.trim().toLowerCase();
-
-  const source = SOURCE_LOGOS[key];
-
-  if (source) return `/brand-logos/${source}`;
-  for (const [prefix, file] of MODEL_PREFIX_LOGOS) {
-    if (key.startsWith(prefix)) return `/brand-logos/${file}`;
-  }
-
-  return null;
-}
-
 export function SourceIcon({
   label,
   size = 16,
@@ -108,11 +37,16 @@ export function SourceIcon({
   label: string;
   size?: number;
 }) {
-  const logo = useMemo(() => logoFor(label), [label]);
+  // Models try vendor prefixes first (deepseek-v4-flash → DeepSeek), sources
+  // resolve through the canonical map; both fall back to the tile.
+  const logo = useMemo(
+    () => modelLogoFile(label) ?? sourceLogoFile(label),
+    [label],
+  );
   const initial = (label.trim() || "?").charAt(0).toUpperCase();
 
   if (logo) {
-    return (
+    const img = (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         alt=""
@@ -124,12 +58,27 @@ export function SourceIcon({
         width={size}
       />
     );
+
+    // White marks (Pi) vanish on light cards — give them a quiet backdrop.
+    if (logoNeedsBackdrop(logo)) {
+      return (
+        <span
+          aria-hidden="true"
+          className="bg-default ring-border/60 inline-flex shrink-0 items-center justify-center rounded-[4px] ring-1 select-none"
+          style={{ height: size, width: size }}
+        >
+          {img}
+        </span>
+      );
+    }
+
+    return img;
   }
 
   return (
     <span
       aria-hidden="true"
-      className="inline-flex shrink-0 items-center justify-center rounded-lg font-semibold text-white select-none"
+      className="inline-flex shrink-0 items-center justify-center rounded-[4px] font-semibold text-white select-none"
       style={{
         background: colorFor(label),
         fontSize: Math.round(size * 0.62),

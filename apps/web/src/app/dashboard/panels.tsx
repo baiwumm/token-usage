@@ -24,10 +24,11 @@ import {
   Wallet,
 } from "@gravity-ui/icons";
 import { Button, Card, Chip, Meter, Tooltip, Typography } from "@heroui/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { DonutChart, seriesColor, Sparkline } from "./mini-charts";
 import { SourceIcon } from "./source-icon";
+import { canonicalSource, sourceDisplayLabel } from "./sources";
 
 import { FlowNumber } from "@/components/flow-number";
 import { formatMessage } from "@/lib/copy/message";
@@ -39,6 +40,35 @@ const CARD_ICONS = {
   conversations: ListCheck,
   activeDays: Clock,
 } as const;
+
+/** Group raw sources by canonical identity (Pi merges, dsh → label). */
+function canonicalSourceRows(sources: ModelBreakdownSource[]) {
+  const byId = new Map<
+    string,
+    {
+      id: string;
+      label: string;
+      totalTokens: number;
+      models: ModelBreakdownModel[];
+    }
+  >();
+
+  for (const entry of sources) {
+    const id = canonicalSource(entry.source);
+    const agg = byId.get(id) ?? {
+      id,
+      label: sourceDisplayLabel(entry.source),
+      totalTokens: 0,
+      models: [],
+    };
+
+    agg.totalTokens += entry.totals.total_tokens;
+    agg.models.push(...entry.models);
+    byId.set(id, agg);
+  }
+
+  return [...byId.values()].sort((a, b) => b.totalTokens - a.totalTokens);
+}
 
 /**
  * Hero card for the range's total tokens (docs/ui-spec.md 仪表盘): big centered
@@ -62,14 +92,7 @@ export function TotalTokensHero({
 }) {
   const { formatTokens, formatCost, formatPercent, formatDate } = useFormat();
 
-  const sources = useMemo(
-    () =>
-      [...breakdown].sort(
-        (first, second) =>
-          second.totals.total_tokens - first.totals.total_tokens,
-      ),
-    [breakdown],
-  );
+  const sources = useMemo(() => canonicalSourceRows(breakdown), [breakdown]);
   const totalTokens = summary.totals.total_tokens;
   const hasUnpriced = sources.some((source) =>
     source.models.some((model) => model.pricing.status === "unpriced"),
@@ -129,12 +152,12 @@ export function TotalTokensHero({
             >
               {sources.map((source, index) => (
                 <div
-                  key={source.source}
+                  key={source.id}
                   style={{
                     background: seriesColor(index),
                     width: `${
                       totalTokens > 0
-                        ? (source.totals.total_tokens / totalTokens) * 100
+                        ? (source.totalTokens / totalTokens) * 100
                         : 0
                     }%`,
                   }}
@@ -161,7 +184,7 @@ export function TotalTokensHero({
               </div>
               {sources.map((source, index) => (
                 <div
-                  key={source.source}
+                  key={source.id}
                   className="border-border/60 flex flex-col gap-1 rounded-xl border p-3"
                 >
                   <span className="text-muted flex min-w-0 items-center gap-1.5 text-xs font-medium">
@@ -170,13 +193,11 @@ export function TotalTokensHero({
                       className="size-2.5 shrink-0 rounded-full"
                       style={{ background: seriesColor(index) }}
                     />
-                    <span className="truncate">{source.source}</span>
+                    <span className="truncate">{source.label}</span>
                   </span>
                   <span className="tabular-nums text-sm font-semibold">
                     {formatPercent(
-                      totalTokens > 0
-                        ? source.totals.total_tokens / totalTokens
-                        : 0,
+                      totalTokens > 0 ? source.totalTokens / totalTokens : 0,
                     )}
                   </span>
                   <span className="text-muted text-xs">
@@ -450,10 +471,51 @@ export function SourcePanel({
   copy: DashboardCopy;
 }) {
   const { formatTokens, formatCost, formatPercent } = useFormat();
-  const totalTokens = sources.reduce(
-    (sum, entry) => sum + entry.totals.total_tokens,
-    0,
-  );
+  // Click-to-toggle distribution (juejin 工具分布 style): hidden canonical
+  // sources drop out of the donut and the share denominator recomputes.
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
+
+  const rows = useMemo(() => {
+    const byCanonical = new Map<
+      string,
+      { label: string; totalTokens: number; totalCost: number }
+    >();
+
+    for (const entry of sources) {
+      const id = canonicalSource(entry.source);
+      const label = sourceDisplayLabel(entry.source);
+      const agg = byCanonical.get(id) ?? {
+        label,
+        totalTokens: 0,
+        totalCost: 0,
+      };
+
+      agg.totalTokens += entry.totals.total_tokens;
+      agg.totalCost += Number(entry.totals.total_cost_usd);
+      byCanonical.set(id, agg);
+    }
+
+    return [...byCanonical.entries()]
+      .map(([id, agg]) => ({ id, ...agg }))
+      .sort((a, b) => b.totalTokens - a.totalTokens);
+  }, [sources]);
+
+  const visible = rows.filter((row) => !hidden.has(row.id));
+  const visibleTotal = visible.reduce((sum, row) => sum + row.totalTokens, 0);
+
+  const toggle = (id: string) => {
+    setHidden((previous) => {
+      const next = new Set(previous);
+
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      return next;
+    });
+  };
 
   return (
     <Card className="p-6">
@@ -462,7 +524,7 @@ export function SourcePanel({
         <Card.Description>{copy.panels.sourcesHint}</Card.Description>
       </Card.Header>
       <Card.Content className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
-        {sources.length === 0 ? (
+        {rows.length === 0 ? (
           <Typography color="muted" type="body-sm">
             —
           </Typography>
@@ -470,33 +532,53 @@ export function SourcePanel({
           <>
             <DonutChart
               centerLabel={copy.cards.totalTokens}
-              centerValue={formatTokens(totalTokens)}
-              entries={sources.map((entry) => ({
-                name: entry.source,
-                value: entry.totals.total_tokens,
+              centerValue={formatTokens(visibleTotal)}
+              entries={visible.map((row) => ({
+                name: row.label,
+                value: row.totalTokens,
               }))}
             />
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              {sources.map((entry) => (
-                <div
-                  key={entry.source}
-                  className="flex items-center justify-between gap-2 text-sm"
+              {rows.map((row, index) => {
+                const isHidden = hidden.has(row.id);
+                const share =
+                  visibleTotal > 0 && !isHidden
+                    ? row.totalTokens / visibleTotal
+                    : 0;
+
+                return (
+                  <button
+                    key={row.id}
+                    aria-pressed={!isHidden}
+                    className={`flex w-full items-center justify-between gap-2 rounded-lg px-1 py-0.5 text-sm transition-opacity ${
+                      isHidden ? "opacity-40" : "hover:bg-default/60"
+                    }`}
+                    type="button"
+                    onClick={() => toggle(row.id)}
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ background: seriesColor(index) }}
+                      />
+                      <span className="truncate">{row.label}</span>
+                    </span>
+                    <span className="text-foreground/60 tabular-nums text-xs">
+                      {formatTokens(row.totalTokens)} · {formatPercent(share)}
+                    </span>
+                  </button>
+                );
+              })}
+              {hidden.size > 0 ? (
+                <button
+                  className="text-muted self-start text-xs hover:text-foreground"
+                  type="button"
+                  onClick={() => setHidden(new Set())}
                 >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <SourceIcon label={entry.source} size={14} />
-                    <span className="truncate">{entry.source}</span>
-                  </span>
-                  <span className="text-foreground/60 tabular-nums text-xs">
-                    {formatTokens(entry.totals.total_tokens)} ·{" "}
-                    {formatPercent(
-                      totalTokens > 0
-                        ? entry.totals.total_tokens / totalTokens
-                        : 0,
-                    )}{" "}
-                    · {formatCost(entry.totals.total_cost_usd)}
-                  </span>
-                </div>
-              ))}
+                  {copy.panels.resetHidden}
+                </button>
+              ) : null}
             </div>
           </>
         )}

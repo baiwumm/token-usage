@@ -16,6 +16,7 @@ import { useMemo } from "react";
 
 import { CostTrendChart } from "./charts";
 import { SourceIcon } from "./source-icon";
+import { canonicalSource, sourceDisplayLabel } from "./sources";
 
 import { FlowNumber } from "@/components/flow-number";
 import { useFormat } from "@/lib/format/format";
@@ -83,11 +84,29 @@ export function CostAnalysisModal({
     label: point.day ?? "",
     cost: point.total_cost_usd,
   }));
-  const sourceRows = [...sources].sort(
-    (first, second) =>
-      Number(second.totals.total_cost_usd) -
-      Number(first.totals.total_cost_usd),
-  );
+  // Merge aliases into canonical identities (Pi / DeepSeek Harness …) and
+  // sort by cost.
+  const sourceRows = (() => {
+    const byId = new Map<
+      string,
+      { source: string; cost: number; tokens: number }
+    >();
+
+    for (const entry of sources) {
+      const id = canonicalSource(entry.source);
+      const agg = byId.get(id) ?? {
+        source: sourceDisplayLabel(entry.source),
+        cost: 0,
+        tokens: 0,
+      };
+
+      agg.cost += Number(entry.totals.total_cost_usd);
+      agg.tokens += entry.totals.total_tokens;
+      byId.set(id, agg);
+    }
+
+    return [...byId.values()].sort((a, b) => b.cost - a.cost);
+  })();
 
   return (
     <Modal>
@@ -197,7 +216,13 @@ export function CostAnalysisModal({
                               </span>
                             </span>
                             <span className="text-muted truncate text-xs">
-                              {entry.sources.join(", ")}
+                              {[
+                                ...new Set(
+                                  entry.sources.map((source) =>
+                                    sourceDisplayLabel(source),
+                                  ),
+                                ),
+                              ].join(", ")}
                             </span>
                           </span>
                           <span className="tabular-nums">
@@ -243,10 +268,10 @@ export function CostAnalysisModal({
                             </span>
                           </span>
                           <span className="tabular-nums">
-                            {formatTokens(entry.totals.total_tokens)}
+                            {formatTokens(entry.tokens)}
                           </span>
                           <span className="tabular-nums">
-                            {formatCost(entry.totals.total_cost_usd)}
+                            {formatCost(entry.cost)}
                           </span>
                         </div>
                       ))}

@@ -65,6 +65,7 @@ export interface DashboardCopy {
     noModels: string;
     sourcesTitle: string;
     sourcesHint: string;
+    resetHidden: string;
     devicesTitle: string;
     devicesHint: string;
     devicesManage: string;
@@ -213,7 +214,8 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       viewAll: "查看全部",
       noModels: "该时间范围内没有模型数据。",
       sourcesTitle: "来源",
-      sourcesHint: "随设备筛选收窄；占比按 Token。",
+      sourcesHint: "随设备筛选收窄；占比按 Token。点击来源可隐藏/显示。",
+      resetHidden: "恢复显示全部来源",
       devicesTitle: "设备",
       devicesHint: "点击设备可只看该设备的数据。",
       devicesManage: "前往设置",
@@ -362,7 +364,9 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       viewAll: "View all",
       noModels: "No model data in this range.",
       sourcesTitle: "Sources",
-      sourcesHint: "Narrowed by the device filter; share by tokens.",
+      sourcesHint:
+        "Narrowed by the device filter; share by tokens. Click a source to hide/show it.",
+      resetHidden: "Show all sources",
       devicesTitle: "Devices",
       devicesHint: "Select a device to filter the dashboard.",
       devicesManage: "Open Settings",

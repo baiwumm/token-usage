@@ -30,6 +30,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { SourceIcon } from "./source-icon";
+import { canonicalSource, sourceDisplayLabel } from "./sources";
 
 import { formatMessage } from "@/lib/copy/message";
 import { tzLabel } from "@/lib/dashboard/ranges";
@@ -55,7 +56,22 @@ interface GridCell {
   /** Tokens of the active source selection (falls back to the raw total). */
   total: number;
   level: number;
+  /** Canonical-id → tokens, aliases merged (Pi, DeepSeek Harness …). */
   sources: Record<string, number>;
+}
+
+function canonicalSources(
+  raw: Record<string, number> | null,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+
+  for (const [source, tokens] of Object.entries(raw ?? {})) {
+    const id = canonicalSource(source);
+
+    out[id] = (out[id] ?? 0) + tokens;
+  }
+
+  return out;
 }
 
 function weekdayIndex(day: string): number {
@@ -212,7 +228,9 @@ export function HeatmapCard({
 
     for (const cell of payload.weeks.flat()) {
       for (const [source, tokens] of Object.entries(cell.sources ?? {})) {
-        totals.set(source, (totals.get(source) ?? 0) + tokens);
+        const id = canonicalSource(source);
+
+        totals.set(id, (totals.get(id) ?? 0) + tokens);
       }
     }
 
@@ -276,7 +294,7 @@ export function HeatmapCard({
               day: cell.day,
               total: totals.get(cell.day) ?? 0,
               level: levelOf(totals.get(cell.day) ?? 0),
-              sources: cell.sources ?? {},
+              sources: canonicalSources(cell.sources),
             }
           : null,
       ),
@@ -415,7 +433,9 @@ export function HeatmapCard({
               <div key={source} className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-1.5">
                   <SourceIcon label={source} size={12} />
-                  <span className="min-w-0 flex-1 truncate">{source}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {sourceDisplayLabel(source)}
+                  </span>
                   <span className="text-muted tabular-nums">
                     {formatTokens(tokens)} · {formatPercent(tokens / total)}
                   </span>
@@ -465,7 +485,7 @@ export function HeatmapCard({
           >
             {filtersActive
               ? (activeSources?.length ?? 0) === 1
-                ? activeSources?.[0]
+                ? sourceDisplayLabel(activeSources?.[0] ?? "")
                 : formatMessage(copy.charts.heatmapSelectedCount, locale, {
                     count: activeSources?.length ?? 0,
                   })
@@ -511,10 +531,14 @@ export function HeatmapCard({
                   </span>
                 </Header>
                 {sourceTotals.map(([source]) => (
-                  <Dropdown.Item key={source} id={source} textValue={source}>
+                  <Dropdown.Item
+                    key={source}
+                    id={source}
+                    textValue={sourceDisplayLabel(source)}
+                  >
                     <Dropdown.ItemIndicator />
                     <SourceIcon label={source} size={14} />
-                    <Label>{source}</Label>
+                    <Label>{sourceDisplayLabel(source)}</Label>
                   </Dropdown.Item>
                 ))}
               </Dropdown.Section>
