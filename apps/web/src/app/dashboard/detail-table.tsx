@@ -130,6 +130,34 @@ export function DetailTable({
                   </Table.SortableColumnHeader>
                 )}
               </Table.Column>
+              <Table.Column allowsSorting id="input">
+                {({ sortDirection }) => (
+                  <Table.SortableColumnHeader sortDirection={sortDirection}>
+                    {copy.detail.columnInput}
+                  </Table.SortableColumnHeader>
+                )}
+              </Table.Column>
+              <Table.Column allowsSorting id="cached">
+                {({ sortDirection }) => (
+                  <Table.SortableColumnHeader sortDirection={sortDirection}>
+                    {copy.detail.columnCached}
+                  </Table.SortableColumnHeader>
+                )}
+              </Table.Column>
+              <Table.Column allowsSorting id="cacheCreation">
+                {({ sortDirection }) => (
+                  <Table.SortableColumnHeader sortDirection={sortDirection}>
+                    {copy.detail.columnCacheCreation}
+                  </Table.SortableColumnHeader>
+                )}
+              </Table.Column>
+              <Table.Column allowsSorting id="output">
+                {({ sortDirection }) => (
+                  <Table.SortableColumnHeader sortDirection={sortDirection}>
+                    {copy.detail.columnOutput}
+                  </Table.SortableColumnHeader>
+                )}
+              </Table.Column>
               <Table.Column allowsSorting id="billable">
                 {({ sortDirection }) => (
                   <Table.SortableColumnHeader sortDirection={sortDirection}>

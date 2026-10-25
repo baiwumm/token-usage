@@ -357,13 +357,39 @@ export function TopModels({
     0,
   );
 
-  const top = useMemo(
-    () =>
-      [...models]
-        .sort((a, b) => b.totals.total_tokens - a.totals.total_tokens)
-        .slice(0, 8),
-    [models],
-  );
+  const top = useMemo(() => {
+    // The input is a flat list across sources; the same model name can come
+    // from several sources (e.g. step-5-preview on zcode and opencode).
+    // Merge same-name rows so the list (and its React keys) stay unique.
+    const byModel = new Map<string, ModelBreakdownModel>();
+
+    for (const entry of models) {
+      const prev = byModel.get(entry.model);
+
+      if (!prev) {
+        byModel.set(entry.model, entry);
+        continue;
+      }
+      byModel.set(entry.model, {
+        ...prev,
+        totals: {
+          ...prev.totals,
+          total_tokens: prev.totals.total_tokens + entry.totals.total_tokens,
+          billable_total_tokens:
+            prev.totals.billable_total_tokens +
+            entry.totals.billable_total_tokens,
+          total_cost_usd: (
+            Number(prev.totals.total_cost_usd) +
+            Number(entry.totals.total_cost_usd)
+          ).toFixed(6),
+        },
+      });
+    }
+
+    return [...byModel.values()]
+      .sort((a, b) => b.totals.total_tokens - a.totals.total_tokens)
+      .slice(0, 8);
+  }, [models]);
 
   return (
     <Card className="p-6">
