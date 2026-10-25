@@ -47,28 +47,45 @@
 
 桌面自上而下；移动端单列：
 
-1. **筛选条**：范围（7d / 30d / 90d / 12m / 自定义）、时区、设备。筛选写入 URL
+1. **筛选条**：范围（7d / 30d / 90d / 总计 / 自定义）、时区、设备。筛选写入 URL
    （`range` / `from` / `to` / `tz` / `device_id`），刷新与分享保持；变更只重取数据，
-   不整页刷新。`from` / `to` 为所选时区的日键（`YYYY-MM-DD`），与契约的日粒度序列一致。
-2. **KPI 网格**（HeroUI `Card` 复合结构）：总 Token、计费 Token、成本、会话数、活跃
-   天数；下一行 rolling 7d / 30d / 日均（来自 `account-summary.rolling`）。口径：总 Token
+   不整页刷新——各卡片保留旧内容并叠加模糊遮罩 + `Spinner`（仅首载无数据时出骨架屏，
+   骨架屏圆角与卡片一致：`min(32px, var(--radius-3xl))`）。筛选条右侧固定「分享」
+   （`NodesRight`，打开分享卡 Modal）与「刷新」两个 tertiary 图标按钮，刷新中图标自旋。
+   `from` / `to` 为所选时区的日键（`YYYY-MM-DD`），与契约的日粒度序列一致；「总计」以
+   2000-01-01 为起点（服务端按 MAX_RANGE_DAYS 钳制）。
+2. **总 Tokens 头卡**（独占一行，参考上游 Broadsheet 视觉）：居中大号 Token 总数、
+   成本行（存在未定价模型时加 `≥` 前缀 + ⓘ `Tooltip` 说明估算下限）、日期区间、按来源
+   占比的堆叠色条、「全部 + 每来源」占比卡（`SourceIcon` 图标 + 占比 + 模型数）。
+3. **KPI 网格**（HeroUI `Card` 复合结构）：计费 Token、成本、会话数、活跃天数；
+   下一行 rolling 7d / 30d / 日均（来自 `account-summary.rolling`）。口径：总 Token
    = `totals.total_tokens`，计费 = `totals.billable_total_tokens`，成本 =
    `totals.total_cost_usd`，会话数 = `totals.conversation_count`，活跃天数 = `days`；
    rolling 用 `rolling.last_7d` / `last_30d`，卡片显示计费 Token + 会话数；日均（30d）用
    `rolling.last_30d.avg_per_active_day`（计费 Token ÷ 活跃天）。大数一律走统一 format
    provider，卡片内不自算格式。
 3. **趋势**：日/月切换（`Tabs`）+ 指标切换（Token / 成本），recharts；范围跟随筛选条。
-4. **双栏**：Top 模型（名称、Token、占比 `Meter`、成本，前 8 条 + “查看全部”打开成本
-   分析）；活跃热力图（保留 CSS grid，周一起始，tooltip 显示日总量/成本）。
-5. **来源与设备**：来源卡（占比 + 成本，随设备筛选，取 `model-breakdown`）、设备卡
-   （名称/平台/最后上报/Token/成本，取 `dashboard.devices`，仅活跃设备且不随设备筛选
-   收窄）；点击设备卡把 `device_id` 写入筛选条。
-6. **明细**：`Tabs` 日 / 时 / 月；`Table` 列（时间、Token、计费 Token、成本、会话、
+4. **双栏**：Top 模型（`SourceIcon`、名称、Token、占比 `Meter`、成本，前 8 条 + “查看
+   全部”打开成本分析）；来源卡（`SourceIcon`、占比 + 成本，随设备筛选，取
+   `model-breakdown`）。
+5. **活跃热力图**（独占一行，置于总 Tokens 头卡之下，`dashboard/heatmap-card.tsx`）：
+   近 52 周 Mon-start 满宽网格（窄屏裁周、宽屏撑满格子，`ResizeObserver` 自适应）；
+   月份标尺在上、周几单字标尺（一~日 / M~S）在左；右上「全部平台」多选筛选
+   （`Dropdown.ItemIndicator` 勾选态，全部/清空，触发按钮显示已选状态），按来源过滤后
+   等级客户端重算；共享 portal tooltip 显示当日总量与来源明细；左下时区标注
+   （`UTC+08:00`），右下 少/多 图例；色阶 `--heatmap-0..4`（0 级 = `--default`，
+   1–4 级为 accent 降饱和梯度，深浅主题各自定义于 `globals.css`）。
+6. **设备卡**（独占一行）：名称/平台/最后上报/Token/成本，取 `dashboard.devices`，
+   仅活跃设备且不随设备筛选收窄；点击设备卡把 `device_id` 写入筛选条。
+7. **明细**：`Tabs` 日 / 时 / 月；`Table` 列（时间、Token、计费 Token、成本、会话、
    模型数）；列头排序、`Pagination`（默认 20/页）；时视图先选日期（默认今天）；时区
    切换即时重算日/时，月视图按契约固定 UTC；空窗口显示空态。
-7. **成本分析**：从成本卡或 Top 模型“查看全部”打开 `Modal`；`Tabs` 按模型 / 按来源；
+8. **成本分析**：从成本卡或 Top 模型“查看全部”打开 `Modal`；`Tabs` 按模型 / 按来源；
    总成本、日成本趋势、未定价模型提示；只读，不提供导出。
-8. **分享卡片**入口保留在页头操作区，不因 A 改造移除。
+9. **分享卡片**：筛选条「分享」打开 `Modal`，预览 canvas 手绘的 Broadsheet 风格卡片
+   （米色纸面 + 朱红强调：报头、使用者、Token 大数、预估费用/活跃天数、52 周热力图条、
+   来源与模型占比双栏、token-usage.cc 落款），支持保存 PNG 与复制到剪贴板；沿用 M4 的
+   canvas 方案（html-to-image 在本栈挂起），只含聚合数字。
 
 状态与可访问性：
 
@@ -76,6 +93,9 @@
   筛选无结果时给“清除筛选”。
 - 图表容器带 `aria-label` 与文本摘要；颜色不是唯一信息（模型占比同时显示数字）。
 - 数字使用 `tabular-nums`；表格列头可排序并暴露 `aria-sort`。
+- 动态数值统一用 `components/flow-number.tsx`（`FlowNumber`）包装：解析 format provider
+  的成品串后交给 `@number-flow/react` 做数字滚动过渡；万进制 4 位分组与无法解析的占位符
+  （`—`）自动退化为静态文本。明细表格单元格不加（整表切换）。
 - `<lg`：KPI 两列、筛选条换行、图表高度约 220px；`Modal` 使用全屏尺寸；表格横向滚动
   只发生在 Card 内。
 
@@ -104,10 +124,16 @@
 - 错误：401 跳登录并回跳 `/sessions`；其他错误在列表区重试。
 - 隐私：页面不出现 prompt、正文、标题、绝对路径、resume command；项目列只显示 basename。
 
-### 设置 · 外观（`/settings?section=appearance`）
+### 设置 · 账户设置（`/settings`）
 
-设置页用 `Tabs` / 分段导航：账户 / 外观 / 设备；`section` 查询参数深链，默认账户。
-外观分区用 `Card` 复合结构，逐行 label + control + `Description`：
+设置页用 `Tabs` / 分段导航：账户 / 外观 / 设备（tab 状态为组件内 state，不写 URL）；
+各分区用 `Card` 复合结构。账户分区自上而下为个人信息卡（名称 + 只读邮箱）、头像卡
+（更换走 `react-easy-crop` 裁剪弹窗：缩放滑杆 + ±90° 旋转，canvas 合成 256×256 WebP
+后上传，更换/删除按钮并列）、密码卡（设置/更新密码，≥8 位；魔法链接账号在此开启密码
+登录）。登录页为 HeroUI `Tabs`（密码登录 `Lock` / 魔法链接 `Envelope`），密码 tab 提供
+「忘记密码」邮箱重置入口（resetPasswordForEmail，回跳设置页设新密码）。
+外观分区用 `Card` 复合结构，逐行 label + control + `Description`（语言/货币下拉
+`variant="secondary"`，货币选项为本地化名称 + 窄符号，如 `人民币(￥)`）：
 
 | 行 | 控件 | 选项 / 行为 |
 |---|---|---|
@@ -153,9 +179,11 @@
   同一偏好，两处切换互相同步。
 - 主题：next-themes，`attribute="class"`、`enableSystem`，沿用默认 storageKey
   `theme`（不重置现有偏好）；默认 system；设置页与顶栏明暗切换共用。
-- 货币 / Token 显示 / 单位 / 分组：localStorage，键 `token-usage.currency` /
-  `token-usage.token-format` / `token-usage.token-unit` / `token-usage.token-grouping`；
-  值分别为 ISO 4217 代码、`compact|full`、`kmb|wan`、`3|4`；只影响本浏览器，不写数据库。
+- 货币 / Token 显示 / 单位 / 分组：zustand persist（`stores/format-preferences-store.ts`，
+  单键 `token-usage.format-preferences`，2026-10-25 起收编 zustand）；首次读取自动迁移并
+  清除旧扁平键（`token-usage.currency` / `token-usage.token-format` /
+  `token-usage.token-unit` / `token-usage.token-grouping`）；值分别为 ISO 4217 代码、
+  `compact|full`、`kmb|wan`、`3|4`；只影响本浏览器，不写数据库。
 - Hydration：locale cookie 保证 SSR 首帧；主题由 next-themes 首屏脚本避免闪烁；
   localStorage 显示偏好在挂载后读取，设置页可先渲染默认值；数字使用 `tabular-nums`
   且容器预留宽度，不允许明显跳动。仪表盘 / Sessions 数据本身客户端加载，不存在服务端

@@ -43,13 +43,17 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 4. 框架与组件 API 以项目内真实来源为准：HeroUI 查 `.agents/skills/heroui-react/` 的文档脚本，
    React/Next 规范查 `.agents/skills/vercel-react-best-practices/`，其余以 `node_modules`
    内随版本安装的类型与文档为准。
-5. 数据访问全部走 route.ts + service-role；`token_*` 表的迁移文件对 `anon`/`authenticated`
+5. Tailwind spacing 类用数字简写，不写像素任意值：`[Npx]`（N 为 4 的倍数）一律写成
+   `N/4`（如 `w-[92px]`→`w-23`、`size-[18px]`→`size-4.5`）。字号（`text-[10px]`）、圆角
+   （HeroUI 重定义了 `--radius-*`，机械换算会变值）、模糊等非 spacing 标度保留任意值或语义类。
+   覆盖组件自带尺寸时用 important 修饰符（`min-h-2!`），不依赖样式表顺序。
+6. 数据访问全部走 route.ts + service-role；`token_*` 表的迁移文件对 `anon`/`authenticated`
    保持零 policy；浏览器端零 Supabase 直连。
-6. 机密（service-role key、设备令牌、配对码）只存在于服务端运行时与操作者环境；
+7. 机密（service-role key、设备令牌、配对码）只存在于服务端运行时与操作者环境；
    测试与文档一律用伪造值。
-7. 采集对账基线 = 本地 `queue.jsonl` 的 last-wins 总数；`token_usage_hourly` 的 upsert 键
+8. 采集对账基线 = 本地 `queue.jsonl` 的 last-wins 总数；`token_usage_hourly` 的 upsert 键
    见 `docs/rewrite-plan.md` §3，语义跨版本保持不变。
-8. 内部命名统一 `token-usage` / `TOKEN_USAGE_*` / Token Usage；`tokentracker` 前缀仅允许
+9. 内部命名统一 `token-usage` / `TOKEN_USAGE_*` / Token Usage；`tokentracker` 前缀仅允许
    出现在旧路径别名（`next.config.mjs` rewrites）与 `docs/cli-contract.md` §1.5。
 
 ## 里程碑与闸门
