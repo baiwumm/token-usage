@@ -76,7 +76,11 @@
 ode_modules	okenusage-cliin	okenusage.js sync >> %USERPROFILE%\.tokenusage\logs\sync.log 2>&1" /sc hourly /mo 1 /f
    ```
 6. 停公司机旧 CLI：移除其 Claude / Codex 的 tokentracker hook（本机的形态是
-   `~/.claude/settings.json` 里的 notify 命令；移除前备份）；
+   `~/.claude/settings.json` 里的 notify 命令；移除前备份）；**并检查计划任务**——
+   旧 CLI 自启不是 hook 而是两个计划任务（`TokenTracker Selfhost Sync`、
+   `TokenTracker Selfhost Drift Check`，Disable 即可）；若装过桌面 App
+   （TokenTracker.exe，会 spawn `tracker.js serve` 常驻），结束其进程；
+   本机（DESKTOP）以上三处已于 2026-10-25 停用并验证队列冻结；
 7. 验收：`https://token-usage.baiwumm.com` 设备列表 2 台、总量 ≈ 20.86B
    （本机 7.21B + 公司机 13.67B）。
 
