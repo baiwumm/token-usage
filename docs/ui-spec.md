@@ -68,6 +68,10 @@
 4. **双栏**：Top 模型（`SourceIcon`、名称、Token、占比 `Meter`、成本，前 8 条 + “查看
    全部”打开成本分析）；来源卡（`SourceIcon`、占比 + 成本，随设备筛选，取
    `model-breakdown`）。
+   来源/模型图标走 `dashboard/source-icon.tsx`：`public/brand-logos/`（MIT 资产，上游
+   TokenTracker 33 个 + juejin-usage 补 workbuddy）优先，source 全称映射 + 模型名
+   前缀映射（deepseek/kimi/gemini/grok/mimo/gpt/composer/claude），无映射回退确定性
+   色块；新增品牌 = 放 logo 文件 + 在 `SOURCE_LOGOS` 登记。
 5. **活跃热力图**（独占一行，置于总 Tokens 头卡之下，`dashboard/heatmap-card.tsx`）：
    近 52 周 Mon-start 满宽网格（窄屏裁周、宽屏撑满格子，`ResizeObserver` 自适应）；
    月份标尺在上、周几单字标尺（一~日 / M~S）在左；右上「全部平台」多选筛选
