@@ -140,6 +140,182 @@ export function normalizeSessionState(
   };
 }
 
+export type NormalizedSessionModel = {
+  model: string;
+} & Record<TokenKey, number>;
+
+export type NormalizedSession = {
+  session_id: string;
+  source: string;
+  started_at: string;
+  ended_at: string;
+  project_key: string | null;
+  billable_total_tokens: number | null;
+  models: NormalizedSessionModel[];
+} & Record<TokenKey, number>;
+
+// Account-level sources never reach Sessions (docs/cli-contract.md §2.4): the
+// ingest route drops the whole entry before validating the remaining fields.
+export function normalizeSessionSource(value: unknown): string {
+  return (
+    String(value ?? "")
+      .trim()
+      .toLowerCase()
+      .slice(0, 100) || "unknown"
+  );
+}
+
+export function isAccountLevelSessionSource(source: string): boolean {
+  return source === "cursor" || source === "trae-cn";
+}
+
+// Privacy: only the basename survives. Both separators count so a Windows
+// path never leaks a drive or directory; control characters are stripped.
+export function normalizeProjectKey(value: unknown): string | null {
+  if (value == null) return null;
+  const withoutControls = String(value).replace(/\p{Cc}/gu, "");
+  const trimmed = withoutControls.replace(/[/\\]+$/, "");
+  const basename = trimmed.split(/[/\\]/).pop()?.trim() ?? "";
+
+  if (!basename || basename === "." || basename === "..") return null;
+
+  return basename.slice(0, 120);
+}
+
+function sessionTokens(record: RawRecord): Record<TokenKey, number> | null {
+  const values = {} as Record<TokenKey, number>;
+
+  for (const key of TOKEN_KEYS) {
+    const value = nonNegativeInteger(record[key]);
+
+    if (value === null) return null;
+    values[key] = value;
+  }
+  if (
+    values.total_tokens !==
+    values.input_tokens +
+      values.cached_input_tokens +
+      values.cache_creation_input_tokens +
+      values.output_tokens
+  ) {
+    return null;
+  }
+
+  return values;
+}
+
+function normalizeSessionModels(
+  raw: unknown,
+  totalTokens: number,
+): NormalizedSessionModel[] | null {
+  if (raw == null) return [];
+  if (!Array.isArray(raw) || raw.length > 32) return null;
+
+  const byModel = new Map<string, NormalizedSessionModel>();
+
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") return null;
+    const record = entry as RawRecord;
+    const model =
+      String(record.model ?? "")
+        .trim()
+        .slice(0, 200) || "unknown";
+    const values = sessionTokens(record);
+
+    if (!values) return null;
+    const previous = byModel.get(model);
+
+    if (previous) {
+      for (const key of TOKEN_KEYS) previous[key] += values[key];
+    } else {
+      byModel.set(model, { model, ...values });
+    }
+  }
+
+  const models = Array.from(byModel.values());
+
+  if (models.length > 0) {
+    const sum = models.reduce((total, model) => total + model.total_tokens, 0);
+
+    if (sum !== totalTokens) return null;
+  }
+
+  return models;
+}
+
+export function normalizeSession(raw: unknown): NormalizedSession | null {
+  if (!raw || typeof raw !== "object") return null;
+  const record = raw as RawRecord;
+  const sessionId = String(record.session_id ?? "").trim();
+  const source = normalizeSessionSource(record.source);
+  const startedAt = new Date(String(record.started_at ?? ""));
+  const endedAt = new Date(String(record.ended_at ?? ""));
+
+  if (
+    !sessionId ||
+    sessionId.length > 256 ||
+    /[/\\]/.test(sessionId) ||
+    /\p{Cc}/u.test(sessionId) ||
+    isAccountLevelSessionSource(source) ||
+    !Number.isFinite(startedAt.getTime()) ||
+    !Number.isFinite(endedAt.getTime()) ||
+    endedAt.getTime() < startedAt.getTime()
+  ) {
+    return null;
+  }
+  const values = sessionTokens(record);
+
+  if (!values) return null;
+  const billable =
+    record.billable_total_tokens == null
+      ? null
+      : nonNegativeInteger(record.billable_total_tokens);
+
+  if (billable === null && record.billable_total_tokens != null) return null;
+  const models = normalizeSessionModels(record.models, values.total_tokens);
+
+  if (!models) return null;
+
+  return {
+    session_id: sessionId,
+    source,
+    started_at: startedAt.toISOString(),
+    ended_at: endedAt.toISOString(),
+    project_key: normalizeProjectKey(record.project_key),
+    ...values,
+    billable_total_tokens: billable,
+    models,
+  };
+}
+
+/** Request-internal dedup: keep the latest ended_at per (source, session_id). */
+export function dedupeSessions(
+  sessions: NormalizedSession[],
+): NormalizedSession[] {
+  const sessionMap = new Map<string, NormalizedSession>();
+
+  for (const session of sessions) {
+    const key = `${session.source}|${session.session_id}`;
+    const previous = sessionMap.get(key);
+
+    if (!previous) {
+      sessionMap.set(key, session);
+      continue;
+    }
+    const previousEnd = Date.parse(previous.ended_at);
+    const nextEnd = Date.parse(session.ended_at);
+
+    if (
+      nextEnd > previousEnd ||
+      (nextEnd === previousEnd && session.total_tokens >= previous.total_tokens)
+    ) {
+      sessionMap.set(key, session);
+    }
+  }
+
+  return Array.from(sessionMap.values());
+}
+
 /** Request-internal dedup: keep the row with the largest total_tokens per key. */
 export function dedupeBuckets(buckets: NormalizedBucket[]): NormalizedBucket[] {
   const bucketMap = new Map<string, NormalizedBucket>();

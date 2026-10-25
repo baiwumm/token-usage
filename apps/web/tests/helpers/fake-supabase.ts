@@ -85,6 +85,16 @@ function defaultTables(): Record<string, TableDef> {
       generate: ["created_at", "updated_at"],
       unique: [{ name: "token_account_session_states_pkey", columns: ["user_id", "source", "session_id"] }],
     },
+    token_sessions: {
+      rows: [],
+      generate: ["id", "created_at", "updated_at"],
+      unique: [
+        {
+          name: "token_sessions_user_id_device_id_source_session_id_key",
+          columns: ["user_id", "device_id", "source", "session_id"],
+        },
+      ],
+    },
     token_allowed_emails: { rows: [], generate: ["created_at"], unique: [{ name: "token_allowed_emails_email_key", columns: ["email"] }] },
   };
 }
@@ -397,6 +407,13 @@ export class FakeSupabase {
     }
 
     const restMatch = path.match(/^\/rest\/v1\/([^/]+)$/);
+    const rpcMatch = path.match(/^\/rest\/v1\/rpc\/([^/]+)$/);
+
+    if (rpcMatch) {
+      if (req.method !== "POST") return this.json(res, 405, { message: "Method not allowed" });
+      return this.handleRpc(decodeURIComponent(rpcMatch[1]), req, res);
+    }
+
     if (!restMatch) return this.json(res, 404, { message: `Not found: ${path}` });
     const table = decodeURIComponent(restMatch[1]);
 
@@ -423,6 +440,66 @@ export class FakeSupabase {
       filters.push([column, rawValue.slice(0, dot), rawValue.slice(dot + 1)]);
     }
     return filters;
+  }
+
+  // token_upsert_sessions: strict ended_at last-wins, mirroring the migration's
+  // conditional upsert and its {upserted, skipped} return value.
+  private async handleRpc(
+    name: string,
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> {
+    if (name !== "token_upsert_sessions") {
+      return this.json(res, 404, { message: `Unknown function ${name}` });
+    }
+
+    const body = await this.readJsonBody(req);
+    const userId = String(body.p_user_id ?? "");
+    const deviceId = String(body.p_device_id ?? "");
+    const sessions = Array.isArray(body.p_sessions) ? (body.p_sessions as Row[]) : [];
+    const def = this.tables.token_sessions;
+    let upserted = 0;
+
+    for (const entry of sessions) {
+      const candidate = this.applyDefaults(def, {
+        user_id: userId,
+        device_id: deviceId,
+        source: entry.source,
+        session_id: entry.session_id,
+        project_key: entry.project_key ?? null,
+        started_at: entry.started_at,
+        ended_at: entry.ended_at,
+        input_tokens: entry.input_tokens,
+        cached_input_tokens: entry.cached_input_tokens,
+        cache_creation_input_tokens: entry.cache_creation_input_tokens,
+        output_tokens: entry.output_tokens,
+        reasoning_output_tokens: entry.reasoning_output_tokens,
+        total_tokens: entry.total_tokens,
+        billable_total_tokens: entry.billable_total_tokens ?? null,
+        models: entry.models ?? [],
+      });
+      const existing = def.rows.find(
+        (row) =>
+          row.user_id === candidate.user_id &&
+          row.device_id === candidate.device_id &&
+          row.source === candidate.source &&
+          row.session_id === candidate.session_id,
+      );
+
+      if (!existing) {
+        def.rows.push(candidate);
+        upserted += 1;
+        continue;
+      }
+      if (String(candidate.ended_at) > String(existing.ended_at)) {
+        const createdAt = existing.created_at;
+
+        Object.assign(existing, candidate, { created_at: createdAt });
+        upserted += 1;
+      }
+    }
+
+    this.json(res, 200, { upserted, skipped: sessions.length - upserted });
   }
 
   private handleSelect(def: TableDef, url: URL, res: ServerResponse): void {

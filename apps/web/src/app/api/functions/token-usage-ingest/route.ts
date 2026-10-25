@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/http";
 import {
   assertConfigured,
+  rpc,
   select,
   update,
   upsert,
@@ -20,9 +21,14 @@ import {
 import { sha256Hex } from "@/lib/device-codes";
 import {
   dedupeBuckets,
+  dedupeSessions,
   dedupeStates,
+  isAccountLevelSessionSource,
   normalizeBucket,
+  normalizeSession,
+  normalizeSessionSource,
   normalizeSessionState,
+  type NormalizedSession,
 } from "@/lib/ingest/normalize";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +81,12 @@ export async function POST(request: Request) {
     const rawStates = Array.isArray(body.account_session_states)
       ? body.account_session_states
       : [];
+    const rawSessionsValue = body.sessions;
+
+    if (rawSessionsValue != null && !Array.isArray(rawSessionsValue)) {
+      return jsonResponse(400, { error: "Invalid session" });
+    }
+    const rawSessions = Array.isArray(rawSessionsValue) ? rawSessionsValue : [];
 
     if (rawBuckets.length > 500) {
       return jsonResponse(400, { error: "Too many buckets (max 500)" });
@@ -84,7 +96,14 @@ export async function POST(request: Request) {
         error: "Too many account session states (max 500)",
       });
     }
-    if (rawBuckets.length === 0 && rawStates.length === 0) {
+    if (rawSessions.length > 200) {
+      return jsonResponse(400, { error: "Too many sessions (max 200)" });
+    }
+    if (
+      rawBuckets.length === 0 &&
+      rawStates.length === 0 &&
+      rawSessions.length === 0
+    ) {
       return jsonResponse(400, { error: "No usage buckets provided" });
     }
 
@@ -107,9 +126,34 @@ export async function POST(request: Request) {
       normalizedStates.push(state);
     }
 
+    // Account-level sources are dropped whole (no further validation) and
+    // counted as skipped; everything else must pass §2.4 session validation.
+    const normalizedSessions: NormalizedSession[] = [];
+    let accountLevelSkipped = 0;
+
+    for (const raw of rawSessions) {
+      if (!raw || typeof raw !== "object") {
+        return jsonResponse(400, { error: "Invalid session" });
+      }
+      const source = normalizeSessionSource(
+        (raw as Record<string, unknown>).source,
+      );
+
+      if (isAccountLevelSessionSource(source)) {
+        accountLevelSkipped += 1;
+        continue;
+      }
+      const session = normalizeSession(raw);
+
+      if (!session) return jsonResponse(400, { error: "Invalid session" });
+      normalizedSessions.push(session);
+    }
+
     const now = new Date().toISOString();
     const buckets = dedupeBuckets(normalizedBuckets);
     const states = dedupeStates(normalizedStates);
+    const dedupedSessions = dedupeSessions(normalizedSessions);
+    const dedupeSkipped = normalizedSessions.length - dedupedSessions.length;
 
     if (buckets.length > 0) {
       await upsert(
@@ -138,6 +182,20 @@ export async function POST(request: Request) {
       );
     }
 
+    let sessionsUpserted = 0;
+    let sessionsRpcSkipped = 0;
+
+    if (dedupedSessions.length > 0) {
+      const result = (await rpc("token_upsert_sessions", {
+        p_user_id: tokenRow.user_id,
+        p_device_id: tokenRow.device_id,
+        p_sessions: dedupedSessions,
+      })) as { upserted?: unknown; skipped?: unknown } | null;
+
+      sessionsUpserted = Number(result?.upserted) || 0;
+      sessionsRpcSkipped = Number(result?.skipped) || 0;
+    }
+
     // Best effort: a telemetry write must not fail an already-committed upload.
     try {
       await update(
@@ -153,11 +211,21 @@ export async function POST(request: Request) {
       );
     }
 
-    return jsonResponse(200, {
+    const response: Record<string, unknown> = {
       inserted: buckets.length,
       skipped: 0,
       upload_scope: "private",
-    });
+    };
+
+    // Older CLIs never send `sessions`, and their response stays byte-for-byte
+    // unchanged (docs/cli-contract.md §2.4).
+    if (rawSessions.length > 0) {
+      response.sessions_upserted = sessionsUpserted;
+      response.sessions_skipped =
+        dedupeSkipped + accountLevelSkipped + sessionsRpcSkipped;
+    }
+
+    return jsonResponse(200, response);
   } catch (error) {
     return errorResponse(error);
   }

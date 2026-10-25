@@ -9,8 +9,18 @@ import { GET as summaryGet } from "@/app/api/functions/token-usage-account-summa
 // (bracketed folders can't be imported statically); the real route plus the
 // legacy alias rewrite are covered by the server-level contract test.
 import { handleFunctionsGet as seriesGet } from "@/lib/api/account-series-router";
-import { FakeSupabase } from "../helpers/fake-supabase";
-import { DEVICE_A, TOKEN_A, JWT, base, initContractEnv, seedScenario } from "./helpers";
+import { FakeSupabase, type Row } from "../helpers/fake-supabase";
+import {
+  DEVICE_A,
+  DEVICE_B,
+  DEVICE_REVOKED,
+  TOKEN_A,
+  USER_ID,
+  JWT,
+  base,
+  initContractEnv,
+  seedScenario,
+} from "./helpers";
 
 const fake = new FakeSupabase();
 
@@ -213,12 +223,24 @@ describe("series: heatmap", () => {
     expect(body.weeks[0]).toHaveLength(7);
     expect(body.streak_days).toBe(0);
     expect(body.active_days).toBe(1);
-    const flat = body.weeks.flat() as Array<{ day: string; total_tokens: number; level: number }>;
+    const flat = body.weeks.flat() as Array<{
+      day: string;
+      total_tokens: number;
+      level: number;
+      sources: Record<string, number> | null;
+    }>;
     expect(flat).toHaveLength(14);
     const last = flat.at(-1)!;
     expect(last.day).toBe("2026-10-21");
     expect(last.total_tokens).toBe(EXPECTED_TOTAL);
     expect(last.level).toBe(4);
+    expect(last.sources).toBeTruthy();
+    expect(
+      Object.values(last.sources ?? {}).reduce(
+        (sum, value) => sum + Number(value),
+        0,
+      ),
+    ).toBe(EXPECTED_TOTAL);
     expect(body.total_cost_usd).toBeCloseTo(EXPECTED_COST, 10);
   });
 
@@ -287,6 +309,365 @@ describe("series: devices", () => {
   });
 });
 
+const SESSION_FROM = "2026-10-21T00:00:00.000Z";
+const SESSION_TO = "2026-10-22T00:00:00.000Z";
+
+function sessionRow(over: Row = {}): Row {
+  return {
+    user_id: USER_ID,
+    device_id: DEVICE_A,
+    source: "codex",
+    session_id: "s1",
+    project_key: null,
+    started_at: "2026-10-21T09:00:00.000Z",
+    ended_at: "2026-10-21T09:30:00.000Z",
+    input_tokens: 0,
+    cached_input_tokens: 0,
+    cache_creation_input_tokens: 0,
+    output_tokens: 0,
+    reasoning_output_tokens: 0,
+    total_tokens: 0,
+    billable_total_tokens: null,
+    models: [],
+    created_at: "2026-10-21T09:30:00.000Z",
+    updated_at: "2026-10-21T09:30:00.000Z",
+    ...over,
+  };
+}
+
+function sessionModel(model: string, over: Row = {}): Row {
+  return {
+    model,
+    input_tokens: 0,
+    cached_input_tokens: 0,
+    cache_creation_input_tokens: 0,
+    output_tokens: 0,
+    reasoning_output_tokens: 0,
+    total_tokens: 0,
+    ...over,
+  };
+}
+
+function seedSessions(): void {
+  fake.table("token_sessions").push(
+    sessionRow({
+      session_id: "s1",
+      project_key: "proj-a",
+      input_tokens: 600,
+      cached_input_tokens: 200,
+      cache_creation_input_tokens: 100,
+      output_tokens: 100,
+      total_tokens: 1000,
+      models: [
+        sessionModel("test-unpriced-model", {
+          input_tokens: 600,
+          cached_input_tokens: 200,
+          cache_creation_input_tokens: 100,
+          output_tokens: 100,
+          total_tokens: 1000,
+        }),
+      ],
+    }),
+    sessionRow({
+      source: "claude-code",
+      session_id: "s2",
+      started_at: "2026-10-21T11:00:00.000Z",
+      ended_at: "2026-10-21T11:30:00.000Z",
+      input_tokens: 900,
+      total_tokens: 900,
+      models: [sessionModel("composer-1", { input_tokens: 900, total_tokens: 900 })],
+    }),
+    sessionRow({
+      device_id: DEVICE_B,
+      session_id: "s3",
+      project_key: "proj b",
+      started_at: "2026-10-21T12:00:00.000Z",
+      ended_at: "2026-10-21T12:05:00.000Z",
+      input_tokens: 300,
+      total_tokens: 300,
+    }),
+    // Revoked devices keep their rows in the table but never reach the API.
+    sessionRow({
+      device_id: DEVICE_REVOKED,
+      session_id: "s4",
+      started_at: "2026-10-21T13:00:00.000Z",
+      ended_at: "2026-10-21T13:10:00.000Z",
+      input_tokens: 9999,
+      total_tokens: 9999,
+    }),
+  );
+}
+
+function sessionQuery(params: Record<string, string> = {}): string {
+  return `?${new URLSearchParams({
+    from: SESSION_FROM,
+    to: SESSION_TO,
+    ...params,
+  })}`;
+}
+
+describe("series: sessions", () => {
+  it("aggregates the filtered set, orders by ended_at and hides revoked devices", async () => {
+    seedSessions();
+    const res = await series("sessions", sessionQuery());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.from).toBe(SESSION_FROM);
+    expect(body.to).toBe(SESSION_TO);
+    expect(body.total).toBe(3);
+    expect(body.limit).toBe(50);
+    expect(body.offset).toBe(0);
+    expect(body.totals).toEqual({
+      sessions: 3,
+      total_tokens: 2200,
+      // s1 billable null falls back to total_tokens.
+      billable_total_tokens: 2200,
+      // composer-1: 900 input × $1.25/M = 0.001125; unpriced models cost 0.
+      total_cost_usd: "0.001125",
+      duration_ms: 3_900_000,
+    });
+    expect(body.sessions.map((item: { session_id: string }) => item.session_id)).toEqual([
+      "s3",
+      "s2",
+      "s1",
+    ]);
+
+    const s1 = body.sessions.find((item: { session_id: string }) => item.session_id === "s1");
+    expect(s1).toMatchObject({
+      device_id: DEVICE_A,
+      device_name: "PC One #aaaa1111",
+      source: "codex",
+      project_key: "proj-a",
+      billable_total_tokens: null,
+      total_cost_usd: "0.000000",
+      duration_ms: 1_800_000,
+    });
+    expect(s1.models[0]).toEqual({
+      model: "test-unpriced-model",
+      total_tokens: 1000,
+      total_cost_usd: "0.000000",
+      share: 1,
+    });
+
+    const s2 = body.sessions.find((item: { session_id: string }) => item.session_id === "s2");
+    expect(s2.total_cost_usd).toBe("0.001125");
+    expect(s2.models[0]).toEqual({
+      model: "composer-1",
+      total_tokens: 900,
+      total_cost_usd: "0.001125",
+      share: 1,
+    });
+
+    expect(body.facets.sources).toEqual([
+      { source: "codex", sessions: 2 },
+      { source: "claude-code", sessions: 1 },
+    ]);
+    expect(body.facets.devices).toEqual([
+      { device_id: DEVICE_A, device_name: "PC One #aaaa1111", sessions: 2 },
+      { device_id: DEVICE_B, device_name: "PC Two #bbbb2222", sessions: 1 },
+    ]);
+  });
+
+  it("keeps totals at full-set semantics while paginating", async () => {
+    seedSessions();
+    const res = await series("sessions", sessionQuery({ limit: "2", offset: "1" }));
+    const body = await res.json();
+
+    expect(body.total).toBe(3);
+    expect(body.totals.total_tokens).toBe(2200);
+    expect(body.sessions.map((item: { session_id: string }) => item.session_id)).toEqual([
+      "s2",
+      "s1",
+    ]);
+  });
+
+  it("applies filters while facets ignore their own dimension", async () => {
+    seedSessions();
+
+    const byDevice = await (await series("sessions", sessionQuery({ device_id: DEVICE_A }))).json();
+    expect(byDevice.total).toBe(2);
+    expect(byDevice.facets.sources).toEqual([
+      { source: "claude-code", sessions: 1 },
+      { source: "codex", sessions: 1 },
+    ]);
+    // devices ignores device_id so the picker can switch elsewhere.
+    expect(byDevice.facets.devices.map((d: { device_id: string }) => d.device_id)).toEqual([
+      DEVICE_A,
+      DEVICE_B,
+    ]);
+
+    const bySource = await (await series("sessions", sessionQuery({ source: "CODEX" }))).json();
+    expect(bySource.total).toBe(2);
+    expect(bySource.facets.sources).toEqual([
+      { source: "codex", sessions: 2 },
+      { source: "claude-code", sessions: 1 },
+    ]);
+    expect(bySource.facets.devices).toEqual([
+      { device_id: DEVICE_A, device_name: "PC One #aaaa1111", sessions: 1 },
+      { device_id: DEVICE_B, device_name: "PC Two #bbbb2222", sessions: 1 },
+    ]);
+
+    const byQuery = await (await series("sessions", sessionQuery({ q: "PROJ" }))).json();
+    expect(byQuery.total).toBe(2);
+    expect(byQuery.sessions.map((item: { session_id: string }) => item.session_id)).toEqual([
+      "s3",
+      "s1",
+    ]);
+  });
+
+  it("treats % and _ in q as literals, not LIKE wildcards", async () => {
+    fake.table("token_sessions").push(
+      sessionRow({ session_id: "p1", project_key: "100%_done" }),
+      sessionRow({ session_id: "p2", project_key: "plain" }),
+    );
+
+    const hit = await (await series("sessions", sessionQuery({ q: "%_" }))).json();
+    expect(hit.total).toBe(1);
+    expect(hit.sessions[0].session_id).toBe("p1");
+
+    const miss = await (await series("sessions", sessionQuery({ q: "\\" }))).json();
+    expect(miss.total).toBe(0);
+  });
+
+  it("filters on ended_at in [from, to) and keeps cross-window sessions whole", async () => {
+    fake.table("token_sessions").push(
+      // Ends exactly at from: included.
+      sessionRow({
+        session_id: "e1",
+        started_at: "2026-10-21T09:00:00.000Z",
+        ended_at: "2026-10-21T10:00:00.000Z",
+        input_tokens: 10,
+        total_tokens: 10,
+      }),
+      // Ends exactly at to: excluded.
+      sessionRow({
+        session_id: "e2",
+        started_at: "2026-10-21T10:30:00.000Z",
+        ended_at: "2026-10-21T11:00:00.000Z",
+        input_tokens: 20,
+        total_tokens: 20,
+      }),
+      // Started before from but ended inside: included whole.
+      sessionRow({
+        session_id: "e3",
+        started_at: "2026-10-21T09:00:00.000Z",
+        ended_at: "2026-10-21T10:59:00.000Z",
+        input_tokens: 30,
+        total_tokens: 30,
+      }),
+      // Ended before from: excluded.
+      sessionRow({
+        session_id: "e4",
+        started_at: "2026-10-21T08:00:00.000Z",
+        ended_at: "2026-10-21T09:59:00.000Z",
+        input_tokens: 40,
+        total_tokens: 40,
+      }),
+    );
+
+    const res = await series(
+      "sessions",
+      "?from=2026-10-21T10%3A00%3A00.000Z&to=2026-10-21T11%3A00%3A00.000Z",
+    );
+    const body = await res.json();
+    expect(body.total).toBe(2);
+    expect(body.sessions.map((item: { session_id: string }) => item.session_id)).toEqual([
+      "e3",
+      "e1",
+    ]);
+    expect(body.sessions[0].duration_ms).toBe(7_140_000);
+  });
+
+  it("rounds model shares to 4dp and handles zero-token sessions", async () => {
+    fake.table("token_sessions").push(
+      sessionRow({
+        session_id: "r1",
+        input_tokens: 3,
+        total_tokens: 3,
+        models: [
+          sessionModel("m1", { input_tokens: 1, total_tokens: 1 }),
+          sessionModel("m2", { input_tokens: 2, total_tokens: 2 }),
+        ],
+      }),
+      sessionRow({
+        session_id: "r2",
+        started_at: "2026-10-21T10:00:00.000Z",
+        ended_at: "2026-10-21T10:01:00.000Z",
+        total_tokens: 0,
+        models: [sessionModel("m0")],
+      }),
+    );
+
+    const body = await (await series("sessions", sessionQuery())).json();
+    const r1 = body.sessions.find((item: { session_id: string }) => item.session_id === "r1");
+    expect(r1.models).toEqual([
+      { model: "m1", total_tokens: 1, total_cost_usd: "0.000000", share: 0.3333 },
+      { model: "m2", total_tokens: 2, total_cost_usd: "0.000000", share: 0.6667 },
+    ]);
+    const r2 = body.sessions.find((item: { session_id: string }) => item.session_id === "r2");
+    expect(r2.models[0].share).toBe(0);
+  });
+
+  it("validates parameters and treats account-level sources as empty results", async () => {
+    const missing = await series("sessions", "");
+    expect(missing.status).toBe(400);
+    expect(await missing.json()).toEqual({ error: "Missing from/to" });
+
+    const malformed = await series("sessions", "?from=nope&to=also-nope");
+    expect(malformed.status).toBe(400);
+    expect(await malformed.json()).toEqual({ error: "Missing from/to" });
+
+    const reversed = await series(
+      "sessions",
+      "?from=2026-10-22T00%3A00%3A00.000Z&to=2026-10-21T00%3A00%3A00.000Z",
+    );
+    expect(reversed.status).toBe(400);
+    expect(await reversed.json()).toEqual({ error: "Invalid from/to" });
+
+    const badDevice = await series("sessions", sessionQuery({ device_id: "not-a-uuid" }));
+    expect(badDevice.status).toBe(400);
+    expect(await badDevice.json()).toEqual({ error: "Invalid device_id" });
+
+    for (const source of ["cursor", "trae-cn", "CURSOR"]) {
+      const res = await series("sessions", sessionQuery({ source }));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.total).toBe(0);
+      expect(body.sessions).toEqual([]);
+      expect(body.totals.sessions).toBe(0);
+      expect(body.facets).toEqual({ sources: [], devices: [] });
+    }
+  });
+
+  it("clamps the window to 1095 days and normalizes paging inputs", async () => {
+    seedSessions();
+    const clamped = await (
+      await series(
+        "sessions",
+        `?from=2000-01-01T00%3A00%3A00.000Z&to=${encodeURIComponent(SESSION_TO)}`,
+      )
+    ).json();
+    expect(clamped.from).toBe(
+      new Date(Date.parse(SESSION_TO) - 1095 * 86_400_000).toISOString(),
+    );
+
+    const clampedLimit = await (await series("sessions", sessionQuery({ limit: "999" }))).json();
+    expect(clampedLimit.limit).toBe(200);
+
+    const defaultLimit = await (await series("sessions", sessionQuery({ limit: "abc" }))).json();
+    expect(defaultLimit.limit).toBe(50);
+
+    const minLimit = await (await series("sessions", sessionQuery({ limit: "0" }))).json();
+    expect(minLimit.limit).toBe(1);
+
+    const negativeOffset = await (
+      await series("sessions", sessionQuery({ offset: "-10" }))
+    ).json();
+    expect(negativeOffset.offset).toBe(0);
+  });
+});
+
 describe("series dispatch", () => {
   it("404s unknown series with the catalog", async () => {
     const res = await seriesGet(
@@ -296,7 +677,7 @@ describe("series dispatch", () => {
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.error).toBe("Unknown account series: bogus");
-    expect(body.series).toEqual(["daily", "hourly", "monthly", "heatmap", "model-breakdown", "devices"]);
+    expect(body.series).toEqual(["daily", "hourly", "monthly", "heatmap", "model-breakdown", "devices", "sessions"]);
   });
 
   it("404s non-account paths on the catch-all", async () => {

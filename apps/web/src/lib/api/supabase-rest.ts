@@ -137,6 +137,12 @@ function applyFilters(query: any, filters: Filter[]): any {
       case "gt":
         result = result.gt(column, value as string);
         break;
+      case "gte":
+        result = result.gte(column, value as string);
+        break;
+      case "lt":
+        result = result.lt(column, value as string);
+        break;
       case "is":
         result = result.is(column, value === "null" ? null : (value as string));
         break;

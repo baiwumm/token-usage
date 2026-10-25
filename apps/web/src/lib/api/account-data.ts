@@ -50,7 +50,6 @@ export type AccountUsage = {
   activeDeviceIds: Set<string>;
   canonicalRows: UsageRow[];
 };
-
 export async function loadAccountUsage(userId: string): Promise<AccountUsage> {
   const [hourly, sessionStates, deviceRows, tokenRows] = await Promise.all([
     selectAll("token_usage_hourly", {
@@ -90,4 +89,32 @@ export async function loadAccountUsage(userId: string): Promise<AccountUsage> {
     activeDeviceIds,
     canonicalRows: canonicalizeUsage(hourly, sessionStates, activeDeviceIds),
   };
+}
+
+// Sessions are queried by absolute ended_at instants (docs/cli-contract.md
+// §2.7); the device rows let the handler drop revoked machines and resolve
+// display names without trusting client input.
+export async function loadSessionRows(
+  userId: string,
+  fromIso: string,
+  toIso: string,
+): Promise<{ sessions: RestRow[]; devices: RestRow[] }> {
+  const [sessions, devices] = await Promise.all([
+    selectAll("token_sessions", {
+      columns:
+        "device_id,source,session_id,project_key,started_at,ended_at,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,models",
+      filters: [
+        ["user_id", "eq", userId],
+        ["ended_at", "gte", fromIso],
+        ["ended_at", "lt", toIso],
+      ],
+      order: "ended_at.desc,source.asc,session_id.asc",
+    }),
+    selectAll("token_devices", {
+      columns: "id,device_name,revoked_at",
+      filters: [["user_id", "eq", userId]],
+    }),
+  ]);
+
+  return { sessions, devices };
 }

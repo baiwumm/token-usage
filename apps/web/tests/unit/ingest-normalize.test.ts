@@ -5,8 +5,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   dedupeBuckets,
+  dedupeSessions,
   dedupeStates,
+  isAccountLevelSessionSource,
   normalizeBucket,
+  normalizeProjectKey,
+  normalizeSession,
+  normalizeSessionSource,
   normalizeSessionState,
 } from "@/lib/ingest/normalize";
 
@@ -201,5 +206,254 @@ describe("dedupeStates", () => {
     const deduped = dedupeStates([s1, s2]);
     expect(deduped).toHaveLength(1);
     expect(deduped[0].model).toBe("m2");
+  });
+});
+
+function validSession(over: Record<string, unknown> = {}) {
+  return {
+    session_id: "session-1",
+    source: "codex",
+    started_at: "2026-10-21T09:00:00.000Z",
+    ended_at: "2026-10-21T09:30:00.000Z",
+    project_key: "/home/me/projects/demo/",
+    input_tokens: 100,
+    cached_input_tokens: 10,
+    cache_creation_input_tokens: 20,
+    output_tokens: 70,
+    reasoning_output_tokens: 5,
+    total_tokens: 200,
+    billable_total_tokens: null,
+    models: [
+      {
+        model: "gpt-5-codex",
+        input_tokens: 100,
+        cached_input_tokens: 10,
+        cache_creation_input_tokens: 20,
+        output_tokens: 70,
+        reasoning_output_tokens: 5,
+        total_tokens: 200,
+      },
+    ],
+    ...over,
+  };
+}
+
+describe("normalizeSessionSource", () => {
+  it("trims, lowercases, caps at 100 and falls back to unknown", () => {
+    expect(normalizeSessionSource("  CODEX  ")).toBe("codex");
+    expect(normalizeSessionSource("")).toBe("unknown");
+    expect(normalizeSessionSource(null)).toBe("unknown");
+    expect(normalizeSessionSource("s".repeat(300))).toHaveLength(100);
+  });
+
+  it("recognizes account-level sources", () => {
+    expect(isAccountLevelSessionSource("cursor")).toBe(true);
+    expect(isAccountLevelSessionSource("trae-cn")).toBe(true);
+    expect(isAccountLevelSessionSource("codex")).toBe(false);
+  });
+});
+
+describe("normalizeProjectKey", () => {
+  it("keeps only the basename for POSIX and Windows paths", () => {
+    expect(normalizeProjectKey("/home/me/projects/demo/")).toBe("demo");
+    expect(normalizeProjectKey("C:\\Users\\me\\repo\\")).toBe("repo");
+    expect(normalizeProjectKey("repo")).toBe("repo");
+  });
+
+  it("strips control characters and truncates to 120", () => {
+    expect(normalizeProjectKey("/tmp/\u0007proj\u0007")).toBe("proj");
+    expect(normalizeProjectKey(`/tmp/${"x".repeat(200)}`)).toHaveLength(120);
+  });
+
+  it("maps empty, dot and dot-dot basenames to null", () => {
+    for (const value of [null, undefined, "", "/", ".", "..", "/tmp/."]) {
+      expect(normalizeProjectKey(value)).toBeNull();
+    }
+  });
+});
+
+describe("normalizeSession", () => {
+  it("normalizes a valid session", () => {
+    const session = normalizeSession(validSession());
+    expect(session).toMatchObject({
+      session_id: "session-1",
+      source: "codex",
+      started_at: "2026-10-21T09:00:00.000Z",
+      ended_at: "2026-10-21T09:30:00.000Z",
+      project_key: "demo",
+      total_tokens: 200,
+      billable_total_tokens: null,
+    });
+    expect(session?.models).toHaveLength(1);
+  });
+
+  it("rejects path separators and control characters in session_id", () => {
+    for (const sessionId of ["a/b", "a\\b", "a\u0007b", "", "s".repeat(257)]) {
+      expect(normalizeSession(validSession({ session_id: sessionId }))).toBeNull();
+    }
+  });
+
+  it("rejects account-level sources", () => {
+    expect(normalizeSession(validSession({ source: "cursor" }))).toBeNull();
+    expect(normalizeSession(validSession({ source: "TRAE-CN" }))).toBeNull();
+  });
+
+  it("rejects reversed or unparseable timestamps", () => {
+    expect(
+      normalizeSession(
+        validSession({ ended_at: "2026-10-21T08:59:59.000Z" }),
+      ),
+    ).toBeNull();
+    expect(normalizeSession(validSession({ started_at: "nope" }))).toBeNull();
+    expect(normalizeSession(validSession({ ended_at: "nope" }))).toBeNull();
+  });
+
+  it("enforces total = input + cached + cache_creation + output", () => {
+    expect(normalizeSession(validSession({ total_tokens: 201 }))).toBeNull();
+    expect(
+      normalizeSession(validSession({ reasoning_output_tokens: 999 })),
+    ).not.toBeNull();
+  });
+
+  it("accepts null or a non-negative billable and rejects negatives", () => {
+    expect(
+      normalizeSession(validSession({ billable_total_tokens: null }))
+        ?.billable_total_tokens,
+    ).toBeNull();
+    expect(
+      normalizeSession(validSession({ billable_total_tokens: 180 }))
+        ?.billable_total_tokens,
+    ).toBe(180);
+    expect(
+      normalizeSession(validSession({ billable_total_tokens: -1 })),
+    ).toBeNull();
+  });
+
+  it("merges duplicate model names and requires the sums to match", () => {
+    const merged = normalizeSession(
+      validSession({
+        models: [
+          {
+            model: "gpt-5-codex",
+            input_tokens: 60,
+            cached_input_tokens: 10,
+            cache_creation_input_tokens: 20,
+            output_tokens: 10,
+            reasoning_output_tokens: 5,
+            total_tokens: 100,
+          },
+          {
+            model: " gpt-5-codex ",
+            input_tokens: 40,
+            cached_input_tokens: 0,
+            cache_creation_input_tokens: 0,
+            output_tokens: 60,
+            reasoning_output_tokens: 0,
+            total_tokens: 100,
+          },
+        ],
+      }),
+    );
+
+    expect(merged?.models).toEqual([
+      {
+        model: "gpt-5-codex",
+        input_tokens: 100,
+        cached_input_tokens: 10,
+        cache_creation_input_tokens: 20,
+        output_tokens: 70,
+        reasoning_output_tokens: 5,
+        total_tokens: 200,
+      },
+    ]);
+  });
+
+  it("rejects bad model arrays, per-model sums and overall sums", () => {
+    expect(normalizeSession(validSession({ models: "nope" }))).toBeNull();
+    expect(
+      normalizeSession(validSession({ models: [null] })),
+    ).toBeNull();
+    expect(
+      normalizeSession(
+        validSession({
+          models: [{ ...validSession().models[0], total_tokens: 199 }],
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      normalizeSession(
+        validSession({
+          models: [
+            {
+              model: "other",
+              input_tokens: 1,
+              cached_input_tokens: 0,
+              cache_creation_input_tokens: 0,
+              output_tokens: 0,
+              reasoning_output_tokens: 0,
+              total_tokens: 1,
+            },
+          ],
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      normalizeSession(
+        validSession({
+          models: Array.from({ length: 33 }, () => validSession().models[0]),
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("allows missing or empty models (cost is then zero)", () => {
+    expect(normalizeSession(validSession({ models: undefined }))?.models).toEqual([]);
+    expect(normalizeSession(validSession({ models: [] }))?.models).toEqual([]);
+  });
+});
+
+describe("dedupeSessions", () => {
+  const at = (sessionId: string, endedAt: string, total: number, project: string) =>
+    normalizeSession(
+      validSession({
+        session_id: sessionId,
+        ended_at: endedAt,
+        input_tokens: total,
+        cached_input_tokens: 0,
+        cache_creation_input_tokens: 0,
+        output_tokens: 0,
+        reasoning_output_tokens: 0,
+        total_tokens: total,
+        models: [],
+        project_key: project,
+      }),
+    )!;
+
+  it("keeps the latest ended_at per source|session_id", () => {
+    const deduped = dedupeSessions([
+      at("s1", "2026-10-21T09:10:00.000Z", 10, "early"),
+      at("s1", "2026-10-21T09:40:00.000Z", 10, "late"),
+    ]);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0].project_key).toBe("late");
+  });
+
+  it("breaks equal ended_at ties by total, then by later entry", () => {
+    const deduped = dedupeSessions([
+      at("s1", "2026-10-21T09:40:00.000Z", 20, "bigger"),
+      at("s1", "2026-10-21T09:40:00.000Z", 10, "smaller"),
+      at("s1", "2026-10-21T09:40:00.000Z", 20, "later-equal"),
+    ]);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0].project_key).toBe("later-equal");
+  });
+
+  it("keeps different sources and session ids apart", () => {
+    const deduped = dedupeSessions([
+      at("s1", "2026-10-21T09:40:00.000Z", 10, "a"),
+      at("s2", "2026-10-21T09:40:00.000Z", 10, "b"),
+      normalizeSession(validSession({ source: "claude-code" }))!,
+    ]);
+    expect(deduped).toHaveLength(3);
   });
 });

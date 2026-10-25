@@ -228,3 +228,332 @@ describe("ingest dedup + last-wins", () => {
     expect(await res.json()).toEqual({ error: "Internal server error" });
   });
 });
+
+function session(over: Record<string, unknown> = {}) {
+  return {
+    session_id: "session-1",
+    source: "codex",
+    started_at: "2026-10-21T09:00:00.000Z",
+    ended_at: "2026-10-21T09:30:00.000Z",
+    project_key: "/home/me/projects/demo/",
+    input_tokens: 10,
+    cached_input_tokens: 2,
+    cache_creation_input_tokens: 3,
+    output_tokens: 5,
+    reasoning_output_tokens: 1,
+    total_tokens: 20,
+    billable_total_tokens: null,
+    models: [
+      {
+        model: "test-unpriced-model",
+        input_tokens: 10,
+        cached_input_tokens: 2,
+        cache_creation_input_tokens: 3,
+        output_tokens: 5,
+        reasoning_output_tokens: 1,
+        total_tokens: 20,
+      },
+    ],
+    ...over,
+  };
+}
+
+describe("ingest sessions", () => {
+  it("accepts a sessions-only payload and appends counters", async () => {
+    const res = await ingest({ sessions: [session()] });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      inserted: 0,
+      skipped: 0,
+      upload_scope: "private",
+      sessions_upserted: 1,
+      sessions_skipped: 0,
+    });
+
+    const row = fake.table("token_sessions").at(-1)!;
+    expect(row).toMatchObject({
+      user_id: expect.any(String),
+      device_id: DEVICE_A,
+      source: "codex",
+      session_id: "session-1",
+      project_key: "demo",
+      started_at: "2026-10-21T09:00:00.000Z",
+      ended_at: "2026-10-21T09:30:00.000Z",
+      total_tokens: 20,
+      billable_total_tokens: null,
+    });
+    expect(row.models).toEqual(session().models);
+    // Privacy whitelist: unknown fields never reach the row.
+    expect(row.prompt).toBeUndefined();
+    expect(row.title).toBeUndefined();
+    expect(row.resume_command).toBeUndefined();
+  });
+
+  it("leaves the legacy response byte-for-byte unchanged without sessions", async () => {
+    for (const body of [
+      { hourly: [bucket()] },
+      { hourly: [bucket()], sessions: [] },
+      { hourly: [bucket()], sessions: null },
+    ]) {
+      const res = await ingest(body);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        inserted: 1,
+        skipped: 0,
+        upload_scope: "private",
+      });
+    }
+  });
+
+  it("rejects non-arrays, oversize batches and invalid entries before writing", async () => {
+    const nonArray = await ingest({ sessions: "nope" });
+    expect(nonArray.status).toBe(400);
+    expect(await nonArray.json()).toEqual({ error: "Invalid session" });
+
+    const tooMany = await ingest({
+      sessions: Array.from({ length: 201 }, (_, index) =>
+        session({ session_id: `s${index}` }),
+      ),
+    });
+    expect(tooMany.status).toBe(400);
+    expect(await tooMany.json()).toEqual({ error: "Too many sessions (max 200)" });
+
+    const invalidEntries: Array<Record<string, unknown>> = [
+      session({ session_id: "" }),
+      session({ session_id: "a/b" }),
+      session({ session_id: "a\\b" }),
+      session({ session_id: "a\u0007b" }),
+      session({ session_id: "x".repeat(257) }),
+      session({ ended_at: "2026-10-21T08:59:59.000Z" }),
+      session({ total_tokens: 19 }),
+      session({ billable_total_tokens: -1 }),
+      session({
+        models: [{ ...session().models[0], total_tokens: 19 }],
+      }),
+      session({
+        models: [
+          {
+            ...session().models[0],
+            total_tokens: 10,
+          },
+        ],
+      }),
+      session({ models: Array.from({ length: 33 }, () => session().models[0]) }),
+    ];
+
+    for (const entry of invalidEntries) {
+      const res = await ingest({ sessions: [entry] });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "Invalid session" });
+      expect(fake.table("token_sessions")).toHaveLength(0);
+    }
+
+    // All-or-nothing across the whole batch, including the hourly write.
+    const before = fake.table("token_usage_hourly").length;
+    const mixed = await ingest({
+      hourly: [bucket()],
+      sessions: [session(), session({ total_tokens: -1 })],
+    });
+    expect(mixed.status).toBe(400);
+    expect(fake.table("token_usage_hourly")).toHaveLength(before);
+    expect(fake.table("token_sessions")).toHaveLength(0);
+  });
+
+  it("skips account-level sources whole, without validating their fields", async () => {
+    const res = await ingest({
+      sessions: [
+        { source: "cursor", session_id: "cursor-1" },
+        { source: "  TRAE-CN ", session_id: "trae-1" },
+        session({ source: "  CODEX " }),
+      ],
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      inserted: 0,
+      skipped: 0,
+      upload_scope: "private",
+      sessions_upserted: 1,
+      sessions_skipped: 2,
+    });
+
+    const rows = fake.table("token_sessions");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ source: "codex", session_id: "session-1" });
+  });
+
+  it("dedupes in-request by latest ended_at, then total, then later entry", async () => {
+    const res = await ingest({
+      sessions: [
+        session({ ended_at: "2026-10-21T09:10:00.000Z", project_key: "early" }),
+        session({ ended_at: "2026-10-21T09:40:00.000Z", project_key: "late" }),
+        session({
+          ended_at: "2026-10-21T09:40:00.000Z",
+          input_tokens: 10,
+          cached_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+          output_tokens: 0,
+          reasoning_output_tokens: 0,
+          total_tokens: 10,
+          models: [],
+          project_key: "smaller",
+        }),
+        session({
+          ended_at: "2026-10-21T09:40:00.000Z",
+          input_tokens: 20,
+          cached_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+          output_tokens: 0,
+          reasoning_output_tokens: 0,
+          total_tokens: 20,
+          models: [],
+          project_key: "later-equal",
+        }),
+      ],
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      inserted: 0,
+      skipped: 0,
+      upload_scope: "private",
+      sessions_upserted: 1,
+      sessions_skipped: 3,
+    });
+
+    const rows = fake.table("token_sessions");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      project_key: "later-equal",
+      ended_at: "2026-10-21T09:40:00.000Z",
+      total_tokens: 20,
+    });
+  });
+
+  it("applies strict ended_at last-wins across requests", async () => {
+    const first = await ingest({ sessions: [session({ ended_at: "2026-10-21T10:00:00.000Z" })] });
+    expect(first.status).toBe(200);
+
+    const older = await ingest({
+      sessions: [
+        session({
+          ended_at: "2026-10-21T09:00:00.000Z",
+          input_tokens: 99,
+          cached_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+          output_tokens: 0,
+          reasoning_output_tokens: 0,
+          total_tokens: 99,
+          models: [],
+        }),
+      ],
+    });
+    expect(await older.json()).toMatchObject({
+      sessions_upserted: 0,
+      sessions_skipped: 1,
+    });
+
+    const equal = await ingest({
+      sessions: [
+        session({
+          ended_at: "2026-10-21T10:00:00.000Z",
+          input_tokens: 99,
+          cached_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+          output_tokens: 0,
+          reasoning_output_tokens: 0,
+          total_tokens: 99,
+          models: [],
+        }),
+      ],
+    });
+    expect(await equal.json()).toMatchObject({
+      sessions_upserted: 0,
+      sessions_skipped: 1,
+    });
+
+    let row = fake.table("token_sessions")[0];
+    expect(row.total_tokens).toBe(20);
+
+    const newer = await ingest({
+      sessions: [
+        session({
+          ended_at: "2026-10-21T11:00:00.000Z",
+          input_tokens: 5,
+          cached_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+          output_tokens: 0,
+          reasoning_output_tokens: 0,
+          total_tokens: 5,
+          models: [],
+        }),
+      ],
+    });
+    expect(await newer.json()).toMatchObject({
+      sessions_upserted: 1,
+      sessions_skipped: 0,
+    });
+
+    row = fake.table("token_sessions")[0];
+    expect(row.total_tokens).toBe(5);
+    expect(row.ended_at).toBe("2026-10-21T11:00:00.000Z");
+  });
+
+  it("stores only the basename of project_key and strips control characters", async () => {
+    const cases: Array<[string, string | null]> = [
+      ["C:\\Users\\me\\repo\\", "repo"],
+      ["/home/me/dir/\u0007proj\u0007", "proj"],
+      ["/", null],
+      ["", null],
+      [".", null],
+      ["..", null],
+      [`/tmp/${"x".repeat(200)}`, "x".repeat(120)],
+    ];
+
+    for (const [input, expected] of cases) {
+      fake.table("token_sessions").length = 0;
+      const res = await ingest({
+        sessions: [session({ session_id: "project-case", project_key: input })],
+      });
+      expect(res.status).toBe(200);
+      expect(fake.table("token_sessions")[0].project_key).toBe(expected);
+    }
+  });
+
+  it("merges duplicate model names and enforces the model sum", async () => {
+    const res = await ingest({
+      sessions: [
+        session({
+          input_tokens: 6,
+          cached_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+          output_tokens: 0,
+          reasoning_output_tokens: 0,
+          total_tokens: 6,
+          models: [
+            {
+              model: "same",
+              input_tokens: 2,
+              cached_input_tokens: 0,
+              cache_creation_input_tokens: 0,
+              output_tokens: 0,
+              reasoning_output_tokens: 0,
+              total_tokens: 2,
+            },
+            {
+              model: " same ",
+              input_tokens: 4,
+              cached_input_tokens: 0,
+              cache_creation_input_tokens: 0,
+              output_tokens: 0,
+              reasoning_output_tokens: 0,
+              total_tokens: 4,
+            },
+          ],
+        }),
+      ],
+    });
+    expect(res.status).toBe(200);
+    const models = fake.table("token_sessions")[0].models as Array<Record<string, unknown>>;
+    expect(models).toHaveLength(1);
+    expect(models[0]).toMatchObject({ model: "same", input_tokens: 6, total_tokens: 6 });
+  });
+});

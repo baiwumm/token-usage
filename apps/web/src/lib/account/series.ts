@@ -340,6 +340,7 @@ export function heatmapCells(
     billable_total_tokens: number;
     level: number;
     models: Record<string, number> | null;
+    sources: Record<string, number> | null;
   }>;
   maxValue: number;
   totalCostUsd: number;
@@ -351,6 +352,7 @@ export function heatmapCells(
       billable_total_tokens: number;
       total_cost_usd: number;
       models: Record<string, number>;
+      sources: Record<string, number>;
     }
   >();
   let totalCostUsd = 0;
@@ -368,6 +370,7 @@ export function heatmapCells(
         billable_total_tokens: 0,
         total_cost_usd: 0,
         models: {},
+        sources: {},
       };
       byDay.set(day, bucket);
     }
@@ -383,6 +386,9 @@ export function heatmapCells(
     const model = String(row.model || "").trim() || "unknown";
 
     bucket.models[model] = (bucket.models[model] || 0) + total;
+    const source = String(row.source || "").trim() || "unknown";
+
+    bucket.sources[source] = (bucket.sources[source] || 0) + total;
   }
 
   const maxValue = Math.max(
@@ -407,6 +413,7 @@ export function heatmapCells(
     billable_total_tokens: number;
     level: number;
     models: Record<string, number> | null;
+    sources: Record<string, number> | null;
   }> = [];
   const cursor = new Date(`${from}T00:00:00Z`);
   const end = new Date(`${to}T00:00:00Z`);
@@ -422,6 +429,7 @@ export function heatmapCells(
       billable_total_tokens: billable,
       level: levelOf(billable),
       models: hit ? hit.models : null,
+      sources: hit ? hit.sources : null,
     });
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }

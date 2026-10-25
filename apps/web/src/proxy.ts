@@ -36,6 +36,7 @@ const CONTRACT_API_PREFIX = "/api/functions/";
 // API requires login.
 const PROTECTED_PAGES = [
   "/",
+  "/sessions",
   "/settings",
   "/wrapped",
   "/service-status",
@@ -126,6 +127,7 @@ export const config = {
   matcher: [
     "/api/functions/:path*",
     "/",
+    "/sessions/:path*",
     "/settings/:path*",
     "/wrapped/:path*",
     "/service-status/:path*",
