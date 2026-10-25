@@ -5,7 +5,7 @@ const path = require("node:path");
 const pkg = require("../../package.json");
 const { readJson, writeJson } = require("./fs");
 
-const STAR_CTA_URL = "https://github.com/xiufengsun/TokenTracker";
+const STAR_CTA_URL = "https://github.com/baiwumm/token-usage";
 const STAR_CTA_STATE_FILE = "star-cta.json";
 
 function isTruthyFlag(value) {
@@ -18,9 +18,9 @@ function isInteractiveCli({ stdout = process.stdout, env = process.env } = {}) {
   if (!stdout?.isTTY) return false;
   if (env?.NODE_TEST_CONTEXT !== undefined) return false;
   if (isTruthyFlag(env?.CI)) return false;
-  if (isTruthyFlag(env?.TOKENTRACKER_NO_STAR_PROMPT)) return false;
+  if (isTruthyFlag(env?.TOKENUSAGE_NO_STAR_PROMPT)) return false;
 
-  const shell = String(env?.TOKENTRACKER_APP_SHELL || "").trim().toLowerCase();
+  const shell = String(env?.TOKENUSAGE_APP_SHELL || "").trim().toLowerCase();
   if (shell && shell !== "cli") return false;
   return true;
 }
@@ -56,7 +56,7 @@ async function maybeShowStarCta({
 
   stdout.write(
     [
-      "  ⭐ If TokenTracker helps you understand where your tokens go,",
+      "  ⭐ If Token Usage helps you understand where your tokens go,",
       "     a GitHub Star helps more developers find it:",
       `     ${STAR_CTA_URL}`,
       "",

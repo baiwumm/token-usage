@@ -1,21 +1,25 @@
-const DEFAULT_BASE_URL = "https://srctyff5.us-east.insforge.app";
-// InsForge projects this product has retired. b46ug8xu was production until
-// the 2026-04-19 migration to srctyff5 (0.5.67, commit 73f461b8); init
-// preserves any persisted config.baseUrl, so installs initialized before the
-// migration stayed pinned to it and kept uploading there until the old
-// project's backend went dark on 2026-07-27 (HTTP 503 on every request).
-// Persisted values naming these hosts must fall back to the current default.
-const LEGACY_INSFORGE_HOSTS = new Set(["b46ug8xu.us-east.insforge.app"]);
-const DEFAULT_DASHBOARD_URL = "https://www.tokentracker.cc";
+// token-usage production deployment (docs/m-cli-task.md, operator-approved
+// 2026-10-25). Override per invocation with --base-url or TOKENUSAGE_BASE_URL.
+const DEFAULT_BASE_URL = "https://token-usage-delta.vercel.app";
+// Retired hosts from the upstream (InsForge) era; a persisted config pointing
+// at one of these must fall back to the current default instead of uploading
+// into a dead backend.
+const LEGACY_INSFORGE_HOSTS = new Set([
+  "b46ug8xu.us-east.insforge.app",
+  "srctyff5.us-east.insforge.app",
+]);
+const DEFAULT_DASHBOARD_URL = DEFAULT_BASE_URL;
 const DEFAULT_HTTP_TIMEOUT_MS = 20_000;
 // Public InsForge anon key (JWT, role=anon). Mirrors dashboard/src/lib/insforge-config.ts
 // (PROD_INSFORGE_ANON_KEY) — public by design (ships in the browser bundle and
 // appears in .github/workflows/*.yml). The local server needs it to call the
-// cross-device `tokentracker-account-*` edge functions on the popover's behalf.
+// cross-device `token-usage-account-*` edge functions on the popover's behalf.
 // (Previously this mistakenly used the full-access `ik_*` API key, which has
 // admin access and must never be shipped to clients.)
-const DEFAULT_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3OC0xMjM0LTU2NzgtOTBhYi1jZGVmMTIzNDU2NzgiLCJlbWFpbCI6ImFub25AaW5zZm9yZ2UuY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNDU5NDd9.T0auta_IrVIh0uXW1bob5QSnzvsnJmN28r5XkSGEuQY";
+// token-usage's Supabase publishable key — public by design (ships in the
+// web app's browser bundle; RLS zero-policy on token_* tables means it grants
+// nothing without the service-role key on the server).
+const DEFAULT_ANON_KEY = "sb_publishable_Sym9xClyNRvjxqtj74gF4Q_owoDy3px";
 
 function resolveRuntimeConfig({ cli = {}, config = {}, env = process.env, defaults = {} } = {}) {
   // Older Windows test runs could leak their fixture HOME and persist
@@ -26,26 +30,26 @@ function resolveRuntimeConfig({ cli = {}, config = {}, env = process.env, defaul
   const baseUrl = pickString(
     cli.baseUrl,
     persistedBaseUrl,
-    env?.TOKENTRACKER_INSFORGE_BASE_URL,
+    env?.TOKENUSAGE_INSFORGE_BASE_URL,
     defaults.baseUrl,
     DEFAULT_BASE_URL,
   );
   const selectedBase = normalizeInstanceBaseUrl(baseUrl.value);
   const configBase = normalizeInstanceBaseUrl(persistedBaseUrl || DEFAULT_BASE_URL);
-  const envBase = normalizeInstanceBaseUrl(env?.TOKENTRACKER_INSFORGE_BASE_URL || baseUrl.value);
+  const envBase = normalizeInstanceBaseUrl(env?.TOKENUSAGE_INSFORGE_BASE_URL || baseUrl.value);
   const defaultBase = normalizeInstanceBaseUrl(defaults.baseUrl || DEFAULT_BASE_URL);
   const custom = selectedBase !== DEFAULT_BASE_URL;
   const anonKey = pickString(
     cli.anonKey,
     configBase === selectedBase ? config.anonKey : undefined,
-    envBase === selectedBase ? env?.TOKENTRACKER_INSFORGE_ANON_KEY : undefined,
+    envBase === selectedBase ? env?.TOKENUSAGE_INSFORGE_ANON_KEY : undefined,
     defaultBase === selectedBase ? defaults.anonKey : undefined,
     custom ? null : DEFAULT_ANON_KEY,
   );
   const dashboardUrl = pickString(
     cli.dashboardUrl,
     configBase === selectedBase ? config.dashboardUrl : undefined,
-    envBase === selectedBase ? env?.TOKENTRACKER_DASHBOARD_URL : undefined,
+    envBase === selectedBase ? env?.TOKENUSAGE_DASHBOARD_URL : undefined,
     defaultBase === selectedBase ? defaults.dashboardUrl : undefined,
     custom ? baseUrl.value : DEFAULT_DASHBOARD_URL,
   );
@@ -53,23 +57,23 @@ function resolveRuntimeConfig({ cli = {}, config = {}, env = process.env, defaul
     cli.deviceToken,
     configBase === selectedBase && (!custom || normalizeInstanceBaseUrl(config.deviceTokenBaseUrl) === selectedBase)
       ? config.deviceToken : undefined,
-    envBase === selectedBase && (!custom || normalizeInstanceBaseUrl(env?.TOKENTRACKER_INSFORGE_BASE_URL) === selectedBase)
-      ? env?.TOKENTRACKER_DEVICE_TOKEN : undefined,
+    envBase === selectedBase && (!custom || normalizeInstanceBaseUrl(env?.TOKENUSAGE_INSFORGE_BASE_URL) === selectedBase)
+      ? env?.TOKENUSAGE_DEVICE_TOKEN : undefined,
     defaultBase === selectedBase ? defaults.deviceToken : undefined,
     null,
   );
   const httpTimeoutMs = pickHttpTimeoutMs(
     cli.httpTimeoutMs,
     config.httpTimeoutMs,
-    env?.TOKENTRACKER_HTTP_TIMEOUT_MS,
+    env?.TOKENUSAGE_HTTP_TIMEOUT_MS,
     defaults.httpTimeoutMs,
     DEFAULT_HTTP_TIMEOUT_MS,
   );
-  const debug = pickBoolean(cli.debug, config.debug, env?.TOKENTRACKER_DEBUG, defaults.debug, false);
+  const debug = pickBoolean(cli.debug, config.debug, env?.TOKENUSAGE_DEBUG, defaults.debug, false);
   const autoRetryNoSpawn = pickBoolean(
     cli.autoRetryNoSpawn,
     config.autoRetryNoSpawn,
-    env?.TOKENTRACKER_AUTO_RETRY_NO_SPAWN,
+    env?.TOKENUSAGE_AUTO_RETRY_NO_SPAWN,
     defaults.autoRetryNoSpawn,
     false,
   );
@@ -116,6 +120,8 @@ function isPublicAnonKey(value) {
     const key = value.trim();
     if (key.startsWith("ik_")) return false;
     if (/^anon_(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(key)) return true;
+    // Supabase's new publishable key format (sb_publishable_...).
+    if (/^sb_publishable_[A-Za-z0-9_-]{20,}$/.test(key)) return true;
     const parts = key.split(".");
     if (parts.length !== 3 || !parts.every(part => /^[A-Za-z0-9_-]+$/.test(part))) return false;
     return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")).role === "anon";
@@ -128,7 +134,7 @@ function assertInsforgeRuntime(runtime) {
     invalid_insforge_base_url: "InsForge URL must use HTTPS, or HTTP on localhost, without credentials, query or fragment.",
     invalid_insforge_anon_key: "Use this instance's public anon key. Admin and service keys cannot be used by the client.",
     invalid_dashboard_url: "Dashboard URL must use HTTPS, or HTTP on localhost, without credentials, query or fragment.",
-    custom_insforge_anon_key_required: "A custom InsForge URL requires its own public anon key. Configure --anon-key-file or TOKENTRACKER_INSFORGE_ANON_KEY.",
+    custom_insforge_anon_key_required: "A custom InsForge URL requires its own public anon key. Configure --anon-key-file or TOKENUSAGE_INSFORGE_ANON_KEY.",
   };
   throw Object.assign(new Error(messages[runtime.configurationError] || "Invalid InsForge configuration"), {
     code: runtime.configurationError, status: 503,

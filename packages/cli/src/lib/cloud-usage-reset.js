@@ -36,7 +36,7 @@ async function writeMarker(trackerDir, marker) {
 }
 
 async function requestReset({ baseUrl, anonKey, authorization, body, fetchImpl = fetchFunctionResponse }) {
-  const response = await fetchImpl(functionUrlFor(baseUrl, "tokentracker-device-usage-reset"), {
+  const response = await fetchImpl(functionUrlFor(baseUrl, "token-usage-device-usage-reset"), {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${authorization}`,
       ...(anonKey ? { apikey: anonKey } : {}) },

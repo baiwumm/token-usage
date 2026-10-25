@@ -22,7 +22,7 @@ function existsDir(dirPath) {
 }
 
 function resolveAntigravitySkillDirs(env = process.env) {
-  const override = trimmed(env.TOKENTRACKER_ANTIGRAVITY_HOME);
+  const override = trimmed(env.TOKENUSAGE_ANTIGRAVITY_HOME);
   if (override) return [path.join(override, "skills")];
 
   const home = geminiHome(env);

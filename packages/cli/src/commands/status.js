@@ -213,7 +213,7 @@ async function cmdStatus(argv = []) {
   // so status lists exactly the root sync walks.
   const codexHome = resolveEnvRoot("codex", { env: process.env, home }) || path.join(home, ".codex");
   const codexConfigPath = path.join(codexHome, "config.toml");
-  const acodeHome = process.env.TOKENTRACKER_ACODE_HOME || path.join(home, ".acode");
+  const acodeHome = process.env.TOKENUSAGE_ACODE_HOME || path.join(home, ".acode");
   const acodeConfigPath = path.join(acodeHome, "config.toml");
   const codeHome = process.env.CODE_HOME || path.join(home, ".code");
   const codeConfigPath = path.join(codeHome, "config.toml");
@@ -299,7 +299,7 @@ async function cmdStatus(argv = []) {
 
   const codexNotify = await readCodexNotify(codexConfigPath);
   // Not arraysEqual: argv[0] and binDir differ between the desktop app and a
-  // terminal `tokentracker` run, so a correctly-installed integration would
+  // terminal `tokenusage` run, so a correctly-installed integration would
   // otherwise report as not configured. See isManagedNotifyCmd.
   const notifyConfigured = isManagedNotifyCmd(codexNotify, codexNotifyCmd);
   const acodeNotify = await readAcodeNotify(acodeConfigPath);
@@ -887,7 +887,7 @@ async function cmdStatus(argv = []) {
   // on Windows, the discovered distros so WSL users can debug "why no sync"
   // without guessing the right UNC alias (#87).
   const hermesPaths = resolveInstallPaths({
-    nativeValue: process.env.TOKENTRACKER_HERMES_HOME || (process.platform === "win32" && typeof process.env.LOCALAPPDATA === "string"
+    nativeValue: process.env.TOKENUSAGE_HERMES_HOME || (process.platform === "win32" && typeof process.env.LOCALAPPDATA === "string"
       ? path.join(process.env.LOCALAPPDATA.trim(), "hermes")
       : path.join(home, ".hermes")),
     wslDir: ".hermes",
@@ -1006,7 +1006,7 @@ async function cmdStatus(argv = []) {
     degraded: copilotStoreDegraded,
     degraded_reasons: copilotStoreDegradedReasons,
     recommended_action: copilotStoreDegraded
-      ? "Restore or repair the Copilot session store, then run `tokentracker sync`."
+      ? "Restore or repair the Copilot session store, then run `tokenusage sync`."
       : null,
   };
   const copilotAppStatus = {
@@ -1227,7 +1227,7 @@ async function cmdStatus(argv = []) {
               installed: true,
               detail: traeDbPaths[0] || traeStoragePath,
               usage_databases: traeDbPaths.length,
-              usage_key_source: process.env.TOKENTRACKER_TRAE_SQLCIPHER_KEY?.trim() ? "environment" : "application",
+              usage_key_source: process.env.TOKENUSAGE_TRAE_SQLCIPHER_KEY?.trim() ? "environment" : "application",
               ...(traeEntitlement ? { entitlement: traeEntitlement } : {}),
             }
           : { installed: false },
@@ -1283,7 +1283,7 @@ async function cmdStatus(argv = []) {
 
   process.stdout.write(
     [
-      `TokenTracker v${pkg.version}`,
+      `tokenusage v${pkg.version}`,
       "Status:",
       `- Base URL: ${config?.baseUrl || "unset"}`,
       `- Device token: ${deviceTokenPresence.set ? "set" : "unset"}`,
@@ -1473,7 +1473,7 @@ async function cmdStatus(argv = []) {
       ...(process.platform === "win32" ? (() => {
         const wslMode = getWslMode();
         const modeInvalid = isInvalidWslMode();
-        const modeSuffix = modeInvalid ? ` (invalid TOKENTRACKER_WSL_MODE ignored)` : "";
+        const modeSuffix = modeInvalid ? ` (invalid TOKENUSAGE_WSL_MODE ignored)` : "";
         const lines = [
           `- WSL mode: ${wslMode}${modeSuffix}`,
         ];

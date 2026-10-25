@@ -6,7 +6,7 @@
 // command output, diffs. Prompts are read only to fingerprint a repeated
 // request (a one-way hash, never stored).
 //
-// Persisted to the LOCAL sidecar only (~/.tokentracker/tracker, 0600 file in a
+// Persisted to the LOCAL sidecar only (~/.tokenusage/tracker, 0600 file in a
 // 0700 dir), because the session browser needs them to identify and resume a
 // session:
 //   - `title`  — the one line the agent wrote to name the session (Claude's
@@ -114,7 +114,7 @@ function normalizeSessionModel(value) {
 }
 
 function resolveSessionSidecarPath(home = os.homedir()) {
-  return path.join(home, ".tokentracker", "tracker", "session.queue.jsonl");
+  return path.join(home, ".tokenusage", "tracker", "session.queue.jsonl");
 }
 
 function sessionHash(source, id) {
@@ -883,8 +883,8 @@ async function scanCodexSession(filePath) {
 // counters). Billable tokens come only from turn_completed.usage — the same
 // authority as the Grok usage parser — not from context-window totalTokens.
 function resolveGrokHome(home = os.homedir(), env = process.env) {
-  if (typeof env.TOKENTRACKER_GROK_HOME === "string" && env.TOKENTRACKER_GROK_HOME.trim()) {
-    return path.resolve(env.TOKENTRACKER_GROK_HOME.trim());
+  if (typeof env.TOKENUSAGE_GROK_HOME === "string" && env.TOKENUSAGE_GROK_HOME.trim()) {
+    return path.resolve(env.TOKENUSAGE_GROK_HOME.trim());
   }
   if (typeof env.GROK_HOME === "string" && env.GROK_HOME.trim()) {
     return path.resolve(env.GROK_HOME.trim());
@@ -1752,7 +1752,7 @@ function buildZcodeSessionRecords(inputs, displayPath) {
 // Multi-root discovery: on Windows a native install and a WSL one both count.
 // `sync` already walks both Claude homes (src/commands/sync.js), so without this
 // the WSL work lands in the token totals but is invisible in the session browser
-// and its project list. TOKENTRACKER_WSL_MODE gates which sides are probed;
+// and its project list. TOKENUSAGE_WSL_MODE gates which sides are probed;
 // duplicated files synced between environments collapse via the Codex session-id
 // pass below and claudeMessageDedupKey downstream.
 function providerRoots(home, providerDir, env, deps = {}) {
@@ -2004,7 +2004,7 @@ async function discoverSessionFiles(home, env = process.env, deps = {}) {
   const zcodeWslDbPath = zcodeWslHome ? path.join(zcodeWslHome, "cli", "db", "db.sqlite") : null;
   const zcodeNativeExisting = zcodeExisting(zcodeNativeDbPath);
   const { cursors } = zcodePlatform === "win32"
-    ? await readCursorStateSummary({ trackerDir: path.join(home, ".tokentracker", "tracker") })
+    ? await readCursorStateSummary({ trackerDir: path.join(home, ".tokenusage", "tracker") })
     : {};
   const zcodePaths = resolveZcodeInstallPaths({
     nativeValue: zcodePlatform === "win32" ? zcodeNativeDbPath : zcodeNativeExisting,

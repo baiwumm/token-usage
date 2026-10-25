@@ -2,7 +2,7 @@
 //
 // Answers "is the provider itself down?" so the limits panel can explain
 // upstream failures instead of leaving users guessing (issue: users read a
-// red/stale Claude limits row as a TokenTracker bug during Anthropic
+// red/stale Claude limits row as a Token Usage bug during Anthropic
 // incidents). Fail-soft by design: a probe failure never breaks the limits
 // response — callers get the last good reading or null, never a throw.
 //

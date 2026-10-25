@@ -1,6 +1,6 @@
 // Public pricing API. Replaces the hard-coded MODEL_PRICING table that used
 // to live in src/lib/local-api.js. Keeps the same synchronous shape so all
-// existing callers (computeRowCost, /functions/* handlers, tests) work
+// existing callers (computeRowCost, /api/functions/* handlers, tests) work
 // unchanged after `await ensurePricingLoaded()` is awaited once at startup.
 
 const fs = require("node:fs");
@@ -67,7 +67,7 @@ const state = {
 };
 
 function defaultCachePath() {
-  return path.join(os.homedir(), ".tokentracker", "cache", "pricing.json");
+  return path.join(os.homedir(), ".tokenusage", "cache", "pricing.json");
 }
 
 async function ensurePricingLoaded(opts = {}) {

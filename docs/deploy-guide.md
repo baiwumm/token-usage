@@ -50,7 +50,7 @@ RLS 全拒（客户端零直连）是本项目的安全姿态，数据只经部�
 
 Dashboard → **Authentication → URL Configuration**：
 
-- **Site URL**：部署域名根（先按第 4 步的 Vercel 域名填，如 `https://token-usage.vercel.app`，
+- **Site URL**：部署域名根（先按第 4 步的 Vercel 域名填，如 `https://token-usage-delta.vercel.app`，
   绑定自定义域名后改回来）
 - **Redirect URLs**：添加 `https://<部署域名>/auth/callback`（魔法链接会话交换的落点）
 
@@ -70,7 +70,7 @@ Dashboard → **Authentication → URL Configuration**：
 | `NEXT_PUBLIC_SUPABASE_URL` | 第 1 步的 Project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 第 1 步的 Publishable key |
 | `SUPABASE_SECRET_KEY` | 第 1 步的 Secret key |
-| `TOKEN_USAGE_DASHBOARD_URL` | 部署域名根，如 `https://token-usage.vercel.app` |
+| `TOKEN_USAGE_DASHBOARD_URL` | 部署域名根，如 `https://token-usage-delta.vercel.app` |
 
 Deploy 后得到部署域名（如 `https://token-usage-xxx.vercel.app`）。**回到 Supabase Auth
 配置，把 Site URL 与 Redirect URLs 里的域名核对成这个实际域名**；`TOKEN_USAGE_DASHBOARD_URL`

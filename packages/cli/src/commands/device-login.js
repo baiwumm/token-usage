@@ -13,7 +13,7 @@ const POLL_INTERVAL_MS = 5_000;
 const ABSOLUTE_TIMEOUT_MS = 16 * 60 * 1000; // matches the 15-min server window with a small buffer
 
 async function authorize({ baseUrl, clientInfo, machineId, anonKey, timeoutMs = 20_000 }) {
-  const res = await fetchFunctionResponse(functionUrlFor(baseUrl, "tokentracker-device-flow-authorize"), {
+  const res = await fetchFunctionResponse(functionUrlFor(baseUrl, "token-usage-device-flow-authorize"), {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(anonKey ? { apikey: anonKey } : {}) },
     ...(timeoutMs > 0 ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
@@ -34,7 +34,7 @@ async function authorize({ baseUrl, clientInfo, machineId, anonKey, timeoutMs = 
 }
 
 async function pollOnce({ baseUrl, deviceCode, anonKey, timeoutMs = 20_000 }) {
-  const res = await fetchFunctionResponse(functionUrlFor(baseUrl, "tokentracker-device-flow-poll"), {
+  const res = await fetchFunctionResponse(functionUrlFor(baseUrl, "token-usage-device-flow-poll"), {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(anonKey ? { apikey: anonKey } : {}) },
     ...(timeoutMs > 0 ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
@@ -70,7 +70,7 @@ async function cmdDeviceLogin(argv = [], options = {}) {
   const config = (await readJson(configPath)) || {};
   if (opts.anonKeyFile) opts.anonKey = (await fs.readFile(opts.anonKeyFile, "utf8")).trim();
   const runtime = assertInsforgeRuntime(resolveRuntimeConfig({
-    cli: { baseUrl: opts.baseUrl || process.env.TOKENTRACKER_BASE_URL || process.env.TOKENTRACKER_API_URL,
+    cli: { baseUrl: opts.baseUrl || process.env.TOKENUSAGE_BASE_URL || process.env.TOKENUSAGE_API_URL,
       anonKey: opts.anonKey, dashboardUrl: opts.dashboardUrl }, config, env: process.env,
   }));
   const baseUrl = runtime.baseUrl;

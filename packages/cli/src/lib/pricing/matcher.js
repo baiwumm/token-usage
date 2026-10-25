@@ -191,7 +191,7 @@ function normalizeUnslothModel(model) {
   if (typeof model !== "string") return model;
   const lower = model.trim().toLowerCase();
   if (lower.startsWith("local/") || lower.startsWith("unpriced/")) {
-    return "__tokentracker_unpriced_unsloth_model__";
+    return "__tokenusage_unpriced_unsloth_model__";
   }
   return model;
 }

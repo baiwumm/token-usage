@@ -501,7 +501,7 @@ const SYNC_SKIP_MARKER = "sync.skip.json";
 
 // A skipped sync used to exit 0 with no output whatsoever, so lock debris left
 // by a killed run stalled every parse for a day with no visible signal and
-// nothing for `tokentracker status` to report (issue #431). Leave a queryable
+// nothing for `tokenusage status` to report (issue #431). Leave a queryable
 // marker that separates ordinary contention (`lock_busy`) from a lease whose
 // owner is gone (`lock_debris`, the state that needs attention).
 async function recordSyncSkip(trackerDir, lockPath) {
@@ -557,12 +557,12 @@ async function cmdSync(argv, context = {}) {
   // Manual CLI sync is a one-time upload request, without changing the toggle.
   // Hooks, native publication and detached retries must honor the saved opt-in.
   const requiresCloudSyncPref = opts.auto || opts.background || opts.fromRetry || opts.fromNotify || opts.fromOpenclaw ||
-    Boolean(process.env.TOKENTRACKER_LOCAL_SYNC_ATTEMPT_ID);
+    Boolean(process.env.TOKENUSAGE_LOCAL_SYNC_ATTEMPT_ID);
   let cloudResetRuntime = null;
   const canUpload = () => !cloudUsageResetBlocksUpload(trackerDir, {
-    ownerId: process.env.TOKENTRACKER_CLOUD_OWNER_ID,
-    baseUrl: cloudResetRuntime?.baseUrl || process.env.TOKENTRACKER_INSFORGE_BASE_URL,
-    deviceId: process.env.TOKENTRACKER_CLOUD_DEVICE_ID,
+    ownerId: process.env.TOKENUSAGE_CLOUD_OWNER_ID,
+    baseUrl: cloudResetRuntime?.baseUrl || process.env.TOKENUSAGE_INSFORGE_BASE_URL,
+    deviceId: process.env.TOKENUSAGE_CLOUD_DEVICE_ID,
   }) &&
     (!requiresCloudSyncPref || readCloudSyncEnabled(trackerDir));
 
@@ -614,13 +614,13 @@ async function cmdSync(argv, context = {}) {
     // backoff, then remove the retired URL as the final commit step. Keeping the
     // URL until every prerequisite succeeds makes an interrupted migration
     // retryable on the next sync. Device tokens are opaque random values looked
-    // up by SHA-256 hash in tokentracker_device_tokens (not JWT_SECRET-signed);
+    // up by SHA-256 hash in token_device_tokens (not JWT_SECRET-signed);
     // the database was restored into the current project, so preserve the old
     // token unless the local API has already minted a replacement from the
     // user's current login session and passed it through the environment.
     // Ingest is a whole-row upsert per bucket key, making replay idempotent.
     if (config && isLegacyInsforgeBaseUrl(config.baseUrl) &&
-        !Object.hasOwn(process.env, "TOKENTRACKER_LOCAL_SYNC_DEVICE_TOKEN")) {
+        !Object.hasOwn(process.env, "TOKENUSAGE_LOCAL_SYNC_DEVICE_TOKEN")) {
       const priorQueueState = (await readJson(queueStatePath)) || {};
       // Prepare the replay exactly once. The note survives successful batches,
       // so retryable failures retain both their committed offset and backoff
@@ -639,8 +639,8 @@ async function cmdSync(argv, context = {}) {
         }
       }
       const replacementDeviceToken =
-        typeof process.env.TOKENTRACKER_DEVICE_TOKEN === "string"
-          ? process.env.TOKENTRACKER_DEVICE_TOKEN.trim()
+        typeof process.env.TOKENUSAGE_DEVICE_TOKEN === "string"
+          ? process.env.TOKENUSAGE_DEVICE_TOKEN.trim()
           : "";
       const previousDeviceToken =
         typeof config.deviceToken === "string" ? config.deviceToken.trim() : "";
@@ -833,7 +833,7 @@ async function cmdSync(argv, context = {}) {
     }
     if (sourceAllowed("acode")) {
       const acodeNativeValue =
-        process.env.TOKENTRACKER_ACODE_HOME || path.join(home, ".acode");
+        process.env.TOKENUSAGE_ACODE_HOME || path.join(home, ".acode");
       const acodePaths = resolveInstallPaths({
         nativeValue: acodeNativeValue,
         wslDir: ".acode",
@@ -1105,7 +1105,7 @@ async function cmdSync(argv, context = {}) {
         }
         parseResult = await runCodexParse(rolloutFiles);
         codexParseSucceeded = true;
-      } else if (err?.code === "TOKENTRACKER_CURSOR_STORE_CORRUPT") {
+      } else if (err?.code === "TOKENUSAGE_CURSOR_STORE_CORRUPT") {
         throw err;
       } else {
         warnProviderParseFailure("Codex", err, opts);
@@ -2251,7 +2251,7 @@ async function cmdSync(argv, context = {}) {
     // A simple explicit rolling 30-day window captured once per sync (no
     // cursor checkpoints / full-history import / page retries / background
     // requests). Runs only when the user has opted in via
-    // TOKENTRACKER_TRAE_CN_USAGE=1 (the read transmits the locally stored
+    // TOKENUSAGE_TRAE_CN_USAGE=1 (the read transmits the locally stored
     // sign-in JWT to TRAE's official endpoint, so it is never default-on),
     // the sync is non-lightweight, the source is allowed, and the CN storage
     // file exists — which excludes both ordinary background and `--auto
@@ -2378,7 +2378,7 @@ async function cmdSync(argv, context = {}) {
     // ── Hermes Agent (SQLite-based) ──
     let hermesResult = { recordsProcessed: 0, eventsAggregated: 0, bucketsQueued: 0 };
     if (sourceAllowed("hermes")) {
-      const override = process.env.TOKENTRACKER_HERMES_HOME;
+      const override = process.env.TOKENUSAGE_HERMES_HOME;
       const overridePath = typeof override === "string" && override.trim().length > 0 ? override.trim() : null;
       if (overridePath) {
         if (fssync.existsSync(overridePath)) {
@@ -2464,7 +2464,7 @@ async function cmdSync(argv, context = {}) {
       const nativeCliPresent = fssync.existsSync(kiroCliDb) || kiroCliSessionFiles.length > 0;
 
       // Explicit overrides pin a single install — never mix them with WSL
-      // auto-discovery (mirrors the Hermes TOKENTRACKER_HERMES_HOME branch).
+      // auto-discovery (mirrors the Hermes TOKENUSAGE_HERMES_HOME branch).
       const kiroCliOverride = Boolean(process.env.KIRO_CLI_DB_PATH || process.env.KIRO_HOME);
       let wslKiroCliEnv = null;
       let wslKiroCliMarker = null;
@@ -2607,7 +2607,7 @@ async function cmdSync(argv, context = {}) {
       const repairCodebuddyFiles = mergeBothFileSources({
         resolveFiles: (env) => resolveCodebuddyProjectFiles({
           ...env,
-          TOKENTRACKER_CODEBUDDY_LOG_FALLBACK: "1",
+          TOKENUSAGE_CODEBUDDY_LOG_FALLBACK: "1",
         }),
         env: process.env,
       });
@@ -2772,7 +2772,7 @@ async function cmdSync(argv, context = {}) {
     // namespace and source label, so the two never shadow each other.
     let omoResult = { recordsProcessed: 0, eventsAggregated: 0, bucketsQueued: 0 };
     // Skip OmO when its agent dir resolves to the same path as omp's, so an
-    // explicit TOKENTRACKER_OMO_AGENT_DIR pointing at ~/.omp/agent cannot
+    // explicit TOKENUSAGE_OMO_AGENT_DIR pointing at ~/.omp/agent cannot
     // double-count the same transcripts under two source labels.
     const omoCollidesWithOmp = omoAgentDirCollidesWithOmp(process.env);
     const omoFiles = !sourceAllowed("omo") || omoCollidesWithOmp
@@ -2808,8 +2808,8 @@ async function cmdSync(argv, context = {}) {
 
     // ── pi (@mariozechner/pi-coding-agent) — passive ~/.pi/agent/sessions/**/*.jsonl reader ──
     // Skip pi parse if its agent dir resolves to the same path as omp's. This
-    // prevents double-counting when explicit overrides (TOKENTRACKER_OMP_AGENT_DIR /
-    // TOKENTRACKER_PI_AGENT_DIR) bypass the install-signal disambiguator.
+    // prevents double-counting when explicit overrides (TOKENUSAGE_OMP_AGENT_DIR /
+    // TOKENUSAGE_PI_AGENT_DIR) bypass the install-signal disambiguator.
     let piResult = { recordsProcessed: 0, eventsAggregated: 0, bucketsQueued: 0 };
     const piFiles = !sourceAllowed("pi") || piAgentDirCollidesWithOmp(process.env)
       ? []
@@ -3143,11 +3143,11 @@ async function cmdSync(argv, context = {}) {
         .map(([dbPath]) => copilotPathKey(dbPath)),
     );
     const explicitCopilotStorePath =
-      typeof process.env.TOKENTRACKER_COPILOT_SESSION_STORE_DB === "string" &&
-      process.env.TOKENTRACKER_COPILOT_SESSION_STORE_DB.trim()
+      typeof process.env.TOKENUSAGE_COPILOT_SESSION_STORE_DB === "string" &&
+      process.env.TOKENUSAGE_COPILOT_SESSION_STORE_DB.trim()
         ? copilotPathKey(
             normalizeCopilotDbPath(
-              process.env.TOKENTRACKER_COPILOT_SESSION_STORE_DB,
+              process.env.TOKENUSAGE_COPILOT_SESSION_STORE_DB,
               process.env,
             ),
           )
@@ -3549,10 +3549,10 @@ async function cmdSync(argv, context = {}) {
     // Keep a separately configured CLI account from overriding its owner.
     const resolvedRuntime = resolveRuntimeConfig({
       cli: {
-        deviceToken: process.env.TOKENTRACKER_LOCAL_SYNC_DEVICE_TOKEN,
-        ...(process.env.TOKENTRACKER_LOCAL_SYNC_DEVICE_TOKEN ? {
-          baseUrl: process.env.TOKENTRACKER_INSFORGE_BASE_URL,
-          anonKey: process.env.TOKENTRACKER_INSFORGE_ANON_KEY,
+        deviceToken: process.env.TOKENUSAGE_LOCAL_SYNC_DEVICE_TOKEN,
+        ...(process.env.TOKENUSAGE_LOCAL_SYNC_DEVICE_TOKEN ? {
+          baseUrl: process.env.TOKENUSAGE_INSFORGE_BASE_URL,
+          anonKey: process.env.TOKENUSAGE_INSFORGE_ANON_KEY,
         } : {}),
       },
       config: runtimeConfig,
@@ -3561,8 +3561,8 @@ async function cmdSync(argv, context = {}) {
 
     // Empty is an explicit local-server denial, so it cannot fall back to a
     // separately configured CLI account when the browser is signed out.
-    const runtime = Object.hasOwn(process.env, "TOKENTRACKER_LOCAL_SYNC_DEVICE_TOKEN")
-      ? { ...resolvedRuntime, deviceToken: resolvedRuntime.configurationError ? null : process.env.TOKENTRACKER_LOCAL_SYNC_DEVICE_TOKEN }
+    const runtime = Object.hasOwn(process.env, "TOKENUSAGE_LOCAL_SYNC_DEVICE_TOKEN")
+      ? { ...resolvedRuntime, deviceToken: resolvedRuntime.configurationError ? null : process.env.TOKENUSAGE_LOCAL_SYNC_DEVICE_TOKEN }
       : resolvedRuntime;
     cloudResetRuntime = runtime;
 
@@ -3586,8 +3586,8 @@ async function cmdSync(argv, context = {}) {
         ? Math.max(Number(uploadThrottleState.serverNextAllowedAtMs || 0), Math.min(Number(uploadThrottleState.nextAllowedAtMs || 0),
           lastSuccessMs + AUTO_UPLOAD_CONFIG.intervalMs + AUTO_UPLOAD_DEFAULTS.jitterMsMax))
         : Number(uploadThrottleState.nextAllowedAtMs || 0);
-      const recheckCloudAccess = opts.drain && process.env.TOKENTRACKER_CLOUD_RECHECK === "1" &&
-        Boolean(process.env.TOKENTRACKER_LOCAL_SYNC_DEVICE_TOKEN?.trim());
+      const recheckCloudAccess = opts.drain && process.env.TOKENUSAGE_CLOUD_RECHECK === "1" &&
+        Boolean(process.env.TOKENUSAGE_LOCAL_SYNC_DEVICE_TOKEN?.trim());
       const storedBackoff = recheckCloudAccess ? 0 : Number(uploadThrottleState.backoffUntilMs || 0);
       autoUploadDecision = decideAutoUpload({
         nowMs: Date.now(),
@@ -3647,7 +3647,7 @@ async function cmdSync(argv, context = {}) {
           const replacementDeviceToken = legacyBaseUrlMigration?.replacementDeviceToken;
           const stateAfterFailure = (await readJson(queueStatePath)) || { offset: 0 };
           const canFallbackWithoutSplittingHistory =
-            !Object.hasOwn(process.env, "TOKENTRACKER_LOCAL_SYNC_DEVICE_TOKEN") &&
+            !Object.hasOwn(process.env, "TOKENUSAGE_LOCAL_SYNC_DEVICE_TOKEN") &&
             (error?.status === 401 || error?.status === 403) &&
             replacementDeviceToken &&
             fallbackDeviceToken &&
@@ -3692,7 +3692,7 @@ async function cmdSync(argv, context = {}) {
             state: uploadThrottleState,
             config: AUTO_UPLOAD_CONFIG,
             cloudAccess: uploadResult.cloudAccess,
-            attemptId: process.env.TOKENTRACKER_LOCAL_SYNC_ATTEMPT_ID,
+            attemptId: process.env.TOKENUSAGE_LOCAL_SYNC_ATTEMPT_ID,
           });
           await writeJson(uploadThrottlePath, uploadThrottleState);
         }
@@ -3702,7 +3702,7 @@ async function cmdSync(argv, context = {}) {
           uploadThrottleState = recordUploadSuccess({
             nowMs: Date.now(), state: uploadThrottleState, config: AUTO_UPLOAD_CONFIG,
             cloudAccess: uploadResult.cloudAccess,
-            attemptId: process.env.TOKENTRACKER_LOCAL_SYNC_ATTEMPT_ID,
+            attemptId: process.env.TOKENUSAGE_LOCAL_SYNC_ATTEMPT_ID,
           });
         }
         // Persist a backoff on 429 / 5xx so the next auto-sync waits instead
@@ -3713,7 +3713,7 @@ async function cmdSync(argv, context = {}) {
           nowMs: Date.now(),
           state: uploadThrottleState,
           error: e,
-          attemptId: process.env.TOKENTRACKER_LOCAL_SYNC_ATTEMPT_ID,
+          attemptId: process.env.TOKENUSAGE_LOCAL_SYNC_ATTEMPT_ID,
         });
         await writeJson(uploadThrottlePath, uploadThrottleState);
         if (!opts.auto) {
@@ -3734,9 +3734,9 @@ async function cmdSync(argv, context = {}) {
     const pendingBytes = Math.max(0, queueSize - Number(afterState.offset || 0));
 
     if (pendingBytes === 0 && canUpload() && runtime.deviceToken) {
-      await finishCloudDeviceUsageReset({ trackerDir, ownerId: process.env.TOKENTRACKER_CLOUD_OWNER_ID,
+      await finishCloudDeviceUsageReset({ trackerDir, ownerId: process.env.TOKENUSAGE_CLOUD_OWNER_ID,
         baseUrl: runtime.baseUrl, anonKey: runtime.anonKey, deviceToken: runtime.deviceToken,
-        deviceId: process.env.TOKENTRACKER_CLOUD_DEVICE_ID });
+        deviceId: process.env.TOKENUSAGE_CLOUD_DEVICE_ID });
     }
 
     if (pendingBytes <= 0 || !canUpload()) {
@@ -4064,8 +4064,8 @@ function normalizeString(value) {
 function resolveOpenclawSignal({ env } = {}) {
   if (!env) return null;
 
-  const agentId = normalizeString(env.TOKENTRACKER_OPENCLAW_AGENT_ID);
-  const sessionId = normalizeString(env.TOKENTRACKER_OPENCLAW_PREV_SESSION_ID);
+  const agentId = normalizeString(env.TOKENUSAGE_OPENCLAW_AGENT_ID);
+  const sessionId = normalizeString(env.TOKENUSAGE_OPENCLAW_PREV_SESSION_ID);
   if (!agentId || !sessionId) return null;
 
   // Resolve the OpenClaw home identically to the passive scanner so the
@@ -4076,17 +4076,17 @@ function resolveOpenclawSignal({ env } = {}) {
   const sessionFile = path.join(openclawHome, "agents", agentId, "sessions", `${sessionId}.jsonl`);
 
   const prevTotals = {
-    totalTokens: normalizeNonNegativeInt(env.TOKENTRACKER_OPENCLAW_PREV_TOTAL_TOKENS),
-    inputTokens: normalizeNonNegativeInt(env.TOKENTRACKER_OPENCLAW_PREV_INPUT_TOKENS),
-    outputTokens: normalizeNonNegativeInt(env.TOKENTRACKER_OPENCLAW_PREV_OUTPUT_TOKENS),
-    model: normalizeString(env.TOKENTRACKER_OPENCLAW_PREV_MODEL),
-    updatedAt: normalizeIsoOrEpoch(env.TOKENTRACKER_OPENCLAW_PREV_UPDATED_AT),
+    totalTokens: normalizeNonNegativeInt(env.TOKENUSAGE_OPENCLAW_PREV_TOTAL_TOKENS),
+    inputTokens: normalizeNonNegativeInt(env.TOKENUSAGE_OPENCLAW_PREV_INPUT_TOKENS),
+    outputTokens: normalizeNonNegativeInt(env.TOKENUSAGE_OPENCLAW_PREV_OUTPUT_TOKENS),
+    model: normalizeString(env.TOKENUSAGE_OPENCLAW_PREV_MODEL),
+    updatedAt: normalizeIsoOrEpoch(env.TOKENUSAGE_OPENCLAW_PREV_UPDATED_AT),
   };
 
   return {
     agentId,
     sessionId,
-    sessionKey: normalizeString(env.TOKENTRACKER_OPENCLAW_SESSION_KEY),
+    sessionKey: normalizeString(env.TOKENUSAGE_OPENCLAW_SESSION_KEY),
     openclawHome,
     sessionFile,
     prevTotals,
@@ -4305,7 +4305,7 @@ async function scheduleAutoRetry({
   spawnAutoRetryProcess({
     retryPath,
     trackerBinPath: path.join(trackerDir, "app", "bin", "tracker.js"),
-    fallbackPkg: "tokentracker-cli",
+    fallbackPkg: "tokenusage-cli",
     delayMs,
   });
   return { scheduled: true, retryAtMs: retryMs };
@@ -4393,7 +4393,7 @@ async function writeOpenclawSignal(trackerDir) {
 const AUTO_RETRY_FILENAME = "auto.retry.json";
 const AUTO_RETRY_MAX_DELAY_MS = 2 * 60 * 60 * 1000;
 
-const INGEST_SLUG = "tokentracker-ingest";
+const INGEST_SLUG = "token-usage-ingest";
 const MAX_INGEST_BUCKETS = 500;
 
 async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, queueStatePath, maxBatches = 5, batchSize = 200, maxDurationMs = UPLOAD_BUDGET_MS, canUpload = () => true }) {

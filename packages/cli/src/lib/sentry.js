@@ -4,9 +4,9 @@
  * Optional Sentry error reporting for the Node CLI / EmbeddedServer runtime.
  *
  * Privacy contract (keep in sync with docs/PRIVACY.md and dashboard/src/lib/sentry.js):
- * - Off unless TOKENTRACKER_SENTRY_DSN (or SENTRY_DSN) is set.
+ * - Off unless TOKENUSAGE_SENTRY_DSN (or SENTRY_DSN) is set.
  * - Honors the same telemetry opt-out as the daily heartbeat
- *   (TOKENTRACKER_NO_TELEMETRY / DO_NOT_TRACK / config.json `"telemetry": false`).
+ *   (TOKENUSAGE_NO_TELEMETRY / DO_NOT_TRACK / config.json `"telemetry": false`).
  * - Fail-closed in the node test runner.
  * - Never intended to carry prompts, code, or provider secrets; beforeSend
  *   scrubs common secret patterns from event payloads.
@@ -25,13 +25,13 @@ const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9._-]{10,}\.[A-Za-z0-9._-
 let initialized = false;
 
 function resolveDsn(env = process.env) {
-  const raw = env?.TOKENTRACKER_SENTRY_DSN || env?.SENTRY_DSN || "";
+  const raw = env?.TOKENUSAGE_SENTRY_DSN || env?.SENTRY_DSN || "";
   return typeof raw === "string" ? raw.trim() : "";
 }
 
 function resolveEnvironment(env = process.env) {
-  const raw = typeof env?.TOKENTRACKER_SENTRY_ENVIRONMENT === "string"
-    ? env.TOKENTRACKER_SENTRY_ENVIRONMENT.trim()
+  const raw = typeof env?.TOKENUSAGE_SENTRY_ENVIRONMENT === "string"
+    ? env.TOKENUSAGE_SENTRY_ENVIRONMENT.trim()
     : "";
   if (raw) return raw;
   if (env?.NODE_ENV === "production") return "production";
@@ -39,8 +39,8 @@ function resolveEnvironment(env = process.env) {
 }
 
 function resolveShell(env = process.env) {
-  const raw = typeof env?.TOKENTRACKER_APP_SHELL === "string"
-    ? env.TOKENTRACKER_APP_SHELL.trim().toLowerCase()
+  const raw = typeof env?.TOKENUSAGE_APP_SHELL === "string"
+    ? env.TOKENUSAGE_APP_SHELL.trim().toLowerCase()
     : "";
   if (raw === "macos" || raw === "windows" || raw === "linux" || raw === "cli") return raw;
   return "cli";
@@ -161,7 +161,7 @@ async function initSentry({
     Sentry.init({
       dsn,
       environment: resolveEnvironment(env),
-      release: `tokentracker@${String(version || "").trim() || "0.0.0"}`,
+      release: `tokenusage-cli@${String(version || "").trim() || "0.0.0"}`,
       sendDefaultPii: false,
       tracesSampleRate: 0,
       // Errors only: drop process-session + console; replace Http so request

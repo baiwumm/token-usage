@@ -1563,7 +1563,7 @@ function parseKiroUsageOutput(output, { now = new Date() } = {}) {
 function readKiroCreditsSummary({ home = os.homedir() } = {}) {
   const sidecarPath = path.join(
     home,
-    ".tokentracker",
+    ".tokenusage",
     "tracker",
     KIRO_CREDITS_SIDECAR_FILE,
   );
@@ -2243,7 +2243,7 @@ async function detectAntigravityProcess({
 }
 
 function resolveAntigravityLimitsCachePath({ home } = {}) {
-  return path.join(home || os.homedir(), ".tokentracker", "tracker", ANTIGRAVITY_LIMITS_CACHE_FILE);
+  return path.join(home || os.homedir(), ".tokenusage", "tracker", ANTIGRAVITY_LIMITS_CACHE_FILE);
 }
 
 function parseTimeMs(value) {
@@ -2286,7 +2286,7 @@ function normalizeAntigravityCachedLimits(raw, { nowMs = Date.now() } = {}) {
 }
 
 function isAntigravityQuotaDisabled() {
-  return process.env.TOKENTRACKER_DISABLE_ANTIGRAVITY_QUOTA === "1";
+  return process.env.TOKENUSAGE_DISABLE_ANTIGRAVITY_QUOTA === "1";
 }
 
 function readAntigravityLimitsCache({ home, nowMs = Date.now() } = {}) {
@@ -2323,7 +2323,7 @@ function writeAntigravityLimitsCache(limits, { home, nowMs = Date.now() } = {}) 
 }
 
 function resolveClaudeLimitsCachePath({ home } = {}) {
-  return path.join(home || os.homedir(), ".tokentracker", "tracker", CLAUDE_LIMITS_CACHE_FILE);
+  return path.join(home || os.homedir(), ".tokenusage", "tracker", CLAUDE_LIMITS_CACHE_FILE);
 }
 
 // Claude windows carry their own `resets_at`; a window whose reset has already passed is
@@ -2522,7 +2522,7 @@ function writeClaudeLimitsCache(limits, { home, nowMs = Date.now() } = {}) {
 }
 
 function resolveCodexLimitsCachePath({ home } = {}) {
-  return path.join(home || os.homedir(), ".tokentracker", "tracker", CODEX_LIMITS_CACHE_FILE);
+  return path.join(home || os.homedir(), ".tokenusage", "tracker", CODEX_LIMITS_CACHE_FILE);
 }
 
 // Codex windows carry `reset_at` as unix seconds (not an ISO string). A window whose reset has
@@ -2604,7 +2604,7 @@ function writeCodexLimitsCache(limits, { home, nowMs = Date.now() } = {}) {
 }
 
 function resolveOpencodeGoLimitsCachePath({ home } = {}) {
-  return path.join(home || os.homedir(), ".tokentracker", "tracker", OPENCODE_GO_LIMITS_CACHE_FILE);
+  return path.join(home || os.homedir(), ".tokenusage", "tracker", OPENCODE_GO_LIMITS_CACHE_FILE);
 }
 
 function hasOpencodeGoWindow(limits) {
@@ -2680,7 +2680,7 @@ function writeOpencodeGoLimitsCache(limits, { home, nowMs = Date.now() } = {}) {
 }
 
 function resolveClaudeRateLimitPath({ home } = {}) {
-  return path.join(home || os.homedir(), ".tokentracker", "tracker", CLAUDE_RATE_LIMIT_FILE);
+  return path.join(home || os.homedir(), ".tokenusage", "tracker", CLAUDE_RATE_LIMIT_FILE);
 }
 
 function claudeTokenExpiryStamp(tokenExpiresAtMs) {
@@ -2917,7 +2917,7 @@ function antigravityUnleashBody() {
         hasAnthropicModelAccess: "true",
         ide: "antigravity",
         ideVersion: "unknown",
-        installationId: "tokentracker",
+        installationId: "tokenusage",
         language: "UNSPECIFIED",
         os: "macos",
         requestedModelId: "MODEL_UNSPECIFIED",
@@ -4219,7 +4219,7 @@ async function fetchUsageLimitsUncached({
     // so "no token" is ambiguous: never signed in, or signed in and expired. An entry
     // that still exists means the latter — reporting `configured: false` there hides the
     // whole Claude section while the usage bars (parsed from local logs, no auth needed)
-    // keep updating, which reads as "TokenTracker doesn't support my plan" rather than
+    // keep updating, which reads as "Token Usage doesn't support my plan" rather than
     // "your CLI login expired". Existence-only probe: no secret is read here.
     const credentialsPresent = detectClaudeCodeCredentialsPresence({ platform, securityRunner, home });
     claude = credentialsPresent

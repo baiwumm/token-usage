@@ -17,7 +17,7 @@ const { readSqliteJsonRowsAsync } = require("./sqlite-reader");
 //      with OPENCODE_GO_AUTH_COOKIE. This is retained as a compatibility path.
 //
 //   3. Local opencode.db cost aggregation, explicitly enabled with
-//      TOKENTRACKER_OPENCODE_GO_LOCAL_ESTIMATE=1. The `opencode` CLI records
+//      TOKENUSAGE_OPENCODE_GO_LOCAL_ESTIMATE=1. The `opencode` CLI records
 //      every Go turn's USD `cost` in SQLite, so cost ÷ Go's dollar caps is a
 //      useful local estimate. It cannot prove that the account still has an
 //      active Go subscription, because the database contains historical turns
@@ -48,7 +48,7 @@ const DASHBOARD_URL_SUFFIX = "/go";
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Gecko/20100101 Firefox/148.0";
 const DEFAULT_REQUEST_TIMEOUT_MS = 10_000;
-const LOCAL_ESTIMATE_ENV = "TOKENTRACKER_OPENCODE_GO_LOCAL_ESTIMATE";
+const LOCAL_ESTIMATE_ENV = "TOKENUSAGE_OPENCODE_GO_LOCAL_ESTIMATE";
 
 function isTruthyEnvValue(value) {
   return ["1", "true", "yes", "on"].includes(String(value ?? "").trim().toLowerCase());
@@ -320,11 +320,11 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 // OpenCode Go's official dollar caps — https://opencode.ai/docs/go
 // ($12 per 5h, $30 per week, $60 per month). The limits are not stored in the
 // local DB, so they are hardcoded; env-overridable in case opencode changes
-// them (TOKENTRACKER_OPENCODE_GO_LIMITS="12,30,60").
+// them (TOKENUSAGE_OPENCODE_GO_LIMITS="12,30,60").
 const DEFAULT_GO_LIMITS = { session: 12, weekly: 30, monthly: 60 };
 
 function goDollarLimits(env = process.env) {
-  const raw = String((env && env.TOKENTRACKER_OPENCODE_GO_LIMITS) || "").trim();
+  const raw = String((env && env.TOKENUSAGE_OPENCODE_GO_LIMITS) || "").trim();
   if (!raw) return { ...DEFAULT_GO_LIMITS };
   const parts = raw.split(",").map((s) => Number(s.trim()));
   if (parts.length === 3 && parts.every((n) => Number.isFinite(n) && n > 0)) {

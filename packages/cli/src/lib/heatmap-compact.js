@@ -18,7 +18,7 @@
 // sent once in `model_names` and referenced by index from flat
 // [index, tokens, index, tokens, ...] pairs.
 //
-// This mirrors the tail of dashboard/edge-patches/tokentracker-account-heatmap.ts
+// This mirrors the tail of dashboard/edge-patches/token-usage-account-heatmap.ts
 // step for step, including the details that look incidental but are not:
 // coercion through Number(), last-row-wins on a repeated day, and `{}` (not
 // null) for a present row whose models map is empty.
@@ -37,7 +37,7 @@ const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_GRID_DAYS = 104 * 7 + 7;
 
 /**
- * @param {unknown} payload a `tokentracker-account-heatmap` response.
+ * @param {unknown} payload a `token-usage-account-heatmap` response.
  * @returns {unknown} the dense payload, or `payload` itself when it is not a
  *   well-formed compact response — which is also how a new CLI stays correct
  *   against an edge that predates the compact branch.

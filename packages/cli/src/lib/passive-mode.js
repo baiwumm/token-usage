@@ -129,7 +129,7 @@ function detectPassiveProviders({ home, hookStatus, env = process.env }) {
     settingsPath: path.join(home, ".codex", "config.toml"),
   }));
 
-  const acodeHome = env.TOKENTRACKER_ACODE_HOME || path.join(home, ".acode");
+  const acodeHome = env.TOKENUSAGE_ACODE_HOME || path.join(home, ".acode");
   out.push(buildEntry({
     name: "acode",
     hookExpected: true,

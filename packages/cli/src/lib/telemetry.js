@@ -7,7 +7,7 @@
  * the payload carries exactly four fields — a one-way sha256 hash of the
  * machine id, the app version, `process.platform`, and the app shell
  * (cli / macos / windows / linux). No token counts, no model names, no usernames,
- * no paths. Opt out with TOKENTRACKER_NO_TELEMETRY=1, the DO_NOT_TRACK
+ * no paths. Opt out with TOKENUSAGE_NO_TELEMETRY=1, the DO_NOT_TRACK
  * standard, or `"telemetry": false` in config.json.
  */
 
@@ -25,13 +25,13 @@ const {
   recordUploadFailure,
 } = require("./upload-throttle");
 
-const HEARTBEAT_FUNCTION_SLUG = "tokentracker-telemetry";
+const HEARTBEAT_FUNCTION_SLUG = "tokenusage-telemetry";
 const HEARTBEAT_STATE_FILE = "telemetry.heartbeat.json";
 const HEARTBEAT_INTERVAL_MS = 24 * 60 * 60 * 1000;
 // The hash namespace is versioned so the anonymous id can be rotated fleet-wide
 // by bumping the string. sha256(namespace + machineId) cannot be joined back to
 // the cloud device rows (those store the machineId itself).
-const MACHINE_HASH_NAMESPACE = "tokentracker-telemetry-v1:";
+const MACHINE_HASH_NAMESPACE = "tokenusage-telemetry-v1:";
 // Generous because some networks need 3-4s just for the TLS handshake to the
 // cloud host; sync awaits this at most once per day so the worst-case stall
 // is bounded and rare.
@@ -46,7 +46,7 @@ const THROTTLE_CONFIG = {
 };
 
 function isTelemetryDisabled({ env = process.env, config = {} } = {}) {
-  if (isTruthyFlag(env?.TOKENTRACKER_NO_TELEMETRY)) return true;
+  if (isTruthyFlag(env?.TOKENUSAGE_NO_TELEMETRY)) return true;
   if (isTruthyFlag(env?.DO_NOT_TRACK)) return true;
   if (config && config.telemetry === false) return true;
   return false;
@@ -66,8 +66,8 @@ function hashMachineId(machineId) {
 }
 
 function resolveShell(env = process.env) {
-  const raw = typeof env?.TOKENTRACKER_APP_SHELL === "string"
-    ? env.TOKENTRACKER_APP_SHELL.trim().toLowerCase()
+  const raw = typeof env?.TOKENUSAGE_APP_SHELL === "string"
+    ? env.TOKENUSAGE_APP_SHELL.trim().toLowerCase()
     : "";
   return VALID_SHELLS.has(raw) ? raw : "cli";
 }

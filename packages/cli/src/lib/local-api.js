@@ -83,7 +83,7 @@ const {
 
 function resolveQueuePath() {
   const home = os.homedir();
-  return path.join(home, ".tokentracker", "tracker", "queue.jsonl");
+  return path.join(home, ".tokenusage", "tracker", "queue.jsonl");
 }
 
 // Pseudo-project written by the pre-fix claude-mem observer attribution;
@@ -386,7 +386,7 @@ function buildCodexCategoryFallbackFromQueue(queueRows, { from, to, timeZoneCont
       tools_total: 0,
       privacy: {
         includes_inputs: false,
-        note: "Codex rollout sessions were unavailable; totals come from TokenTracker queue rows.",
+        note: "Codex rollout sessions were unavailable; totals come from Token Usage queue rows.",
       },
     },
     exec_command_breakdown: {
@@ -755,11 +755,11 @@ function runSyncCommand(extraEnv = {}, opts = {}) {
     const child = spawn(process.execPath, args, {
       env: {
         ...process.env, ...extraEnv,
-        ...(extraEnv.TOKENTRACKER_DEVICE_TOKEN ? {
-          TOKENTRACKER_INSFORGE_BASE_URL: extraEnv.TOKENTRACKER_INSFORGE_BASE_URL,
-          TOKENTRACKER_INSFORGE_ANON_KEY: extraEnv.TOKENTRACKER_INSFORGE_ANON_KEY || "",
+        ...(extraEnv.TOKENUSAGE_DEVICE_TOKEN ? {
+          TOKENUSAGE_INSFORGE_BASE_URL: extraEnv.TOKENUSAGE_INSFORGE_BASE_URL,
+          TOKENUSAGE_INSFORGE_ANON_KEY: extraEnv.TOKENUSAGE_INSFORGE_ANON_KEY || "",
         } : {}),
-        TOKENTRACKER_LOCAL_SYNC_DEVICE_TOKEN: extraEnv.TOKENTRACKER_DEVICE_TOKEN || "",
+        TOKENUSAGE_LOCAL_SYNC_DEVICE_TOKEN: extraEnv.TOKENUSAGE_DEVICE_TOKEN || "",
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -1277,7 +1277,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
   // only when the user is signed in (a relayed refresh token exists) AND cloud
   // sync is on. Cloud sync is a dashboard (WebView) preference persisted in
   // localStorage; the dashboard mirrors it here via POST
-  // /functions/tokentracker-cloud-sync-pref so the auth-unaware popover can key
+  // /api/functions/token-usage-cloud-sync-pref so the auth-unaware popover can key
   // off the same flag. Defaults OFF, exactly like the dashboard toggle;
   // existing saved choices are preserved.
   const cloudSyncPrefPath = path.join(trackerDataDir, "cloud-sync-pref.json");
@@ -1416,7 +1416,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
             process.platform === "linux" ? "Linux x86_64" :
               "web";
 
-      const res = await fetchFunctionResponse(functionUrlFor(root, "tokentracker-device-token-issue"), {
+      const res = await fetchFunctionResponse(functionUrlFor(root, "token-usage-device-token-issue"), {
         method: "POST",
         headers,
         signal: controller ? controller.signal : undefined,
@@ -1468,7 +1468,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
   // account (cross-device) snapshot on screen when a cloud read fails
   // transiently, but must switch to this-machine data the moment the user signs
   // out or turns cloud sync off. Both used to look identical from the outside
-  // (HTTP 200 + local payload + `X-TokenTracker-Account-View: 0`), so a single
+  // (HTTP 200 + local payload + `X-TokenUsage-Account-View: 0`), so a single
   // timed-out read silently shrank Activity to one device until the next
   // manual sync. See ACCOUNT_FALLBACK_* below for the vocabulary.
   const ACCOUNT_FALLBACK_CLOUD_SYNC_OFF = "cloud-sync-off";
@@ -1492,7 +1492,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
 
   // Returns "served" when the cross-device aggregate was written to `res`,
   // otherwise a fallback reason (see above) telling the caller — and, through
-  // the `X-TokenTracker-Account-Fallback` header, the popover — why the local
+  // the `X-TokenUsage-Account-Fallback` header, the popover — why the local
   // single-machine data is being served instead.
   async function tryServeAccountView(usageSlug, url, res) {
     if (!getCloudSyncPref()) return ACCOUNT_FALLBACK_CLOUD_SYNC_OFF;
@@ -1510,8 +1510,8 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     if (url.searchParams.get("refresh") !== "1" && accountViewFailureUntil(failureKey) > Date.now()) {
       return "transient-backoff";
     }
-    const envTimeout = process.env.TOKENTRACKER_HTTP_TIMEOUT_MS
-      ? parseInt(process.env.TOKENTRACKER_HTTP_TIMEOUT_MS, 10)
+    const envTimeout = process.env.TOKENUSAGE_HTTP_TIMEOUT_MS
+      ? parseInt(process.env.TOKENUSAGE_HTTP_TIMEOUT_MS, 10)
       : 0;
     const timeoutMs = envTimeout > 0 ? envTimeout : 4000;
     try {
@@ -1563,7 +1563,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
       res.writeHead(200, {
         "Content-Type": "application/json",
         "Cache-Control": "no-store",
-        "X-TokenTracker-Account-View": "1",
+        "X-TokenUsage-Account-View": "1",
       });
       res.end(JSON.stringify(out.data));
       return "served";
@@ -1628,8 +1628,8 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
   let _nativeAuthExpiry = 0;
 
   function isAuthorizedLocalMutation(req) {
-    const headerToken = req?.headers?.["x-tokentracker-local-auth"];
-    const cookieToken = parseCookieHeader(req?.headers?.cookie).get("tokentracker_local_auth");
+    const headerToken = req?.headers?.["x-tokenusage-local-auth"];
+    const cookieToken = parseCookieHeader(req?.headers?.cookie).get("tokenusage_local_auth");
     const token = typeof headerToken === "string" && headerToken.trim()
       ? headerToken.trim()
       : cookieToken || "";
@@ -1657,7 +1657,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
       }
     }
     const selectedRuntime = getRuntime();
-    const callerInstance = req.headers?.["x-tokentracker-instance"];
+    const callerInstance = req.headers?.["x-tokenusage-instance"];
     if (callerInstance && normalizeInstanceBaseUrl(callerInstance) !== selectedRuntime.baseUrl) {
       json(res, { code: "instance_changed", error: "The configured backend instance changed. Reload and sign in again." }, 409);
       return true;
@@ -1675,7 +1675,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
         dashboardUrl: normalizeInstanceBaseUrl(selectedRuntime.dashboardUrl) || "", configurationError: selectedRuntime.configurationError };
       const value = JSON.stringify(descriptor).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
       res.writeHead(200, { "Content-Type": "application/javascript; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
-      res.end(`window.__TOKENTRACKER_RUNTIME_CONFIG__=${value};`);
+      res.end(`window.__TOKENUSAGE_RUNTIME_CONFIG__=${value};`);
       return true;
     }
 
@@ -1994,7 +1994,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
           accept: req.headers["accept"] || "*/*",
           "accept-language": req.headers["accept-language"] || "en",
           "accept-encoding": req.headers["accept-encoding"] || "gzip",
-          "user-agent": "TokenTracker/IPCheck (https://www.tokentracker.cc)",
+          "user-agent": "tokenusage-cli/IPCheck (https://www.tokenusage.cc)",
           referer: `${IP_CHECK_TARGET}${targetPath}`,
         };
 
@@ -2029,7 +2029,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- avatar proxy: fetch third-party avatars server-side ---
-    // Why: WKWebView in TokenTrackerBar fails to load some users' Google /
+    // Why: WKWebView in Token UsageBar fails to load some users' Google /
     // GitHub avatars directly (network-stack / proxy / TLS quirks vary by
     // environment), even when the same URL renders fine in Safari. Proxying
     // through Node's fetch — which honors system proxy + cookies-of-none —
@@ -2100,7 +2100,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
           headers: {
             accept: req.headers["accept"] || "image/*",
             "accept-language": req.headers["accept-language"] || "en",
-            "user-agent": "TokenTracker/AvatarProxy (https://www.tokentracker.cc)",
+            "user-agent": "tokenusage-cli/AvatarProxy (https://www.tokenusage.cc)",
           },
         });
         if (!upstream.ok) {
@@ -2135,7 +2135,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
 
     // The browser supplies its current JWT only to prove ownership upstream.
     // Uploads use this server-held binding, never a caller's opaque device token.
-    if (p === "/functions/tokentracker-cloud-session") {
+    if (p === "/api/functions/tokenusage-cloud-session") {
       if (String(req.method).toUpperCase() !== "POST") { json(res, { error: "Method Not Allowed" }, 405); return true; }
       if (!isAuthorizedLocalMutation(req)) { json(res, { error: "Unauthorized" }, 401); return true; }
       try {
@@ -2163,7 +2163,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
       return true;
     }
 
-    if (p === "/functions/tokentracker-cloud-usage-reset") {
+    if (p === "/api/functions/tokenusage-cloud-usage-reset") {
       if (!isAuthorizedLocalMutation(req) || req.headers["sec-fetch-site"] === "cross-site") { json(res, { error: "Unauthorized" }, 401); return true; }
       try {
         if (String(req.method).toUpperCase() === "GET") {
@@ -2197,7 +2197,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- local-sync (POST) ---
-    if (p === "/functions/tokentracker-local-sync") {
+    if (p === "/api/functions/tokenusage-local-sync") {
       if (String(req.method || "GET").toUpperCase() !== "POST") {
         json(res, { ok: false, error: "Method Not Allowed" }, 405);
         return true;
@@ -2215,12 +2215,12 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
         }
         const currentRuntime = getRuntime();
         if (body.drain === true || body.cloudSessionId || body.insforgeBaseUrl || body.expectedOwnerId) assertInsforgeRuntime(currentRuntime);
-        const extraEnv = { TOKENTRACKER_CLOUD_RECHECK: "0", TOKENTRACKER_INSFORGE_BASE_URL: currentRuntime.baseUrl, TOKENTRACKER_INSFORGE_ANON_KEY: currentRuntime.anonKey || "" };
+        const extraEnv = { TOKENUSAGE_CLOUD_RECHECK: "0", TOKENUSAGE_INSFORGE_BASE_URL: currentRuntime.baseUrl, TOKENUSAGE_INSFORGE_ANON_KEY: currentRuntime.anonKey || "" };
         const drain = body.drain === true;
         // A user action after membership/resume may probe the server again.
         // The server still enforces membership, paused slots and its deadline.
         if (drain && body.recheckCloudAccess === true && body.auto !== true) {
-          extraEnv.TOKENTRACKER_CLOUD_RECHECK = "1";
+          extraEnv.TOKENUSAGE_CLOUD_RECHECK = "1";
         }
         // Native Sync Now combines an incremental background scan with a full
         // cloud drain. A plain {drain:true} request remains an exhaustive sync.
@@ -2234,7 +2234,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
           background && body.publishAccount === true && getCloudSyncPref();
         const allLocalSources = background && body.allLocalSources === true;
         if (background && body.nativeOnlyWsl === true) {
-          extraEnv.TOKENTRACKER_WSL_MODE = "native-only";
+          extraEnv.TOKENUSAGE_WSL_MODE = "native-only";
         }
         if (body.deviceToken != null && !background) {
           json(res, { ok: false, error: "Use the current cloud session", code: getCloudSyncPref() ? "auth_session_required" : "CLOUD_SYNC_DISABLED" }, 409);
@@ -2246,7 +2246,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
             body.expectedOwnerId !== browserSession.ownerId || browserSession.generation !== localCloudGeneration || !getCloudSyncPref())) {
           json(res, { ok: false, code: "auth_session_changed" }, 409); return true;
         }
-        if (browserSession) extraEnv.TOKENTRACKER_DEVICE_TOKEN = browserSession.token;
+        if (browserSession) extraEnv.TOKENUSAGE_DEVICE_TOKEN = browserSession.token;
         let localSyncBaseUrl = null;
         if (body.insforgeBaseUrl != null) {
           const allowedBaseUrl = resolveAllowedInsforgeBaseUrl(body.insforgeBaseUrl, getRuntime());
@@ -2254,16 +2254,16 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
             json(res, { ok: false, error: "Unsupported insforgeBaseUrl override" }, 400);
             return true;
           }
-          extraEnv.TOKENTRACKER_INSFORGE_BASE_URL = allowedBaseUrl;
+          extraEnv.TOKENUSAGE_INSFORGE_BASE_URL = allowedBaseUrl;
           localSyncBaseUrl = allowedBaseUrl;
         }
         if (browserSession) {
-          extraEnv.TOKENTRACKER_INSFORGE_BASE_URL = browserSession.baseUrl;
+          extraEnv.TOKENUSAGE_INSFORGE_BASE_URL = browserSession.baseUrl;
           localSyncBaseUrl = browserSession.baseUrl;
         }
         const uploadGeneration = localCloudGeneration;
         if ((!background || publishAccount) &&
-            !extraEnv.TOKENTRACKER_DEVICE_TOKEN &&
+            !extraEnv.TOKENUSAGE_DEVICE_TOKEN &&
             getCloudSyncPref() &&
             getRefreshTokenForCloud()) {
           let issuedToken = null;
@@ -2291,23 +2291,23 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
               return true;
             }
           } else {
-            extraEnv.TOKENTRACKER_DEVICE_TOKEN = issuedToken;
+            extraEnv.TOKENUSAGE_DEVICE_TOKEN = issuedToken;
           }
         }
-        if (extraEnv.TOKENTRACKER_DEVICE_TOKEN && uploadGeneration !== localCloudGeneration) {
+        if (extraEnv.TOKENUSAGE_DEVICE_TOKEN && uploadGeneration !== localCloudGeneration) {
           json(res, { ok: false, code: "auth_session_changed" }, 409); return true;
         }
-        if (extraEnv.TOKENTRACKER_DEVICE_TOKEN) {
-          const metadata = localSyncDeviceMetadata.get(extraEnv.TOKENTRACKER_DEVICE_TOKEN);
-          if (metadata?.deviceId) extraEnv.TOKENTRACKER_CLOUD_DEVICE_ID = metadata.deviceId;
+        if (extraEnv.TOKENUSAGE_DEVICE_TOKEN) {
+          const metadata = localSyncDeviceMetadata.get(extraEnv.TOKENUSAGE_DEVICE_TOKEN);
+          if (metadata?.deviceId) extraEnv.TOKENUSAGE_CLOUD_DEVICE_ID = metadata.deviceId;
         }
         await Promise.all([...activeCloudSyncs].filter(controller => controller.signal.aborted).map(controller => controller.done).filter(Boolean));
-        if (extraEnv.TOKENTRACKER_DEVICE_TOKEN && uploadGeneration !== localCloudGeneration) throw Object.assign(new Error("Account session changed"), { code: "auth_session_changed", status: 409 });
-        if (extraEnv.TOKENTRACKER_DEVICE_TOKEN && localSyncDeviceTokenUserId) {
+        if (extraEnv.TOKENUSAGE_DEVICE_TOKEN && uploadGeneration !== localCloudGeneration) throw Object.assign(new Error("Account session changed"), { code: "auth_session_changed", status: 409 });
+        if (extraEnv.TOKENUSAGE_DEVICE_TOKEN && localSyncDeviceTokenUserId) {
           const uploadBaseUrl = localSyncBaseUrl || getRuntime().baseUrl;
           const reset = readCloudUsageReset(trackerDataDir);
           if (reset && (reset.ownerId !== localSyncDeviceTokenUserId || reset.baseUrl.replace(/\/$/, "") !== uploadBaseUrl.replace(/\/$/, "") ||
-              (extraEnv.TOKENTRACKER_CLOUD_DEVICE_ID && reset.deviceId !== extraEnv.TOKENTRACKER_CLOUD_DEVICE_ID))) {
+              (extraEnv.TOKENUSAGE_CLOUD_DEVICE_ID && reset.deviceId !== extraEnv.TOKENUSAGE_CLOUD_DEVICE_ID))) {
             json(res, { ok: false, code: "cloud_usage_reset_owner_changed" }, 409); return true;
           }
           const binding = JSON.stringify({ ownerId: localSyncDeviceTokenUserId, baseUrl: uploadBaseUrl });
@@ -2321,10 +2321,10 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
           fs.writeFileSync(ownerPath, binding, { mode: 0o600 });
         }
         const controller = new AbortController();
-        if (extraEnv.TOKENTRACKER_DEVICE_TOKEN) activeCloudSyncs.add(controller);
+        if (extraEnv.TOKENUSAGE_DEVICE_TOKEN) activeCloudSyncs.add(controller);
         const syncStartedAt = Date.now();
-        if (localSyncDeviceTokenUserId) extraEnv.TOKENTRACKER_CLOUD_OWNER_ID = localSyncDeviceTokenUserId;
-        extraEnv.TOKENTRACKER_LOCAL_SYNC_ATTEMPT_ID = crypto.randomUUID();
+        if (localSyncDeviceTokenUserId) extraEnv.TOKENUSAGE_CLOUD_OWNER_ID = localSyncDeviceTokenUserId;
+        extraEnv.TOKENUSAGE_LOCAL_SYNC_ATTEMPT_ID = crypto.randomUUID();
         const syncPromise = runSyncCommand(extraEnv, {
           signal: controller.signal,
           trackerDataDir: isolatedTrackerDataDir,
@@ -2335,17 +2335,17 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
           publishAccount,
           allLocalSources,
           waitForLock:
-            !drain && !background && Boolean(extraEnv.TOKENTRACKER_DEVICE_TOKEN),
+            !drain && !background && Boolean(extraEnv.TOKENUSAGE_DEVICE_TOKEN),
         });
         controller.done = syncPromise.catch(() => {});
         const result = await syncPromise.catch((error) => {
           if (uploadGeneration !== localCloudGeneration) throw Object.assign(new Error("Account session changed"), { code: "auth_session_changed", status: 409 });
-          const failure = currentCloudUploadFailure(syncStartedAt, { backoff: auto && drain, deviceToken: extraEnv.TOKENTRACKER_DEVICE_TOKEN, attemptId: extraEnv.TOKENTRACKER_LOCAL_SYNC_ATTEMPT_ID });
+          const failure = currentCloudUploadFailure(syncStartedAt, { backoff: auto && drain, deviceToken: extraEnv.TOKENUSAGE_DEVICE_TOKEN, attemptId: extraEnv.TOKENUSAGE_LOCAL_SYNC_ATTEMPT_ID });
           if (failure) Object.assign(error, failure);
           throw error;
         }).finally(() => activeCloudSyncs.delete(controller));
-        if (extraEnv.TOKENTRACKER_DEVICE_TOKEN && uploadGeneration !== localCloudGeneration) throw Object.assign(new Error("Account session changed"), { code: "auth_session_changed", status: 409 });
-        const failure = currentCloudUploadFailure(syncStartedAt, { deviceToken: extraEnv.TOKENTRACKER_DEVICE_TOKEN, attemptId: extraEnv.TOKENTRACKER_LOCAL_SYNC_ATTEMPT_ID });
+        if (extraEnv.TOKENUSAGE_DEVICE_TOKEN && uploadGeneration !== localCloudGeneration) throw Object.assign(new Error("Account session changed"), { code: "auth_session_changed", status: 409 });
+        const failure = currentCloudUploadFailure(syncStartedAt, { deviceToken: extraEnv.TOKENUSAGE_DEVICE_TOKEN, attemptId: extraEnv.TOKENUSAGE_LOCAL_SYNC_ATTEMPT_ID });
         if (failure) throw Object.assign(new Error("Cloud upload failed"), failure);
         invalidateAfterAccountUpload();
         if (drain) invalidateCloudAccountPayloadCache();
@@ -2359,7 +2359,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
         try {
           const state = JSON.parse(fs.readFileSync(path.join(path.dirname(qp), "upload.throttle.json"), "utf8"));
           if (state.nextAllowedAtMs) cloudAccess.next_allowed_at = new Date(state.nextAllowedAtMs).toISOString();
-          cloudAccess.uploaded = state.lastSuccessAttemptId === extraEnv.TOKENTRACKER_LOCAL_SYNC_ATTEMPT_ID &&
+          cloudAccess.uploaded = state.lastSuccessAttemptId === extraEnv.TOKENUSAGE_LOCAL_SYNC_ATTEMPT_ID &&
             Number(state.lastSuccessMs || 0) >= syncStartedAt;
           const queueState = JSON.parse(fs.readFileSync(path.join(path.dirname(qp), "queue.state.json"), "utf8"));
           cloudAccess.pending = fs.statSync(qp).size > Number(queueState.offset || 0);
@@ -2372,7 +2372,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- wrapped (year-end summary, à la Spotify Wrapped) ---
-    if (p === "/functions/tokentracker-wrapped") {
+    if (p === "/api/functions/tokenusage-wrapped") {
       const yearParam = url.searchParams.get("year");
       const year = yearParam ? Number(yearParam) : null;
       const { rows, scope, excludedSources } = await scopedQueueRows(qp, url);
@@ -2385,22 +2385,22 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     // --- account (cross-device) view proxy for the native popover ---
     // When ?account=1 and the user is signed in with cloud sync on, serve the
     // same cross-device aggregate the dashboard shows; otherwise tag the
-    // response (X-TokenTracker-Account-View: 0 plus an
-    // X-TokenTracker-Account-Fallback reason) so the popover knows it got local
+    // response (X-TokenUsage-Account-View: 0 plus an
+    // X-TokenUsage-Account-Fallback reason) so the popover knows it got local
     // single-machine data and whether that is permanent (signed out / cloud
     // sync off) or transient, and fall through to the local handler below.
     if (url.searchParams.get("account") === "1") {
-      const usageSlug = p.startsWith("/functions/") ? p.slice("/functions/".length) : "";
+      const usageSlug = p.startsWith("/api/functions/") ? p.slice("/api/functions/".length) : "";
       if (accountSlugFor(usageSlug)) {
         const result = await tryServeAccountView(usageSlug, url, res);
         if (result === "served") return true;
-        res.setHeader("X-TokenTracker-Account-View", "0");
-        res.setHeader("X-TokenTracker-Account-Fallback", result);
+        res.setHeader("X-TokenUsage-Account-View", "0");
+        res.setHeader("X-TokenUsage-Account-Fallback", result);
       }
     }
 
     // --- usage-summary ---
-    if (p === "/functions/tokentracker-usage-summary") {
+    if (p === "/api/functions/token-usage-usage-summary") {
       const from = url.searchParams.get("from") || "";
       const to = url.searchParams.get("to") || "";
       const timeZoneContext = getTimeZoneContext(url);
@@ -2467,7 +2467,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- usage-daily ---
-    if (p === "/functions/tokentracker-usage-daily") {
+    if (p === "/api/functions/token-usage-usage-daily") {
       const from = url.searchParams.get("from") || "";
       const to = url.searchParams.get("to") || "";
       const timeZoneContext = getTimeZoneContext(url);
@@ -2478,12 +2478,12 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- outcomes (opt-in quality-per-dollar / Effective Tokens; sidecar) ---
-    // Reads the optional ~/.tokentracker/tracker/outcomes.jsonl sidecar and
+    // Reads the optional ~/.tokenusage/tracker/outcomes.jsonl sidecar and
     // joins it to the existing token/$ rows at READ time. Returns
     // available:false with empty arrays when the user hasn't opted in, so the
     // dashboard renders exactly as before. This path NEVER reads or writes
     // queue.jsonl's schema or the sync path (see GitHub #229).
-    if (p === "/functions/tokentracker-outcomes") {
+    if (p === "/api/functions/tokenusage-outcomes") {
       const from = url.searchParams.get("from") || "";
       const to = url.searchParams.get("to") || "";
       const {
@@ -2512,7 +2512,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- metadata-only Claude/Codex session efficiency ---
-    if (p === "/functions/tokentracker-session-insights") {
+    if (p === "/api/functions/tokenusage-session-insights") {
       const from = url.searchParams.get("from") || "";
       const to = url.searchParams.get("to") || "";
       const refresh = ["1", "true"].includes(url.searchParams.get("refresh"));
@@ -2526,7 +2526,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
           const content = sessionsToCsv(result.sessions);
           res.statusCode = 200;
           res.setHeader("Content-Type", "text/csv; charset=utf-8");
-          res.setHeader("Content-Disposition", "attachment; filename=tokentracker-sessions.csv");
+          res.setHeader("Content-Disposition", "attachment; filename=tokenusage-sessions.csv");
           res.end(content);
           return true;
         }
@@ -2542,7 +2542,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     // raw session_id + local project path so the dashboard can offer one-click
     // resume. It is intentionally served only from the local API and never
     // proxied to the cloud account view.
-    if (p === "/functions/tokentracker-sessions") {
+    if (p === "/api/functions/tokenusage-sessions") {
       const from = url.searchParams.get("from") || "";
       const to = url.searchParams.get("to") || "";
       const refresh = ["1", "true"].includes(url.searchParams.get("refresh"));
@@ -2568,14 +2568,14 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- fixed context overhead audit (counts and estimates only) ---
-    if (p === "/functions/tokentracker-context-health") {
+    if (p === "/api/functions/tokenusage-context-health") {
       const { computeContextHealth } = require("./context-health");
       json(res, computeContextHealth({ home: os.homedir(), cwd: process.cwd(), env: process.env }));
       return true;
     }
 
     // --- usage-heatmap ---
-    if (p === "/functions/tokentracker-usage-heatmap") {
+    if (p === "/api/functions/token-usage-usage-heatmap") {
       const weeks = parseInt(url.searchParams.get("weeks") || "52", 10);
       const timeZoneContext = getTimeZoneContext(url);
       const { rows, scope, excludedSources } = await scopedQueueRows(qp, url);
@@ -2638,7 +2638,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- usage-model-breakdown ---
-    if (p === "/functions/tokentracker-usage-model-breakdown") {
+    if (p === "/api/functions/token-usage-usage-model-breakdown") {
       const from = url.searchParams.get("from") || "";
       const to = url.searchParams.get("to") || "";
       const timeZoneContext = getTimeZoneContext(url);
@@ -2710,7 +2710,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     // mirroring Claude Code's /context view (approx).
     // Codex/Grok: tool-oriented breakdown, attributing per-turn token
     // totals to observed tool calls (heuristic).
-    if (p === "/functions/tokentracker-usage-category-breakdown") {
+    if (p === "/api/functions/tokenusage-usage-category-breakdown") {
       const from = url.searchParams.get("from") || "";
       const to = url.searchParams.get("to") || "";
       const requestedSource = (url.searchParams.get("source") || "claude").trim().toLowerCase();
@@ -2773,7 +2773,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- project-usage-summary ---
-    if (p === "/functions/tokentracker-project-usage-summary") {
+    if (p === "/api/functions/tokenusage-project-usage-summary") {
       // Use the per-project bucket log that rollout.js emits — it already
       // carries the actual tokens attributed to each (project_key, source,
       // hour_start). Falling back to "session-file count × total tokens"
@@ -2870,7 +2870,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     // Per-project drill-down for the Project Usage modal: daily series,
     // per-source breakdown, and aggregate stats. Everything comes from the
     // local project bucket log — no external requests, no git access.
-    if (p === "/functions/tokentracker-project-usage-detail") {
+    if (p === "/api/functions/tokenusage-project-usage-detail") {
       const projectKey = url.searchParams.get("project_key") || "";
       if (!projectKey) {
         json(res, { error: "missing_project_key" }, 400);
@@ -2962,7 +2962,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- user-status (stub) ---
-    if (p === "/functions/tokentracker-user-status") {
+    if (p === "/api/functions/tokenusage-user-status") {
       json(res, {
         user_id: "local-user", email: "local@localhost", name: "Local User", is_public: false,
         created_at: new Date().toISOString(),
@@ -2982,7 +2982,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     // The dashboard's Settings → Account → Cloud sync toggle (a WebView
     // localStorage flag) is mirrored here so the auth-unaware native popover can
     // gate its account (cross-device) view on the same preference.
-    if (p === "/functions/tokentracker-cloud-sync-pref") {
+    if (p === "/api/functions/token-usage-cloud-sync-pref") {
       const method = String(req.method || "GET").toUpperCase();
       if (method === "GET") {
         json(res, {
@@ -3024,7 +3024,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     // --- outbound proxy preference (manual / system / off) ---
     // Persisted on config.json next to the queue. GET is unauthenticated so the
     // settings page can probe availability; POST requires local-auth.
-    if (p === "/functions/tokentracker-proxy-config") {
+    if (p === "/api/functions/tokenusage-proxy-config") {
       const {
         normalizeProxyConfig,
         parseProxyPayload,
@@ -3116,7 +3116,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
       return true;
     }
 
-    if (p === "/functions/tokentracker-proxy-test") {
+    if (p === "/api/functions/tokenusage-proxy-test") {
       const { parseProxyPayload, buildProxyUrl } = require("./proxy-settings");
       const { runProxyConnectivityTest } = require("./proxy-env");
       if (String(req.method || "GET").toUpperCase() !== "POST") {
@@ -3160,10 +3160,10 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
 
     // --- telemetry preference (anonymous analytics opt-out mirror) ---
     // The dashboard's analytics init on localhost / native-app surfaces asks
-    // this before sending anything, so TOKENTRACKER_NO_TELEMETRY /
+    // this before sending anything, so TOKENUSAGE_NO_TELEMETRY /
     // DO_NOT_TRACK / config.json `"telemetry": false` turn off dashboard
     // analytics together with the daily heartbeat (src/lib/telemetry.js).
-    if (p === "/functions/tokentracker-telemetry-pref") {
+    if (p === "/api/functions/tokenusage-telemetry-pref") {
       const { isTelemetryDisabled } = require("./telemetry");
       let config = {};
       try {
@@ -3179,7 +3179,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     // The dashboard reads this before issuing a cloud device token so the
     // device_name keys on the MACHINE, not the browser — see
     // getOrCreateMachineId above and dashboard/src/lib/cloud-sync.ts.
-    if (p === "/functions/tokentracker-machine-id") {
+    if (p === "/api/functions/tokenusage-machine-id") {
       json(res, {
         machineId: getOrCreateMachineId(qp),
         deviceName: getSystemDeviceName(),
@@ -3188,7 +3188,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- usage-hourly (stub for day-view) ---
-    if (p === "/functions/tokentracker-usage-hourly") {
+    if (p === "/api/functions/token-usage-usage-hourly") {
       const day = url.searchParams.get("day") || new Date().toISOString().slice(0, 10);
       const timeZoneContext = getTimeZoneContext(url);
       const { rows, scope, excludedSources } = await scopedQueueRows(qp, url);
@@ -3198,7 +3198,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- usage-monthly (stub for trend view) ---
-    if (p === "/functions/tokentracker-usage-monthly") {
+    if (p === "/api/functions/token-usage-usage-monthly") {
       const from = url.searchParams.get("from") || "";
       const to = url.searchParams.get("to") || "";
       const timeZoneContext = getTimeZoneContext(url);
@@ -3234,7 +3234,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- Codex-compatible pet manager ---
-    if (p === "/functions/tokentracker-pets") {
+    if (p === "/api/functions/tokenusage-pets") {
       const method = String(req.method || "GET").toUpperCase();
       const pets = require("./pet-packages");
       try {
@@ -3282,7 +3282,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     // User-entered renewal/expiry dates. Local-only store that lives next to
     // queue.jsonl; distinct from usage-limits window resets and the
     // auto-detected subscriptions in subscriptions.js.
-    if (p === "/functions/tokentracker-subscription-manager") {
+    if (p === "/api/functions/tokenusage-subscription-manager") {
       const method = String(req.method || "GET").toUpperCase();
       const manager = require("./subscription-manager");
       const trackerDir = path.dirname(qp);
@@ -3336,7 +3336,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- skills manager ---
-    if (p === "/functions/tokentracker-skills") {
+    if (p === "/api/functions/tokenusage-skills") {
       const method = String(req.method || "GET").toUpperCase();
       const skills = require("./skills-manager");
       try {
@@ -3512,7 +3512,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- achievements (local badges) ---
-    if (p === "/functions/tokentracker-achievements") {
+    if (p === "/api/functions/tokenusage-achievements") {
       const timeZoneContext = getTimeZoneContext(url);
       const queueRows = await readQueueData(qp);
       const { projectRows } = await readProjectUsageContext(qp, url);
@@ -3524,7 +3524,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
     }
 
     // --- usage-limits ---
-    if (p === "/functions/tokentracker-usage-limits") {
+    if (p === "/api/functions/token-usage-usage-limits") {
       const { getUsageLimits, resetUsageLimitsCache } = require("./usage-limits");
       try {
         // Devin quota is opt-in (Settings > Usage & Limits > Providers). An

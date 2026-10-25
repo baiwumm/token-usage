@@ -34,7 +34,7 @@ function resolveCodexHome() {
 }
 
 function resolveAcodeHome() {
-  return String(process.env.TOKENTRACKER_ACODE_HOME || "").trim() || path.join(os.homedir(), ".acode");
+  return String(process.env.TOKENUSAGE_ACODE_HOME || "").trim() || path.join(os.homedir(), ".acode");
 }
 
 function resolveZcodeHome() {
@@ -42,7 +42,7 @@ function resolveZcodeHome() {
 }
 
 function resolveOpenClawHome() {
-  return String(process.env.TOKENTRACKER_OPENCLAW_HOME || "").trim() || path.join(os.homedir(), ".openclaw");
+  return String(process.env.TOKENUSAGE_OPENCLAW_HOME || "").trim() || path.join(os.homedir(), ".openclaw");
 }
 
 // OpenClaw can point at an arbitrary active workspace. Only scan that one
@@ -50,7 +50,7 @@ function resolveOpenClawHome() {
 // import backup/config snapshots belonging to other devices.
 function resolveOpenClawSkillsDir() {
   const home = resolveOpenClawHome();
-  const override = String(process.env.TOKENTRACKER_OPENCLAW_WORKSPACE || "").trim();
+  const override = String(process.env.TOKENUSAGE_OPENCLAW_WORKSPACE || "").trim();
   let workspace = override;
   if (!workspace) {
     const config = readJson(path.join(home, "openclaw.json"), null);
@@ -108,7 +108,7 @@ async function mapWithConcurrency(items, limit, worker) {
 }
 
 function dataDir() {
-  return path.join(os.homedir(), ".tokentracker", "skills");
+  return path.join(os.homedir(), ".tokenusage", "skills");
 }
 
 function registryPath() {
@@ -531,7 +531,7 @@ async function fetchJson(url) {
     const response = await fetch(url, {
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "tokentracker-skills",
+        "User-Agent": "tokenusage-skills",
       },
       signal: controller.signal,
     });
@@ -550,7 +550,7 @@ async function fetchText(url) {
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const response = await fetch(url, {
-      headers: { Accept: "text/plain", "User-Agent": "tokentracker-skills" },
+      headers: { Accept: "text/plain", "User-Agent": "tokenusage-skills" },
       signal: controller.signal,
     });
     if (response.status === 429 || response.status === 403) {

@@ -31,7 +31,7 @@ const QODER_USER_AGENT =
 // Qoder 1.18 serves promotional call buckets (including Ultimate Free Calls)
 // from its OpenAPI activity endpoint. The request uses the same COSY envelope
 // as Qoder CLI 1.0.22. Authentication comes from Qoder's already-running local
-// service over JSON-RPC; TokenTracker never persists or logs those credentials.
+// service over JSON-RPC; Token Usage never persists or logs those credentials.
 const QODER_ACTIVITY_URL = "https://openapi.qoder.sh/algo/api/v2/activity";
 const QODER_ULTIMATE_ACTIVITY_ID = "ultimate_200_free_invoke";
 const QODER_COSY_VERSION = "1.0.22";
@@ -341,7 +341,7 @@ function qoderActivityCachePath({ home = os.homedir(), namespace } = {}) {
   const file = namespace
     ? `qoder-${namespace}-activity-cache.json`
     : QODER_ACTIVITY_CACHE_FILE;
-  return path.join(home, ".tokentracker", "tracker", file);
+  return path.join(home, ".tokenusage", "tracker", file);
 }
 
 function readQoderActivityCache({
@@ -395,7 +395,7 @@ function qoderLimitsCachePath({ home = os.homedir(), namespace } = {}) {
   const file = namespace
     ? `qoder-${namespace}-usage-limits-cache.json`
     : QODER_LIMITS_CACHE_FILE;
-  return path.join(home, ".tokentracker", "tracker", file);
+  return path.join(home, ".tokenusage", "tracker", file);
 }
 
 function qoderCachedWindow(window, { cachedAtMs, nowMs } = {}) {

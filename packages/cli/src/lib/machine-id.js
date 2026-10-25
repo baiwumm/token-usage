@@ -7,13 +7,13 @@ const crypto = require("node:crypto");
 const { execFileSync } = require("node:child_process");
 
 function resolveQueuePath() {
-  return path.join(os.homedir(), ".tokentracker", "tracker", "queue.jsonl");
+  return path.join(os.homedir(), ".tokenusage", "tracker", "queue.jsonl");
 }
 
 /**
  * Path of the purge-surviving identity seed file.
  *
- * `uninstall --purge` removes all of `~/.tokentracker` including config.json,
+ * `uninstall --purge` removes all of `~/.tokenusage` including config.json,
  * which used to destroy the machineId: the reinstall minted a fresh id, the
  * cloud created a brand-new device row, and the full history replay was
  * double-counted next to the still-active old device (issue #176). The seed
@@ -22,13 +22,13 @@ function resolveQueuePath() {
  * that cannot be re-derived from hardware.
  *
  * Derived from the queue path's home when it follows the standard
- * `<home>/.tokentracker/tracker/queue.jsonl` layout (keeps tests sandboxed in
+ * `<home>/.tokenusage/tracker/queue.jsonl` layout (keeps tests sandboxed in
  * their temp homes), falling back to the real home directory otherwise.
  */
 function defaultSeedPath(queuePath) {
   const rootDir = path.dirname(path.dirname(queuePath));
-  const home = path.basename(rootDir) === ".tokentracker" ? path.dirname(rootDir) : os.homedir();
-  return path.join(home, ".config", "tokentracker", "machine-id");
+  const home = path.basename(rootDir) === ".tokenusage" ? path.dirname(rootDir) : os.homedir();
+  return path.join(home, ".config", "tokenusage", "machine-id");
 }
 
 function isValidMachineIdString(value) {
@@ -151,7 +151,7 @@ function computeStableMachineId({
       user = "";
     }
   }
-  return crypto.createHash("sha256").update(`tokentracker-machine-v1:${raw}:${user}`).digest("hex");
+  return crypto.createHash("sha256").update(`tokenusage-machine-v1:${raw}:${user}`).digest("hex");
 }
 
 /**

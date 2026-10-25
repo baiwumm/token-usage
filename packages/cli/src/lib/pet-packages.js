@@ -24,20 +24,20 @@ const PET_ID_RE = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 const petDirectoryCache = new Map();
 let codexAsarCache = null;
 
-// TokenTracker keeps its own pets under ~/.tokentracker/pets and never writes to the
+// Token Usage keeps its own pets under ~/.tokenusage/pets and never writes to the
 // Codex app: URL/zip imports stay here, and Codex is only ever read from (reverse
 // import). `~/.codex/pets` is reachable purely as an import source.
 const MIGRATION_MARKER = ".migrated-v1";
 
 function resolvePetsDir() {
   return path.resolve(
-    process.env.TOKENTRACKER_PETS_DIR || path.join(os.homedir(), ".tokentracker", "pets"),
+    process.env.TOKENUSAGE_PETS_DIR || path.join(os.homedir(), ".tokenusage", "pets"),
   );
 }
 
 function resolveCodexPetsDir() {
   return path.resolve(
-    process.env.TOKENTRACKER_CODEX_PETS_DIR || path.join(os.homedir(), ".codex", "pets"),
+    process.env.TOKENUSAGE_CODEX_PETS_DIR || path.join(os.homedir(), ".codex", "pets"),
   );
 }
 
@@ -140,7 +140,7 @@ function normalizeManifest(value) {
   const spriteVersionNumber = versionProvided ? value.spriteVersionNumber : 1;
 
   if (!PET_ID_RE.test(id)) throw new Error("pet.json id must be a lowercase URL-safe slug");
-  if (BUILTIN_IDS.has(id)) throw new Error(`${id} is reserved by a built-in TokenTracker pet`);
+  if (BUILTIN_IDS.has(id)) throw new Error(`${id} is reserved by a built-in Token Usage pet`);
   if (!displayName || displayName.length > 80) throw new Error("pet.json displayName is required and must be at most 80 characters");
   if (!description || description.length > 280) throw new Error("pet.json description is required and must be at most 280 characters");
   if (spritesheetPath !== PET_SPRITESHEET) throw new Error("pet.json spritesheetPath must be spritesheet.webp");
@@ -365,7 +365,7 @@ function listInstalledPets() {
 // dropping `markerName` inside the pet directory. Returns the loaded asset info.
 function writePetIntoDir(root, manifest, spritesheetBuffer, markerName = null) {
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
-  const stage = path.join(root, `.tokentracker-pet-${process.pid}-${crypto.randomBytes(6).toString("hex")}`);
+  const stage = path.join(root, `.tokenusage-pet-${process.pid}-${crypto.randomBytes(6).toString("hex")}`);
   const destination = path.join(root, manifest.id);
   const backup = `${stage}-backup`;
   fs.mkdirSync(stage, { mode: 0o700 });
@@ -430,7 +430,7 @@ async function installFromCodexPets(input, fetchImpl = fetch) {
     const response = await fetchImpl(`https://codex-pets.net/api/pets/${encodeURIComponent(id)}/download`, {
       redirect: "follow",
       signal: controller.signal,
-      headers: { accept: "application/zip", "user-agent": "TokenTracker Pet Importer" },
+      headers: { accept: "application/zip", "user-agent": "tokenusage-cli Pet Importer" },
     });
     if (!response.ok) throw new Error(`Codex Pets download failed with HTTP ${response.status}`);
     const length = Number(response.headers.get("content-length") || 0);
@@ -513,11 +513,11 @@ function migrateLegacyCodexPets() {
   return { migrated };
 }
 
-// --- Reverse import: pull Codex's own pets into TokenTracker ---
+// --- Reverse import: pull Codex's own pets into Token Usage ---
 
 // Resolved per call (not frozen at load) so an env override applies at runtime.
 function resolveCodexAsarPath() {
-  return process.env.TOKENTRACKER_CODEX_ASAR
+  return process.env.TOKENUSAGE_CODEX_ASAR
     || "/Applications/Codex.app/Contents/Resources/app.asar";
 }
 // Codex ships these native companions bundled inside its app; the display names are
@@ -599,7 +599,7 @@ function codexAssetUrl(id, version) {
   return `/api/pets/codex/${encodeURIComponent(id)}/${PET_SPRITESHEET}${version ? `?v=${encodeURIComponent(version)}` : ""}`;
 }
 
-// Lists Codex pets that could be imported but aren't in TokenTracker yet: valid
+// Lists Codex pets that could be imported but aren't in Token Usage yet: valid
 // packages in ~/.codex/pets plus Codex's app-bundled companions. Each carries an
 // assetUrl so the picker can preview sprites.
 function listCodexImportablePets() {
@@ -663,7 +663,7 @@ function importFromCodex(ids) {
   const root = resolvePetsDir();
   // The listing excludes already-installed ids, but enforce the same rule at
   // the write boundary so a handcrafted local API request cannot overwrite a
-  // TokenTracker-owned pet with Codex's copy.
+  // Token Usage-owned pet with Codex's copy.
   for (const id of [...requested]) {
     if (fs.existsSync(path.join(root, id))) requested.delete(id);
   }

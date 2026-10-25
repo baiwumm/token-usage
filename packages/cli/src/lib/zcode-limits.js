@@ -12,8 +12,8 @@ const DEFAULT_ZCODE_APP_VERSION = "3.2.5";
 const DEFAULT_ZCODE_LOG_FALLBACK_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
 function resolveZcodeHome({ home, env = process.env } = {}) {
-  if (typeof env.TOKENTRACKER_ZCODE_HOME === "string" && env.TOKENTRACKER_ZCODE_HOME.trim()) {
-    return path.resolve(env.TOKENTRACKER_ZCODE_HOME.trim());
+  if (typeof env.TOKENUSAGE_ZCODE_HOME === "string" && env.TOKENUSAGE_ZCODE_HOME.trim()) {
+    return path.resolve(env.TOKENUSAGE_ZCODE_HOME.trim());
   }
   if (typeof env.ZCODE_HOME === "string" && env.ZCODE_HOME.trim()) {
     return path.resolve(env.ZCODE_HOME.trim());
@@ -23,8 +23,8 @@ function resolveZcodeHome({ home, env = process.env } = {}) {
 
 function resolveZcodeBillingBaseUrl(env = process.env) {
   const explicit =
-    typeof env.TOKENTRACKER_ZCODE_BILLING_BASE_URL === "string"
-      ? env.TOKENTRACKER_ZCODE_BILLING_BASE_URL.trim()
+    typeof env.TOKENUSAGE_ZCODE_BILLING_BASE_URL === "string"
+      ? env.TOKENUSAGE_ZCODE_BILLING_BASE_URL.trim()
       : "";
   if (explicit) return explicit.replace(/\/$/, "");
   return DEFAULT_BILLING_BASE_URL;
@@ -51,14 +51,14 @@ function readZcodeAppVersionFromPlist(plistPath) {
 
 function resolveZcodeAppVersion({ home, env = process.env } = {}) {
   const explicit =
-    typeof env.TOKENTRACKER_ZCODE_APP_VERSION === "string"
-      ? env.TOKENTRACKER_ZCODE_APP_VERSION.trim()
+    typeof env.TOKENUSAGE_ZCODE_APP_VERSION === "string"
+      ? env.TOKENUSAGE_ZCODE_APP_VERSION.trim()
       : "";
   if (explicit) return explicit;
 
   const appPath =
-    typeof env.TOKENTRACKER_ZCODE_APP_PATH === "string" && env.TOKENTRACKER_ZCODE_APP_PATH.trim()
-      ? env.TOKENTRACKER_ZCODE_APP_PATH.trim()
+    typeof env.TOKENUSAGE_ZCODE_APP_PATH === "string" && env.TOKENUSAGE_ZCODE_APP_PATH.trim()
+      ? env.TOKENUSAGE_ZCODE_APP_PATH.trim()
       : null;
   const candidates = appPath
     ? [path.join(appPath, "Contents", "Info.plist")]
@@ -366,7 +366,7 @@ function normalizeUrlOrigin(value) {
 
 function resolveZcodeProviderQuotaUrl(providerKey, provider, env = process.env) {
   if (!isZcodeCodingPlanProvider(providerKey)) return null;
-  const explicit = readEnvString(env, ["TOKENTRACKER_ZCODE_MONITOR_QUOTA_URL"]);
+  const explicit = readEnvString(env, ["TOKENUSAGE_ZCODE_MONITOR_QUOTA_URL"]);
   if (explicit) return explicit;
 
   const baseUrl = typeof provider?.options?.baseURL === "string" ? provider.options.baseURL.trim() : "";
@@ -374,12 +374,12 @@ function resolveZcodeProviderQuotaUrl(providerKey, provider, env = process.env) 
   const isZai = providerKey === "builtin:zai-coding-plan";
   const origin = isZai
     ? readEnvString(env, [
-        "TOKENTRACKER_ZCODE_ZAI_MONITOR_BASE_URL",
+        "TOKENUSAGE_ZCODE_ZAI_MONITOR_BASE_URL",
         "ZAI_BUSINESS_BASE_URL",
         "ZAI_PRODUCTION_BUSINESS_BASE_URL",
       ]) || (baseOrigin && /(^|\.)api\.z\.ai$/i.test(new URL(baseOrigin).hostname) ? baseOrigin : DEFAULT_ZAI_MONITOR_BASE_URL)
     : readEnvString(env, [
-        "TOKENTRACKER_ZCODE_BIGMODEL_MONITOR_BASE_URL",
+        "TOKENUSAGE_ZCODE_BIGMODEL_MONITOR_BASE_URL",
         "BIGMODEL_API_BASE_URL",
         "BIGMODEL_PRODUCTION_API_BASE_URL",
       ]) || DEFAULT_BIGMODEL_MONITOR_BASE_URL;
@@ -951,8 +951,8 @@ function loadLatestZcodeBalanceFromLogs({
   nowMs = Date.now(),
   requireProviderMatch = false,
 } = {}) {
-  if (env.TOKENTRACKER_ZCODE_DISABLE_LOG_FALLBACK === "1") return null;
-  const maxAgeMs = parsePositiveInteger(env.TOKENTRACKER_ZCODE_LOG_MAX_AGE_MS, DEFAULT_ZCODE_LOG_FALLBACK_MAX_AGE_MS);
+  if (env.TOKENUSAGE_ZCODE_DISABLE_LOG_FALLBACK === "1") return null;
+  const maxAgeMs = parsePositiveInteger(env.TOKENUSAGE_ZCODE_LOG_MAX_AGE_MS, DEFAULT_ZCODE_LOG_FALLBACK_MAX_AGE_MS);
   const preferredProviders = new Set(providerKeys.filter(Boolean));
   let preferred = null;
   let fallback = null;

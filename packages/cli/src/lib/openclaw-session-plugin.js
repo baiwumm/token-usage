@@ -18,7 +18,7 @@ function resolveOpenclawSessionPluginPaths({
     normalizeString(env.OPENCLAW_CONFIG_PATH) || path.join(home, ".openclaw", "openclaw.json");
 
   const openclawHome =
-    normalizeString(env.TOKENTRACKER_OPENCLAW_HOME) ||
+    normalizeString(env.TOKENUSAGE_OPENCLAW_HOME) ||
     normalizeString(env.OPENCLAW_STATE_DIR) ||
     path.join(home, ".openclaw");
 
@@ -37,7 +37,7 @@ function resolveOpenclawSessionPluginPaths({
 async function installOpenclawSessionPlugin({
   home = os.homedir(),
   trackerDir,
-  packageName = "tokentracker-cli",
+  packageName = "tokenusage-cli",
   env = process.env,
 } = {}) {
   const paths = resolveOpenclawSessionPluginPaths({ home, trackerDir, env });
@@ -86,7 +86,7 @@ async function installOpenclawSessionPlugin({
 async function ensureOpenclawSessionPluginFiles({
   pluginDir,
   trackerDir,
-  packageName = "tokentracker-cli",
+  packageName = "tokenusage-cli",
   openclawHome,
 } = {}) {
   if (!pluginDir || !trackerDir) throw new Error("pluginDir and trackerDir are required");
@@ -314,7 +314,7 @@ async function removeOpenclawSessionPluginConfig({
 function buildSessionPluginPackageJson() {
   return `${JSON.stringify(
     {
-      name: "@tokentracker/openclaw-session-sync",
+      name: "@tokenusage/openclaw-session-sync",
       version: "0.0.0",
       private: true,
       type: "module",
@@ -331,8 +331,8 @@ function buildSessionPluginMeta() {
   return `${JSON.stringify(
     {
       id: OPENCLAW_SESSION_PLUGIN_ID,
-      name: "TokenTracker OpenClaw Session Sync",
-      description: "Trigger tokentracker sync on OpenClaw agent/session lifecycle events.",
+      name: "Token Usage OpenClaw Session Sync",
+      description: "Trigger tokenusage sync on OpenClaw agent/session lifecycle events.",
       configSchema: {
         type: "object",
         additionalProperties: false,
@@ -344,9 +344,9 @@ function buildSessionPluginMeta() {
   )}\n`;
 }
 
-function buildSessionPluginIndex({ trackerDir, packageName = "tokentracker-cli", openclawHome }) {
+function buildSessionPluginIndex({ trackerDir, packageName = "tokenusage-cli", openclawHome }) {
   const trackerBinPath = path.join(trackerDir, "app", "bin", "tracker.js");
-  const fallbackPkg = packageName || "tokentracker-cli";
+  const fallbackPkg = packageName || "tokenusage-cli";
   const safeOpenclawHome = openclawHome || path.join(os.homedir(), ".openclaw");
 
   return (
@@ -421,22 +421,22 @@ function buildSessionPluginIndex({ trackerDir, packageName = "tokentracker-cli",
     `\n` +
     `function buildSessionEnv({ agentId, sessionId, sessionKey, sessionEntry }) {\n` +
     `  const out = {\n` +
-    `    TOKENTRACKER_OPENCLAW_AGENT_ID: agentId,\n` +
-    `    TOKENTRACKER_OPENCLAW_PREV_SESSION_ID: sessionId,\n` +
-    `    TOKENTRACKER_OPENCLAW_HOME: openclawHome\n` +
+    `    TOKENUSAGE_OPENCLAW_AGENT_ID: agentId,\n` +
+    `    TOKENUSAGE_OPENCLAW_PREV_SESSION_ID: sessionId,\n` +
+    `    TOKENUSAGE_OPENCLAW_HOME: openclawHome\n` +
     `  };\n` +
     `  const key = normalize(sessionKey);\n` +
-    `  if (key) out.TOKENTRACKER_OPENCLAW_SESSION_KEY = key;\n` +
+    `  if (key) out.TOKENUSAGE_OPENCLAW_SESSION_KEY = key;\n` +
     `  const prevTotalTokens = toNonNegativeInt(sessionEntry && sessionEntry.totalTokens);\n` +
     `  const prevInputTokens = toNonNegativeInt(sessionEntry && sessionEntry.inputTokens);\n` +
     `  const prevOutputTokens = toNonNegativeInt(sessionEntry && sessionEntry.outputTokens);\n` +
     `  const prevModel = normalize(sessionEntry && sessionEntry.model);\n` +
     `  const prevUpdatedAt = toIso(sessionEntry && sessionEntry.updatedAt);\n` +
-    `  if (prevTotalTokens != null) out.TOKENTRACKER_OPENCLAW_PREV_TOTAL_TOKENS = String(prevTotalTokens);\n` +
-    `  if (prevInputTokens != null) out.TOKENTRACKER_OPENCLAW_PREV_INPUT_TOKENS = String(prevInputTokens);\n` +
-    `  if (prevOutputTokens != null) out.TOKENTRACKER_OPENCLAW_PREV_OUTPUT_TOKENS = String(prevOutputTokens);\n` +
-    `  if (prevModel) out.TOKENTRACKER_OPENCLAW_PREV_MODEL = prevModel;\n` +
-    `  if (prevUpdatedAt) out.TOKENTRACKER_OPENCLAW_PREV_UPDATED_AT = prevUpdatedAt;\n` +
+    `  if (prevTotalTokens != null) out.TOKENUSAGE_OPENCLAW_PREV_TOTAL_TOKENS = String(prevTotalTokens);\n` +
+    `  if (prevInputTokens != null) out.TOKENUSAGE_OPENCLAW_PREV_INPUT_TOKENS = String(prevInputTokens);\n` +
+    `  if (prevOutputTokens != null) out.TOKENUSAGE_OPENCLAW_PREV_OUTPUT_TOKENS = String(prevOutputTokens);\n` +
+    `  if (prevModel) out.TOKENUSAGE_OPENCLAW_PREV_MODEL = prevModel;\n` +
+    `  if (prevUpdatedAt) out.TOKENUSAGE_OPENCLAW_PREV_UPDATED_AT = prevUpdatedAt;\n` +
     `  return out;\n` +
     `}\n` +
     `\n` +

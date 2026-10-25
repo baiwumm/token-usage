@@ -13,9 +13,9 @@ const TOKEN_FIELDS = [
 ];
 
 function resolveTraeDbPaths(env = process.env, { platform = process.platform, home = os.homedir() } = {}) {
-  const explicit = String(env.TOKENTRACKER_TRAE_DB || "").trim();
+  const explicit = String(env.TOKENUSAGE_TRAE_DB || "").trim();
   if (explicit) return [path.resolve(explicit)];
-  const customHome = String(env.TOKENTRACKER_TRAE_HOME || "").trim();
+  const customHome = String(env.TOKENUSAGE_TRAE_HOME || "").trim();
   const parent = platform === "win32"
     ? env.APPDATA || path.join(home, "AppData", "Roaming")
     : platform === "darwin"

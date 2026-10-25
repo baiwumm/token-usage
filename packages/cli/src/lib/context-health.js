@@ -62,7 +62,7 @@ function countMcpServers(home, cwd) {
 }
 
 function computeContextHealth({ home = os.homedir(), cwd = process.cwd(), env = process.env, cacheTtlMs = 5 * 60_000 } = {}) {
-  const cacheKey = `${home}\0${cwd}\0${env.TOKENTRACKER_MCP_TOOL_SCHEMA_TOKENS || ""}\0${env.TOKENTRACKER_MCP_TOOLS_PER_SERVER || ""}`;
+  const cacheKey = `${home}\0${cwd}\0${env.TOKENUSAGE_MCP_TOOL_SCHEMA_TOKENS || ""}\0${env.TOKENUSAGE_MCP_TOOLS_PER_SERVER || ""}`;
   const cached = contextCache.get(cacheKey);
   if (cached && Date.now() - cached.at < cacheTtlMs) return cached.value;
   const files = [];
@@ -91,8 +91,8 @@ function computeContextHealth({ home = os.homedir(), cwd = process.cwd(), env = 
   const instructionTokens = files.filter((row) => row.kind === "instruction").reduce((sum, row) => sum + row.estimated_tokens, 0);
   const skillTokens = files.filter((row) => row.kind === "skill").reduce((sum, row) => sum + row.estimated_tokens, 0);
   const mcpServers = countMcpServers(home, cwd);
-  const perToolSchemaTokens = Math.max(0, Number(env.TOKENTRACKER_MCP_TOOL_SCHEMA_TOKENS || 400));
-  const assumedToolsPerServer = Math.max(1, Number(env.TOKENTRACKER_MCP_TOOLS_PER_SERVER || 5));
+  const perToolSchemaTokens = Math.max(0, Number(env.TOKENUSAGE_MCP_TOOL_SCHEMA_TOKENS || 400));
+  const assumedToolsPerServer = Math.max(1, Number(env.TOKENUSAGE_MCP_TOOLS_PER_SERVER || 5));
   const mcpSchemaTokens = mcpServers * perToolSchemaTokens * assumedToolsPerServer;
   const total = instructionTokens + skillTokens + mcpSchemaTokens;
   const severity = total >= 50_000 ? "high" : total >= 20_000 ? "medium" : "low";

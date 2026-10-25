@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Quality-per-dollar / Effective-Tokens engine (opt-in, sidecar)
 //
-// TokenTracker answers "what did the tokens COST?". This optional layer adds
+// Token Usage answers "what did the tokens COST?". This optional layer adds
 // "what did they BUY?" by joining an opt-in, vendor-neutral `outcomes.jsonl`
 // sidecar to the existing token/$ rows by model + time.
 //
@@ -24,11 +24,11 @@ const path = require("node:path");
 const { computeRowCost } = require("./pricing");
 
 function resolveOutcomesPath() {
-  return path.join(os.homedir(), ".tokentracker", "tracker", "outcomes.jsonl");
+  return path.join(os.homedir(), ".tokenusage", "tracker", "outcomes.jsonl");
 }
 
 function resolveAutoOutcomesPath() {
-  return path.join(os.homedir(), ".tokentracker", "tracker", "auto-outcomes.jsonl");
+  return path.join(os.homedir(), ".tokenusage", "tracker", "auto-outcomes.jsonl");
 }
 
 // The ONLY fields ever lifted off an outcome record. Anything not on this list

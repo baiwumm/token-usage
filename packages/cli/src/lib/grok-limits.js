@@ -68,8 +68,8 @@ async function fetchGrokBillingAttempt(fetchImpl, url, headers, deadlineMs) {
 }
 
 function resolveGrokHome({ home, env = process.env } = {}) {
-  if (typeof env.TOKENTRACKER_GROK_HOME === "string" && env.TOKENTRACKER_GROK_HOME.trim()) {
-    return path.resolve(env.TOKENTRACKER_GROK_HOME.trim());
+  if (typeof env.TOKENUSAGE_GROK_HOME === "string" && env.TOKENUSAGE_GROK_HOME.trim()) {
+    return path.resolve(env.TOKENUSAGE_GROK_HOME.trim());
   }
   if (typeof env.GROK_HOME === "string" && env.GROK_HOME.trim()) {
     return path.resolve(env.GROK_HOME.trim());
@@ -81,8 +81,8 @@ function resolveGrokBillingBaseUrl(env = process.env) {
   const explicit =
     typeof env.GROK_CLI_CHAT_PROXY_BASE_URL === "string"
       ? env.GROK_CLI_CHAT_PROXY_BASE_URL.trim()
-      : typeof env.TOKENTRACKER_GROK_BILLING_BASE_URL === "string"
-        ? env.TOKENTRACKER_GROK_BILLING_BASE_URL.trim()
+      : typeof env.TOKENUSAGE_GROK_BILLING_BASE_URL === "string"
+        ? env.TOKENUSAGE_GROK_BILLING_BASE_URL.trim()
         : "";
   if (explicit) return explicit.replace(/\/$/, "");
   return DEFAULT_BILLING_BASE_URL;
@@ -245,8 +245,8 @@ function resolveGrokOidcIssuer(entry) {
 }
 
 function resolveGrokTokenEndpoint(entry, env = process.env) {
-  if (typeof env.TOKENTRACKER_GROK_TOKEN_ENDPOINT === "string" && env.TOKENTRACKER_GROK_TOKEN_ENDPOINT.trim()) {
-    return env.TOKENTRACKER_GROK_TOKEN_ENDPOINT.trim();
+  if (typeof env.TOKENUSAGE_GROK_TOKEN_ENDPOINT === "string" && env.TOKENUSAGE_GROK_TOKEN_ENDPOINT.trim()) {
+    return env.TOKENUSAGE_GROK_TOKEN_ENDPOINT.trim();
   }
   if (typeof env.GROK_OIDC_TOKEN_ENDPOINT === "string" && env.GROK_OIDC_TOKEN_ENDPOINT.trim()) {
     return env.GROK_OIDC_TOKEN_ENDPOINT.trim();

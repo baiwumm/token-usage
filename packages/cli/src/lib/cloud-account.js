@@ -6,8 +6,8 @@
 // knows nothing about OAuth/JWT. To make the popover show the SAME cross-device
 // totals the dashboard shows in "account view", the local server mints a
 // short-lived access token from the InsForge refresh token it already relays
-// (see local-api.js cookie relay) and proxies the `tokentracker-account-*` edge
-// functions. Those functions mirror the local `tokentracker-usage-*` response
+// (see local-api.js cookie relay) and proxies the `token-usage-account-*` edge
+// functions. Those functions mirror the local `token-usage-usage-*` response
 // schema exactly, so the popover renders the cloud payload unchanged.
 
 const { DEFAULT_BASE_URL, DEFAULT_ANON_KEY } = require("./runtime-config");
@@ -18,12 +18,12 @@ const { functionUrlFor, fetchFunctionResponse } = require("./function-url");
 // cross-device cloud equivalent; project-usage / usage-limits / category
 // breakdown remain local-only and are intentionally absent here.
 const USAGE_TO_ACCOUNT_SLUG = {
-  "tokentracker-usage-summary": "tokentracker-account-summary",
-  "tokentracker-usage-daily": "tokentracker-account-daily",
-  "tokentracker-usage-hourly": "tokentracker-account-hourly",
-  "tokentracker-usage-monthly": "tokentracker-account-monthly",
-  "tokentracker-usage-heatmap": "tokentracker-account-heatmap",
-  "tokentracker-usage-model-breakdown": "tokentracker-account-model-breakdown",
+  "token-usage-usage-summary": "token-usage-account-summary",
+  "token-usage-usage-daily": "token-usage-account-daily",
+  "token-usage-usage-hourly": "token-usage-account-hourly",
+  "token-usage-usage-monthly": "token-usage-account-monthly",
+  "token-usage-usage-heatmap": "token-usage-account-heatmap",
+  "token-usage-usage-model-breakdown": "token-usage-account-model-breakdown",
 };
 
 function accountSlugFor(usageSlug) {
@@ -36,7 +36,7 @@ function accountSlugFor(usageSlug) {
 // for the sparse rows and rebuilding the grid in `expandHeatmapCompact` gives
 // the caller a byte-identical payload. An edge that predates the compact branch
 // ignores the param and answers densely, which that helper passes through.
-const HEATMAP_ACCOUNT_SLUG = "tokentracker-account-heatmap";
+const HEATMAP_ACCOUNT_SLUG = "token-usage-account-heatmap";
 
 // Mirror of dashboard/src/contexts/InsforgeAuthContext.jsx
 // `accessTokenFromRefreshPayload`: the refresh response may put the token at the
@@ -350,7 +350,7 @@ async function mintAccessToken({
 }
 
 /**
- * GET a `tokentracker-account-*` edge function, forwarding the popover's query
+ * GET a `token-usage-account-*` edge function, forwarding the popover's query
  * params (minus `account`/`scope`, which are local-only routing knobs).
  */
 async function fetchAccountFunction({
@@ -494,7 +494,7 @@ async function fetchAccountUsage({
           fetchImpl, timeoutMs: getRemainingTimeout(),
         });
         if (generation === payloadGeneration && version === (payloadVersions.get(cacheKey) || 0) && cacheKey && data != null) {
-          payloadCacheSet(cacheKey, data, now, slug === "tokentracker-account-summary" ? SUMMARY_PAYLOAD_TTL_MS : PAYLOAD_TTL_MS);
+          payloadCacheSet(cacheKey, data, now, slug === "token-usage-account-summary" ? SUMMARY_PAYLOAD_TTL_MS : PAYLOAD_TTL_MS);
         }
         return JSON.stringify(data);
       } catch (error) {

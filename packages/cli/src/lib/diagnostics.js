@@ -22,7 +22,7 @@ const { resolveTrackerPaths } = require("./tracker-paths");
 const { resolveDeviceTokenPresence } = require("./cloud-device-token");
 const wsl = require("./wsl-probe");
 // TASK-011: Kiro paths inlined here to avoid pulling the ~4000-line
-// rollout module on every `tokentracker status` / `diagnostics` call.
+// rollout module on every `tokenusage status` / `diagnostics` call.
 // rollout.js still exports resolveKiroCliDbPath / resolveKiroBasePath for
 // external callers; keep the platform branches in lockstep.
 function resolveKiroIdeBaseInline(env, home) {
@@ -89,7 +89,7 @@ async function collectTrackerDiagnostics({
   const geminiSettingsPath = resolveGeminiSettingsPath({ configDir: geminiConfigDir });
   const opencodeConfigDir = resolveOpencodeConfigDir({ home, env: process.env });
   const grokHome =
-    process.env.TOKENTRACKER_GROK_HOME ||
+    process.env.TOKENUSAGE_GROK_HOME ||
     process.env.GROK_HOME ||
     path.join(home, ".grok");
 

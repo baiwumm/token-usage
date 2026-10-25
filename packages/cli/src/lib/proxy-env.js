@@ -71,7 +71,7 @@ function isDeclaredManual(raw) {
 }
 
 function defaultConfigPath() {
-  return path.join(os.homedir(), ".tokentracker", "tracker", "config.json");
+  return path.join(os.homedir(), ".tokenusage", "tracker", "config.json");
 }
 
 function readPersistedProxyConfig({ configPath } = {}) {
@@ -170,7 +170,7 @@ function resolveSystemProxyEnv({
 }
 
 function shouldRelaunchForProxy(argv, env = process.env) {
-  if (env.TOKENTRACKER_PROXY_ENV_APPLIED === "1") return false;
+  if (env.TOKENUSAGE_PROXY_ENV_APPLIED === "1") return false;
   const command = Array.isArray(argv) ? argv[0] : null;
   return !command || command === "serve";
 }
@@ -191,7 +191,7 @@ function relaunchWithProxyEnvIfNeeded({
   const childEnv = {
     ...env,
     ...proxyEnv,
-    TOKENTRACKER_PROXY_ENV_APPLIED: "1",
+    TOKENUSAGE_PROXY_ENV_APPLIED: "1",
   };
   return commandRunner(nodePath, originalArgv, {
     stdio: "inherit",

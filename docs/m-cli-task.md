@@ -9,7 +9,7 @@
 | 决策项 | 结论 |
 |---|---|
 | npm 包名 | `tokenusage-cli`（bin 命令 `tokenusage`；crates.io 同名 Rust 工具不冲突 npm） |
-| 默认生产 base URL | `https://token-usage.vercel.app`（init 可 `--base-url` 覆盖，env `TOKENUSAGE_BASE_URL` 最高优先；**G1 前操作者核对实际生产地址**） |
+| 默认生产 base URL | `https://token-usage-delta.vercel.app`（init 可 `--base-url` 覆盖，env `TOKENUSAGE_BASE_URL` 最高优先；**G1 前操作者核对实际生产地址**） |
 | provider 范围 | 只保留操作者实际在用的解析器（以本机真实数据为准：claude / codex / zcode / opencode / cursor / trae-cn，另加 grok / kimi 若与 claude/codex 共享基础设施成本低），其余 provider 模块剥除并在 README 列出 |
 | 上报节奏 | 手动 `sync` + `--watch` 常驻增量；`install-task` 计划任务 v1 不做（留接口） |
 

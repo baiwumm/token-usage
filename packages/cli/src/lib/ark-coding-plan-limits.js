@@ -7,7 +7,7 @@
 // 5-hour (session for Coding Plan, 5h for Agent Plan), weekly and monthly —
 // and are shared by compatible coding tools (Claude Code, Codex CLI,
 // OpenCode, TRAE, ...). Official docs present them as parallel, not
-// successor/replacement. TokenTracker already counts those tools' token
+// successor/replacement. Token Usage already counts those tools' token
 // consumption from their local files, so this module deliberately adds
 // NO consumption source. It only surfaces the subscription quota
 // percentage, which is otherwise only visible in the Volcano console web
@@ -213,7 +213,7 @@ function normalizeArkCodingPlanResponse(body) {
 }
 
 function arkCodingPlanCachePath({ home = os.homedir() } = {}) {
-  return path.join(home, ".tokentracker", "tracker", ARK_LIMITS_CACHE_FILE);
+  return path.join(home, ".tokenusage", "tracker", ARK_LIMITS_CACHE_FILE);
 }
 
 function readArkCodingPlanLimitsCache({ home = os.homedir(), nowMs = Date.now(), profileIdentity } = {}) {

@@ -39,7 +39,7 @@ function claudeProjectsDir(home) {
 }
 
 function dataDir(home) {
-  return path.join(home || os.homedir(), ".tokentracker", "skills");
+  return path.join(home || os.homedir(), ".tokenusage", "skills");
 }
 
 function usageCachePath(home) {

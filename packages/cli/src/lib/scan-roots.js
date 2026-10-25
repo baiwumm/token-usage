@@ -4,7 +4,7 @@
 //
 // Agent harnesses run Codex / Claude Code with a private home
 // (CODEX_HOME=..., CLAUDE_CONFIG_DIR=...). Those sessions were invisible to
-// TokenTracker unless the sync happened to be spawned by a process that
+// Token Usage unless the sync happened to be spawned by a process that
 // inherited the same environment: a hook-fired sync saw them, the native app's
 // background refresh did not. Worse, the two producers then disagreed about
 // where a rollout's cursor lives (the cursor store classifies a rollout as a
@@ -20,7 +20,7 @@
 // are dropped):
 //   1. the roots the caller already scans (native home, WSL install)
 //   2. the spawning process's implicit root — CODEX_HOME / CLAUDE_CONFIG_DIR
-//   3. config.scanRoots.<provider>[] from ~/.tokentracker/tracker/config.json
+//   3. config.scanRoots.<provider>[] from ~/.tokenusage/tracker/config.json
 //
 // Config shape:
 //   { "scanRoots": { "codex": ["~/.local/share/agent/codex"],
@@ -252,7 +252,7 @@ function describeScanRootState(entry) {
   return entry.error ? ` (unreadable: ${entry.error})` : " (missing)";
 }
 
-// config.scanRoots as persisted in ~/.tokentracker/tracker/config.json for
+// config.scanRoots as persisted in ~/.tokenusage/tracker/config.json for
 // callers that do not already hold the config (the session browser).
 async function loadScanRootsConfig({ home = os.homedir() } = {}) {
   const { trackerDir } = await resolveTrackerPaths({ home });

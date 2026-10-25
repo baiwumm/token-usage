@@ -124,7 +124,7 @@ function isIsoInRange(iso, { from, to, timeZoneContext } = {}) {
 // ---------------------------------------------------------------------------
 
 function resolveGrokHome(env = process.env) {
-  if (env.TOKENTRACKER_GROK_HOME) return env.TOKENTRACKER_GROK_HOME;
+  if (env.TOKENUSAGE_GROK_HOME) return env.TOKENUSAGE_GROK_HOME;
   if (env.GROK_HOME) return env.GROK_HOME;
   return path.join(os.homedir(), ".grok");
 }

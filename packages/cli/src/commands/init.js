@@ -113,7 +113,7 @@ const ASCII_LOGO = [
 ].join("\n");
 
 const DIVIDER = "----------------------------------------------";
-const DEFAULT_DASHBOARD_URL = "https://www.tokentracker.cc";
+const DEFAULT_DASHBOARD_URL = "https://www.tokenusage.cc";
 
 // Single source of truth for the welcome screen's provider count + sample list.
 // test/discovery-metadata.test.js keeps this aligned with public tool copy.
@@ -259,7 +259,7 @@ async function cmdInit(argv, options = {}) {
     firstSync = await runFirstSyncAndRead({
       trackerBinPath,
       trackerDir,
-      packageName: "tokentracker",
+      packageName: "tokenusage",
     });
   } catch (err) {
     const msg = err && err.message ? err.message : "unknown error";
@@ -424,7 +424,7 @@ async function runSetup({
   };
 }
 
-async function writeNotifyHandler({ trackerDir, binDir, notifyPath, packageName = "tokentracker-cli" }) {
+async function writeNotifyHandler({ trackerDir, binDir, notifyPath, packageName = "tokenusage-cli" }) {
   const resolvedNotifyPath =
     notifyPath || path.join(binDir || path.join(path.dirname(trackerDir), "bin"), "notify.cjs");
   await ensureDir(path.dirname(resolvedNotifyPath));
@@ -609,7 +609,7 @@ async function repairRuntimeIntegrations({
 function buildIntegrationTargets({ home, trackerDir, notifyPath }) {
   const codexHome = process.env.CODEX_HOME || path.join(home, ".codex");
   const codexConfigPath = path.join(codexHome, "config.toml");
-  const acodeHome = process.env.TOKENTRACKER_ACODE_HOME || path.join(home, ".acode");
+  const acodeHome = process.env.TOKENUSAGE_ACODE_HOME || path.join(home, ".acode");
   const acodeConfigPath = path.join(acodeHome, "config.toml");
   const codeHome = process.env.CODE_HOME || path.join(home, ".code");
   const codeConfigPath = path.join(codeHome, "config.toml");
@@ -778,7 +778,7 @@ async function applyIntegrationSetup({
   }
 
   // Kimi: passive reader — no hook installation needed.
-  // TokenTracker reads both legacy ~/.kimi/ and official ~/.kimi-code/ sessions.
+  // Token Usage reads both legacy ~/.kimi/ and official ~/.kimi-code/ sessions.
   {
     const kimiHome = process.env.KIMI_HOME || path.join(home, ".kimi");
     const kimiCodeHome = process.env.KIMI_CODE_HOME || path.join(home, ".kimi-code");
@@ -816,7 +816,7 @@ async function applyIntegrationSetup({
           summary.push({
             label: "oh-my-pi",
             status: "skipped",
-            detail: "Existing unmanaged tokentracker-notify extension left untouched",
+            detail: "Existing unmanaged tokenusage-notify extension left untouched",
           });
         } else {
           summary.push({
@@ -830,7 +830,7 @@ async function applyIntegrationSetup({
   }
 
   // pi (@mariozechner/pi-coding-agent): passive reader — no hook installation needed.
-  // TokenTracker reads ~/.pi/agent/sessions/**/*.jsonl directly. Skip when its
+  // Token Usage reads ~/.pi/agent/sessions/**/*.jsonl directly. Skip when its
   // agent dir collides with omp's so the summary matches what sync will scan.
   if (!piAgentDirCollidesWithOmp(process.env)) {
     // Same win32 nullability as oh-my-pi above: resolvePiAgentDir is null when
@@ -867,7 +867,7 @@ async function applyIntegrationSetup({
   }
 
   // Craft Agents: passive reader — no hook installation needed.
-  // TokenTracker reads ~/.craft-agent/workspaces/<id>/sessions/**/session.jsonl
+  // Token Usage reads ~/.craft-agent/workspaces/<id>/sessions/**/session.jsonl
   // (and any user-relocated workspace listed in ~/.craft-agent/config.json).
   {
     const craftConfigDir = process.env.CRAFT_CONFIG_DIR || path.join(home, ".craft-agent");
@@ -901,13 +901,13 @@ async function applyIntegrationSetup({
         label: "TRAE",
         status: "detected",
         detail: traeDbPaths.length
-          ? "Local usage reader (shared application key; optional TOKENTRACKER_TRAE_SQLCIPHER_KEY override)"
+          ? "Local usage reader (shared application key; optional TOKENUSAGE_TRAE_SQLCIPHER_KEY override)"
           : "Plan info only — no local usage database found",
       });
     }
   }
 
-  // Grok Build (xAI): SessionEnd hook in ~/.grok/hooks/ + handler in ~/.tokentracker/bin/
+  // Grok Build (xAI): SessionEnd hook in ~/.grok/hooks/ + handler in ~/.tokenusage/bin/
   {
     try {
       const grokState = await probeGrokHookState({ home, trackerDir, env: process.env });
@@ -916,7 +916,7 @@ async function applyIntegrationSetup({
         summary.push({
           label: "Grok Build",
           status: grokRes.configured ? "installed" : "detected",
-          detail: grokRes.configured ? "SessionEnd hook installed (99-tokentracker-usage.json)" : "Grok detected"
+          detail: grokRes.configured ? "SessionEnd hook installed (99-tokenusage-usage.json)" : "Grok detected"
         });
       }
     } catch (err) {
@@ -1087,7 +1087,7 @@ async function applyIntegrationSetup({
   const openclawInstall = await installOpenclawSessionPlugin({
     home,
     trackerDir,
-    packageName: "tokentracker-cli",
+    packageName: "tokenusage-cli",
     env: process.env,
   });
   if (openclawInstall?.skippedReason === "openclaw-cli-missing") {
@@ -1354,12 +1354,12 @@ async function shouldRepairCodexNotify({ currentNotify, expectedNotify, notifyOr
   if (arraysEqual(currentNotify, expectedNotify)) {
     return { repair: false, reason: "already-set" };
   }
-  if (isTokenTrackerNotify(currentNotify, expectedNotify)) {
+  if (isTokenUsageNotify(currentNotify, expectedNotify)) {
     return { repair: true, captureOriginal: false };
   }
   if (
     isSkyComputerUseNotify(currentNotify)
-    && containsNestedTokenTrackerNotify(currentNotify, expectedNotify)
+    && containsNestedTokenUsageNotify(currentNotify, expectedNotify)
   ) {
     return { repair: false, reason: "already-wrapped" };
   }
@@ -1377,14 +1377,14 @@ async function shouldRepairCodexNotify({ currentNotify, expectedNotify, notifyOr
 }
 
 function shouldReplaceStoredOriginalNotify(currentNotify, expectedNotify) {
-  if (isTokenTrackerNotify(currentNotify, expectedNotify)) return false;
+  if (isTokenUsageNotify(currentNotify, expectedNotify)) return false;
   return currentNotify === null || Array.isArray(currentNotify);
 }
 
 // Single source of truth for "is this notify command ours?", shared with
 // status (configured check) and uninstall (restore gate) so the three cannot
 // drift apart. See isManagedNotifyCmd in src/lib/codex-config.js.
-function isTokenTrackerNotify(cmd, expectedNotify) {
+function isTokenUsageNotify(cmd, expectedNotify) {
   return isManagedNotifyCmd(cmd, expectedNotify);
 }
 
@@ -1393,12 +1393,12 @@ function isSkyComputerUseNotify(cmd) {
   return cmd.some((part) => typeof part === "string" && part.includes("SkyComputerUseClient"));
 }
 
-function containsNestedTokenTrackerNotify(cmd, expectedNotify) {
+function containsNestedTokenUsageNotify(cmd, expectedNotify) {
   if (!Array.isArray(cmd)) return false;
   for (const part of cmd) {
     if (typeof part !== "string") continue;
     try {
-      if (isTokenTrackerNotify(JSON.parse(part), expectedNotify)) return true;
+      if (isTokenUsageNotify(JSON.parse(part), expectedNotify)) return true;
     } catch (_) {}
   }
   return false;
@@ -1456,7 +1456,7 @@ function buildNotifyHandler({ trackerDir, packageName }) {
   // It must never block Codex; it spawns sync in the background and exits 0.
   const queueSignalPath = path.join(trackerDir, "notify.signal");
   const originalPath = path.join(trackerDir, "codex_notify_original.json");
-  const fallbackPkg = packageName || "tokentracker-cli";
+  const fallbackPkg = packageName || "tokenusage-cli";
   const trackerBinPath = path.join(trackerDir, "app", "bin", "tracker.js");
 
   return `#!/usr/bin/env node
@@ -1495,8 +1495,8 @@ const fallbackPkg = ${JSON.stringify(fallbackPkg)};
 const selfPath = path.resolve(__filename);
 const home = os.homedir();
 const debugLogPath = path.join(trackerDir, 'notify.debug.jsonl');
-const debugEnabled = ['1', 'true'].includes((process.env.TOKENTRACKER_NOTIFY_DEBUG || '').toLowerCase());
-const debugMaxBytesRaw = Number.parseInt(process.env.TOKENTRACKER_NOTIFY_DEBUG_MAX_BYTES || '', 10);
+const debugEnabled = ['1', 'true'].includes((process.env.TOKENUSAGE_NOTIFY_DEBUG || '').toLowerCase());
+const debugMaxBytesRaw = Number.parseInt(process.env.TOKENUSAGE_NOTIFY_DEBUG_MAX_BYTES || '', 10);
 const debugMaxBytes = Number.isFinite(debugMaxBytesRaw) && debugMaxBytesRaw > 0
   ? debugMaxBytesRaw
   : 1_000_000;
@@ -1610,9 +1610,9 @@ function isSelfNotifyPath(resolved) {
   try {
     if (fs.realpathSync(resolved) === selfPath) return true;
   } catch (_) {}
-  // Any notify.cjs under a .tokentracker dir is ours (matches the repair-time
-  // isTokenTrackerNotify heuristic), even if that copy no longer exists.
-  return resolved.replace(/\\\\/g, '/').includes('/.tokentracker/');
+  // Any notify.cjs under a .tokenusage dir is ours (matches the repair-time
+  // isTokenUsageNotify heuristic), even if that copy no longer exists.
+  return resolved.replace(/\\\\/g, '/').includes('/.tokenusage/');
 }
 
 function shouldChainNotify(cmd) {
@@ -2277,8 +2277,8 @@ async function installLocalTrackerApp({ appDir }) {
   // node_modules) when a test only exercises hook/config/notify wiring. Copying
   // the bundle per test case dominates the init test suite's wall time. Tests
   // that assert on the copied runtime simply leave this unset.
-  if (process.env.TOKENTRACKER_SKIP_LOCAL_RUNTIME_COPY === "1") return;
-  // Copy the current package's runtime (bin + src) into ~/.tokentracker so notify can run sync without npx.
+  if (process.env.TOKENUSAGE_SKIP_LOCAL_RUNTIME_COPY === "1") return;
+  // Copy the current package's runtime (bin + src) into ~/.tokenusage so notify can run sync without npx.
   const packageRoot = path.resolve(__dirname, "../..");
   const srcFrom = path.join(packageRoot, "src");
   const binFrom = path.join(packageRoot, "bin", "tracker.js");
@@ -2336,10 +2336,10 @@ async function runFirstSyncAndRead({ trackerBinPath, trackerDir, packageName }) 
   // Test-only escape hatch: skip spawning a real `sync --drain` subprocess when
   // a test only exercises init wiring. Returns the same shape derived from an
   // (empty) queue so callers behave identically without the ~1s spawn per case.
-  if (process.env.TOKENTRACKER_SKIP_FIRST_SYNC === "1") {
+  if (process.env.TOKENUSAGE_SKIP_FIRST_SYNC === "1") {
     return readFirstSyncTotals(trackerDir);
   }
-  const fallbackPkg = packageName || "tokentracker-cli";
+  const fallbackPkg = packageName || "tokenusage-cli";
   const argv = ["sync", "--auto", "--drain"];
   const hasLocalRuntime = typeof trackerBinPath === "string" && fssync.existsSync(trackerBinPath);
   const cmd = hasLocalRuntime
@@ -2432,5 +2432,5 @@ async function copyRuntimeDependencies({ from, to }) {
 }
 
 function isDebugEnabled() {
-  return process.env.TOKENTRACKER_DEBUG === "1";
+  return process.env.TOKENUSAGE_DEBUG === "1";
 }

@@ -11,7 +11,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 
 function resolveAutoOutcomesPath(home = os.homedir()) {
-  return path.join(home, ".tokentracker", "tracker", "auto-outcomes.jsonl");
+  return path.join(home, ".tokenusage", "tracker", "auto-outcomes.jsonl");
 }
 
 function readJsonl(filePath) {
@@ -96,11 +96,11 @@ function attributableSessions(sessions, cutoff, home) {
 }
 
 function gitAttributionDisabled() {
-  return ["1", "true"].includes(String(process.env.TOKENTRACKER_DISABLE_GIT_ATTRIBUTION || "").toLowerCase());
+  return ["1", "true"].includes(String(process.env.TOKENUSAGE_DISABLE_GIT_ATTRIBUTION || "").toLowerCase());
 }
 
 // macOS gates these locations behind TCC: the first access to each one raises
-// its own "TokenTracker would like to access data in …" consent dialog, and
+// its own "Token Usage would like to access data in …" consent dialog, and
 // ad-hoc signing resets that consent on every update, so the dialogs come back
 // each time. Attribution is an opt-in beta that walks into whatever directory a
 // session happened to run in — a token tracker has no business making the OS
@@ -109,7 +109,7 @@ function gitAttributionDisabled() {
 const TCC_PROTECTED_HOME_DIRS = ["Documents", "Downloads", "Desktop", "Movies", "Music", "Pictures", "Library"];
 
 function protectedProbeAllowed() {
-  return ["1", "true"].includes(String(process.env.TOKENTRACKER_GIT_ATTRIBUTION_PROTECTED_DIRS || "").toLowerCase());
+  return ["1", "true"].includes(String(process.env.TOKENUSAGE_GIT_ATTRIBUTION_PROTECTED_DIRS || "").toLowerCase());
 }
 
 function isTccProtectedPath(target, home) {
@@ -127,7 +127,7 @@ async function buildGitOutcomesInternal(sessions, { home = os.homedir(), force =
   const metaPath = `${outputPath}.meta.json`;
   const cutoff = Date.now() - Math.max(1, Number(maxAgeDays) || 90) * 86400_000;
 
-  // Escape hatch for anyone who would rather keep TokenTracker out of their
+  // Escape hatch for anyone who would rather keep Token Usage out of their
   // project directories entirely. Serves whatever was already attributed.
   if (gitAttributionDisabled()) return readJsonl(outputPath);
 
