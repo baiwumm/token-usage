@@ -99,15 +99,31 @@ node scripts/admin/create-user.cjs --email you@example.com
 
 用邮箱 + 临时密码（或邮件链接）在 `<部署域名>/login` 登录，进入仪表盘。
 
-## 6. 配对 CLI 采集端
+## 6. 配对 CLI 采集端（tokenusage-cli）
 
-1. 采集端 CLI 发起配对（向 `<部署域名>/api` 调用 device-flow-authorize），得到
-   `XXXX-XXXX` 配对码，CLI 同时打开 `<部署域名>/device?user_code=XXXX-XXXX`；
-2. 浏览器里登录后确认配对码，点 **批准配对**；
-3. 回到 CLI：令牌自动下发，`sync` 上报用量。
+采集端为本仓库 `packages/cli`（`tokenusage-cli`，fork 上游 CLI）。每个用户**自己批准自己的设备**：
 
-> 当前采集端为钉版 `tokentracker-cli@1.4.x`（旧路径别名兼容，把 base URL 指向
-> `<部署域名>/api` 即可）；`tokenusage-cli` 发布后切换（路线图 M-CLI）。
+1. 用户在本机安装 CLI 后执行 `tokenusage device-login`，得到 `XXXX-XXXX` 配对码
+   （向 `<部署域名>/api/functions/token-usage-device-flow-authorize` 发起）；
+2. 用户在**自己的浏览器里登录本站点**，打开 `/device?user_code=XXXX-XXXX` 点批准；
+3. 设备令牌自动下发并绑定该账号——这台机器此后上报的数据全部归属该用户，
+   `/settings` 里只有该用户能看/吊销自己的设备。
+
+配对的信任锚是**站点账号**：公开注册关闭（第 5 步管理员建号 / 邀请制，可选
+`token_allowed_emails` 白名单），没有账号的外来配对码 15 分钟自动过期，什么都不会发生。
+多用户各配各的设备，数据按 user_id 隔离。
+
+CLI 机制速查（完整说明见 `packages/cli/README.md`）：
+
+- `tokenusage sync`：解析本地 AI 工具日志 → 上报；**未配对时只采集入队、不上报**
+  （提示 skipped），配对后 `sync --drain` 自动补传全部积压，数据不丢；
+- `tokenusage sync --watch`：常驻自动上报，默认 15 分钟一轮（`--interval <ms>` 自定义，
+  最小 60000）；停止 = 终止进程（Ctrl+C），队列/水位已落盘，随时终止都安全；
+- `tokenusage status` / `doctor`：自查令牌、队列积压与各工具接入状态。
+
+> 旧采集端 `tokentracker-cli@1.4.x` 仍可经旧路径别名兼容（base URL 指向
+> `<部署域名>/api`）；`tokenusage-cli` 数据目录独立（`~/.tokenusage`），两者可在同一台
+> 机器共存，迁移步骤见 `docs/launch-runbook.md`「新 CLI 迁移」段。
 
 ## 7. 验证闭环
 
