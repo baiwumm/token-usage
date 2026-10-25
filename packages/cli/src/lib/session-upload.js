@@ -227,6 +227,34 @@ function selectSessionsForUpload(rows, watermarks) {
  * watermark file only advances for batches the server accepted, so a failed
  * batch leaves earlier successes committed and the failure retried next sync.
  */
+/**
+ * Split pending rows into request batches. Two independent contract limits
+ * apply (§1.2/§2.4): <=200 rows AND <=1 MiB body — a 200-row batch of real
+ * sessions with models easily exceeds the byte cap, so batches are cut on
+ * whichever limit hits first (bytes measured on the serialized row, with a
+ * conservative envelope leaving room for upload_id + JSON framing).
+ */
+function buildBatches(pending, maxRows) {
+  const BYTE_BUDGET = 500 * 1024;
+  const batches = [];
+  let current = [];
+  let bytes = 0;
+
+  for (const row of pending) {
+    const rowBytes = Buffer.byteLength(JSON.stringify(row), "utf8") + 2;
+    if (current.length > 0 && (current.length >= maxRows || bytes + rowBytes > BYTE_BUDGET)) {
+      batches.push(current);
+      current = [];
+      bytes = 0;
+    }
+    current.push(row);
+    bytes += rowBytes;
+  }
+  if (current.length > 0) batches.push(current);
+
+  return batches;
+}
+
 async function uploadSessions({
   baseUrl,
   anonKey,
@@ -238,18 +266,21 @@ async function uploadSessions({
   fetchImpl = fetch,
   onProgress = () => {},
 }) {
+  // Map first: callers hand us RAW session-analytics rows (tokens nested in
+  // row.tokens, sidecar-only fields present); the wire shape is built here so
+  // no call site can bypass the whitelist/identity checks.
+  const { rows: mapped, skipped: skippedLocal } = buildSessionUploadRows(sessions);
   const watermarks = loadWatermarks(watermarkPath);
-  const pending = selectSessionsForUpload(sessions, watermarks);
-  const size = Math.min(Math.max(1, batchSize), MAX_SESSIONS_PER_BATCH);
+  const pending = selectSessionsForUpload(mapped, watermarks);
+  const maxRows = Math.min(Math.max(1, batchSize), MAX_SESSIONS_PER_BATCH);
   const uploadId = crypto.randomUUID();
   let upserted = 0;
   let skippedServer = 0;
   let batches = 0;
   let uploaded = 0;
 
-  for (let offset = 0; offset < pending.length; offset += size) {
+  for (const batch of buildBatches(pending, maxRows)) {
     if (!canUpload()) break;
-    const batch = pending.slice(offset, offset + size);
     const res = await fetchFunctionResponse(
       functionUrlFor(baseUrl, INGEST_SLUG),
       {
@@ -289,13 +320,21 @@ async function uploadSessions({
     onProgress({ batches, uploaded, upserted });
   }
 
-  return { pending: pending.length, uploaded, upserted, skippedServer, batches };
+  return {
+    pending: pending.length,
+    uploaded,
+    upserted,
+    skippedServer,
+    skippedLocal,
+    batches,
+  };
 }
 
 module.exports = {
   ACCOUNT_LEVEL_SOURCES,
   MAX_SESSIONS_PER_BATCH,
   basenameKey,
+  buildBatches,
   buildSessionUploadRows,
   loadWatermarks,
   mapSessionRow,

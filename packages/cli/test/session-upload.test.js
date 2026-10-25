@@ -311,6 +311,51 @@ test("a failed batch keeps earlier watermark advances and reports progress", asy
   assert.ok(!marks.has("claude|doomed"));
 });
 
+test("batches cut on the 1 MiB body limit as well as the row cap", () => {
+  const { buildBatches } = require("../src/lib/session-upload");
+  // Rows padded past 500 KiB each force one row per batch regardless of the
+  // 200-row cap (a real batch of model-heavy sessions hit 413 this way).
+  const fatRow = (i) => validRow({
+    session_id: `fat-${i}`,
+    project_key: "x".repeat(300 * 1024),
+  });
+  const batches = buildBatches([fatRow(1), fatRow(2), fatRow(3)], 200);
+  assert.equal(batches.length, 3);
+  for (const batch of batches) assert.equal(batch.length, 1);
+
+  // Small rows still group up to the row cap.
+  const small = Array.from({ length: 250 }, (_, i) => validRow({ session_id: `s-${i}` }));
+  const grouped = buildBatches(small, 200);
+  assert.deepEqual(grouped.map((b) => b.length), [200, 50]);
+});
+
+test("uploadSessions maps RAW sidecar rows internally (no unmapped field ever reaches the wire)", async () => {
+  const watermarkPath = path.join(tmpDir, "watermarks.json");
+  const rawSidecarRow = {
+    ...validRow(),
+    tokens: validRow().tokens, // counters nested (raw shape)
+    title: "secret title",
+    project_ref: "/home/u/secret",
+    _cache_key: "sha:abc",
+  };
+  const seen = [];
+  const fetchImpl = async (url, init) => {
+    seen.push(JSON.parse(init.body));
+    return { ok: true, json: async () => ({ inserted: 0, sessions_upserted: 1 }) };
+  };
+  const result = await uploadSessions({
+    baseUrl: "https://example.test", deviceToken: "t",
+    sessions: [rawSidecarRow], watermarkPath, fetchImpl,
+  });
+  assert.equal(result.uploaded, 1);
+  const payload = seen[0].sessions[0];
+  assert.equal(payload.input_tokens, 100); // unnested
+  assert.ok(!("title" in payload));
+  assert.ok(!("project_ref" in payload));
+  assert.ok(!("_cache_key" in payload));
+  assert.ok(!("tokens" in payload));
+});
+
 test("nothing is sent when every row is already watermarked", async () => {
   const watermarkPath = path.join(tmpDir, "watermarks.json");
   let called = 0;
