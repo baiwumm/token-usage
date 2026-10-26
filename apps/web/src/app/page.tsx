@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-import { DashboardClient } from "./dashboard-client";
+import { AppShell } from "@/components/app-shell";
+import { DashboardClient } from "@/components/dashboard/dashboard-client";
 
 // Dashboard at / — requires login (route guard in src/proxy.ts). The product
 // landing page is a separate site on token-usage.cc (docs/requirements.md
@@ -10,5 +11,9 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  return <DashboardClient />;
+  return (
+    <AppShell>
+      <DashboardClient />
+    </AppShell>
+  );
 }

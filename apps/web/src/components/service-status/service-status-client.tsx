@@ -27,7 +27,7 @@ function nowMs(): number {
   return performance.now();
 }
 
-export function StatusClient() {
+export function ServiceStatusClient() {
   const [locale] = useLocale();
   const copy = STATUS_COPY[locale];
   const [running, setRunning] = useState(true);

@@ -6,6 +6,12 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 仓库布局：`apps/web`（Next.js：仪表盘 + CLI 契约层，src 目录结构）；预留 `apps/desktop`
 （桌面端）与 `packages/*`（共享代码 / CLI 包）。
 
+目录规范（2026-10-26 操作者裁定）：`apps/web/src/app/` 只放路由——目录与 URL 一一对应
+（`page.tsx` + `route.ts`，无路由组），页面级 metadata 也在各 `page.tsx`；登录壳
+`AppShell` 由各受保护页面的 `page.tsx` 显式组合（`/login` 与 `/auth/callback` 不套壳）。
+页面客户端代码一律放 `apps/web/src/components/<路由名>/`（如 `components/dashboard/`、
+`components/service-status/`，文件名与目录对齐），跨页共享件在 `components/` 根。
+
 ## 优先级链（冲突裁决）
 
 用户当前明确指令 > docs/requirements.md > AGENTS.md > 项目现有代码与架构 > 框架官方最佳实践。

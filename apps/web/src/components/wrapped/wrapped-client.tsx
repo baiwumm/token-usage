@@ -18,7 +18,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { TrendChart } from "../../dashboard/charts";
+import { TrendChart } from "../dashboard/charts";
 
 import { authBrowserClient } from "@/lib/auth/browser";
 import { LOGIN_PATH } from "@/lib/auth/next-path";

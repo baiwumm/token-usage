@@ -7,7 +7,7 @@
 // previous content under a blurred spinner overlay instead of collapsing into
 // a full-page skeleton.
 
-import type { ShareCardInput } from "../dashboard/share-card";
+import type { ShareCardInput } from "./share-card";
 
 import { ArrowsRotateRight, NodesRight } from "@gravity-ui/icons";
 import {
@@ -31,22 +31,18 @@ import { parseDate } from "@internationalized/date";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type Key } from "react";
 
-import { CostAnalysisModal } from "../dashboard/cost-modal";
-import { DetailTable, type DetailRow } from "../dashboard/detail-table";
-import { HeatmapCard } from "../dashboard/heatmap-card";
-import { ShareModal } from "../dashboard/share-modal";
+import { CostAnalysisModal } from "./cost-modal";
+import { DetailTable, type DetailRow } from "./detail-table";
+import { HeatmapCard } from "./heatmap-card";
+import { ShareModal } from "./share-modal";
 import {
   DevicePanel,
   KpiCards,
   SourcePanel,
   TopModels,
   TotalTokensHero,
-} from "../dashboard/panels";
-import {
-  TrendChart,
-  type TrendMetric,
-  type TrendPoint,
-} from "../dashboard/charts";
+} from "./panels";
+import { TrendChart, type TrendMetric, type TrendPoint } from "./charts";
 
 import { useProfile } from "@/lib/auth/profile";
 import { authBrowserClient } from "@/lib/auth/browser";

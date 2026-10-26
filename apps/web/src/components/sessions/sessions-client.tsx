@@ -60,7 +60,7 @@ import {
 } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";
 import { FlowNumber } from "@/components/flow-number";
-import { SourceIcon } from "@/app/dashboard/source-icon";
+import { SourceIcon } from "@/components/dashboard/source-icon";
 
 const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 350;
