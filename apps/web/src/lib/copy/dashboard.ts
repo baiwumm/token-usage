@@ -19,13 +19,8 @@ export interface DashboardCopy {
     cost: string;
     conversations: string;
     activeDays: string;
-    allTimeSuffix: string;
-    rolling7d: string;
-    rolling30d: string;
     avgPerActiveDay: string;
-    rollingHint: string;
-    perActiveDay: string;
-    openCostAnalysis: string;
+    allTimeSuffix: string;
     heroAll: string;
     heroModelsCount: string;
     heroCostApprox: string;
@@ -99,6 +94,7 @@ export interface DashboardCopy {
     columnCost: string;
     columnConversations: string;
     columnModels: string;
+    viewModels: string;
     empty: string;
     loadError: string;
     retry: string;
@@ -168,13 +164,8 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       cost: "成本",
       conversations: "会话数",
       activeDays: "活跃天数",
-      allTimeSuffix: "全部时间",
-      rolling7d: "滚动 7 天",
-      rolling30d: "滚动 30 天",
       avgPerActiveDay: "日均（30 天）",
-      rollingHint: "计费 Token · 会话数",
-      perActiveDay: "每活跃天",
-      openCostAnalysis: "查看成本分析",
+      allTimeSuffix: "全部时间",
       heroAll: "全部",
       heroModelsCount: "{count, plural, other {# 个模型}}",
       heroCostApprox: "≥ 为估算下限：未定价模型按 0 计，实际费用可能更高。",
@@ -209,7 +200,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     panels: {
       modelsTitle: "Top 模型",
       modelsHint: "按 Token 用量排序，前 8 个。",
-      viewAll: "查看全部",
+      viewAll: "成本分析",
       noModels: "该时间范围内没有模型数据。",
       sourcesTitle: "来源",
       sourcesHint: "随设备筛选收窄；占比按 Token。点击来源可隐藏/显示。",
@@ -249,6 +240,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnCost: "成本",
       columnConversations: "会话",
       columnModels: "模型数",
+      viewModels: "查看模型明细",
       empty: "该时间范围内没有明细数据。",
       loadError: "明细加载失败。",
       retry: "重试",
@@ -317,13 +309,8 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       cost: "Cost",
       conversations: "Conversations",
       activeDays: "Active days",
+      avgPerActiveDay: "Daily avg (30d)",
       allTimeSuffix: "all time",
-      rolling7d: "Rolling 7 days",
-      rolling30d: "Rolling 30 days",
-      avgPerActiveDay: "Daily average (30d)",
-      rollingHint: "billable tokens · conversations",
-      perActiveDay: "per active day",
-      openCostAnalysis: "Open cost analysis",
       heroAll: "All",
       heroModelsCount: "{count, plural, one {# model} other {# models}}",
       heroCostApprox:
@@ -359,7 +346,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     panels: {
       modelsTitle: "Top models",
       modelsHint: "Ranked by tokens, top 8.",
-      viewAll: "View all",
+      viewAll: "Cost analysis",
       noModels: "No model data in this range.",
       sourcesTitle: "Sources",
       sourcesHint:
@@ -401,6 +388,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnCost: "Cost",
       columnConversations: "Conversations",
       columnModels: "Models",
+      viewModels: "View model breakdown",
       empty: "No detail rows in this range.",
       loadError: "Failed to load detail.",
       retry: "Retry",

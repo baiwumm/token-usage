@@ -59,20 +59,31 @@
    （`NodesRight`，打开分享卡 Modal）与「刷新」两个 tertiary 图标按钮，刷新中图标自旋。
    `from` / `to` 为所选时区的日键（`YYYY-MM-DD`），与契约的日粒度序列一致；「总计」以
    2000-01-01 为起点（服务端按 MAX_RANGE_DAYS 钳制）。
-2. **总 Tokens 头卡**（独占一行，参考上游 Broadsheet 视觉）：居中大号 Token 总数、
-   成本行（存在未定价模型时加 `≥` 前缀 + ⓘ `Tooltip` 说明估算下限）、日期区间、按来源
-   占比的堆叠色条、「全部 + 每来源」占比卡（`SourceIcon` 图标 + 占比 + 模型数）。
-3. **KPI 网格**（HeroUI `Card` 复合结构）：计费 Token、成本、会话数、活跃天数；
-   下一行 rolling 7d / 30d / 日均（来自 `account-summary.rolling`）。口径：总 Token
-   = `totals.total_tokens`，计费 = `totals.billable_total_tokens`，成本 =
-   `totals.total_cost_usd`，会话数 = `totals.conversation_count`，活跃天数 = `days`；
-   rolling 用 `rolling.last_7d` / `last_30d`，卡片显示计费 Token + 会话数；日均（30d）用
+2. **总 Tokens 头卡**（独占一行、仪表盘首卡，参考上游 Broadsheet 视觉）：居中大号
+   Token 总数、计费 Token / 会话数 / 活跃天数 / 日均（30 天）四个紧凑指标、成本行
+   （存在未定价模型时加 `≥` 前缀 + ⓘ `Tooltip` 说明估算下限；行尾小字「全部时间」累计
+   成本）、日期区间、按来源占比的堆叠色条、「全部 + 每来源」占比卡（`SourceIcon` 图标 +
+   占比 `text-base` + 模型数；「全部」与每来源卡均可点击，打开模型明细
+   `ModelListModal`——列 模型 / Token / 占比 / 成本，「全部」为跨来源同名模型合并，
+   明细桶只有逐模型 Token、无成本列时成本列自动隐藏）。
+   2026-10-26 二次精简（操作者裁定）：原 KPI 4 卡、成本卡与近期用量（rolling）卡全部
+   移除——范围成本与全部时间成本在头卡，近期统计经筛选条可达，成本分析从 Top 模型
+   「成本分析」按钮进入；口径：总 Token = `totals.total_tokens`，计费 =
+   `totals.billable_total_tokens`，成本 = `totals.total_cost_usd`，会话数 =
+   `totals.conversation_count`，活跃天数 = `days`，日均（30 天）=
    `rolling.last_30d.avg_per_active_day`（计费 Token ÷ 活跃天）。大数一律走统一 format
    provider，卡片内不自算格式。
-3. **趋势**：日/月切换（`Tabs`）+ 指标切换（Token / 成本），recharts；范围跟随筛选条。
-4. **双栏**：Top 模型（`SourceIcon`、名称、Token、占比 `Meter`、成本，前 8 条 + “查看
-   全部”打开成本分析）；来源卡（`SourceIcon`、占比 + 成本，随设备筛选，取
-   `model-breakdown`）。
+3. **活跃热力图**（独占一行，紧跟总 Tokens 头卡，`components/dashboard/heatmap-card.tsx`）：
+   近 52 周 Mon-start 满宽网格（窄屏裁周、宽屏撑满格子，`ResizeObserver` 自适应）；
+   月份标尺在上、周几单字标尺（一~日 / M~S）在左；右上「全部平台」多选筛选
+   （`Dropdown.ItemIndicator` 勾选态，全部/清空，触发按钮显示已选状态），按来源过滤后
+   等级客户端重算；共享 portal tooltip 显示当日总量与来源明细；左下时区标注
+   （`UTC+08:00`），右下 少/多 图例；色阶 `--heatmap-0..4`（0 级 = `--default`，
+   1–4 级为 accent 降饱和梯度，深浅主题各自定义于 `globals.css`）。
+4. **趋势**：日/月切换（`Tabs`）+ 指标切换（Token / 成本），recharts；范围跟随筛选条。
+5. **双栏**：Top 模型（`SourceIcon`、名称、Token、占比 `Meter`、成本，前 8 条 +
+   「成本分析」按钮打开成本分析 Modal）；来源卡（`SourceIcon`、占比 + 成本，随设备筛选，
+   取 `model-breakdown`）。
    来源/模型图标走 `components/dashboard/source-icon.tsx`：`public/brand-logos/`（MIT 资产，上游
    TokenTracker 33 个 + juejin-usage 补 workbuddy）优先，source 全称映射 + 模型名
    前缀映射（deepseek/kimi/gemini/grok/mimo/gpt/composer/claude），无映射回退确定性
@@ -80,19 +91,13 @@
    看不清的深色标（如黑底 ChatGPT 形状的 codex 新标），放同扩展名的
    `<name>-dark.<ext>`（如 `codex-dark.svg`）并把浅色文件名加进 `sources.ts` 的
    `DARK_LOGO_FILES`，渲染层自动叠双图按 `.dark` 切换；未登记的 `-dark` 文件不生效。
-5. **活跃热力图**（独占一行，置于总 Tokens 头卡之下，`components/dashboard/heatmap-card.tsx`）：
-   近 52 周 Mon-start 满宽网格（窄屏裁周、宽屏撑满格子，`ResizeObserver` 自适应）；
-   月份标尺在上、周几单字标尺（一~日 / M~S）在左；右上「全部平台」多选筛选
-   （`Dropdown.ItemIndicator` 勾选态，全部/清空，触发按钮显示已选状态），按来源过滤后
-   等级客户端重算；共享 portal tooltip 显示当日总量与来源明细；左下时区标注
-   （`UTC+08:00`），右下 少/多 图例；色阶 `--heatmap-0..4`（0 级 = `--default`，
-   1–4 级为 accent 降饱和梯度，深浅主题各自定义于 `globals.css`）。
 6. **设备卡**（独占一行）：名称/平台/最后上报/Token/成本，取 `dashboard.devices`，
    仅活跃设备且不随设备筛选收窄；点击设备卡把 `device_id` 写入筛选条。
 7. **明细**：`Tabs` 日 / 时 / 月；`Table` 列（时间、Token、计费 Token、成本、会话、
    模型数）；列头排序、`Pagination`（默认 20/页）；时视图先选日期（默认今天）；时区
-   切换即时重算日/时，月视图按契约固定 UTC；空窗口显示空态。
-8. **成本分析**：从成本卡或 Top 模型“查看全部”打开 `Modal`；`Tabs` 按模型 / 按来源；
+   切换即时重算日/时，月视图按契约固定 UTC；空窗口显示空态；模型数列可点击（桶内
+   `models` 非空时），打开该桶的模型明细 Modal（同 `ModelListModal`）。
+8. **成本分析**：从 Top 模型「成本分析」按钮打开 `Modal`；`Tabs` 按模型 / 按来源；
    总成本、日成本趋势、未定价模型提示；只读，不提供导出。
 9. **分享卡片**：筛选条「分享」打开 `Modal`，预览 canvas 手绘的 Broadsheet 风格卡片
    （米色纸面 + 朱红强调：报头、使用者、Token 大数、预估费用/活跃天数、52 周热力图条、

@@ -14,6 +14,8 @@ import {
 } from "@heroui/react";
 import { useMemo, useState } from "react";
 
+import { ModelListModal } from "./model-list-modal";
+
 import { formatMessage } from "@/lib/copy/message";
 import { useFormat } from "@/lib/format/format";
 
@@ -28,6 +30,8 @@ export interface DetailRow {
   cost: number;
   conversations: number;
   models: number;
+  /** Tokens per model name for the bucket; powers the count-column modal. */
+  modelTokens: Record<string, number>;
 }
 
 const PAGE_SIZE = 20;
@@ -67,6 +71,7 @@ export function DetailTable({
     direction: "descending",
   });
   const [page, setPage] = useState(1);
+  const [modelsRow, setModelsRow] = useState<DetailRow | null>(null);
 
   const sorted = useMemo(() => {
     const column = sortDescriptor.column as keyof DetailRow;
@@ -207,7 +212,18 @@ export function DetailTable({
                     {formatNumber(row.conversations)}
                   </Table.Cell>
                   <Table.Cell className="tabular-nums">
-                    {formatNumber(row.models)}
+                    {Object.keys(row.modelTokens).length > 0 ? (
+                      <button
+                        aria-label={copy.detail.viewModels}
+                        className="cursor-pointer underline-offset-2 hover:text-accent hover:underline"
+                        type="button"
+                        onClick={() => setModelsRow(row)}
+                      >
+                        {formatNumber(row.models)}
+                      </button>
+                    ) : (
+                      formatNumber(row.models)
+                    )}
                   </Table.Cell>
                 </Table.Row>
               ))}
@@ -215,6 +231,23 @@ export function DetailTable({
           </Table.Content>
         </Table.ScrollContainer>
       </Table>
+
+      <ModelListModal
+        copy={copy}
+        open={modelsRow != null}
+        rows={
+          modelsRow
+            ? Object.entries(modelsRow.modelTokens).map(([model, tokens]) => ({
+                model,
+                tokens,
+              }))
+            : []
+        }
+        title={modelsRow?.time ?? ""}
+        onOpenChange={(open) => {
+          if (!open) setModelsRow(null);
+        }}
+      />
 
       <Pagination className="w-full" size="sm">
         <Pagination.Summary>

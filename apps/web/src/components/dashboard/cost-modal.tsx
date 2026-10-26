@@ -113,6 +113,7 @@ export function CostAnalysisModal({
       <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
         <Modal.Container>
           <Modal.Dialog className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-3xl">
+            <Modal.CloseTrigger aria-label={copy.cost.close} />
             <Modal.Header>
               <Modal.Heading>{copy.cost.title}</Modal.Heading>
               <Typography color="muted" type="body-xs">

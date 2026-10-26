@@ -37,13 +37,7 @@ import { CostAnalysisModal } from "./cost-modal";
 import { DetailTable, type DetailRow } from "./detail-table";
 import { HeatmapCard } from "./heatmap-card";
 import { ShareModal } from "./share-modal";
-import {
-  DevicePanel,
-  KpiCards,
-  SourcePanel,
-  TopModels,
-  TotalTokensHero,
-} from "./panels";
+import { DevicePanel, SourcePanel, TopModels, TotalTokensHero } from "./panels";
 import { TrendChart, type TrendMetric, type TrendPoint } from "./charts";
 
 import { useProfile } from "@/lib/auth/profile";
@@ -542,6 +536,7 @@ export function DashboardClient() {
         cost: point.total_cost_usd,
         conversations: point.conversation_count,
         models: Object.keys(point.models).length,
+        modelTokens: point.models,
       }));
     }
     if (detailView === "monthly") {
@@ -556,6 +551,7 @@ export function DashboardClient() {
         cost: point.total_cost_usd,
         conversations: point.conversation_count,
         models: Object.keys(point.models).length,
+        modelTokens: point.models,
       }));
     }
 
@@ -573,6 +569,7 @@ export function DashboardClient() {
       cost: point.total_cost_usd,
       conversations: point.conversation_count,
       models: Object.keys(point.models).length,
+      modelTokens: point.models,
     }));
   }, [daily, detailView, formatDate, formatMonth, hourlyState.data, monthly]);
 
@@ -893,18 +890,8 @@ export function DashboardClient() {
           <>
             <div className="relative">
               <PanelOverlay active={refreshing} />
-              <KpiCards
-                allTime={dashboard?.all_time ?? null}
-                copy={copy}
-                daily={dashboard?.daily ?? []}
-                summary={summary}
-                onOpenCost={() => setCostOpen(true)}
-              />
-            </div>
-
-            <div className="relative">
-              <PanelOverlay active={refreshing} />
               <TotalTokensHero
+                allTime={dashboard?.all_time ?? null}
                 breakdown={breakdown}
                 copy={copy}
                 fromDay={range.fromDay}

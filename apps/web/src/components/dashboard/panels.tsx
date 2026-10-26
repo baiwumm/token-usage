@@ -7,22 +7,13 @@
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 import type {
   AccountSummary,
-  DashboardDay,
   DashboardDevice,
   DashboardTotals,
   ModelBreakdownModel,
   ModelBreakdownSource,
 } from "@/lib/dashboard/api";
 
-import {
-  ChartColumn,
-  CircleInfo,
-  Clock,
-  Layers,
-  ListCheck,
-  ListUl,
-  Wallet,
-} from "@gravity-ui/icons";
+import { CircleInfo, Layers, ListUl } from "@gravity-ui/icons";
 import {
   Button,
   Card,
@@ -34,7 +25,8 @@ import {
 } from "@heroui/react";
 import { useMemo, useState } from "react";
 
-import { DonutChart, seriesColor, Sparkline } from "./mini-charts";
+import { DonutChart, seriesColor } from "./mini-charts";
+import { ModelListModal } from "./model-list-modal";
 import { SourceIcon } from "./source-icon";
 import { canonicalSource, sourceDisplayLabel } from "./sources";
 
@@ -42,13 +34,6 @@ import { FlowNumber } from "@/components/flow-number";
 import { formatMessage } from "@/lib/copy/message";
 import { useLocale } from "@/lib/copy/locale";
 import { useFormat } from "@/lib/format/format";
-
-const CARD_ICONS = {
-  billableTokens: ChartColumn,
-  cost: Wallet,
-  conversations: ListCheck,
-  activeDays: Clock,
-} as const;
 
 /** Group raw sources by canonical identity (Pi merges, dsh → label). */
 function canonicalSourceRows(sources: ModelBreakdownSource[]) {
@@ -81,10 +66,12 @@ function canonicalSourceRows(sources: ModelBreakdownSource[]) {
 
 /**
  * Hero card for the range's total tokens (docs/ui-spec.md 仪表盘): big centered
- * count, approximate cost with an unpriced-models note, the range window, a
- * source-share stacked bar and one share chip per source.
+ * count, absorbed KPI metrics (billable / conversations / active days),
+ * approximate cost with an unpriced-models note plus the all-time cost, the
+ * range window, a source-share stacked bar and one share chip per source.
  */
 export function TotalTokensHero({
+  allTime,
   summary,
   breakdown,
   copy,
@@ -92,6 +79,7 @@ export function TotalTokensHero({
   fromDay,
   toDay,
 }: {
+  allTime: DashboardTotals | null;
   summary: AccountSummary;
   breakdown: ModelBreakdownSource[];
   copy: DashboardCopy;
@@ -99,9 +87,48 @@ export function TotalTokensHero({
   fromDay: string;
   toDay: string;
 }) {
-  const { formatTokens, formatCost, formatPercent, formatDate } = useFormat();
+  const { formatTokens, formatCost, formatPercent, formatDate, formatNumber } =
+    useFormat();
 
   const sources = useMemo(() => canonicalSourceRows(breakdown), [breakdown]);
+  // Clicking a source share chip opens its model breakdown (juejin-style
+  // distribution modal, shared with the detail table's model count column).
+  const [openSourceId, setOpenSourceId] = useState<string | null>(null);
+  // "all" opens the merged cross-source model ranking; any other id opens
+  // that canonical source's own models. Sorting lives in ModelListModal.
+  const openSource =
+    openSourceId == null || openSourceId === "all"
+      ? null
+      : (sources.find((source) => source.id === openSourceId) ?? null);
+  const modalRows = useMemo(() => {
+    if (openSourceId === "all") {
+      const byModel = new Map<string, { tokens: number; cost: number }>();
+
+      for (const source of sources) {
+        for (const model of source.models) {
+          const agg = byModel.get(model.model) ?? { tokens: 0, cost: 0 };
+
+          agg.tokens += model.totals.total_tokens;
+          agg.cost += Number(model.totals.total_cost_usd);
+          byModel.set(model.model, agg);
+        }
+      }
+
+      return [...byModel.entries()].map(([model, agg]) => ({
+        model,
+        tokens: agg.tokens,
+        cost: agg.cost,
+      }));
+    }
+
+    return (openSource?.models ?? []).map((model) => ({
+      model: model.model,
+      tokens: model.totals.total_tokens,
+      cost: Number(model.totals.total_cost_usd),
+    }));
+  }, [openSource, openSourceId, sources]);
+  const modalTitle =
+    openSourceId === "all" ? copy.cards.heroAll : (openSource?.label ?? "");
   const totalTokens = summary.totals.total_tokens;
   const hasUnpriced = sources.some((source) =>
     source.models.some((model) => model.pricing.status === "unpriced"),
@@ -120,6 +147,34 @@ export function TotalTokensHero({
         <Typography className="tabular-nums" type="h1" weight="bold">
           <FlowNumber text={formatTokens(totalTokens)} />
         </Typography>
+        {/* Absorbed KPI tiles: billable tokens / conversations / active days
+            ride under the headline so the top area stays three cards total. */}
+        <div className="text-muted flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs">
+          <span className="flex items-center gap-1.5">
+            {copy.cards.billableTokens}
+            <span className="text-foreground font-medium tabular-nums">
+              {formatTokens(summary.totals.billable_total_tokens)}
+            </span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            {copy.cards.conversations}
+            <span className="text-foreground font-medium tabular-nums">
+              {formatNumber(summary.totals.conversation_count)}
+            </span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            {copy.cards.activeDays}
+            <span className="text-foreground font-medium tabular-nums">
+              {formatNumber(summary.days)}
+            </span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            {copy.cards.avgPerActiveDay}
+            <span className="text-foreground font-medium tabular-nums">
+              {formatTokens(summary.rolling.last_30d.avg_per_active_day ?? 0)}
+            </span>
+          </span>
+        </div>
         <div className="flex items-center gap-1.5">
           <Typography className="text-success tabular-nums" type="body-sm">
             {hasUnpriced ? "≥ " : ""}
@@ -138,6 +193,12 @@ export function TotalTokensHero({
               {copy.cards.heroCostNote}
             </Tooltip.Content>
           </Tooltip>
+          {allTime ? (
+            <Typography className="text-muted tabular-nums" type="body-xs">
+              · {copy.cards.allTimeSuffix}{" "}
+              <FlowNumber text={formatCost(allTime.total_cost_usd)} />
+            </Typography>
+          ) : null}
         </div>
         {hasUnpriced ? (
           <Typography color="muted" type="body-xs">
@@ -174,7 +235,12 @@ export function TotalTokensHero({
               ))}
             </div>
             <div className="grid w-full grid-cols-2 gap-2 pt-2 sm:grid-cols-4 lg:grid-cols-6">
-              <div className="border-border/60 flex flex-col gap-1 rounded-3xl border p-3">
+              <button
+                aria-label={copy.cards.heroAll}
+                className="border-border/60 hover:bg-default/60 flex cursor-pointer flex-col gap-1 rounded-3xl border p-3 text-start transition-colors"
+                type="button"
+                onClick={() => setOpenSourceId("all")}
+              >
                 <span className="text-muted flex items-center gap-1.5 text-xs font-medium">
                   <Layers
                     aria-hidden="true"
@@ -182,7 +248,7 @@ export function TotalTokensHero({
                   />
                   {copy.cards.heroAll}
                 </span>
-                <span className="tabular-nums text-sm font-semibold">
+                <span className="tabular-nums text-base font-semibold">
                   {formatPercent(totalTokens > 0 ? 1 : 0)}
                 </span>
                 <span className="text-muted text-xs">
@@ -190,21 +256,20 @@ export function TotalTokensHero({
                     count: totalModels,
                   })}
                 </span>
-              </div>
-              {sources.map((source, index) => (
-                <div
+              </button>
+              {sources.map((source) => (
+                <button
                   key={source.id}
-                  className="border-border/60 flex flex-col gap-1 rounded-3xl border p-3"
+                  aria-label={source.label}
+                  className="border-border/60 hover:bg-default/60 flex cursor-pointer flex-col gap-1 rounded-3xl border p-3 text-start transition-colors"
+                  type="button"
+                  onClick={() => setOpenSourceId(source.id)}
                 >
                   <span className="text-muted flex min-w-0 items-center gap-1.5 text-xs font-medium">
-                    <span
-                      aria-hidden="true"
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{ background: seriesColor(index) }}
-                    />
+                    <SourceIcon label={source.id} size={14} />
                     <span className="truncate">{source.label}</span>
                   </span>
-                  <span className="tabular-nums text-sm font-semibold">
+                  <span className="tabular-nums text-base font-semibold">
                     {formatPercent(
                       totalTokens > 0 ? source.totalTokens / totalTokens : 0,
                     )}
@@ -214,161 +279,22 @@ export function TotalTokensHero({
                       count: source.models.length,
                     })}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </>
         ) : null}
       </Card.Content>
+      <ModelListModal
+        copy={copy}
+        open={openSourceId != null}
+        rows={modalRows}
+        title={modalTitle}
+        onOpenChange={(open) => {
+          if (!open) setOpenSourceId(null);
+        }}
+      />
     </Card>
-  );
-}
-
-export function KpiCards({
-  summary,
-  allTime,
-  daily,
-  copy,
-  onOpenCost,
-}: {
-  summary: AccountSummary;
-  allTime: DashboardTotals | null;
-  daily: DashboardDay[];
-  copy: DashboardCopy;
-  onOpenCost: () => void;
-}) {
-  const { formatTokens, formatCost, formatNumber } = useFormat();
-  const costTrend = daily.slice(-14).map((day) => ({
-    label: day.date,
-    value: day.total_cost_usd,
-  }));
-
-  const cards: Array<{
-    key: string;
-    label: string;
-    icon: (typeof CARD_ICONS)[keyof typeof CARD_ICONS];
-    value: string;
-    sub?: string;
-    spark?: Array<{ label: string; value: number }>;
-    action?: () => void;
-  }> = [
-    {
-      key: "billable",
-      label: copy.cards.billableTokens,
-      icon: CARD_ICONS.billableTokens,
-      value: formatTokens(summary.totals.billable_total_tokens),
-    },
-    {
-      key: "cost",
-      label: copy.cards.cost,
-      icon: CARD_ICONS.cost,
-      value: formatCost(summary.totals.total_cost_usd),
-      sub: allTime
-        ? `${copy.cards.allTimeSuffix} ${formatCost(allTime.total_cost_usd)}`
-        : undefined,
-      spark: costTrend,
-      action: onOpenCost,
-    },
-    {
-      key: "conversations",
-      label: copy.cards.conversations,
-      icon: CARD_ICONS.conversations,
-      value: formatNumber(summary.totals.conversation_count),
-    },
-    {
-      key: "days",
-      label: copy.cards.activeDays,
-      icon: CARD_ICONS.activeDays,
-      value: formatNumber(summary.days),
-    },
-  ];
-
-  const rolling = [
-    {
-      key: "rolling-7d",
-      label: copy.cards.rolling7d,
-      value: formatTokens(summary.rolling.last_7d.totals.billable_total_tokens),
-      sub: `${formatNumber(summary.rolling.last_7d.totals.conversation_count)} · ${formatNumber(summary.rolling.last_7d.active_days)} ${copy.cards.activeDays}`,
-    },
-    {
-      key: "rolling-30d",
-      label: copy.cards.rolling30d,
-      value: formatTokens(
-        summary.rolling.last_30d.totals.billable_total_tokens,
-      ),
-      sub: `${formatNumber(summary.rolling.last_30d.totals.conversation_count)} · ${formatNumber(summary.rolling.last_30d.active_days)} ${copy.cards.activeDays}`,
-    },
-    {
-      key: "avg",
-      label: copy.cards.avgPerActiveDay,
-      value: formatTokens(summary.rolling.last_30d.avg_per_active_day ?? 0),
-      sub: copy.cards.perActiveDay,
-    },
-  ];
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {cards.map((card) => (
-          <Card key={card.key} className="gap-1 p-4">
-            <Card.Header className="flex-row items-center justify-between gap-2">
-              <Card.Title className="text-muted text-xs font-normal">
-                {card.label}
-              </Card.Title>
-              <card.icon aria-hidden="true" className="text-accent/70 size-4" />
-            </Card.Header>
-            <Card.Content className="gap-1">
-              <Typography className="tabular-nums" type="h4" weight="semibold">
-                <FlowNumber text={card.value} />
-              </Typography>
-              <div className="flex items-end justify-between gap-2">
-                {card.sub ? (
-                  <Typography color="muted" type="body-xs">
-                    {card.sub}
-                  </Typography>
-                ) : (
-                  <span />
-                )}
-                {card.spark ? <Sparkline values={card.spark} /> : null}
-              </div>
-              {card.action ? (
-                <Button
-                  className="text-muted -ml-2 h-7 justify-start px-2 text-xs"
-                  size="sm"
-                  variant="ghost"
-                  onPress={card.action}
-                >
-                  {copy.cards.openCostAnalysis}
-                </Button>
-              ) : null}
-            </Card.Content>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        {rolling.map((card) => (
-          <Card key={card.key} className="gap-1 p-4">
-            <Card.Header className="flex-row items-center justify-between gap-2">
-              <Card.Title className="text-muted text-xs font-normal">
-                {card.label}
-              </Card.Title>
-              <Typography color="muted" type="body-xs">
-                {copy.cards.rollingHint}
-              </Typography>
-            </Card.Header>
-            <Card.Content className="gap-1">
-              <Typography className="tabular-nums" type="h5" weight="semibold">
-                <FlowNumber text={card.value} />
-              </Typography>
-              <Typography color="muted" type="body-xs">
-                {card.sub}
-              </Typography>
-            </Card.Content>
-          </Card>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -479,7 +405,7 @@ export function SourcePanel({
   sources: ModelBreakdownSource[];
   copy: DashboardCopy;
 }) {
-  const { formatTokens, formatCost, formatPercent } = useFormat();
+  const { formatTokens, formatPercent } = useFormat();
   const [locale] = useLocale();
   // Click-to-toggle distribution (juejin 工具分布 style): hidden canonical
   // sources drop out of the donut, the share denominator recomputes, and the
@@ -531,7 +457,7 @@ export function SourcePanel({
 
   const renderRows = (list: typeof rows) => (
     <div className="flex flex-col gap-1.5">
-      {list.map((row, index) => {
+      {list.map((row) => {
         const isHidden = hidden.has(row.id);
         const share =
           visibleTotal > 0 && !isHidden ? row.totalTokens / visibleTotal : 0;
@@ -547,11 +473,7 @@ export function SourcePanel({
             onClick={() => toggle(row.id)}
           >
             <span className="flex min-w-0 items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="size-2.5 shrink-0 rounded-full"
-                style={{ background: seriesColor(index) }}
-              />
+              <SourceIcon label={row.id} size={14} />
               <span className={`truncate ${isHidden ? "line-through" : ""}`}>
                 {row.label}
               </span>
