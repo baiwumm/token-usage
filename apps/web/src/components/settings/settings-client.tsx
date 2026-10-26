@@ -419,116 +419,110 @@ export function SettingsClient() {
       ) : null}
 
       {/* Rename dialog */}
-      <Modal>
-        <Modal.Backdrop
-          isOpen={renaming !== null}
-          onOpenChange={(open) => {
-            if (!open) setRenaming(null);
-          }}
-        >
-          <Modal.Container>
-            <Modal.Dialog>
-              <Modal.Header>
-                <Modal.CloseTrigger isDisabled={renameBusy} />
-                <Modal.Heading>{copy.renameTitle}</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body>
-                <Form
-                  className="flex flex-col gap-4"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void submitRename();
-                  }}
+      <Modal.Backdrop
+        isOpen={renaming !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenaming(null);
+        }}
+      >
+        <Modal.Container>
+          <Modal.Dialog>
+            <Modal.Header>
+              <Modal.CloseTrigger isDisabled={renameBusy} />
+              <Modal.Heading>{copy.renameTitle}</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body>
+              <Form
+                className="flex flex-col gap-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void submitRename();
+                }}
+              >
+                <TextField
+                  isRequired
+                  isInvalid={renameError !== null}
+                  name="device_name"
+                  value={renameDraft}
+                  onChange={setRenameDraft}
                 >
-                  <TextField
-                    isRequired
-                    isInvalid={renameError !== null}
-                    name="device_name"
-                    value={renameDraft}
-                    onChange={setRenameDraft}
-                  >
-                    <Label>{copy.renameLabel}</Label>
-                    <Input
-                      placeholder={renaming?.device_name ?? ""}
-                      variant="secondary"
-                    />
-                    {renameError ? (
-                      <FieldError>{renameError}</FieldError>
-                    ) : null}
-                  </TextField>
-                </Form>
-              </Modal.Body>
-              <Modal.Footer>
-                <Button
-                  slot="close"
-                  variant="secondary"
-                  onPress={() => setRenaming(null)}
-                >
-                  {copy.renameCancel}
-                </Button>
-                <Button
-                  isPending={renameBusy}
-                  onPress={() => {
-                    void submitRename();
-                  }}
-                >
-                  {({ isPending }) => (
-                    <>
-                      {isPending ? <Spinner color="current" size="sm" /> : null}
-                      {copy.renameSave}
-                    </>
-                  )}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+                  <Label>{copy.renameLabel}</Label>
+                  <Input
+                    placeholder={renaming?.device_name ?? ""}
+                    variant="secondary"
+                  />
+                  {renameError ? <FieldError>{renameError}</FieldError> : null}
+                </TextField>
+              </Form>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button
+                slot="close"
+                variant="secondary"
+                onPress={() => setRenaming(null)}
+              >
+                {copy.renameCancel}
+              </Button>
+              <Button
+                isPending={renameBusy}
+                onPress={() => {
+                  void submitRename();
+                }}
+              >
+                {({ isPending }) => (
+                  <>
+                    {isPending ? <Spinner color="current" size="sm" /> : null}
+                    {copy.renameSave}
+                  </>
+                )}
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
 
       {/* Revoke confirm dialog */}
-      <Modal>
-        <Modal.Backdrop
-          isOpen={revoking !== null}
-          onOpenChange={(open) => {
-            if (!open) setRevoking(null);
-          }}
-        >
-          <Modal.Container>
-            <Modal.Dialog>
-              <Modal.Header>
-                <Modal.CloseTrigger isDisabled={revokeBusy} />
-                <Modal.Heading>{copy.revokeTitle}</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body>
-                <p>
-                  {revoking?.device_name} · {copy.revokeBody}
-                </p>
-              </Modal.Body>
-              <Modal.Footer>
-                <Button
-                  slot="close"
-                  variant="secondary"
-                  onPress={() => setRevoking(null)}
-                >
-                  {copy.revokeCancel}
-                </Button>
-                <Button
-                  isPending={revokeBusy}
-                  variant="danger"
-                  onPress={submitRevoke}
-                >
-                  {({ isPending }) => (
-                    <>
-                      {isPending ? <Spinner color="current" size="sm" /> : null}
-                      {copy.revokeConfirm}
-                    </>
-                  )}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+      <Modal.Backdrop
+        isOpen={revoking !== null}
+        onOpenChange={(open) => {
+          if (!open) setRevoking(null);
+        }}
+      >
+        <Modal.Container>
+          <Modal.Dialog>
+            <Modal.Header>
+              <Modal.CloseTrigger isDisabled={revokeBusy} />
+              <Modal.Heading>{copy.revokeTitle}</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body>
+              <p>
+                {revoking?.device_name} · {copy.revokeBody}
+              </p>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button
+                slot="close"
+                variant="secondary"
+                onPress={() => setRevoking(null)}
+              >
+                {copy.revokeCancel}
+              </Button>
+              <Button
+                isPending={revokeBusy}
+                variant="danger"
+                onPress={submitRevoke}
+              >
+                {({ isPending }) => (
+                  <>
+                    {isPending ? <Spinner color="current" size="sm" /> : null}
+                    {copy.revokeConfirm}
+                  </>
+                )}
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </main>
   );
 }

@@ -60,6 +60,8 @@ import {
 import { useFormat } from "@/lib/format/format";
 import { FlowNumber } from "@/components/flow-number";
 import { SourceIcon } from "@/components/dashboard/source-icon";
+import { sourceDisplayLabel } from "@/components/dashboard/sources";
+import { RangePresetButtons } from "@/components/range-preset-buttons";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 const DEFAULT_PAGE_SIZE = 20;
@@ -68,7 +70,7 @@ type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 const SEARCH_DEBOUNCE_MS = 350;
 const UPGRADE_URL = "https://github.com/baiwumm/token-usage#readme";
 
-const SESSION_RANGE_PRESETS = ["7d", "30d", "90d"] as const;
+const SESSION_RANGE_PRESETS = ["today", "7d", "30d", "90d"] as const;
 
 type SessionRange = (typeof SESSION_RANGE_PRESETS)[number] | "custom";
 
@@ -295,37 +297,56 @@ function SessionDetailModal({
     : [];
 
   return (
-    <Modal>
-      <Modal.Backdrop isOpen={session != null} onOpenChange={onOpenChange}>
-        <Modal.Container>
-          <Modal.Dialog className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-2xl">
-            {session ? (
-              <>
-                <Modal.Header>
-                  <Modal.CloseTrigger />
-                  <Modal.Heading>{copy.detail.title}</Modal.Heading>
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <Chip size="sm" variant="soft">
-                      {session.source}
-                    </Chip>
-                    <Typography className="max-w-56 truncate" type="body-sm">
+    <Modal.Backdrop isOpen={session != null} onOpenChange={onOpenChange}>
+      <Modal.Container scroll="inside">
+        <Modal.Dialog className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-2xl">
+          {session ? (
+            <>
+              <Modal.Header>
+                <Modal.CloseTrigger />
+                <Modal.Heading>{copy.detail.title}</Modal.Heading>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Chip size="sm" variant="soft">
+                    <SourceIcon label={session.source} size={12} />
+                    {sourceDisplayLabel(session.source)}
+                  </Chip>
+                  <Chip
+                    className="max-w-48"
+                    color="warning"
+                    size="sm"
+                    variant="soft"
+                  >
+                    <span className="truncate">
                       {session.project_key ?? copy.list.noProject}
+                    </span>
+                  </Chip>
+                  <Chip
+                    className="max-w-40"
+                    color="success"
+                    size="sm"
+                    variant="soft"
+                  >
+                    <span className="truncate">{session.device_name}</span>
+                  </Chip>
+                </div>
+              </Modal.Header>
+              <Modal.Body className="flex flex-col gap-5">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  <div className="flex flex-col gap-0.5">
+                    <Typography color="muted" type="body-xs">
+                      {copy.list.endedAt}
                     </Typography>
                     <Typography
-                      className="max-w-48 truncate"
-                      color="muted"
-                      type="body-xs"
+                      className="tabular-nums"
+                      type="body-sm"
+                      weight="medium"
                     >
-                      {session.device_name}
+                      {formatDateTime(session.ended_at)}
                     </Typography>
                     <Typography color="muted" type="body-xs">
-                      {formatDateTime(session.ended_at)}
-                      {" · "}
                       {formatRelativeTime(session.ended_at)}
                     </Typography>
                   </div>
-                </Modal.Header>
-                <Modal.Body className="flex flex-col gap-5">
                   <div className="flex flex-col gap-0.5">
                     <Typography color="muted" type="body-xs">
                       {copy.detail.duration}
@@ -338,92 +359,108 @@ function SessionDetailModal({
                       {formatDuration(session.duration_ms)}
                     </Typography>
                   </div>
+                </div>
 
-                  <div className="flex flex-col gap-2">
-                    <Typography type="body-sm" weight="semibold">
-                      {copy.detail.tokensTitle}
-                    </Typography>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
-                      {tokenRows.map(([label, value]) => (
-                        <div
-                          key={String(label)}
-                          className="flex flex-col gap-0.5"
+                <div className="flex flex-col gap-2">
+                  <Typography type="body-sm" weight="semibold">
+                    {copy.detail.tokensTitle}
+                  </Typography>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
+                    {tokenRows.map(([label, value]) => (
+                      <div
+                        key={String(label)}
+                        className="flex flex-col gap-0.5"
+                      >
+                        <Typography color="muted" type="body-xs">
+                          {label}
+                        </Typography>
+                        <Typography
+                          className="tabular-nums"
+                          type="body-sm"
+                          weight="medium"
                         >
-                          <Typography color="muted" type="body-xs">
-                            {label}
-                          </Typography>
-                          <Typography
-                            className="tabular-nums"
-                            type="body-sm"
-                            weight="medium"
-                          >
-                            {formatTokensExact(value)}
-                          </Typography>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <Typography type="body-sm" weight="semibold">
-                      {copy.detail.modelsTitle}
-                    </Typography>
-                    {models.length === 0 ? (
-                      <Typography color="muted" type="body-sm">
-                        —
-                      </Typography>
-                    ) : (
-                      <div className="flex flex-col">
-                        <div className="text-muted grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-3 border-b pb-2 text-xs">
-                          <span>{copy.detail.modelName}</span>
-                          <span className="text-end">
-                            {copy.detail.modelTokens}
-                          </span>
-                          <span className="text-end">
-                            {copy.detail.modelShare}
-                          </span>
-                          <span className="text-end">
-                            {copy.detail.modelCost}
-                          </span>
-                        </div>
-                        {models.map((model) => (
-                          <div
-                            key={model.model}
-                            className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-baseline gap-3 border-b py-2 text-sm last:border-b-0"
-                          >
-                            <span className="truncate font-medium">
-                              {model.model}
-                            </span>
-                            <span className="tabular-nums">
-                              {formatTokensExact(model.total_tokens)}
-                            </span>
-                            <span className="text-foreground/60 tabular-nums">
-                              {formatPercent(model.share)}
-                            </span>
-                            <span className="tabular-nums">
-                              {formatCost(Number(model.total_cost_usd))}
-                            </span>
-                          </div>
-                        ))}
+                          {formatTokensExact(value)}
+                        </Typography>
                       </div>
-                    )}
+                    ))}
                   </div>
+                </div>
 
-                  <div className="bg-default/40 flex flex-col gap-1 rounded-3xl px-3 py-2">
-                    <Typography color="muted" type="body-xs">
-                      {copy.detail.privacy}
+                <div className="flex flex-col gap-2">
+                  <Typography type="body-sm" weight="semibold">
+                    {copy.detail.modelsTitle}
+                  </Typography>
+                  {models.length === 0 ? (
+                    <Typography color="muted" type="body-sm">
+                      —
                     </Typography>
-                    <Typography color="muted" type="body-xs">
-                      {copy.detail.costNote}
-                    </Typography>
-                  </div>
-                </Modal.Body>
-              </>
-            ) : null}
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+                  ) : (
+                    <Table>
+                      <Table.ScrollContainer>
+                        <Table.Content
+                          aria-label={copy.detail.modelsTitle}
+                          className="w-full table-fixed"
+                        >
+                          <Table.Header>
+                            <Table.Column isRowHeader id="model">
+                              {copy.detail.modelName}
+                            </Table.Column>
+                            <Table.Column className="w-24 text-end" id="tokens">
+                              {copy.detail.modelTokens}
+                            </Table.Column>
+                            <Table.Column className="w-16 text-end" id="share">
+                              {copy.detail.modelShare}
+                            </Table.Column>
+                            <Table.Column className="w-24 text-end" id="cost">
+                              {copy.detail.modelCost}
+                            </Table.Column>
+                          </Table.Header>
+                          <Table.Body>
+                            {models.map((model) => (
+                              <Table.Row key={model.model} id={model.model}>
+                                <Table.Cell>
+                                  <span
+                                    className="flex min-w-0 items-center gap-1.5"
+                                    title={model.model}
+                                  >
+                                    <SourceIcon label={model.model} size={14} />
+                                    <span className="truncate font-medium">
+                                      {model.model}
+                                    </span>
+                                  </span>
+                                </Table.Cell>
+                                <Table.Cell className="whitespace-nowrap text-end tabular-nums">
+                                  {formatTokensExact(model.total_tokens)}
+                                </Table.Cell>
+                                <Table.Cell className="text-muted whitespace-nowrap text-end tabular-nums">
+                                  {formatPercent(model.share)}
+                                </Table.Cell>
+                                <Table.Cell className="whitespace-nowrap text-end tabular-nums">
+                                  {formatCost(Number(model.total_cost_usd))}
+                                </Table.Cell>
+                              </Table.Row>
+                            ))}
+                          </Table.Body>
+                        </Table.Content>
+                      </Table.ScrollContainer>
+                    </Table>
+                  )}
+                </div>
+
+                <div className="bg-default/40 flex flex-col gap-1 rounded-3xl px-3 py-2">
+                  <Typography color="muted" type="body-xs">
+                    {copy.detail.privacy}
+                  </Typography>
+                  <Typography color="muted" type="body-xs">
+                    {copy.detail.costNote}
+                  </Typography>
+                </div>
+              </Modal.Body>
+            </>
+          ) : null}
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   );
 }
 
@@ -755,22 +792,20 @@ export function SessionsClient() {
               </DateField.Suffix>
             </DateField.Group>
             <DateRangePicker.Popover>
-              <div className="flex flex-wrap gap-1 pb-2">
-                {SESSION_RANGE_PRESETS.map((preset) => (
-                  <Button
-                    key={preset}
-                    aria-pressed={filters.range === preset}
-                    size="sm"
-                    variant={filters.range === preset ? "secondary" : "ghost"}
-                    onPress={() => {
-                      applyFilters({ range: preset, from: "", to: "" });
-                      setRangePickerOpen(false);
-                    }}
-                  >
-                    {copy.ranges[preset]}
-                  </Button>
-                ))}
-              </div>
+              <RangePresetButtons
+                ariaLabel={copy.rangeLabel}
+                labels={copy.ranges}
+                presets={SESSION_RANGE_PRESETS}
+                selected={filters.range}
+                onSelect={(preset) => {
+                  applyFilters({
+                    range: preset as SessionRange,
+                    from: "",
+                    to: "",
+                  });
+                  setRangePickerOpen(false);
+                }}
+              />
               <RangeCalendar aria-label={copy.rangeLabel}>
                 <RangeCalendar.Header>
                   <RangeCalendar.YearPickerTrigger>
@@ -1009,7 +1044,9 @@ export function SessionsClient() {
                             <Table.Column>{copy.list.tokens}</Table.Column>
                             <Table.Column>{copy.list.cost}</Table.Column>
                             <Table.Column>{copy.list.models}</Table.Column>
-                            <Table.Column>{copy.list.detail}</Table.Column>
+                            <Table.Column className="text-end">
+                              {copy.list.detail}
+                            </Table.Column>
                           </Table.Header>
                           <Table.Body>
                             {payload.sessions.map((session) => (
@@ -1023,7 +1060,11 @@ export function SessionsClient() {
                                 </Table.Cell>
                                 <Table.Cell>
                                   <Chip size="sm" variant="soft">
-                                    {session.source}
+                                    <SourceIcon
+                                      label={session.source}
+                                      size={12}
+                                    />
+                                    {sourceDisplayLabel(session.source)}
                                   </Chip>
                                 </Table.Cell>
                                 <Table.Cell className="max-w-48 truncate">
@@ -1044,13 +1085,13 @@ export function SessionsClient() {
                                 <Table.Cell>
                                   <ModelChips models={session.models} />
                                 </Table.Cell>
-                                <Table.Cell>
+                                <Table.Cell className="text-end">
                                   <Button
                                     size="sm"
-                                    variant="ghost"
+                                    variant="tertiary"
                                     onPress={() => setDetail(session)}
                                   >
-                                    {copy.list.detail}
+                                    {copy.list.view}
                                   </Button>
                                 </Table.Cell>
                               </Table.Row>
@@ -1096,10 +1137,10 @@ export function SessionsClient() {
                             <ModelChips models={session.models} />
                             <Button
                               size="sm"
-                              variant="ghost"
+                              variant="tertiary"
                               onPress={() => setDetail(session)}
                             >
-                              {copy.list.detail}
+                              {copy.list.view}
                             </Button>
                           </div>
                         </Card.Content>
@@ -1178,6 +1219,7 @@ export function SessionsClient() {
                       aria-label={copy.list.pageSize}
                       className="w-32"
                       value={String(filters.pageSize)}
+                      variant="secondary"
                       onChange={(key) => {
                         if (key == null) return;
                         const next = Number(key) as PageSize;

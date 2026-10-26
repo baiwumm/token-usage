@@ -144,7 +144,7 @@ export function TotalTokensHero({
         <Typography color="muted" type="body-xs">
           {copy.cards.totalTokens}
         </Typography>
-        <Typography className="tabular-nums" type="h1" weight="bold">
+        <Typography className="tabular-nums text-5xl" type="h1" weight="bold">
           <FlowNumber text={formatTokens(totalTokens)} />
         </Typography>
         {/* Absorbed KPI tiles: billable tokens / conversations / active days
@@ -533,23 +533,21 @@ export function SourcePanel({
                 </button>
               ) : null}
             </div>
-            <Modal>
-              <Modal.Backdrop isOpen={allOpen} onOpenChange={setAllOpen}>
-                <Modal.Container>
-                  <Modal.Dialog>
-                    <Modal.CloseTrigger aria-label={copy.cost.close} />
-                    <Modal.Header>
-                      <Modal.Heading>{copy.panels.sourcesTitle}</Modal.Heading>
-                    </Modal.Header>
-                    <Modal.Body>
-                      <div className="max-h-[60vh] overflow-y-auto">
-                        {renderRows(rows)}
-                      </div>
-                    </Modal.Body>
-                  </Modal.Dialog>
-                </Modal.Container>
-              </Modal.Backdrop>
-            </Modal>
+            <Modal.Backdrop isOpen={allOpen} onOpenChange={setAllOpen}>
+              <Modal.Container>
+                <Modal.Dialog>
+                  <Modal.CloseTrigger aria-label={copy.cost.close} />
+                  <Modal.Header>
+                    <Modal.Heading>{copy.panels.sourcesTitle}</Modal.Heading>
+                  </Modal.Header>
+                  <Modal.Body>
+                    <div className="max-h-[60vh] overflow-y-auto">
+                      {renderRows(rows)}
+                    </div>
+                  </Modal.Body>
+                </Modal.Dialog>
+              </Modal.Container>
+            </Modal.Backdrop>
           </>
         )}
       </Card.Content>

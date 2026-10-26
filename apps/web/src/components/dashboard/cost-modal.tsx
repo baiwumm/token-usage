@@ -109,181 +109,169 @@ export function CostAnalysisModal({
   })();
 
   return (
-    <Modal>
-      <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
-        <Modal.Container>
-          <Modal.Dialog className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-3xl">
-            <Modal.CloseTrigger aria-label={copy.cost.close} />
-            <Modal.Header>
-              <Modal.Heading>{copy.cost.title}</Modal.Heading>
-              <Typography color="muted" type="body-xs">
-                {copy.cost.description}
-              </Typography>
-            </Modal.Header>
-            <Modal.Body className="flex flex-col gap-5">
-              <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
-                <div className="flex flex-col gap-0.5">
-                  <Typography color="muted" type="body-xs">
-                    {copy.cost.total}
-                  </Typography>
-                  <Typography className="tabular-nums" type="h3" weight="bold">
-                    <FlowNumber text={formatCost(totalCostUsd)} />
-                  </Typography>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <Typography color="muted" type="body-xs">
-                    {copy.cards.totalTokens}
-                  </Typography>
-                  <Typography
-                    className="tabular-nums"
-                    type="h5"
-                    weight="medium"
-                  >
-                    <FlowNumber text={formatTokens(totalTokens)} />
-                  </Typography>
-                </div>
-                {unpriced.length > 0 ? (
-                  <Chip color="warning" size="sm" variant="soft">
-                    {copy.cost.unpriced}: {unpriced.length}
-                  </Chip>
-                ) : null}
+    <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
+      <Modal.Container>
+        <Modal.Dialog className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-3xl">
+          <Modal.CloseTrigger aria-label={copy.cost.close} />
+          <Modal.Header>
+            <Modal.Heading>{copy.cost.title}</Modal.Heading>
+            <Typography color="muted" type="body-xs">
+              {copy.cost.description}
+            </Typography>
+          </Modal.Header>
+          <Modal.Body className="flex flex-col gap-5">
+            <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+              <div className="flex flex-col gap-0.5">
+                <Typography color="muted" type="body-xs">
+                  {copy.cost.total}
+                </Typography>
+                <Typography className="tabular-nums" type="h3" weight="bold">
+                  <FlowNumber text={formatCost(totalCostUsd)} />
+                </Typography>
               </div>
-
-              {trend.length > 0 ? (
-                <div className="flex flex-col gap-1">
-                  <Typography type="body-sm" weight="medium">
-                    {copy.cost.dailyTrend}
-                  </Typography>
-                  <CostTrendChart
-                    ariaLabel={copy.cost.dailyTrend}
-                    data={trend}
-                    labels={{ cost: copy.cost.columnCost }}
-                  />
-                </div>
-              ) : null}
-
+              <div className="flex flex-col gap-0.5">
+                <Typography color="muted" type="body-xs">
+                  {copy.cards.totalTokens}
+                </Typography>
+                <Typography className="tabular-nums" type="h5" weight="medium">
+                  <FlowNumber text={formatTokens(totalTokens)} />
+                </Typography>
+              </div>
               {unpriced.length > 0 ? (
-                <div className="bg-warning/10 text-warning rounded-3xl px-3 py-2 text-xs">
-                  <span className="font-medium">{copy.cost.unpriced}</span>
-                  {" · "}
-                  {copy.cost.unpricedHint.replace(
-                    "{models}",
-                    unpriced.map((entry) => entry.model).join(", "),
-                  )}
-                </div>
+                <Chip color="warning" size="sm" variant="soft">
+                  {copy.cost.unpriced}: {unpriced.length}
+                </Chip>
               ) : null}
+            </div>
 
-              <Tabs defaultSelectedKey="model">
-                <Tabs.ListContainer>
-                  <Tabs.List aria-label={copy.cost.title}>
-                    <Tabs.Tab id="model">
-                      {copy.cost.byModel}
-                      <Tabs.Indicator />
-                    </Tabs.Tab>
-                    <Tabs.Tab id="source">
-                      {copy.cost.bySource}
-                      <Tabs.Indicator />
-                    </Tabs.Tab>
-                  </Tabs.List>
-                </Tabs.ListContainer>
+            {trend.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                <Typography type="body-sm" weight="medium">
+                  {copy.cost.dailyTrend}
+                </Typography>
+                <CostTrendChart
+                  ariaLabel={copy.cost.dailyTrend}
+                  data={trend}
+                  labels={{ cost: copy.cost.columnCost }}
+                />
+              </div>
+            ) : null}
 
-                <Tabs.Panel className="pt-3" id="model">
-                  {models.length === 0 ? (
-                    <Typography color="muted" type="body-sm">
-                      {copy.cost.noData}
-                    </Typography>
-                  ) : (
-                    <div className="flex flex-col">
-                      <div className="text-muted grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-3 border-b pb-2 text-xs">
-                        <span>{copy.cost.columnName}</span>
-                        <span className="text-end">
-                          {copy.cost.columnTokens}
-                        </span>
-                        <span className="text-end">
-                          {copy.cost.columnShare}
-                        </span>
-                        <span className="text-end">{copy.cost.columnCost}</span>
-                      </div>
-                      {models.map((entry) => (
-                        <div
-                          key={entry.model}
-                          className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-baseline gap-3 border-b py-2 text-sm last:border-b-0"
-                        >
-                          <span className="flex min-w-0 flex-col">
-                            <span className="flex min-w-0 items-center gap-1.5">
-                              <SourceIcon label={entry.model} size={14} />
-                              <span className="truncate font-medium">
-                                {entry.model}
-                              </span>
-                            </span>
-                            <span className="text-muted truncate text-xs">
-                              {[
-                                ...new Set(
-                                  entry.sources.map((source) =>
-                                    sourceDisplayLabel(source),
-                                  ),
-                                ),
-                              ].join(", ")}
-                            </span>
-                          </span>
-                          <span className="tabular-nums">
-                            {formatTokens(entry.tokens)}
-                          </span>
-                          <span className="text-foreground/60 tabular-nums">
-                            {formatPercent(
-                              totalTokens > 0 ? entry.tokens / totalTokens : 0,
-                            )}
-                          </span>
-                          <span className="tabular-nums">
-                            {formatCost(entry.cost)}
-                          </span>
-                        </div>
-                      ))}
+            {unpriced.length > 0 ? (
+              <div className="bg-warning/10 text-warning rounded-3xl px-3 py-2 text-xs">
+                <span className="font-medium">{copy.cost.unpriced}</span>
+                {" · "}
+                {copy.cost.unpricedHint.replace(
+                  "{models}",
+                  unpriced.map((entry) => entry.model).join(", "),
+                )}
+              </div>
+            ) : null}
+
+            <Tabs defaultSelectedKey="model">
+              <Tabs.ListContainer>
+                <Tabs.List aria-label={copy.cost.title}>
+                  <Tabs.Tab id="model">
+                    {copy.cost.byModel}
+                    <Tabs.Indicator />
+                  </Tabs.Tab>
+                  <Tabs.Tab id="source">
+                    {copy.cost.bySource}
+                    <Tabs.Indicator />
+                  </Tabs.Tab>
+                </Tabs.List>
+              </Tabs.ListContainer>
+
+              <Tabs.Panel className="pt-3" id="model">
+                {models.length === 0 ? (
+                  <Typography color="muted" type="body-sm">
+                    {copy.cost.noData}
+                  </Typography>
+                ) : (
+                  <div className="flex flex-col">
+                    <div className="text-muted grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-3 border-b pb-2 text-xs">
+                      <span>{copy.cost.columnName}</span>
+                      <span className="text-end">{copy.cost.columnTokens}</span>
+                      <span className="text-end">{copy.cost.columnShare}</span>
+                      <span className="text-end">{copy.cost.columnCost}</span>
                     </div>
-                  )}
-                </Tabs.Panel>
-
-                <Tabs.Panel className="pt-3" id="source">
-                  {sourceRows.length === 0 ? (
-                    <Typography color="muted" type="body-sm">
-                      {copy.cost.noData}
-                    </Typography>
-                  ) : (
-                    <div className="flex flex-col">
-                      <div className="text-muted grid grid-cols-[minmax(0,1fr)_auto_auto] gap-3 border-b pb-2 text-xs">
-                        <span>{copy.cost.columnName}</span>
-                        <span className="text-end">
-                          {copy.cost.columnTokens}
-                        </span>
-                        <span className="text-end">{copy.cost.columnCost}</span>
-                      </div>
-                      {sourceRows.map((entry) => (
-                        <div
-                          key={entry.source}
-                          className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-baseline gap-3 border-b py-2 text-sm last:border-b-0"
-                        >
+                    {models.map((entry) => (
+                      <div
+                        key={entry.model}
+                        className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-baseline gap-3 border-b py-2 text-sm last:border-b-0"
+                      >
+                        <span className="flex min-w-0 flex-col">
                           <span className="flex min-w-0 items-center gap-1.5">
-                            <SourceIcon label={entry.source} size={14} />
+                            <SourceIcon label={entry.model} size={14} />
                             <span className="truncate font-medium">
-                              {entry.source}
+                              {entry.model}
                             </span>
                           </span>
-                          <span className="tabular-nums">
-                            {formatTokens(entry.tokens)}
+                          <span className="text-muted truncate text-xs">
+                            {[
+                              ...new Set(
+                                entry.sources.map((source) =>
+                                  sourceDisplayLabel(source),
+                                ),
+                              ),
+                            ].join(", ")}
                           </span>
-                          <span className="tabular-nums">
-                            {formatCost(entry.cost)}
-                          </span>
-                        </div>
-                      ))}
+                        </span>
+                        <span className="tabular-nums">
+                          {formatTokens(entry.tokens)}
+                        </span>
+                        <span className="text-foreground/60 tabular-nums">
+                          {formatPercent(
+                            totalTokens > 0 ? entry.tokens / totalTokens : 0,
+                          )}
+                        </span>
+                        <span className="tabular-nums">
+                          {formatCost(entry.cost)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Tabs.Panel>
+
+              <Tabs.Panel className="pt-3" id="source">
+                {sourceRows.length === 0 ? (
+                  <Typography color="muted" type="body-sm">
+                    {copy.cost.noData}
+                  </Typography>
+                ) : (
+                  <div className="flex flex-col">
+                    <div className="text-muted grid grid-cols-[minmax(0,1fr)_auto_auto] gap-3 border-b pb-2 text-xs">
+                      <span>{copy.cost.columnName}</span>
+                      <span className="text-end">{copy.cost.columnTokens}</span>
+                      <span className="text-end">{copy.cost.columnCost}</span>
                     </div>
-                  )}
-                </Tabs.Panel>
-              </Tabs>
-            </Modal.Body>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+                    {sourceRows.map((entry) => (
+                      <div
+                        key={entry.source}
+                        className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-baseline gap-3 border-b py-2 text-sm last:border-b-0"
+                      >
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <SourceIcon label={entry.source} size={14} />
+                          <span className="truncate font-medium">
+                            {entry.source}
+                          </span>
+                        </span>
+                        <span className="tabular-nums">
+                          {formatTokens(entry.tokens)}
+                        </span>
+                        <span className="tabular-nums">
+                          {formatCost(entry.cost)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Tabs.Panel>
+            </Tabs>
+          </Modal.Body>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   );
 }

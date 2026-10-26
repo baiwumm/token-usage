@@ -96,102 +96,100 @@ export function AvatarCropDialog({
   }
 
   return (
-    <Modal>
-      <Modal.Backdrop
-        isDismissable={!uploading}
-        isOpen={isOpen}
-        onOpenChange={onOpenChange}
-      >
-        <Modal.Container>
-          <Modal.Dialog className="sm:max-w-md">
-            <Modal.Header>
-              {!uploading ? <Modal.CloseTrigger /> : null}
-              <Modal.Heading>{copy.cropTitle}</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body>
-              {isOpen && imageSrc ? (
-                <div className="flex flex-col gap-4">
-                  <div className="relative h-72 w-full overflow-hidden rounded-lg">
-                    <Cropper
-                      key={resetKey}
-                      showGrid
-                      aspect={1}
-                      crop={crop}
-                      image={imageSrc}
-                      rotation={rotation}
-                      zoom={zoom}
-                      onCropChange={setCrop}
-                      onCropComplete={(_area, areaPixels) =>
-                        setCroppedAreaPixels(areaPixels)
-                      }
-                      onRotationChange={setRotation}
-                      onZoomChange={setZoom}
-                    />
-                  </div>
-                  <Slider
-                    aria-label={copy.cropZoom}
-                    maxValue={ZOOM_MAX}
-                    minValue={ZOOM_MIN}
-                    step={0.1}
-                    value={zoom}
-                    onChange={(value) =>
-                      setZoom(Array.isArray(value) ? (value[0] ?? 1) : value)
+    <Modal.Backdrop
+      isDismissable={!uploading}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+    >
+      <Modal.Container>
+        <Modal.Dialog className="sm:max-w-md">
+          <Modal.Header>
+            {!uploading ? <Modal.CloseTrigger /> : null}
+            <Modal.Heading>{copy.cropTitle}</Modal.Heading>
+          </Modal.Header>
+          <Modal.Body>
+            {isOpen && imageSrc ? (
+              <div className="flex flex-col gap-4">
+                <div className="relative h-72 w-full overflow-hidden rounded-lg">
+                  <Cropper
+                    key={resetKey}
+                    showGrid
+                    aspect={1}
+                    crop={crop}
+                    image={imageSrc}
+                    rotation={rotation}
+                    zoom={zoom}
+                    onCropChange={setCrop}
+                    onCropComplete={(_area, areaPixels) =>
+                      setCroppedAreaPixels(areaPixels)
+                    }
+                    onRotationChange={setRotation}
+                    onZoomChange={setZoom}
+                  />
+                </div>
+                <Slider
+                  aria-label={copy.cropZoom}
+                  maxValue={ZOOM_MAX}
+                  minValue={ZOOM_MIN}
+                  step={0.1}
+                  value={zoom}
+                  onChange={(value) =>
+                    setZoom(Array.isArray(value) ? (value[0] ?? 1) : value)
+                  }
+                >
+                  <Label>{copy.cropZoom}</Label>
+                  <SliderOutput>{zoom.toFixed(1)}x</SliderOutput>
+                  <SliderTrack>
+                    <SliderFill />
+                    <SliderThumb />
+                  </SliderTrack>
+                </Slider>
+                <div className="flex items-center justify-center gap-2">
+                  <Button
+                    isDisabled={uploading}
+                    size="sm"
+                    variant="secondary"
+                    onPress={() =>
+                      setRotation((previous) => previous - ROTATION_STEP)
                     }
                   >
-                    <Label>{copy.cropZoom}</Label>
-                    <SliderOutput>{zoom.toFixed(1)}x</SliderOutput>
-                    <SliderTrack>
-                      <SliderFill />
-                      <SliderThumb />
-                    </SliderTrack>
-                  </Slider>
-                  <div className="flex items-center justify-center gap-2">
-                    <Button
-                      isDisabled={uploading}
-                      size="sm"
-                      variant="secondary"
-                      onPress={() =>
-                        setRotation((previous) => previous - ROTATION_STEP)
-                      }
-                    >
-                      <ArrowRotateLeft aria-hidden="true" className="size-4" />
-                      {copy.cropRotateLeft}
-                    </Button>
-                    <Button
-                      isDisabled={uploading}
-                      size="sm"
-                      variant="secondary"
-                      onPress={() =>
-                        setRotation((previous) => previous + ROTATION_STEP)
-                      }
-                    >
-                      <ArrowRotateRight aria-hidden="true" className="size-4" />
-                      {copy.cropRotateRight}
-                    </Button>
-                  </div>
+                    <ArrowRotateLeft aria-hidden="true" className="size-4" />
+                    {copy.cropRotateLeft}
+                  </Button>
+                  <Button
+                    isDisabled={uploading}
+                    size="sm"
+                    variant="secondary"
+                    onPress={() =>
+                      setRotation((previous) => previous + ROTATION_STEP)
+                    }
+                  >
+                    <ArrowRotateRight aria-hidden="true" className="size-4" />
+                    {copy.cropRotateRight}
+                  </Button>
                 </div>
-              ) : null}
-            </Modal.Body>
-            <Modal.Footer className="w-full">
-              <Button isDisabled={uploading} slot="close" variant="secondary">
-                {copy.renameCancel}
-              </Button>
-              <Button
-                isDisabled={!imageSrc || !croppedAreaPixels}
-                isPending={uploading}
-                onPress={() => void submitCrop()}
-              >
-                {({ isPending }) => (
-                  <>
-                    {isPending ? <Spinner color="current" size="sm" /> : null}
-                    {isPending ? copy.cropUploading : copy.cropUpload}
-                  </>
-                )}
-              </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+              </div>
+            ) : null}
+          </Modal.Body>
+          <Modal.Footer className="w-full">
+            <Button isDisabled={uploading} slot="close" variant="secondary">
+              {copy.renameCancel}
+            </Button>
+            <Button
+              isDisabled={!imageSrc || !croppedAreaPixels}
+              isPending={uploading}
+              onPress={() => void submitCrop()}
+            >
+              {({ isPending }) => (
+                <>
+                  {isPending ? <Spinner color="current" size="sm" /> : null}
+                  {isPending ? copy.cropUploading : copy.cropUpload}
+                </>
+              )}
+            </Button>
+          </Modal.Footer>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   );
 }

@@ -48,7 +48,7 @@
 桌面自上而下；移动端单列：
 
 1. **筛选条**：时间范围为单一 `DateRangePicker`（弹层日历上方内置
-   今天 / 近7天 / 近30天 / 近90天 / 总计 快捷按钮（`ToggleButtonGroup`，单选、
+   今天 / 7D / 30D / 90D / 总计 快捷按钮（`ToggleButtonGroup`，单选、
    `min-w-14` 最小宽度，活动预设高亮，点选关层）；在日历手动选取则写 `range=custom`
    + 具体日键）、时区、设备。
    时间范围筛选仅存组件内状态（2026-10-26 操作者裁定）：不写入 URL、加载时不回显，
@@ -120,7 +120,7 @@
 
 - 导航：侧边栏与抽屉在仪表盘后新增“Sessions”（`ListUl` 图标），页面标题取菜单名。
 - 数据源：`account-sessions`。筛选条：时间范围为单一 `DateRangePicker`（弹层内置
-  近7天 / 近30天 / 近90天 快捷按钮，活动预设高亮，点选关层；日历手动选取写 `custom`；
+  今天 / 7D / 30D / 90D 快捷按钮，活动预设高亮，点选关层；日历手动选取写 `custom`；
   控件形态与仪表盘一致）、设备、来源、项目
   搜索（`q`）；设备/来源选项来自响应的 `facets`；设备/来源/搜索与分页偏移（`offset`）
   写入 URL，时间范围仅存组件内状态（2026-10-26 操作者裁定：不写入 URL、加载不回显，
@@ -131,14 +131,17 @@
   `[from, to)`。
 - 汇总卡：会话数、总 Token、成本、平均时长（`totals.duration_ms / totals.sessions`，
   0 会话显示 `—`）。
-- 列表：`≥md` 用 `Table`，`<md` 用 Card 列表。列：结束时间、来源 `Chip`、项目、设备、
-  时长、Token、成本、模型（前 3 个 `Chip` + `+N`）。v1 固定按结束时间倒序；服务端分页
-  50/页，`Pagination` 组件；不做列排序。
-- 详情：行尾“详情”按钮打开 `Modal`（整行点击为增强，键盘焦点落在按钮上）；头部为来源、
-  项目、设备、结束时间；Token 拆分（input / cached / cache creation / output / reasoning /
-  total / billable）；模型表（模型、Token、占比、成本）；时长；隐私提示“仅用量元数据，
-  不含对话内容、路径或命令”；成本脚注“按模型定价估算，可能与仪表盘 provider 上报成本
-  存在差异”。
+- 列表：`≥md` 用 `Table`，`<md` 用 Card 列表。列：结束时间、来源 `Chip`（`SourceIcon`
+  Logo + 规范化显示名）、项目、设备、时长、Token、成本、模型（前 3 个 `Chip` + `+N`）、
+  「详情」操作列（表头「详情」、行内按钮「查看」，`variant="tertiary"`，2026-10-26 操作者
+  裁定）。v1 固定按
+  结束时间倒序；服务端分页默认 20/页（可选 10/20/50/100），`Pagination` 组件；不做列排序。
+- 详情：行尾「查看」按钮打开 `Modal`（整行点击为增强，键盘焦点落在按钮上）；头部为来源
+  （Logo `Chip`）、项目、设备三枚 `Chip`；meta 两列 结束时间（含相对时间小字）+ 时长；
+  Token 拆分（input / cached / cache creation / output / reasoning /
+  total / billable）；模型拆分为 `Table`（模型 Logo、Token、占比、成本，右对齐定宽列）；
+  隐私提示“仅用量元数据，不含对话内容、路径或命令”；成本脚注“按模型定价估算，可能与
+  仪表盘 provider 上报成本存在差异”。
   `session_id` 只作内部键，不在 UI 展示。
 - 空态两分：
   - 无会话且无筛选 → “等待新版采集器”说明 + 配对设备 / 升级文档链接；不得从小时桶
@@ -230,8 +233,9 @@
     图标），整控件 32px 对齐图标按钮；语言为
     `Globe` 图标 ghost 按钮 + 单选下拉；主题色为 `Popover` + `ColorSwatchPicker` 色板
     （含随机切换），色板变量见 `apps/web/src/styles/theme-palettes.css`。
-  - `lg` 以下侧边栏换为抽屉，结构与桌面侧边栏一致：导航在上，语言 / 主题色 / 明暗与
-    用户块在下。
+  - `lg` 以下侧边栏换为抽屉：导航在上，底部仅保留明暗切换与用户块（2026-10-26
+    操作者裁定：GitHub / 语言 / 主题色 / 配对设备在移动端顶栏照常显示、与桌面一致；
+    明暗切换顶栏仅在 ≥lg 显示，<lg 由抽屉提供，抽屉不再重复语言与主题色）。
   - 语言偏好写 `token-usage.locale` cookie（`system | zh | en`，缺省 `system`）；根布局
     据此解析并设置 `<html lang>` 与首帧字典，切换即时生效、刷新不闪烁。
 - 审查：UI 代码提交前用 web-design-guidelines Skill 对照最新 Web Interface Guidelines，

@@ -42,12 +42,7 @@ import {
   type ReactNode,
 } from "react";
 
-import {
-  LanguageDropdown,
-  ThemeColorPicker,
-  ThemeModeToggle,
-  TopActions,
-} from "@/components/top-actions";
+import { ThemeModeToggle, TopActions } from "@/components/top-actions";
 import { useProfile, type Profile } from "@/lib/auth/profile";
 import { authBrowserClient } from "@/lib/auth/browser";
 import { NAV_COPY, NAV_ITEMS, type NavCopy } from "@/lib/copy/nav";
@@ -473,12 +468,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 />
               </Drawer.Body>
               <Drawer.Footer className="mt-0 flex flex-col gap-2 px-3 py-3">
-                <div className="flex items-center gap-1">
-                  <LanguageDropdown />
-                  <ThemeColorPicker alwaysVisible />
-                  <div className="ml-auto">
-                    <ThemeModeToggle alwaysVisible />
-                  </div>
+                <div className="flex items-center justify-end">
+                  <ThemeModeToggle alwaysVisible />
                 </div>
                 <SidebarProfile
                   collapsed={false}

@@ -4,7 +4,7 @@
 
 export interface SessionsCopy {
   rangeLabel: string;
-  ranges: Record<"7d" | "30d" | "90d" | "custom", string>;
+  ranges: Record<"today" | "7d" | "30d" | "90d" | "custom", string>;
   deviceLabel: string;
   allDevices: string;
   sourceLabel: string;
@@ -32,6 +32,7 @@ export interface SessionsCopy {
     cost: string;
     models: string;
     detail: string;
+    view: string;
     noProject: string;
     pageSummary: string;
     pageSize: string;
@@ -76,9 +77,10 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
   zh: {
     rangeLabel: "时间范围",
     ranges: {
-      "7d": "近 7 天",
-      "30d": "近 30 天",
-      "90d": "近 90 天",
+      today: "今天",
+      "7d": "7D",
+      "30d": "30D",
+      "90d": "90D",
       custom: "自定义",
     },
     deviceLabel: "设备",
@@ -108,6 +110,7 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
       cost: "成本",
       models: "模型",
       detail: "详情",
+      view: "查看",
       noProject: "未标注",
       pageSummary: "{start}–{end} / {total}",
       pageSize: "每页条数",
@@ -151,9 +154,10 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
   en: {
     rangeLabel: "Range",
     ranges: {
-      "7d": "Last 7 days",
-      "30d": "Last 30 days",
-      "90d": "Last 90 days",
+      today: "Today",
+      "7d": "7D",
+      "30d": "30D",
+      "90d": "90D",
       custom: "Custom",
     },
     deviceLabel: "Device",
@@ -183,6 +187,7 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
       cost: "Cost",
       models: "Models",
       detail: "Details",
+      view: "View",
       noProject: "Unlabeled",
       pageSummary: "{start}–{end} / {total}",
       pageSize: "Rows per page",

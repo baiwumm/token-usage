@@ -24,8 +24,6 @@ import {
   Spinner,
   Tabs,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
   Popover,
 } from "@heroui/react";
@@ -40,6 +38,7 @@ import { ShareModal } from "./share-modal";
 import { DevicePanel, SourcePanel, TopModels, TotalTokensHero } from "./panels";
 import { TrendChart, type TrendMetric, type TrendPoint } from "./charts";
 
+import { RangePresetButtons } from "@/components/range-preset-buttons";
 import { useProfile } from "@/lib/auth/profile";
 import { authBrowserClient } from "@/lib/auth/browser";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
@@ -680,34 +679,20 @@ export function DashboardClient() {
               </DateField.Suffix>
             </DateField.Group>
             <DateRangePicker.Popover>
-              <ToggleButtonGroup
-                disallowEmptySelection
-                aria-label={copy.rangeLabel}
-                className="flex-wrap pb-2"
-                selectedKeys={[filters.range]}
-                size="sm"
-                onSelectionChange={(keys) => {
-                  const key = [...keys][0];
-
-                  if (typeof key !== "string" || key === filters.range) return;
-
+              <RangePresetButtons
+                ariaLabel={copy.rangeLabel}
+                labels={copy.ranges}
+                presets={RANGE_PRESETS}
+                selected={filters.range}
+                onSelect={(preset) => {
                   applyFilters({
-                    range: key as RangeKey,
+                    range: preset as RangeKey,
                     from: "",
                     to: "",
                   });
                   setRangePickerOpen(false);
                 }}
-              >
-                {RANGE_PRESETS.map((preset) => (
-                  <ToggleButton key={preset} className="min-w-14" id={preset}>
-                    {preset !== RANGE_PRESETS[0] ? (
-                      <ToggleButtonGroup.Separator />
-                    ) : null}
-                    {copy.ranges[preset]}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
+              />
               <RangeCalendar aria-label={copy.rangeLabel}>
                 <RangeCalendar.Header>
                   <RangeCalendar.YearPickerTrigger>

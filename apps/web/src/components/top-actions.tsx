@@ -61,7 +61,11 @@ function GitHubLink() {
   return (
     <Link
       aria-label="GitHub"
-      className={`${buttonVariants({ isIconOnly: true, size: "sm", variant: "tertiary" })} hidden md:inline-flex`}
+      className={buttonVariants({
+        isIconOnly: true,
+        size: "sm",
+        variant: "tertiary",
+      })}
       href="https://github.com/baiwumm/token-usage"
       rel="noopener noreferrer"
       target="_blank"
@@ -133,7 +137,8 @@ const THEME_MODES = [
   { value: "system", icon: Display, labelKey: "themeSystem" },
 ] as const;
 
-/** HeroUI Tabs styled as a compact segmented pill (32px, matching icon buttons). */
+/** HeroUI Tabs styled as a compact segmented pill (32px, matching icon buttons).
+ * Default (top bar) hides below lg — the drawer owns the <lg theme toggle. */
 export function ThemeModeToggle({
   alwaysVisible = false,
 }: {
@@ -152,7 +157,7 @@ export function ThemeModeToggle({
 
   return (
     <Tabs
-      className={`shrink-0 gap-0 ${alwaysVisible ? "flex" : "hidden md:flex"}`}
+      className={`shrink-0 gap-0 ${alwaysVisible ? "flex" : "hidden lg:flex"}`}
       selectedKey={theme ?? "system"}
       onSelectionChange={(key) => setTheme(String(key))}
     >
@@ -183,11 +188,7 @@ export function ThemeModeToggle({
  * button, following better-admin's theme-color-picker. Swatch hexes map back
  * to palette ids; "default" clears the data attribute.
  */
-export function ThemeColorPicker({
-  alwaysVisible = false,
-}: {
-  alwaysVisible?: boolean;
-}) {
+export function ThemeColorPicker() {
   const { locale } = useLocalePreference();
   const copy = NAV_COPY[locale];
   const [paletteId, setPaletteId] = useThemeColor();
@@ -225,9 +226,7 @@ export function ThemeColorPicker({
         <Button
           isIconOnly
           aria-label={`${copy.appearance}: ${active.label}`}
-          className={`${
-            alwaysVisible ? "inline-flex" : "hidden md:inline-flex"
-          } size-8 min-w-8`}
+          className="size-8 min-w-8"
           size="sm"
           variant="tertiary"
         >
