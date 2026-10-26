@@ -441,6 +441,16 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Auto/scheduled runs are otherwise silent, which leaves --watch consoles and
+// any visible task window blank. Log one concise line per phase only when the
+// run owns a real terminal; piped hook consumers (stdio ignored) stay quiet.
+function autoLog(message) {
+  if (!process.stdout.isTTY) return;
+  const stamp = new Date().toISOString().replace("T", " ").slice(0, 19);
+
+  process.stdout.write(`[${stamp}] ${message}\n`);
+}
+
 async function acquireSyncLock(
   lockPath,
   opts,
@@ -586,6 +596,9 @@ async function cmdSync(argv, context = {}) {
     // try/finally so an auxiliary diagnostic never strands the sync lock.
     await clearSyncSkip(trackerDir);
     progress = !opts.auto ? createProgress({ stream: process.stdout }) : null;
+    if (opts.auto) {
+      autoLog("Auto sync started — scanning local provider sessions…");
+    }
     const configPath = path.join(trackerDir, "config.json");
     const cursorsPath = path.join(trackerDir, "cursors.json");
     const queuePath = path.join(trackerDir, "queue.jsonl");
@@ -3718,6 +3731,8 @@ async function cmdSync(argv, context = {}) {
         await writeJson(uploadThrottlePath, uploadThrottleState);
         if (!opts.auto) {
           process.stderr.write(`Upload error: ${e?.message || e}\n`);
+        } else {
+          autoLog(`Upload error: ${e?.message || e}`);
         }
         // `sync --drain` is the readiness boundary for first-time cloud view:
         // callers must not treat a swallowed upload failure as a completed
@@ -3742,20 +3757,31 @@ async function cmdSync(argv, context = {}) {
           watermarkPath,
           canUpload,
         });
-        if (!opts.auto && result.pending > 0) {
+        if (result.pending > 0) {
           const sessionSuffix =
             result.upserted || result.skippedServer
               ? ` (upserted ${result.upserted}, skipped ${result.skippedServer})`
               : "";
-          process.stdout.write(
-            `Sessions: ${result.uploaded}/${result.pending} uploaded${sessionSuffix}\n`,
-          );
+          const sessionLine =
+            `Sessions: ${result.uploaded}/${result.pending} uploaded${sessionSuffix}`;
+
+          if (!opts.auto) {
+            process.stdout.write(`${sessionLine}\n`);
+          } else {
+            autoLog(sessionLine);
+          }
         }
       } catch (sessionError) {
         if (!opts.auto) {
           const detail = sessionError?.message || String(sessionError);
           process.stderr.write(
             `Session upload error (hourly buckets are unaffected): ${detail}\n`,
+          );
+        } else {
+          autoLog(
+            `Session upload error (hourly buckets are unaffected): ${
+              sessionError?.message || sessionError
+            }`,
           );
         }
         if (opts.drain) throw sessionError;
@@ -3810,6 +3836,14 @@ async function cmdSync(argv, context = {}) {
         ]
           .filter(Boolean)
           .join("\n"),
+      );
+    } else {
+      autoLog(
+        `Auto sync finished — parsed ${totalParsed} files, +${totalBuckets} buckets, ` +
+          (runtime.deviceToken
+            ? `uploaded ${uploadResult.inserted}, skipped ${uploadResult.skipped}` +
+              (pendingBytes > 0 ? `, pending ${formatBytes(pendingBytes)}` : ", queue drained")
+            : "upload skipped (no device token)"),
       );
     }
 
@@ -4373,6 +4407,10 @@ function spawnAutoRetryProcess({ retryPath, trackerBinPath, fallbackPkg, delayMs
   try {
     const child = cp.spawn(process.execPath, ["-e", script], {
       detached: true,
+      // Without this Windows allocates a visible console for the detached
+      // wait, flashes an empty terminal window on every backoff, and closes
+      // it when the retry child exits.
+      windowsHide: true,
       stdio: "ignore",
       env: process.env,
     });
@@ -4406,7 +4444,7 @@ function buildAutoRetryScript({ retryPath, trackerBinPath, fallbackPkg, delayMs 
     `    ? [process.execPath, trackerBinPath, ...argv]\n` +
     `    : ['npx', '--yes', fallbackPkg, ...argv];\n` +
     `  try {\n` +
-    `    const child = cp.spawn(cmd[0], cmd.slice(1), { detached: true, stdio: 'ignore', env: process.env });\n` +
+    `    const child = cp.spawn(cmd[0], cmd.slice(1), { detached: true, windowsHide: true, stdio: 'ignore', env: process.env });\n` +
     `    child.unref();\n` +
     `  } catch (_) {}\n` +
     `}, delayMs);\n`
