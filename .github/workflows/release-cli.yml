@@ -10,10 +10,15 @@ name: Release CLI
 # 服务端版本配对演进」指的是兼容窗口语义（旧路径别名保旧客户端不坏），
 # 不是版本号同步——所以不需要各包联动 bump。
 #
-# 一次性前置（仅当包已存在于 npm 时需要）：
-#   npmjs.com → tokenusage-cli 包页 → Settings → Trusted Publisher →
-#   登记仓库 baiwumm/token-usage + workflow 文件名 release-cli.yml。
-#   全新包可直接由本 workflow 首发建立关联（OIDC claim 即凭证）。
+# 一次性首发（Trusted Publishing 不能创建新包——npm 对不存在的包 PUT 会 404，
+# 2026-10-27 cli-v0.1.0 首发实测；OIDC/provenance 签名本身是成功的）：
+#   1. 本地登录 npm 后手动首发：cd packages/cli && npm publish --access public
+#   2. npmjs.com → tokenusage-cli 包页 → Settings → Trusted Publisher →
+#      登记仓库 baiwumm/token-usage + workflow 文件名 release-cli.yml
+#      （environment 留空——本 workflow 不绑 GitHub Environment）
+#   3. 重跑失败的 release run（gh run rerun <id> --failed）：npm 已有该版本会
+#      跳过 publish，只补 GitHub Release
+#   此后每次发版全自动，仓库与 npm 都不需要任何 secret/token。
 #
 # 日常发布（全部本地，之后交给 CI）：
 #   1. 改 packages/cli/package.json 的 version，并在 packages/cli/CHANGELOG.md
