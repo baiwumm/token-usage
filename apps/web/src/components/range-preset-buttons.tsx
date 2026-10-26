@@ -23,11 +23,11 @@ export function RangePresetButtons({
   return (
     <ToggleButtonGroup
       disallowEmptySelection
+      fullWidth
       aria-label={ariaLabel}
       className="flex-wrap pb-2"
       selectedKeys={[selected]}
       size="sm"
-      fullWidth
       onSelectionChange={(keys) => {
         const key = [...keys][0];
 
