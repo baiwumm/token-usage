@@ -23,6 +23,11 @@ const nextConfig = {
 	async rewrites() {
 		return legacyApiRewrites;
 	},
+	experimental: {
+		// Barrel packages imported by name across many client components; the
+		// optimizer rewrites them to per-symbol modules.
+		optimizePackageImports: ["@heroui/react", "recharts", "@gravity-ui/icons"],
+	},
 };
 
 export default nextConfig;

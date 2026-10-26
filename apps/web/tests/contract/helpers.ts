@@ -237,4 +237,7 @@ export function initContractEnv(fakeUrl: string): void {
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "fake-publishable-key";
   process.env.SUPABASE_SECRET_KEY = "fake-secret-key";
   process.env.TOKEN_USAGE_DASHBOARD_URL = "http://dashboard.test";
+  // Tests reseed the fake backend between cases; the read-face snapshot cache
+  // must not outlive a reseed.
+  process.env.TOKEN_USAGE_USAGE_CACHE = "off";
 }

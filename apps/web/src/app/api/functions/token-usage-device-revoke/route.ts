@@ -13,6 +13,7 @@ import {
   readJsonBody,
 } from "@/lib/api/http";
 import { assertConfigured, select, update } from "@/lib/api/supabase-rest";
+import { invalidateAccountUsage } from "@/lib/api/account-data";
 import { resolvePrincipal } from "@/lib/api/principal";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +84,8 @@ export async function POST(request: Request) {
         ],
         { returning: false },
       );
+      // Revocation changes the active-device set the account aggregates read.
+      invalidateAccountUsage(principal.userId);
     }
 
     // Only the count leaves this handler; token hashes never leave the server.

@@ -165,6 +165,7 @@ export function resetPricingForTests() {
   state.source = Object.keys(seedRaw).length ? "seed-snapshot:static" : null;
   state.revision += 1;
   state.negativeCache.clear();
+  rowCostCache = new WeakMap();
 }
 
 export function getPricingRevision(): number {
@@ -357,8 +358,29 @@ export function getRowPricing(
   };
 }
 
-// Same formula and reasoning-folding rule as the reference computeRowCost.
+// Aggregation passes (daily / heatmap / breakdown / device totals) re-cost
+// the same row objects several times per request, and the account snapshot
+// those rows come from is itself cached — memoize per object. Rows are
+// treated as immutable once costed; resetPricingForTests swaps the table so
+// a fresh pricing revision never serves a stale value.
+let rowCostCache = new WeakMap<object, number>();
+
 export function computeRowCost(
+  row: Record<string, unknown> | null | undefined,
+): number {
+  if (!row || typeof row !== "object") return computeRowCostUncached(row);
+  const hit = rowCostCache.get(row);
+
+  if (hit !== undefined) return hit;
+  const cost = computeRowCostUncached(row);
+
+  rowCostCache.set(row, cost);
+
+  return cost;
+}
+
+// Same formula and reasoning-folding rule as the reference computeRowCost.
+function computeRowCostUncached(
   row: Record<string, unknown> | null | undefined,
 ): number {
   if (LOCAL_INFERENCE_SOURCES.has(String(row?.source || "").toLowerCase()))

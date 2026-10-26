@@ -18,6 +18,7 @@ import {
   upsert,
   type RestRow,
 } from "@/lib/api/supabase-rest";
+import { invalidateAccountUsage } from "@/lib/api/account-data";
 import { sha256Hex } from "@/lib/device-codes";
 import {
   dedupeBuckets,
@@ -195,6 +196,11 @@ export async function POST(request: Request) {
       sessionsUpserted = Number(result?.upserted) || 0;
       sessionsRpcSkipped = Number(result?.skipped) || 0;
     }
+
+    // The read face caches per-account loads; drop them so a dashboard
+    // refresh right after an upload sees the new buckets.
+    if (buckets.length > 0 || states.length > 0 || dedupedSessions.length > 0)
+      invalidateAccountUsage(String(tokenRow.user_id));
 
     // Best effort: a telemetry write must not fail an already-committed upload.
     try {

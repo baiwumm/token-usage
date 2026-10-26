@@ -12,6 +12,7 @@ import {
   readJsonBody,
 } from "@/lib/api/http";
 import { assertConfigured, select, update } from "@/lib/api/supabase-rest";
+import { invalidateAccountUsage } from "@/lib/api/account-data";
 import { resolvePrincipal } from "@/lib/api/principal";
 
 export const dynamic = "force-dynamic";
@@ -111,6 +112,8 @@ export async function POST(request: Request) {
       ],
       { returning: false },
     );
+    // Device rows ride along in the cached account snapshot.
+    invalidateAccountUsage(principal.userId);
 
     return jsonResponse(200, {
       device_id: target.id,

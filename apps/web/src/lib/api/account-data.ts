@@ -50,7 +50,37 @@ export type AccountUsage = {
   activeDeviceIds: Set<string>;
   canonicalRows: UsageRow[];
 };
-export async function loadAccountUsage(userId: string): Promise<AccountUsage> {
+
+// One dashboard refresh fires six series endpoints concurrently and each of
+// them loads the same account snapshot; without sharing, that is six copies
+// of the full four-table pull. Loads are single-flighted per user and held
+// for a short TTL. Writes through this codebase (ingest, device revoke /
+// rename / pairing) bump the revision so the next load refetches inside the
+// window; the TTL only bounds staleness from out-of-band DB edits. Tests
+// reseed a fake backend between cases, so they opt out via
+// TOKEN_USAGE_USAGE_CACHE=off (tests/contract/helpers.ts initContractEnv).
+const USAGE_TTL_MS = 10_000;
+
+type UsageCacheEntry = {
+  revision: number;
+  expiresAt: number;
+  promise: Promise<AccountUsage>;
+};
+
+let usageRevision = 0;
+const usageCache = new Map<string, UsageCacheEntry>();
+
+function usageCacheDisabled(): boolean {
+  return process.env.TOKEN_USAGE_USAGE_CACHE === "off";
+}
+
+export function invalidateAccountUsage(userId?: string): void {
+  usageRevision += 1;
+  if (userId == null) usageCache.clear();
+  else usageCache.delete(userId);
+}
+
+async function fetchAccountUsage(userId: string): Promise<AccountUsage> {
   const [hourly, sessionStates, deviceRows, tokenRows] = await Promise.all([
     selectAll("token_usage_hourly", {
       columns:
@@ -89,6 +119,34 @@ export async function loadAccountUsage(userId: string): Promise<AccountUsage> {
     activeDeviceIds,
     canonicalRows: canonicalizeUsage(hourly, sessionStates, activeDeviceIds),
   };
+}
+
+// The cached instance is shared across concurrent requests — callers are
+// read-only over it (aggregations build their own buckets, filters copy).
+export function loadAccountUsage(userId: string): Promise<AccountUsage> {
+  if (usageCacheDisabled()) return fetchAccountUsage(userId);
+
+  const now = Date.now();
+  const hit = usageCache.get(userId);
+
+  if (hit && hit.revision === usageRevision && hit.expiresAt > now) {
+    return hit.promise;
+  }
+  const promise = fetchAccountUsage(userId);
+
+  // A failed load must not pin its rejection for the TTL window.
+  promise.catch(() => {
+    const entry = usageCache.get(userId);
+
+    if (entry?.promise === promise) usageCache.delete(userId);
+  });
+  usageCache.set(userId, {
+    revision: usageRevision,
+    expiresAt: now + USAGE_TTL_MS,
+    promise,
+  });
+
+  return promise;
 }
 
 // Sessions are queried by absolute ended_at instants (docs/cli-contract.md

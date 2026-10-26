@@ -11,7 +11,12 @@
 // Costs are computed at read time by the shared pricing engine; stored row
 // costs stay 0 for queue rows.
 
-import { ACCOUNT_LEVEL_SOURCES, rowCost, type UsageRow } from "./series";
+import {
+  ACCOUNT_LEVEL_SOURCES,
+  rowCost,
+  zonedDayKey,
+  type UsageRow,
+} from "./series";
 
 const TOKEN_KEYS = [
   "input_tokens",
@@ -143,39 +148,6 @@ export function canonicalizeUsage(
   ];
 }
 
-function dayKey(
-  hourStart: string,
-  timeZone: string | null,
-  offsetMinutes: number | null,
-): string {
-  if (timeZone) {
-    try {
-      const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).formatToParts(new Date(hourStart));
-      const year = parts.find((part) => part.type === "year")?.value;
-      const month = parts.find((part) => part.type === "month")?.value;
-      const day = parts.find((part) => part.type === "day")?.value;
-
-      if (year && month && day) return `${year}-${month}-${day}`;
-    } catch {
-      // Fall through to the numeric offset.
-    }
-  }
-  if (Number.isFinite(offsetMinutes)) {
-    const shifted = new Date(
-      Date.parse(hourStart) + (offsetMinutes as number) * 60000,
-    );
-
-    return shifted.toISOString().slice(0, 10);
-  }
-
-  return String(hourStart).slice(0, 10);
-}
-
 export type DashboardTotals = {
   total_tokens: number;
   billable_total_tokens: number;
@@ -284,7 +256,12 @@ export function summarizeRows(
 
     if (!start) continue;
 
-    const key = dayKey(start, timeZone || null, offsetMinutes ?? null);
+    const key = zonedDayKey(start, {
+      timeZone: timeZone || null,
+      offsetMinutes: offsetMinutes ?? null,
+    });
+
+    if (!key) continue;
     const day = days.get(key) || {
       date: key,
       total_tokens: 0,

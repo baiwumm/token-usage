@@ -42,8 +42,41 @@ export function parseTzContext(searchParams: URLSearchParams): TzContext {
   };
 }
 
+// One Intl.DateTimeFormat per zone id: bucketing would otherwise construct
+// one per row, and construction dominates that loop. Zone strings come from
+// callers, so the table caps itself.
+const zonedFormatters = new Map<string, Intl.DateTimeFormat>();
+const ZONED_FORMATTER_CAP = 64;
+
+function zonedFormatter(timeZone: string): Intl.DateTimeFormat | null {
+  const hit = zonedFormatters.get(timeZone);
+
+  if (hit) return hit;
+  try {
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    });
+
+    if (zonedFormatters.size >= ZONED_FORMATTER_CAP) zonedFormatters.clear();
+    zonedFormatters.set(timeZone, formatter);
+
+    return formatter;
+  } catch {
+    // Invalid zone id: callers fall through to the numeric offset.
+    return null;
+  }
+}
+
 // UTC timestamp → the caller's local wall-clock parts: IANA zone via Intl when
-// valid, else the fixed numeric offset, else server-local.
+// valid, else the fixed numeric offset, else UTC — the fallback is fixed so
+// the bucket day never depends on the server's own timezone.
 export function zonedParts(
   date: Date | string,
   context: Partial<TzContext> = {},
@@ -54,17 +87,10 @@ export function zonedParts(
   const { timeZone, offsetMinutes } = context;
 
   if (timeZone) {
-    try {
-      const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hourCycle: "h23",
-      }).formatToParts(new Date(ms));
+    const formatter = zonedFormatter(timeZone);
+
+    if (formatter) {
+      const parts = formatter.formatToParts(new Date(ms));
       const values: Record<string, string> = {};
 
       for (const part of parts)
@@ -78,8 +104,6 @@ export function zonedParts(
 
       if ([out.year, out.month, out.day, out.hour].every(Number.isFinite))
         return out;
-    } catch {
-      // Invalid zone id: fall through to the numeric offset.
     }
   }
   if (Number.isFinite(offsetMinutes)) {
@@ -92,13 +116,13 @@ export function zonedParts(
       hour: shifted.getUTCHours(),
     };
   }
-  const local = new Date(ms);
+  const utc = new Date(ms);
 
   return {
-    year: local.getFullYear(),
-    month: local.getMonth() + 1,
-    day: local.getDate(),
-    hour: local.getHours(),
+    year: utc.getUTCFullYear(),
+    month: utc.getUTCMonth() + 1,
+    day: utc.getUTCDate(),
+    hour: utc.getUTCHours(),
   };
 }
 

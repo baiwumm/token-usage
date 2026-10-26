@@ -163,6 +163,25 @@ function localeTag(locale: Locale): string {
   return intlLocaleFor(locale);
 }
 
+// Intl construction dominates list- and heatmap-scale rendering otherwise;
+// every helper below formats through this table. Keys encode locale plus
+// options, and the table caps itself (locales × options are few, but
+// formatDate callers can pass arbitrary option objects).
+const formatterCache = new Map<string, unknown>();
+const FORMATTER_CACHE_CAP = 128;
+
+function memoFormatter<T>(key: string, build: () => T): T {
+  const hit = formatterCache.get(key);
+
+  if (hit !== undefined) return hit as T;
+  const built = build();
+
+  if (formatterCache.size >= FORMATTER_CACHE_CAP) formatterCache.clear();
+  formatterCache.set(key, built);
+
+  return built;
+}
+
 function numeric(value: unknown): number | null {
   if (value == null || value === "") return null;
   const parsed = Number(value);
@@ -171,11 +190,13 @@ function numeric(value: unknown): number | null {
 }
 
 function groupSeparator(locale: Locale): string {
-  const parts = new Intl.NumberFormat(localeTag(locale), {
-    useGrouping: true,
-  }).formatToParts(12_345);
+  return memoFormatter(`group-sep\0${locale}`, () => {
+    const parts = new Intl.NumberFormat(localeTag(locale), {
+      useGrouping: true,
+    }).formatToParts(12_345);
 
-  return parts.find((part) => part.type === "group")?.value ?? ",";
+    return parts.find((part) => part.type === "group")?.value ?? ",";
+  });
 }
 
 /** Group an integer every 3 or 4 digits using the locale separator. */
@@ -196,10 +217,14 @@ export function groupDigits(
 }
 
 function scaledNumber(value: number, locale: Locale): string {
-  return new Intl.NumberFormat(localeTag(locale), {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: 0,
-  }).format(value);
+  return memoFormatter(
+    `num-scaled\0${locale}`,
+    () =>
+      new Intl.NumberFormat(localeTag(locale), {
+        maximumFractionDigits: 1,
+        minimumFractionDigits: 0,
+      }),
+  ).format(value);
 }
 
 function compactKmb(value: number, locale: Locale): string {
@@ -316,10 +341,14 @@ export function formatPercent(ratio: unknown, locale: Locale): string {
 
   if (parsed == null) return "—";
 
-  return new Intl.NumberFormat(localeTag(locale), {
-    style: "percent",
-    maximumFractionDigits: 1,
-  }).format(parsed);
+  return memoFormatter(
+    `percent\0${locale}`,
+    () =>
+      new Intl.NumberFormat(localeTag(locale), {
+        style: "percent",
+        maximumFractionDigits: 1,
+      }),
+  ).format(parsed);
 }
 
 /** USD → display currency. Storage stays USD; only the presentation changes. */
@@ -346,13 +375,17 @@ export function formatCost(
 
   if (converted == null) return "—";
 
-  const formatter = new Intl.NumberFormat(localeTag(locale), {
-    style: "currency",
-    currency: preferences.currency,
-    currencyDisplay: "narrowSymbol",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const formatter = memoFormatter(
+    `cost\0${locale}\0${preferences.currency}`,
+    () =>
+      new Intl.NumberFormat(localeTag(locale), {
+        style: "currency",
+        currency: preferences.currency,
+        currencyDisplay: "narrowSymbol",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+  );
   const abs = Math.abs(converted);
 
   if (abs === 0) return formatter.format(0);
@@ -371,10 +404,14 @@ export function formatFxRate(
   locale: Locale,
 ): string {
   const rate = fx.rates[currency] ?? 1;
-  const formatted = new Intl.NumberFormat(localeTag(locale), {
-    minimumFractionDigits: 4,
-    maximumFractionDigits: 4,
-  }).format(rate);
+  const formatted = memoFormatter(
+    `fx-rate\0${locale}`,
+    () =>
+      new Intl.NumberFormat(localeTag(locale), {
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
+      }),
+  ).format(rate);
 
   return `1 USD = ${formatted} ${currency}`;
 }
@@ -426,7 +463,10 @@ export function formatDate(
 
   if (Number.isNaN(date.getTime())) return "—";
 
-  return new Intl.DateTimeFormat(localeTag(locale), options).format(date);
+  return memoFormatter(
+    `date\0${locale}\0${JSON.stringify(options)}`,
+    () => new Intl.DateTimeFormat(localeTag(locale), options),
+  ).format(date);
 }
 
 export function formatDateTime(
@@ -452,9 +492,10 @@ export function formatRelativeTime(
 
   const diffSeconds = Math.round((date.getTime() - now.getTime()) / 1000);
   const abs = Math.abs(diffSeconds);
-  const formatter = new Intl.RelativeTimeFormat(localeTag(locale), {
-    numeric: "auto",
-  });
+  const formatter = memoFormatter(
+    `relative\0${locale}`,
+    () => new Intl.RelativeTimeFormat(localeTag(locale), { numeric: "auto" }),
+  );
 
   if (abs < 60) return formatter.format(diffSeconds, "second");
   if (abs < 3600)
@@ -474,9 +515,13 @@ export function formatMonth(monthKey: string, locale: Locale): string {
 
   if (Number.isNaN(date.getTime())) return monthKey;
 
-  return new Intl.DateTimeFormat(localeTag(locale), {
-    year: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  }).format(date);
+  return memoFormatter(
+    `month\0${locale}`,
+    () =>
+      new Intl.DateTimeFormat(localeTag(locale), {
+        year: "numeric",
+        month: "short",
+        timeZone: "UTC",
+      }),
+  ).format(date);
 }
