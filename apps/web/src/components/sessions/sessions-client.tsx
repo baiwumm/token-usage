@@ -918,15 +918,12 @@ export function SessionsClient() {
             {copy.projectLabel}
           </Typography>
           <TextField
+            aria-label={copy.projectLabel}
             className="w-52"
             value={qInput}
             onChange={(value) => setQInput(value)}
           >
-            <Input
-              aria-label={copy.projectLabel}
-              placeholder={copy.projectPlaceholder}
-              type="search"
-            />
+            <Input placeholder={copy.projectPlaceholder} type="search" />
           </TextField>
         </label>
 

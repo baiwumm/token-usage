@@ -322,6 +322,7 @@ export function HeatmapCard({
   );
   // Rows run Mon..Sun (columns are Mon-start weeks). Single-character labels
   // fit the narrow ruler column; Intl "short" renders 周一-style and wraps.
+  // The English set repeats T and S, so the ruler keys off the weekday slot.
   const dayLabels =
     locale === "zh"
       ? ["一", "二", "三", "四", "五", "六", "日"]
@@ -592,9 +593,9 @@ export function HeatmapCard({
                       rowGap: CELL_GAP,
                     }}
                   >
-                    {dayLabels.map((label) => (
+                    {dayLabels.map((label, index) => (
                       <span
-                        key={label}
+                        key={index}
                         className="flex items-center"
                         style={{ lineHeight: 1 }}
                       >
