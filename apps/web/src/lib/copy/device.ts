@@ -7,7 +7,6 @@ export interface DeviceCopy {
   manualTitle: string;
   manualHint: string;
   codeLabel: string;
-  codePlaceholder: string;
   confirmTitle: string;
   confirmBody: string;
   approve: string;
@@ -29,7 +28,6 @@ export const DEVICE_COPY: Record<"zh" | "en", DeviceCopy> = {
     manualTitle: "输入配对码",
     manualHint: "在采集机上运行配对命令后，把打印的配对码填到这里。",
     codeLabel: "配对码",
-    codePlaceholder: "XXXX-XXXX",
     confirmTitle: "确认配对请求",
     confirmBody:
       "以下配对码来自你的采集端 CLI。批准后，该 CLI 将获得本账户的上报令牌。",
@@ -52,7 +50,6 @@ export const DEVICE_COPY: Record<"zh" | "en", DeviceCopy> = {
     manualHint:
       "Run the pairing command on your collector and type the printed code here.",
     codeLabel: "Pairing code",
-    codePlaceholder: "XXXX-XXXX",
     confirmTitle: "Confirm pairing request",
     confirmBody:
       "This code comes from your collector CLI. Approving grants it a reporting token for your account.",

@@ -5,7 +5,14 @@
 // device-flow-grant endpoint (§2.3) with the browser session JWT. The code
 // survives the login hop via ?next= (route guard).
 
-import { Button, Card, Spinner, Typography } from "@heroui/react";
+import {
+  Button,
+  Card,
+  InputOTP,
+  Label,
+  Spinner,
+  Typography,
+} from "@heroui/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useState, type FormEvent } from "react";
 
@@ -143,19 +150,31 @@ function DeviceClientInner() {
           </Card.Header>
           <Card.Content>
             <form className="flex flex-col gap-3" onSubmit={submitManual}>
-              <input
-                aria-label={copy.codeLabel}
-                autoComplete="off"
-                className="border-border bg-default rounded-xl px-3 py-2 text-center font-mono text-lg tracking-[0.3em] uppercase outline-none focus:border-accent"
+              <Label htmlFor="device-user-code">{copy.codeLabel}</Label>
+              <InputOTP
+                autoCapitalize="characters"
+                className="justify-center"
+                id="device-user-code"
                 inputMode="text"
-                maxLength={9}
-                placeholder={copy.codePlaceholder}
-                spellCheck={false}
-                value={draft ? formatCode(normalizeCode(draft)) : ""}
-                onChange={(event) =>
-                  setDraft(normalizeCode(event.target.value))
-                }
-              />
+                maxLength={8}
+                value={draft}
+                variant="secondary"
+                onChange={(raw) => setDraft(normalizeCode(raw))}
+              >
+                <InputOTP.Group>
+                  <InputOTP.Slot index={0} />
+                  <InputOTP.Slot index={1} />
+                  <InputOTP.Slot index={2} />
+                  <InputOTP.Slot index={3} />
+                </InputOTP.Group>
+                <InputOTP.Separator />
+                <InputOTP.Group>
+                  <InputOTP.Slot index={4} />
+                  <InputOTP.Slot index={5} />
+                  <InputOTP.Slot index={6} />
+                  <InputOTP.Slot index={7} />
+                </InputOTP.Group>
+              </InputOTP>
               <Button type="submit">{copy.approve}</Button>
             </form>
           </Card.Content>
