@@ -14,4 +14,6 @@
 - 上传链路防毒行硬化：契约非法的用量桶 / 账户会话状态在出批前丢弃或修正，
   而不是让 ingest 边缘整批 400、队头永久停摆；Grok ACP 小数计数器解析期取整；
   会话 ID 校验对齐服务端的完整 Unicode Cc 控制字符范围
+- 请求日志降噪：`node:sqlite` 每次加载都打印的 ExperimentalWarning 不再
+  混入重定向的同步日志
 - 要求 Node ≥ 22.19（undici 8 的引擎下限；undici 仅用于代理支持）

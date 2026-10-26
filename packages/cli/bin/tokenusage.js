@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 
+// Before anything can require node:sqlite: keep its per-require
+// ExperimentalWarning out of redirected sync logs.
+require('../src/lib/quiet-warnings').suppressSqliteExperimentalWarning();
+
 const { run } = require('../src/cli');
 const { stripDebugFlag } = require('../src/lib/debug-flags');
 const {
@@ -10,7 +14,6 @@ const {
 } = require('../src/lib/proxy-env');
 
 const { argv, debug } = stripDebugFlag(process.argv.slice(2));
-if (debug) process.env.TOKENTRACKER_DEBUG = '1';
 
 const persistedProxy = readPersistedProxyConfig();
 const relaunch = relaunchWithProxyEnvIfNeeded({
