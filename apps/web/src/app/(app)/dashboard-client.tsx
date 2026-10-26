@@ -13,17 +13,18 @@ import { ArrowsRotateRight, NodesRight } from "@gravity-ui/icons";
 import {
   Button,
   Card,
-  Input,
-  Label,
+  DateField,
+  DateRangePicker,
   ListBox,
+  RangeCalendar,
   Select,
   Skeleton,
   Spinner,
   Tabs,
-  TextField,
   Typography,
   Popover,
 } from "@heroui/react";
+import { parseDate } from "@internationalized/date";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type Key } from "react";
 
@@ -67,9 +68,9 @@ import {
   type SeriesPoint,
 } from "@/lib/dashboard/api";
 import {
+  ALL_RANGE_START,
   browserTimezone,
   dayKeyInTz,
-  isValidDayKey,
   rangeForSelection,
   RANGE_PRESETS,
   TIMEZONE_OPTIONS,
@@ -223,6 +224,17 @@ export function DashboardClient() {
   const range = useMemo(
     () => rangeForSelection(filters.range, timezone, filters.from, filters.to),
     [filters.range, filters.from, filters.to, timezone],
+  );
+  // Custom-range picker state: rangeForSelection already resolves the URL day
+  // keys (valid custom pairs pass through, missing/reversed ones fall back to
+  // the 30d preset), so the picker always shows a well-formed window.
+  const customRangeValue = useMemo(
+    () => ({ start: parseDate(range.fromDay), end: parseDate(range.toDay) }),
+    [range],
+  );
+  const customRangeMax = useMemo(
+    () => parseDate(dayKeyInTz(new Date(), timezone)),
+    [timezone],
   );
 
   const redirectToLogin = useCallback(() => {
@@ -663,36 +675,72 @@ export function DashboardClient() {
         </label>
 
         {filters.range === "custom" ? (
-          <>
-            <TextField
-              className="w-40"
-              value={filters.from || range.fromDay}
+          <label className="flex flex-col gap-1">
+            <Typography color="muted" type="body-xs">
+              {copy.customRange}
+            </Typography>
+            <DateRangePicker
+              aria-label={copy.customRange}
+              className="w-80"
+              maxValue={customRangeMax}
+              minValue={parseDate(ALL_RANGE_START)}
+              value={customRangeValue}
               onChange={(value) => {
-                if (isValidDayKey(value)) applyFilters({ from: value });
+                if (!value) return;
+
+                applyFilters({
+                  from: value.start.toString(),
+                  to: value.end.toString(),
+                });
               }}
             >
-              <Label>{copy.customFrom}</Label>
-              <Input
-                aria-label={copy.customFrom}
-                type="date"
-                variant="secondary"
-              />
-            </TextField>
-            <TextField
-              className="w-40"
-              value={filters.to || range.toDay}
-              onChange={(value) => {
-                if (isValidDayKey(value)) applyFilters({ to: value });
-              }}
-            >
-              <Label>{copy.customTo}</Label>
-              <Input
-                aria-label={copy.customTo}
-                type="date"
-                variant="secondary"
-              />
-            </TextField>
-          </>
+              <DateField.Group fullWidth>
+                <DateField.Input slot="start">
+                  {(segment) => <DateField.Segment segment={segment} />}
+                </DateField.Input>
+                <DateRangePicker.RangeSeparator />
+                <DateField.Input slot="end">
+                  {(segment) => <DateField.Segment segment={segment} />}
+                </DateField.Input>
+                <DateField.Suffix>
+                  <DateRangePicker.Trigger>
+                    <DateRangePicker.TriggerIndicator />
+                  </DateRangePicker.Trigger>
+                </DateField.Suffix>
+              </DateField.Group>
+              <DateRangePicker.Popover>
+                <RangeCalendar aria-label={copy.customRange}>
+                  <RangeCalendar.Header>
+                    <RangeCalendar.YearPickerTrigger>
+                      <RangeCalendar.YearPickerTriggerHeading />
+                      <RangeCalendar.YearPickerTriggerIndicator />
+                    </RangeCalendar.YearPickerTrigger>
+                    <RangeCalendar.NavButton slot="previous" />
+                    <RangeCalendar.NavButton slot="next" />
+                  </RangeCalendar.Header>
+                  <RangeCalendar.Grid>
+                    <RangeCalendar.GridHeader>
+                      {(day) => (
+                        <RangeCalendar.HeaderCell>
+                          {day}
+                        </RangeCalendar.HeaderCell>
+                      )}
+                    </RangeCalendar.GridHeader>
+                    <RangeCalendar.GridBody>
+                      {(date) => <RangeCalendar.Cell date={date} />}
+                    </RangeCalendar.GridBody>
+                  </RangeCalendar.Grid>
+                  <RangeCalendar.YearPickerGrid>
+                    <RangeCalendar.YearPickerGridBody>
+                      {({ year }) => (
+                        <RangeCalendar.YearPickerCell year={year} />
+                      )}
+                    </RangeCalendar.YearPickerGridBody>
+                  </RangeCalendar.YearPickerGrid>
+                </RangeCalendar>
+              </DateRangePicker.Popover>
+            </DateRangePicker>
+          </label>
         ) : null}
 
         <label className="flex flex-col gap-1">
@@ -701,7 +749,7 @@ export function DashboardClient() {
           </Typography>
           <Select
             aria-label={copy.tzLabel}
-            className="w-72"
+            className="w-48"
             value={filters.tz || "__browser"}
             onChange={(key) => {
               if (key == null) return;

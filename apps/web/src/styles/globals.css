@@ -68,6 +68,15 @@
 		scrollbar-width: thin;
 		scrollbar-color: var(--scrollbar-thumb) transparent;
 	}
+
+	/*
+	 * Select 选中值保持单行：HeroUI 给 .select__value 配了 wrap-break-word，
+	 * 长设备名等会换行撑高 Trigger（min-h-9 之下不限高）。统一截断为省略号；
+	 * min-w-0 解除 flex 子项的 min-content 下限，截断才能生效。
+	 */
+	.select__value {
+		@apply min-w-0 truncate;
+	}
 }
 
 /*

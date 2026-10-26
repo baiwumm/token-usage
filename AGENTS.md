@@ -59,7 +59,8 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 ## 里程碑与闸门
 
 - 按 `docs/rewrite-plan.md` §5 顺序推进；验收线全绿 + 操作者验收 = 里程碑完成。
-- G1 采集机切到新域名 / G2 删旧表 / G3 旧仓库处置（§7）必须操作者明确放行，Agent 代行即违规。
+- G1 采集机切到新域名 / G2 旧 Supabase 项目退役（整项目暂停→删除，新旧项目独立无删表动作）/
+  G3 旧仓库处置（§7）必须操作者明确放行，Agent 代行即违规。
 - 分支策略：单人维护，直推 main；推送前本地 `pnpm verify`，CI 兜底，出问题 `git revert`。
 
 ## Commit Attribution
