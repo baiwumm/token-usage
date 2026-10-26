@@ -1,5 +1,6 @@
-// token-usage production deployment (docs/m-cli-task.md, operator-approved
-// 2026-10-25). Override per invocation with --base-url or TOKENUSAGE_BASE_URL.
+// token-usage production deployment (operator-approved 2026-10-25,
+// docs/rewrite-plan.md §1#19). Override per invocation with --base-url or
+// TOKENUSAGE_BASE_URL.
 const DEFAULT_BASE_URL = "https://token-usage.baiwumm.com";
 // Retired hosts from the upstream (InsForge) era; a persisted config pointing
 // at one of these must fall back to the current default instead of uploading

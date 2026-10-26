@@ -52,40 +52,25 @@
 
 回滚：停新 CLI、恢复旧计划任务即可——两套数据目录互不干扰，旧 CLI 的队列与偏移原样保留。
 
-### 第二台机器（公司机）迁移 + 历史补齐（2026-10-26 待执行）
+### 第二台机器（公司机）迁移 + 历史补齐（已完成 2026-10-26，G1 全部完成）
 
-本机（DESKTOP）已完成迁移与历史重放；公司机（旧库 device `a2527d9b`，约 13.67B）步骤：
+两台采集机均已切至新系统（逐台步骤见上文「逐台迁移」；公司机实际执行序：tarball 安装 →
+`device-login` 配对 → `sync --drain` 首采 → `scripts/replay-legacy-history.mjs` 重放历史 →
+注册每小时任务 → 停旧 hook 与计划任务）。实测记录：
 
-0. **带两样东西去公司**：
-   - `Desktop/company-legacy-hourly.json`（历史桶行导出，已按最终格式打好包）；
-   - tokenusage-cli 安装包：`packages/cli` 下 `npm pack` 生成的 `tokenusage-cli-0.1.0.tgz`
-     （npm 尚未发布，公司机装这个 tarball），以及本仓库的
-     `scripts/replay-legacy-history.mjs`。
-1. 公司机安装：`npm i -g tokenusage-cli-0.1.0.tgz`；
-2. 配对：`tokenusage device-login` → 浏览器登录 `https://token-usage.baiwumm.com/device`
-   批准 user_code（公司机成为第二台设备）；
-3. 首次采集：`tokenusage sync --drain`（上传公司机现存本地数据）；
-4. 历史补齐：在公司机执行（任意目录）：
-   ```bash
-   node replay-legacy-history.mjs company-legacy-hourly.json
-   ```
-   （读公司机刚配对好的设备令牌，把 13.67B 历史以该公司设备的归属重放；幂等，重跑安全。）
-5. 每小时采集（管理员 PowerShell，node 与全局包路径按公司机实际情况替换）：
-   ```powershell
-   schtasks /create /tn TokenUsageSync /tr "cmd /c node.exe <npm全局prefix>
-ode_modules	okenusage-cliin	okenusage.js sync >> %USERPROFILE%\.tokenusage\logs\sync.log 2>&1" /sc hourly /mo 1 /f
-   ```
-6. 停公司机旧 CLI：移除其 Claude / Codex 的 tokentracker hook（本机的形态是
-   `~/.claude/settings.json` 里的 notify 命令；移除前备份）；**并检查计划任务**——
-   旧 CLI 自启不是 hook 而是两个计划任务（`TokenTracker Selfhost Sync`、
-   `TokenTracker Selfhost Drift Check`，Disable 即可）；若装过桌面 App
-   （TokenTracker.exe，会 spawn `tracker.js serve` 常驻），结束其进程；
-   本机（DESKTOP）以上三处已于 2026-10-25 停用并验证队列冻结；
-7. 验收：`https://token-usage.baiwumm.com` 设备列表 2 台、总量 ≈ 20.86B
-   （本机 7.21B + 公司机 13.67B）。
+- 设备 `PC-20260408RIKF #68e47b34`：首采 1,281 桶 + 350 会话（0 跳过）；历史重放
+  1,403 行 / 13.672B（脚本幂等，读刚配对的设备令牌，历史归该公司设备）。
+- 验收（`account-devices` 实测）：设备 2 台、总量 20.94B（公司机 13.675B + 本机
+  7.267B，本机含迁移后继续采集的增量），达成 ≈20.86B 预期。
+- 公司机每小时任务 `TokenUsageSync`（/sc hourly）。注意：公司机为 Volta 管理的 node，
+  全局包真实路径在 `%LOCALAPPDATA%\Volta\tools\image\packages\tokenusage-cli\...`，
+  `npm prefix -g` 给出的路径不可用。
+- 旧 CLI 停用四处：Claude settings hooks 两处（备份 `settings.json.bak-tokentracker`）、
+  计划任务 `TokenTracker Selfhost Sync` / `Drift Check` / `Backup` 全部 Disable。
 
-迁移完成后旧库（tokentracker.baiwumm.com + Supabase）不再有增量，按 §7 走 G2（删旧表）/
-G3（旧仓库处置）闸门前保持只读即可。
+旧库（tokentracker.baiwumm.com + Supabase）自此零增量；观察期与 G2 / G3 闸门见 §7，
+退役前保持只读。
+
 
 ## 回滚
 

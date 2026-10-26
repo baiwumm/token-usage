@@ -6,7 +6,7 @@
 // watermarks so repeat syncs are increments, and POSTs batches of <=200 to
 // the same ingest endpoint the hourly buckets use.
 //
-// Privacy boundary (docs/m-cli-task.md): only the contract's whitelisted
+// Privacy boundary (docs/cli-contract.md §2.4): only the contract's whitelisted
 // fields are sent. The sidecar's title, project_ref (local cwd), resume
 // identifiers and cache keys never leave the process — buildSessionUploadRows
 // constructs each row field-by-field rather than spreading.
