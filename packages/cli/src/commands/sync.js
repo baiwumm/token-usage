@@ -166,6 +166,7 @@ const {
   parseRetryAfterMs,
 } = require("../lib/upload-throttle");
 const { compactPendingQueue, iterateQueueLines, sessionSnapshotMs } = require("../lib/upload-queue");
+const { sanitizeBucketForUpload } = require("../lib/ingest-sanitize");
 const AUTO_UPLOAD_CONFIG = {
   intervalMs: 15 * 60_000,
   batchSize: 200,
@@ -4620,6 +4621,14 @@ async function readQueueBatch(queuePath, startOffset, maxBuckets) {
       }
       if (bucket?.kind === "account_session_state") {
         if (typeof bucket.source === "string" && typeof bucket.session_id === "string" && bucket.session_id.trim()) {
+          const verifiedMs = sessionSnapshotMs(bucket);
+          // The edge validates before writing and 400s the WHOLE batch on one
+          // invalid state ("Invalid account session state"); the offset only
+          // advances on success, so uploading a poison row would stall the
+          // queue head-of-line forever. Drop it here instead — nothing is
+          // recorded for the key, so a later, valid snapshot for the same
+          // session is still admitted.
+          if (verifiedMs === null) continue;
           const ssSource = bucket.source.trim().toLowerCase();
           const stateKey = ssSource + "|" + bucket.session_id.trim();
           const sessionState = {
@@ -4638,9 +4647,8 @@ async function readQueueBatch(queuePath, startOffset, maxBuckets) {
               : {}),
           };
           const priorState = sessionStateMap.get(stateKey);
-          const verifiedMs = sessionSnapshotMs(bucket);
           const priorVerifiedMs = sessionStateStamps.get(stateKey) ?? null;
-          if (!priorState || (verifiedMs !== null && (priorVerifiedMs === null || verifiedMs > priorVerifiedMs))) {
+          if (!priorState || priorVerifiedMs === null || verifiedMs > priorVerifiedMs) {
             sessionStateMap.set(stateKey, sessionState);
             sessionStateStamps.set(stateKey, verifiedMs);
           }
@@ -4658,7 +4666,7 @@ async function readQueueBatch(queuePath, startOffset, maxBuckets) {
       // downstream anyway, but be explicit).
       if (bucket?.kind === "account_sync_watermark") continue;
       const hourStart = typeof bucket?.hour_start === "string" ? bucket.hour_start : null;
-      if (!hourStart) continue;
+      if (!hourStart || !Number.isFinite(Date.parse(hourStart))) continue;
       const source = (typeof bucket?.source === "string" ? bucket.source.trim().toLowerCase() : "") || "codex";
       const model = (typeof bucket?.model === "string" ? bucket.model.trim() : "") || "unknown";
       bucket.source = source;
@@ -4669,7 +4677,12 @@ async function readQueueBatch(queuePath, startOffset, maxBuckets) {
       // rows whose input_tokens still include cached tokens (6-7x inflated) —
       // while the local dashboard showed corrected numbers.
       bucket = require("../lib/local-api").normalizeQueueRow(bucket);
-      bucketMap.set(`${source}|${model}|${hourStart}`, bucket);
+      // Contract-shape coercion, poison-row drop (see lib/ingest-sanitize.js):
+      // a fractional Grok counter or a negative OpenCode repair delta would
+      // otherwise 400 the whole ingest batch and stall the queue.
+      const sanitized = sanitizeBucketForUpload(bucket);
+      if (!sanitized) continue;
+      bucketMap.set(`${source}|${model}|${hourStart}`, sanitized);
       linesRead += 1;
       if (linesRead >= maxBuckets) break;
     }

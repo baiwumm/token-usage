@@ -82,8 +82,11 @@ function validSessionId(value) {
   const id = value.trim();
   if (!id || id.length > 256) return false;
   if (id.includes("/") || id.includes("\\")) return false;
+  // Full Unicode Cc range — the server validator is /\p{Cc}/u, which also
+  // covers C1 (U+0080–U+009F); a narrower client check would let such an id
+  // through to a whole-batch 400 that stalls the sessions upload.
   // eslint-disable-next-line no-control-regex
-  if (/[\u0000-\u001f\u007f]/.test(id)) return false;
+  if (/[\u0000-\u001f\u007f-\u009f]/.test(id)) return false;
   return true;
 }
 

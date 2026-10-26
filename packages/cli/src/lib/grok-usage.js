@@ -12,8 +12,11 @@
 const USD_TICKS_PER_USD = 10_000_000_000;
 
 function nonNegative(value) {
+  // Floor: Grok's ACP reports have been observed with fractional JSON
+  // numbers; the ingest edge requires non-negative INTEGERS and would 400
+  // the whole upload batch on one fractional counter.
   const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : 0;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
 function firstBoolean(...values) {
