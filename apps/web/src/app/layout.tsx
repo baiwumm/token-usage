@@ -15,17 +15,13 @@ import {
 } from "@/lib/copy/locale-config";
 import { FormatProvider } from "@/lib/format/format";
 import { resolveFxSnapshot } from "@/lib/format/server";
+import { createSiteMetadata, resolveRequestLocale } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Token Usage",
-    template: "%s - Token Usage",
-  },
-  description: "Self-hosted AI token usage tracking.",
-  icons: {
-    icon: "/favicon.ico",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await resolveRequestLocale();
+
+  return createSiteMetadata(locale);
+}
 
 export const viewport: Viewport = {
   themeColor: [

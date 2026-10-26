@@ -72,6 +72,9 @@ Dashboard → **Authentication → URL Configuration**：
 | `SUPABASE_SECRET_KEY` | 第 1 步的 Secret key |
 | `TOKEN_USAGE_DASHBOARD_URL` | 部署域名根，如 `https://token-usage-delta.vercel.app` |
 
+可选：`TOKEN_USAGE_SITE_NAME` 覆盖页签标题后缀与 Apple Web App 标题，默认 `TokenUsage`
+（标题格式为 `<页面名> - <TOKEN_USAGE_SITE_NAME>`）。
+
 Deploy 后得到部署域名（如 `https://token-usage-xxx.vercel.app`）。**回到 Supabase Auth
 配置，把 Site URL 与 Redirect URLs 里的域名核对成这个实际域名**；`TOKEN_USAGE_DASHBOARD_URL`
 若有出入也在 Vercel 改后 Redeploy 一次。

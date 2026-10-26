@@ -4,12 +4,15 @@
 // dictionaries per page plus one React context. The root layout seeds the
 // locale from the `token-usage.locale` cookie (or Accept-Language), so SSR and
 // the first client render agree and <html lang> is correct; switching writes
-// the cookie and updates <html lang> immediately. No i18n framework.
+// the cookie, updates <html lang> immediately, and refreshes the server tree
+// so generateMetadata re-emits the localized <title> and social tags. No i18n
+// framework.
 //
 // The cookie stores the PREFERENCE (`system | zh | en`); `system` resolves to
 // a concrete locale from the browser languages at switch time and from
 // Accept-Language on the server.
 
+import { useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -70,16 +73,21 @@ export function LocaleProvider({
   const [preference, setPreferenceState] = useState<LocalePreference>(
     normalizeLocalePreference(initialPreference),
   );
+  const router = useRouter();
 
-  const setPreference = useCallback((next: LocalePreference) => {
-    const normalized = normalizeLocalePreference(next);
-    const resolved = normalized === "system" ? navigatorLocale() : normalized;
+  const setPreference = useCallback(
+    (next: LocalePreference) => {
+      const normalized = normalizeLocalePreference(next);
+      const resolved = normalized === "system" ? navigatorLocale() : normalized;
 
-    setPreferenceState(normalized);
-    setLocale(resolved);
-    persistPreference(normalized);
-    document.documentElement.lang = htmlLangFor(resolved);
-  }, []);
+      setPreferenceState(normalized);
+      setLocale(resolved);
+      persistPreference(normalized);
+      document.documentElement.lang = htmlLangFor(resolved);
+      router.refresh();
+    },
+    [router],
+  );
 
   const value = useMemo<LocaleContextValue>(
     () => ({ locale, preference, setPreference }),

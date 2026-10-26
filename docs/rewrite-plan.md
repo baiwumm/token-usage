@@ -218,7 +218,8 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目地址（回退：`SUPABASE_URL`） |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | publishable key：M2 认证客户端 + public-config 端点下发（回退：`SUPABASE_ANON_KEY`） |
 | `SUPABASE_SECRET_KEY` | secret key：route.ts 数据访问，绕过 RLS（回退：`SUPABASE_SERVICE_ROLE_KEY`）；绝不进浏览器包 |
-| `TOKEN_USAGE_DASHBOARD_URL` | 配对回调地址校验（device-flow-authorize 返回的 verification_uri） |
+| `TOKEN_USAGE_DASHBOARD_URL` | 配对回调地址校验（device-flow-authorize 返回的 verification_uri）；同时作为 metadataBase 生成 canonical / Open Graph 绝对地址 |
+| `TOKEN_USAGE_SITE_NAME`（可选） | 页签标题后缀（`<page> - <name>`）与 Apple Web App 标题，默认 `TokenUsage`；不含机密，无需 `NEXT_PUBLIC_` |
 | `TOKEN_USAGE_FX_RATES`（可选） | 外观设置的汇率覆盖，JSON `{"as_of":"YYYY-MM-DD","rates":{"CNY":6.6849,...}}`；服务端根布局解析后注入 format provider，缺省/解析失败/缺键回退内置快照并记日志；不含机密，但无需 `NEXT_PUBLIC_` |
 
 契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），
