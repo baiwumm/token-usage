@@ -27,6 +27,7 @@ import {
   currencyLabel,
   SUPPORTED_CURRENCIES,
   type CurrencyCode,
+  type FontPreference,
   type TokenDisplay,
   type TokenUnit,
 } from "@/lib/format/core";
@@ -169,6 +170,26 @@ export function AppearancePanel() {
           ) : null}
         </Row>
 
+        <Row description={copy.fontDescription} label={copy.fontLabel}>
+          <ToggleButtonGroup
+            disallowEmptySelection
+            aria-label={copy.fontLabel}
+            selectedKeys={[preferences.font]}
+            selectionMode="single"
+            onSelectionChange={(keys) => {
+              const key = firstKey(keys);
+
+              if (key) setFormatPreference("font", key as FontPreference);
+            }}
+          >
+            <ToggleButton id="maple">{copy.fontMaple}</ToggleButton>
+            <ToggleButton id="system">
+              <ToggleButtonGroup.Separator />
+              {copy.fontSystem}
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Row>
+
         <Row description={copy.currencyDescription} label={copy.currencyLabel}>
           <Select
             aria-label={copy.currencyLabel}
@@ -295,7 +316,7 @@ export function AppearancePanel() {
         </Row>
 
         <Row label={copy.previewLabel}>
-          <div className="bg-default/50 ring-border/60 grid w-full min-w-64 grid-cols-3 gap-3 rounded-xl px-4 py-3 ring-1 md:w-96">
+          <div className="bg-default/50 ring-border/60 grid w-full min-w-64 grid-cols-3 gap-3 rounded-3xl px-4 py-3 ring-1 md:w-96">
             <div className="flex flex-col gap-0.5">
               <Typography color="muted" type="body-xs">
                 {copy.previewTokens}

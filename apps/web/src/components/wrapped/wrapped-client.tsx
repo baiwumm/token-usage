@@ -380,7 +380,7 @@ export function WrappedClient() {
                 [copy.cards.cost, formatCost(totals.total_cost_usd)],
                 [copy.cards.conversations, formatTokens(totals.conversations)],
               ].map(([label, value]) => (
-                <div key={label} className="bg-default rounded-xl p-3">
+                <div key={label} className="bg-default rounded-3xl p-3">
                   <Typography color="muted" type="body-xs">
                     {label}
                   </Typography>

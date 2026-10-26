@@ -81,16 +81,47 @@ const SOURCE_LOGOS: Record<string, string> = {
   kiro: "kiro.svg",
   devin: "devin.svg",
   lmstudio: "lmstudio.svg",
+  omp: "omp.svg",
   openclaw: "openclaw.svg",
   hermes: "hermes.svg",
   kilo: "kilo.svg",
   acode: "acode.png",
   anythingllm: "anythingllm.svg",
   unsloth: "unsloth.svg",
+  zed: "zed.svg",
+  stepfun: "stepfun.png",
 };
 
 /** White-on-transparent marks that need a backdrop to read on light cards. */
-const WHITE_LOGOS = new Set(["pi.svg"]);
+const WHITE_LOGOS = new Set<string>([]);
+
+/**
+ * Light-theme logo files that ship a dark-theme twin: the twin lives next to
+ * the light file as `<name>-dark.<same ext>` under public/brand-logos, and
+ * the light file name goes in this set to activate it. Registration is the
+ * switch — an unregistered (or not-yet-dropped) twin would render a broken
+ * image in dark mode. Example: codex.svg + codex-dark.svg → add "codex.svg".
+ */
+const DARK_LOGO_FILES = new Set<string>([
+  "acode.png",
+  "zed.svg",
+  "zcode.svg",
+  "codex.svg",
+  "mimo.svg",
+]);
+
+/** Dark-theme twin for a registered logo file, if any. */
+export function darkLogoFile(file: string): string | null {
+  const base = file.replace(/^\/brand-logos\//, "");
+
+  if (!DARK_LOGO_FILES.has(base)) return null;
+
+  const dot = base.lastIndexOf(".");
+
+  return dot === -1
+    ? null
+    : `/brand-logos/${base.slice(0, dot)}-dark${base.slice(dot)}`;
+}
 
 /** Model-name prefixes that carry a recognizable vendor mark. */
 const MODEL_PREFIX_LOGOS: Array<[prefix: string, file: string]> = [
@@ -106,6 +137,7 @@ const MODEL_PREFIX_LOGOS: Array<[prefix: string, file: string]> = [
   ["gpt", "codex.svg"],
   ["composer", "cursor.svg"],
   ["claude", "claude-code.svg"],
+  ["step", "stepfun.png"],
 ];
 
 export function canonicalSource(source: string): string {

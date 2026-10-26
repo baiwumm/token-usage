@@ -406,7 +406,7 @@ export function HeatmapCard({
 
     tooltipNode = createPortal(
       <div
-        className="bg-surface text-foreground border-border pointer-events-none fixed z-50 w-64 max-w-[calc(100vw-24px)] rounded-xl border p-3 text-xs shadow-sm"
+        className="bg-surface text-foreground border-border pointer-events-none fixed z-50 w-64 max-w-[calc(100vw-24px)] rounded-3xl border p-3 text-xs shadow-sm"
         role="tooltip"
         style={{
           left: Math.min(

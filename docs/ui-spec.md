@@ -48,8 +48,9 @@
 桌面自上而下；移动端单列：
 
 1. **筛选条**：时间范围为单一 `DateRangePicker`（弹层日历上方内置
-   近7天 / 近30天 / 近90天 / 总计 快捷按钮：点选写回预设 `range` 键并清空 `from`/`to`
-   后关层，活动预设高亮；在日历手动选取则写 `range=custom` + 具体日键）、时区、设备。
+   今天 / 近7天 / 近30天 / 近90天 / 总计 快捷按钮（`ToggleButtonGroup`，单选、
+   `min-w-14` 最小宽度，活动预设高亮，点选关层）；在日历手动选取则写 `range=custom`
+   + 具体日键）、时区、设备。
    时间范围筛选仅存组件内状态（2026-10-26 操作者裁定）：不写入 URL、加载时不回显，
    首帧把旧链接里的 `range` / `from` / `to` 清出地址栏，刷新回到默认近 30 天；
    URL 仅保留 `tz` / `device_id`；变更只重取数据，
@@ -75,7 +76,10 @@
    来源/模型图标走 `components/dashboard/source-icon.tsx`：`public/brand-logos/`（MIT 资产，上游
    TokenTracker 33 个 + juejin-usage 补 workbuddy）优先，source 全称映射 + 模型名
    前缀映射（deepseek/kimi/gemini/grok/mimo/gpt/composer/claude），无映射回退确定性
-   色块；新增品牌 = 放 logo 文件 + 在 `SOURCE_LOGOS` 登记。
+   色块；新增品牌 = 放 logo 文件 + 在 `SOURCE_LOGOS` 登记。暗色变体：深色主题下
+   看不清的深色标（如黑底 ChatGPT 形状的 codex 新标），放同扩展名的
+   `<name>-dark.<ext>`（如 `codex-dark.svg`）并把浅色文件名加进 `sources.ts` 的
+   `DARK_LOGO_FILES`，渲染层自动叠双图按 `.dark` 切换；未登记的 `-dark` 文件不生效。
 5. **活跃热力图**（独占一行，置于总 Tokens 头卡之下，`components/dashboard/heatmap-card.tsx`）：
    近 52 周 Mon-start 满宽网格（窄屏裁周、宽屏撑满格子，`ResizeObserver` 自适应）；
    月份标尺在上、周几单字标尺（一~日 / M~S）在左；右上「全部平台」多选筛选
@@ -115,7 +119,9 @@
   控件形态与仪表盘一致）、设备、来源、项目
   搜索（`q`）；设备/来源选项来自响应的 `facets`；设备/来源/搜索与分页偏移（`offset`）
   写入 URL，时间范围仅存组件内状态（2026-10-26 操作者裁定：不写入 URL、加载不回显，
-  首帧清理旧 `range` / `from` / `to` 参数）；默认近 30 天、全部设备、全部来源。范围含
+  首帧清理旧 `range` / `from` / `to` 参数）；默认近 30 天、全部设备、全部来源；分页
+  默认 20/页，可选 10 / 20 / 50 / 100（`page_size` 入 URL，切页大小保持当前页）。
+  范围含
   今天（`to` 为明日 00:00 本地），按浏览器本地时区换算为 ISO 瞬时，服务端窗口为
   `[from, to)`。
 - 汇总卡：会话数、总 Token、成本、平均时长（`totals.duration_ms / totals.sessions`，
@@ -150,6 +156,7 @@
 | 行 | 控件 | 选项 / 行为 |
 |---|---|---|
 | 主题 | `ToggleButtonGroup`（Sun / Moon / Display） | 浅色 / 深色 / 跟随系统；next-themes，默认 system |
+| 字体 | `ToggleButtonGroup` | Maple（默认，内置等宽中文字体）/ 系统字体；写 `preferences.font`（zustand persist），`Providers` 内同步组件把偏好映射到 `<html data-font>`，globals.css 按属性切换 `--font-sans`/`--font-mono` |
 | 语言 | `Select` | 跟随系统 / 中文 / English；`system` 行内提示当前解析结果；写 locale cookie |
 | 货币 | `Select` | USD / EUR / GBP / CNY / JPY / HKD；下方 `Description` 显示 `1 USD = 6.6849 CNY`（非 USD）与“参考汇率 · as_of” |
 | Token 显示 | `ToggleButtonGroup` | 紧凑 / 完整 |

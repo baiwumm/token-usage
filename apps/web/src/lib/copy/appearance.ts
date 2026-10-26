@@ -15,6 +15,10 @@ export interface AppearanceCopy {
   languageZh: string;
   languageEn: string;
   languageSystemCurrent: string;
+  fontLabel: string;
+  fontDescription: string;
+  fontMaple: string;
+  fontSystem: string;
   currencyLabel: string;
   currencyDescription: string;
   currencyRate: string;
@@ -57,6 +61,11 @@ export const APPEARANCE_COPY: Record<"zh" | "en", AppearanceCopy> = {
     languageZh: "简体中文",
     languageEn: "English",
     languageSystemCurrent: "跟随系统（当前：{locale}）",
+    fontLabel: "字体",
+    fontDescription:
+      "Maple 为内置中英文等宽字体；系统字体跟随操作系统设置。仅本浏览器生效。",
+    fontMaple: "Maple",
+    fontSystem: "系统字体",
     currencyLabel: "货币",
     currencyDescription: "仅改变显示，存储与接口始终使用 USD。",
     currencyRate: "1 USD = {rate} {currency}",
@@ -101,6 +110,11 @@ export const APPEARANCE_COPY: Record<"zh" | "en", AppearanceCopy> = {
     languageZh: "简体中文",
     languageEn: "English",
     languageSystemCurrent: "Follow system (current: {locale})",
+    fontLabel: "Font",
+    fontDescription:
+      "Maple is the built-in mono CJK font; system font follows your OS. This browser only.",
+    fontMaple: "Maple",
+    fontSystem: "System font",
     currencyLabel: "Currency",
     currencyDescription: "Display only — storage and the API always use USD.",
     currencyRate: "1 USD = {rate} {currency}",

@@ -12,7 +12,7 @@ export interface DashboardCopy {
   clearFilters: string;
   refresh: string;
   share: string;
-  ranges: Record<"7d" | "30d" | "90d" | "all" | "custom", string>;
+  ranges: Record<"today" | "7d" | "30d" | "90d" | "all" | "custom", string>;
   cards: {
     totalTokens: string;
     billableTokens: string;
@@ -63,6 +63,7 @@ export interface DashboardCopy {
     noModels: string;
     sourcesTitle: string;
     sourcesHint: string;
+    sourcesViewAll: string;
     resetHidden: string;
     devicesTitle: string;
     devicesHint: string;
@@ -154,6 +155,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     refresh: "刷新",
     share: "分享",
     ranges: {
+      today: "今天",
       "7d": "近 7 天",
       "30d": "近 30 天",
       "90d": "近 90 天",
@@ -211,6 +213,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       noModels: "该时间范围内没有模型数据。",
       sourcesTitle: "来源",
       sourcesHint: "随设备筛选收窄；占比按 Token。点击来源可隐藏/显示。",
+      sourcesViewAll: "查看全部（{count}）",
       resetHidden: "恢复显示全部来源",
       devicesTitle: "设备",
       devicesHint: "点击设备可只看该设备的数据。",
@@ -301,6 +304,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     refresh: "Refresh",
     share: "Share",
     ranges: {
+      today: "Today",
       "7d": "Last 7 days",
       "30d": "Last 30 days",
       "90d": "Last 90 days",
@@ -360,6 +364,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       sourcesTitle: "Sources",
       sourcesHint:
         "Narrowed by the device filter; share by tokens. Click a source to hide/show it.",
+      sourcesViewAll: "View all ({count})",
       resetHidden: "Show all sources",
       devicesTitle: "Devices",
       devicesHint: "Select a device to filter the dashboard.",

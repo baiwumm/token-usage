@@ -23,7 +23,15 @@ import {
   ListUl,
   Wallet,
 } from "@gravity-ui/icons";
-import { Button, Card, Chip, Meter, Tooltip, Typography } from "@heroui/react";
+import {
+  Button,
+  Card,
+  Chip,
+  Meter,
+  Modal,
+  Tooltip,
+  Typography,
+} from "@heroui/react";
 import { useMemo, useState } from "react";
 
 import { DonutChart, seriesColor, Sparkline } from "./mini-charts";
@@ -32,6 +40,7 @@ import { canonicalSource, sourceDisplayLabel } from "./sources";
 
 import { FlowNumber } from "@/components/flow-number";
 import { formatMessage } from "@/lib/copy/message";
+import { useLocale } from "@/lib/copy/locale";
 import { useFormat } from "@/lib/format/format";
 
 const CARD_ICONS = {
@@ -165,7 +174,7 @@ export function TotalTokensHero({
               ))}
             </div>
             <div className="grid w-full grid-cols-2 gap-2 pt-2 sm:grid-cols-4 lg:grid-cols-6">
-              <div className="border-border/60 flex flex-col gap-1 rounded-xl border p-3">
+              <div className="border-border/60 flex flex-col gap-1 rounded-3xl border p-3">
                 <span className="text-muted flex items-center gap-1.5 text-xs font-medium">
                   <Layers
                     aria-hidden="true"
@@ -185,7 +194,7 @@ export function TotalTokensHero({
               {sources.map((source, index) => (
                 <div
                   key={source.id}
-                  className="border-border/60 flex flex-col gap-1 rounded-xl border p-3"
+                  className="border-border/60 flex flex-col gap-1 rounded-3xl border p-3"
                 >
                   <span className="text-muted flex min-w-0 items-center gap-1.5 text-xs font-medium">
                     <span
@@ -471,9 +480,12 @@ export function SourcePanel({
   copy: DashboardCopy;
 }) {
   const { formatTokens, formatCost, formatPercent } = useFormat();
+  const [locale] = useLocale();
   // Click-to-toggle distribution (juejin 工具分布 style): hidden canonical
-  // sources drop out of the donut and the share denominator recomputes.
+  // sources drop out of the donut, the share denominator recomputes, and the
+  // full list (beyond the first five rows) opens in a modal.
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
+  const [allOpen, setAllOpen] = useState(false);
 
   const rows = useMemo(() => {
     const byCanonical = new Map<
@@ -517,6 +529,43 @@ export function SourcePanel({
     });
   };
 
+  const renderRows = (list: typeof rows) => (
+    <div className="flex flex-col gap-1.5">
+      {list.map((row, index) => {
+        const isHidden = hidden.has(row.id);
+        const share =
+          visibleTotal > 0 && !isHidden ? row.totalTokens / visibleTotal : 0;
+
+        return (
+          <button
+            key={row.id}
+            aria-pressed={!isHidden}
+            className={`flex w-full items-center justify-between gap-2 rounded-lg px-1 py-0.5 text-sm transition-opacity ${
+              isHidden ? "text-muted opacity-40" : "hover:bg-default/60"
+            }`}
+            type="button"
+            onClick={() => toggle(row.id)}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ background: seriesColor(index) }}
+              />
+              <span className={`truncate ${isHidden ? "line-through" : ""}`}>
+                {row.label}
+              </span>
+            </span>
+            <span className="text-foreground/60 tabular-nums text-xs">
+              {formatTokens(row.totalTokens)} ·{" "}
+              {isHidden ? "—" : formatPercent(share)}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
     <Card className="p-6">
       <Card.Header>
@@ -539,37 +588,19 @@ export function SourcePanel({
               }))}
             />
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              {rows.map((row, index) => {
-                const isHidden = hidden.has(row.id);
-                const share =
-                  visibleTotal > 0 && !isHidden
-                    ? row.totalTokens / visibleTotal
-                    : 0;
-
-                return (
-                  <button
-                    key={row.id}
-                    aria-pressed={!isHidden}
-                    className={`flex w-full items-center justify-between gap-2 rounded-lg px-1 py-0.5 text-sm transition-opacity ${
-                      isHidden ? "opacity-40" : "hover:bg-default/60"
-                    }`}
-                    type="button"
-                    onClick={() => toggle(row.id)}
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span
-                        aria-hidden="true"
-                        className="size-2.5 shrink-0 rounded-full"
-                        style={{ background: seriesColor(index) }}
-                      />
-                      <span className="truncate">{row.label}</span>
-                    </span>
-                    <span className="text-foreground/60 tabular-nums text-xs">
-                      {formatTokens(row.totalTokens)} · {formatPercent(share)}
-                    </span>
-                  </button>
-                );
-              })}
+              {renderRows(rows.slice(0, 5))}
+              {rows.length > 5 ? (
+                <Button
+                  className="mt-1 w-full"
+                  size="sm"
+                  variant="ghost"
+                  onPress={() => setAllOpen(true)}
+                >
+                  {formatMessage(copy.panels.sourcesViewAll, locale, {
+                    count: rows.length,
+                  })}
+                </Button>
+              ) : null}
               {hidden.size > 0 ? (
                 <button
                   className="text-muted self-start text-xs hover:text-foreground"
@@ -580,6 +611,23 @@ export function SourcePanel({
                 </button>
               ) : null}
             </div>
+            <Modal>
+              <Modal.Backdrop isOpen={allOpen} onOpenChange={setAllOpen}>
+                <Modal.Container>
+                  <Modal.Dialog>
+                    <Modal.CloseTrigger aria-label={copy.cost.close} />
+                    <Modal.Header>
+                      <Modal.Heading>{copy.panels.sourcesTitle}</Modal.Heading>
+                    </Modal.Header>
+                    <Modal.Body>
+                      <div className="max-h-[60vh] overflow-y-auto">
+                        {renderRows(rows)}
+                      </div>
+                    </Modal.Body>
+                  </Modal.Dialog>
+                </Modal.Container>
+              </Modal.Backdrop>
+            </Modal>
           </>
         )}
       </Card.Content>
@@ -636,7 +684,7 @@ export function DevicePanel({
               <Button
                 key={device.device_id}
                 aria-pressed={selected}
-                className={`h-auto w-full justify-start rounded-xl px-3 py-2.5 text-start ${
+                className={`h-auto w-full justify-start rounded-3xl px-3 py-2.5 text-start ${
                   selected ? "bg-default" : ""
                 }`}
                 variant="ghost"

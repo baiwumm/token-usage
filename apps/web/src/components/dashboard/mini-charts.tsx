@@ -105,7 +105,7 @@ export function DonutChart({
               const datum = payload[0]?.payload;
 
               return (
-                <div className="bg-surface text-foreground border-border rounded-xl border p-2 text-xs shadow-sm">
+                <div className="bg-surface text-foreground border-border rounded-3xl border p-2 text-xs shadow-sm">
                   {datum?.name}: {formatTokens(datum?.value ?? 0)}
                 </div>
               );

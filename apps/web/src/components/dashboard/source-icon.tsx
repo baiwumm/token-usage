@@ -7,7 +7,12 @@
 
 import { useMemo } from "react";
 
-import { logoNeedsBackdrop, modelLogoFile, sourceLogoFile } from "./sources";
+import {
+  darkLogoFile,
+  logoNeedsBackdrop,
+  modelLogoFile,
+  sourceLogoFile,
+} from "./sources";
 
 const TILE_COLORS = [
   "#2563eb",
@@ -38,15 +43,42 @@ export function SourceIcon({
   size?: number;
 }) {
   // Models try vendor prefixes first (deepseek-v4-flash → DeepSeek), sources
-  // resolve through the canonical map; both fall back to the tile.
+  // resolve through the canonical map; both fall back to the tile. A
+  // registered dark twin swaps in via .dark stacking both images.
   const logo = useMemo(
     () => modelLogoFile(label) ?? sourceLogoFile(label),
     [label],
   );
+  const darkLogo = useMemo(() => (logo ? darkLogoFile(logo) : null), [logo]);
   const initial = (label.trim() || "?").charAt(0).toUpperCase();
 
   if (logo) {
-    const img = (
+    const img = darkLogo ? (
+      <span
+        aria-hidden="true"
+        className="grid shrink-0 select-none"
+        style={{ height: size, width: size }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          alt=""
+          className="col-start-1 row-start-1 object-contain dark:hidden"
+          height={size}
+          src={logo}
+          style={{ height: size, width: size }}
+          width={size}
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          alt=""
+          className="col-start-1 row-start-1 hidden object-contain dark:block"
+          height={size}
+          src={darkLogo}
+          style={{ height: size, width: size }}
+          width={size}
+        />
+      </span>
+    ) : (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         alt=""

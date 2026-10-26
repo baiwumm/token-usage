@@ -70,6 +70,16 @@ describe("rangeForPreset", () => {
     expect(range.toIso).toBe("2026-10-24T16:00:00.000Z");
   });
 
+  it("today is the single zone-local day", () => {
+    const now = new Date("2026-10-24T10:00:00Z");
+    const range = rangeForPreset("today", "Asia/Shanghai", now);
+
+    expect(range.fromDay).toBe("2026-10-24");
+    expect(range.toDay).toBe("2026-10-24");
+    expect(range.fromIso).toBe("2026-10-23T16:00:00.000Z");
+    expect(range.toIso).toBe("2026-10-24T16:00:00.000Z");
+  });
+
   it("all reaches back to the sentinel start (server clamps the series)", () => {
     const now = new Date("2026-10-24T10:00:00Z");
     const range = rangeForPreset("all", "UTC", now);

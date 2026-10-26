@@ -6,7 +6,6 @@
 import { buttonVariants } from "@heroui/styles";
 import {
   Display,
-  Globe,
   LogoGithub,
   Moon,
   Plus,
@@ -34,6 +33,30 @@ import { NAV_COPY } from "@/lib/copy/nav";
 import { useLocalePreference, type LocalePreference } from "@/lib/copy/locale";
 import { THEME_COLOR_PALETTES, useThemeColor } from "@/lib/ui/theme-color";
 
+// Lucide "languages" glyph (ISC license, operator pick) — the gravity-ui set
+// has no equivalent. Stroke attributes mirror @gravity-ui/icons rendering.
+function LanguagesIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path d="m5 8 6 6" />
+      <path d="m4 14 6-6 2-3" />
+      <path d="M2 5h12" />
+      <path d="M7 2h1" />
+      <path d="m22 22-5-10-5 10" />
+      <path d="M14 18h6" />
+    </svg>
+  );
+}
+
 function GitHubLink() {
   return (
     <Link
@@ -43,7 +66,7 @@ function GitHubLink() {
       rel="noopener noreferrer"
       target="_blank"
     >
-      <LogoGithub className="size-4" />
+      <LogoGithub className="text-muted size-4" />
     </Link>
   );
 }
@@ -62,7 +85,7 @@ export function LanguageDropdown() {
         size="sm"
         variant="tertiary"
       >
-        <Globe className="text-muted" />
+        <LanguagesIcon className="text-muted size-4" />
       </Button>
       <Dropdown.Popover className="min-w-56 scrollbar-none">
         <Popover.Arrow />

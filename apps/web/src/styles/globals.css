@@ -40,6 +40,21 @@
 	--color-chart-8: #7e8797; /* gray */
 }
 
+/*
+ * System-font preference (设置-外观, preferences.font = "system"): swaps the
+ * Maple stacks for OS fonts. Unlayered, so it beats the @theme vars emitted
+ * in Tailwind's theme layer regardless of source order.
+ */
+[data-font="system"] {
+	--font-sans:
+		ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+		"Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
+		"Microsoft YaHei", sans-serif;
+	--font-mono:
+		ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+		monospace;
+}
+
 	/*
 	 * Card hierarchy: HeroUI ships title/description both at text-sm (only
 	 * weight + color differ) — too flat. Title steps up to base/semibold so the

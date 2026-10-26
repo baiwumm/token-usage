@@ -120,8 +120,17 @@ export const useFormatPreferenceStore = create<FormatPreferenceState>()(
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => legacyMigratingStorage),
-      version: 1,
+      version: 2,
       partialize: (state) => ({ preferences: state.preferences }),
+      // v2 adds preferences.font; re-sanitize so payloads persisted by v1
+      // (without the field) fall back to the defaults instead of undefined.
+      migrate: (persisted) => {
+        const state = persisted as Partial<PersistedFormatState> | undefined;
+
+        return {
+          preferences: sanitizePreferences(state?.preferences ?? {}),
+        } satisfies PersistedFormatState;
+      },
     },
   ),
 );

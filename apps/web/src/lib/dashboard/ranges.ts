@@ -6,13 +6,22 @@
 // the only tz source (date-fns alone cannot convert zones; date-fns-tz is not
 // in the dependency budget).
 
-export type RangePreset = "7d" | "30d" | "90d" | "all";
+export type RangePreset = "today" | "7d" | "30d" | "90d" | "all";
 
 export type RangeKey = RangePreset | "custom";
 
-export const RANGE_PRESETS: RangePreset[] = ["7d", "30d", "90d", "all"];
+export const RANGE_PRESETS: RangePreset[] = [
+  "today",
+  "7d",
+  "30d",
+  "90d",
+  "all",
+];
 
-export const PRESET_DAYS: Record<Exclude<RangePreset, "all">, number> = {
+export const PRESET_DAYS: Record<
+  Exclude<RangePreset, "all" | "today">,
+  number
+> = {
   "7d": 7,
   "30d": 30,
   "90d": 90,
@@ -93,9 +102,10 @@ export interface DashboardRange {
 }
 
 /**
- * Window for a preset ending TODAY in the zone. 7d = today + the six days
- * before it; the `to` bound is the exclusive local midnight after today.
- * "all" reaches back to ALL_RANGE_START (the server clamps the series).
+ * Window for a filter-bar selection ending TODAY in the zone. `today` is the
+ * single-day window; 7d = today + the six days before it; the `to` bound is
+ * the exclusive local midnight after today. "all" reaches back to
+ * ALL_RANGE_START (the server clamps the series).
  */
 export function rangeForPreset(
   preset: RangePreset,
@@ -106,7 +116,9 @@ export function rangeForPreset(
   const fromDay =
     preset === "all"
       ? ALL_RANGE_START
-      : addDays(toDay, -(PRESET_DAYS[preset] - 1));
+      : preset === "today"
+        ? toDay
+        : addDays(toDay, -(PRESET_DAYS[preset] - 1));
 
   return {
     fromIso: new Date(startOfDayUtcMs(fromDay, timeZone)).toISOString(),

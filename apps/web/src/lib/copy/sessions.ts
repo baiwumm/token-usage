@@ -34,6 +34,8 @@ export interface SessionsCopy {
     detail: string;
     noProject: string;
     pageSummary: string;
+    pageSize: string;
+    pageSizeItem: string;
     previous: string;
     next: string;
     moreModels: string;
@@ -108,6 +110,8 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
       detail: "详情",
       noProject: "未标注",
       pageSummary: "{start}–{end} / {total}",
+      pageSize: "每页条数",
+      pageSizeItem: "每页 {count} 条",
       previous: "上一页",
       next: "下一页",
       moreModels: "+{count}",
@@ -181,6 +185,8 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
       detail: "Details",
       noProject: "Unlabeled",
       pageSummary: "{start}–{end} / {total}",
+      pageSize: "Rows per page",
+      pageSizeItem: "{count} / page",
       previous: "Previous",
       next: "Next",
       moreModels: "+{count}",

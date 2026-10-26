@@ -24,6 +24,8 @@ import {
   Spinner,
   Tabs,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
   Popover,
 } from "@heroui/react";
@@ -681,22 +683,34 @@ export function DashboardClient() {
               </DateField.Suffix>
             </DateField.Group>
             <DateRangePicker.Popover>
-              <div className="flex flex-wrap gap-1 pb-2">
+              <ToggleButtonGroup
+                disallowEmptySelection
+                aria-label={copy.rangeLabel}
+                className="flex-wrap pb-2"
+                selectedKeys={[filters.range]}
+                size="sm"
+                onSelectionChange={(keys) => {
+                  const key = [...keys][0];
+
+                  if (typeof key !== "string" || key === filters.range) return;
+
+                  applyFilters({
+                    range: key as RangeKey,
+                    from: "",
+                    to: "",
+                  });
+                  setRangePickerOpen(false);
+                }}
+              >
                 {RANGE_PRESETS.map((preset) => (
-                  <Button
-                    key={preset}
-                    aria-pressed={filters.range === preset}
-                    size="sm"
-                    variant={filters.range === preset ? "secondary" : "ghost"}
-                    onPress={() => {
-                      applyFilters({ range: preset, from: "", to: "" });
-                      setRangePickerOpen(false);
-                    }}
-                  >
+                  <ToggleButton key={preset} className="min-w-14" id={preset}>
+                    {preset !== RANGE_PRESETS[0] ? (
+                      <ToggleButtonGroup.Separator />
+                    ) : null}
                     {copy.ranges[preset]}
-                  </Button>
+                  </ToggleButton>
                 ))}
-              </div>
+              </ToggleButtonGroup>
               <RangeCalendar aria-label={copy.rangeLabel}>
                 <RangeCalendar.Header>
                   <RangeCalendar.YearPickerTrigger>
@@ -938,12 +952,21 @@ export function DashboardClient() {
                     }
                   >
                     <Tabs.ListContainer>
-                      <Tabs.List aria-label={copy.charts.trendTitle}>
-                        <Tabs.Tab id="daily">
+                      <Tabs.List
+                        aria-label={copy.charts.trendTitle}
+                        className="p-0.5"
+                      >
+                        <Tabs.Tab
+                          className="h-7 min-w-12 px-2.5 text-xs"
+                          id="daily"
+                        >
                           {copy.charts.daily}
                           <Tabs.Indicator />
                         </Tabs.Tab>
-                        <Tabs.Tab id="monthly">
+                        <Tabs.Tab
+                          className="h-7 min-w-12 px-2.5 text-xs"
+                          id="monthly"
+                        >
                           {copy.charts.monthly}
                           <Tabs.Indicator />
                         </Tabs.Tab>
@@ -957,12 +980,21 @@ export function DashboardClient() {
                     }
                   >
                     <Tabs.ListContainer>
-                      <Tabs.List aria-label={copy.charts.trendTitle}>
-                        <Tabs.Tab id="tokens">
+                      <Tabs.List
+                        aria-label={copy.charts.trendTitle}
+                        className="p-0.5"
+                      >
+                        <Tabs.Tab
+                          className="h-7 min-w-12 px-2.5 text-xs"
+                          id="tokens"
+                        >
                           {copy.charts.tokens}
                           <Tabs.Indicator />
                         </Tabs.Tab>
-                        <Tabs.Tab id="cost">
+                        <Tabs.Tab
+                          className="h-7 min-w-12 px-2.5 text-xs"
+                          id="cost"
+                        >
                           {copy.charts.cost}
                           <Tabs.Indicator />
                         </Tabs.Tab>
@@ -1108,16 +1140,28 @@ export function DashboardClient() {
                     }
                   >
                     <Tabs.ListContainer>
-                      <Tabs.List aria-label={copy.detail.title}>
-                        <Tabs.Tab id="daily">
+                      <Tabs.List
+                        aria-label={copy.detail.title}
+                        className="p-0.5"
+                      >
+                        <Tabs.Tab
+                          className="h-7 min-w-12 px-2.5 text-xs"
+                          id="daily"
+                        >
                           {copy.detail.daily}
                           <Tabs.Indicator />
                         </Tabs.Tab>
-                        <Tabs.Tab id="hourly">
+                        <Tabs.Tab
+                          className="h-7 min-w-12 px-2.5 text-xs"
+                          id="hourly"
+                        >
                           {copy.detail.hourly}
                           <Tabs.Indicator />
                         </Tabs.Tab>
-                        <Tabs.Tab id="monthly">
+                        <Tabs.Tab
+                          className="h-7 min-w-12 px-2.5 text-xs"
+                          id="monthly"
+                        >
                           {copy.detail.monthly}
                           <Tabs.Indicator />
                         </Tabs.Tab>

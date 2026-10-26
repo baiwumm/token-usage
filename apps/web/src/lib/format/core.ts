@@ -9,12 +9,14 @@ import { intlLocaleFor, type Locale } from "@/lib/copy/locale-config";
 export type TokenDisplay = "compact" | "full";
 export type TokenUnit = "kmb" | "wan";
 export type TokenGrouping = 3 | 4;
+export type FontPreference = "maple" | "system";
 
 export interface FormatPreferences {
   currency: string;
   tokenDisplay: TokenDisplay;
   tokenUnit: TokenUnit;
   tokenGrouping: TokenGrouping;
+  font: FontPreference;
 }
 
 export const DEFAULT_FORMAT_PREFERENCES: FormatPreferences = {
@@ -22,6 +24,7 @@ export const DEFAULT_FORMAT_PREFERENCES: FormatPreferences = {
   tokenDisplay: "compact",
   tokenUnit: "kmb",
   tokenGrouping: 3,
+  font: "maple",
 };
 
 export const FORMAT_STORAGE_KEYS = {
@@ -114,8 +117,9 @@ export function sanitizePreferences(
       ? input.tokenUnit
       : DEFAULT_FORMAT_PREFERENCES.tokenUnit;
   const tokenGrouping = input.tokenGrouping === 4 ? 4 : 3;
+  const font = input.font === "system" ? "system" : "maple";
 
-  return { currency, tokenDisplay, tokenUnit, tokenGrouping };
+  return { currency, tokenDisplay, tokenUnit, tokenGrouping, font };
 }
 
 /** Merge a TOKEN_USAGE_FX_RATES JSON override over the built-in snapshot. */

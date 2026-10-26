@@ -16,7 +16,6 @@ import {
   DateField,
   DateRangePicker,
   Input,
-  Label,
   ListBox,
   Modal,
   Pagination,
@@ -62,7 +61,10 @@ import { useFormat } from "@/lib/format/format";
 import { FlowNumber } from "@/components/flow-number";
 import { SourceIcon } from "@/components/dashboard/source-icon";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+const DEFAULT_PAGE_SIZE = 20;
+
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 const SEARCH_DEBOUNCE_MS = 350;
 const UPGRADE_URL = "https://github.com/baiwumm/token-usage#readme";
 
@@ -81,14 +83,16 @@ interface Filters {
   source: string;
   q: string;
   offset: number;
+  pageSize: number;
 }
 
 // Range filters never round-trip the URL (operator call 2026-10-26, same as
 // the dashboard): a stale ?range=…&from=… link must not pin the list to old
-// dates, so only device/source/search/offset persist and every load starts
+// dates, so only device/source/search/paging persist and every load starts
 // at the default window.
 function parseFilters(params: { get(name: string): string | null }): Filters {
   const rawOffset = Number(params.get("offset"));
+  const rawPageSize = Number(params.get("page_size"));
 
   return {
     range: "30d",
@@ -99,6 +103,9 @@ function parseFilters(params: { get(name: string): string | null }): Filters {
     q: params.get("q") ?? "",
     offset:
       Number.isFinite(rawOffset) && rawOffset > 0 ? Math.trunc(rawOffset) : 0,
+    pageSize: (PAGE_SIZE_OPTIONS as readonly number[]).includes(rawPageSize)
+      ? rawPageSize
+      : DEFAULT_PAGE_SIZE,
   };
 }
 
@@ -109,6 +116,9 @@ function serializeFilters(filters: Filters): string {
   if (filters.source) query.set("source", filters.source);
   if (filters.q) query.set("q", filters.q);
   if (filters.offset > 0) query.set("offset", String(filters.offset));
+  if (filters.pageSize !== DEFAULT_PAGE_SIZE) {
+    query.set("page_size", String(filters.pageSize));
+  }
 
   return query.toString();
 }
@@ -399,7 +409,7 @@ function SessionDetailModal({
                     )}
                   </div>
 
-                  <div className="bg-default/40 flex flex-col gap-1 rounded-xl px-3 py-2">
+                  <div className="bg-default/40 flex flex-col gap-1 rounded-3xl px-3 py-2">
                     <Typography color="muted" type="body-xs">
                       {copy.detail.privacy}
                     </Typography>
@@ -571,7 +581,7 @@ export function SessionsClient() {
           deviceId: filters.deviceId || null,
           source: filters.source || null,
           q: filters.q || null,
-          limit: PAGE_SIZE,
+          limit: filters.pageSize,
           offset: filters.offset,
         });
 
@@ -606,6 +616,7 @@ export function SessionsClient() {
     [
       filters.deviceId,
       filters.offset,
+      filters.pageSize,
       filters.q,
       filters.source,
       range.fromIso,
@@ -631,9 +642,11 @@ export function SessionsClient() {
       return;
     }
     if (total > 0 && offset >= total) {
-      applyFilters({ offset: Math.floor((total - 1) / PAGE_SIZE) * PAGE_SIZE });
+      applyFilters({
+        offset: Math.floor((total - 1) / filters.pageSize) * filters.pageSize,
+      });
     }
-  }, [state, applyFilters]);
+  }, [state, applyFilters, filters.pageSize]);
 
   const retry = useCallback(() => {
     if (accessToken) void load(accessToken);
@@ -690,14 +703,16 @@ export function SessionsClient() {
 
   const payload = state.data;
   const totalPages =
-    payload && payload.total > 0 ? Math.ceil(payload.total / PAGE_SIZE) : 1;
+    payload && payload.total > 0
+      ? Math.ceil(payload.total / filters.pageSize)
+      : 1;
   const currentPage = Math.min(
     totalPages,
-    Math.floor((payload?.offset ?? 0) / PAGE_SIZE) + 1,
+    Math.floor((payload?.offset ?? 0) / filters.pageSize) + 1,
   );
   const pageStart = payload && payload.total > 0 ? payload.offset + 1 : 0;
   const pageEnd = payload
-    ? Math.min(payload.offset + PAGE_SIZE, payload.total)
+    ? Math.min(payload.offset + filters.pageSize, payload.total)
     : 0;
 
   return (
@@ -863,19 +878,22 @@ export function SessionsClient() {
           </Select>
         </label>
 
-        <TextField
-          className="w-52"
-          value={qInput}
-          onChange={(value) => setQInput(value)}
-        >
-          <Label>{copy.projectLabel}</Label>
-          <Input
-            aria-label={copy.projectLabel}
-            placeholder={copy.projectPlaceholder}
-            type="search"
-            variant="secondary"
-          />
-        </TextField>
+        <label className="flex flex-col gap-1">
+          <Typography color="muted" type="body-xs">
+            {copy.projectLabel}
+          </Typography>
+          <TextField
+            className="w-52"
+            value={qInput}
+            onChange={(value) => setQInput(value)}
+          >
+            <Input
+              aria-label={copy.projectLabel}
+              placeholder={copy.projectPlaceholder}
+              type="search"
+            />
+          </TextField>
+        </label>
 
         {hasNarrowingFilters ? (
           <Button size="sm" variant="ghost" onPress={clearFilters}>
@@ -1089,67 +1107,112 @@ export function SessionsClient() {
                     ))}
                   </div>
 
-                  <Pagination className="w-full" size="sm">
-                    <Pagination.Summary>
-                      {formatMessage(copy.list.pageSummary, locale, {
-                        start: pageStart,
-                        end: pageEnd,
-                        total: payload.total,
-                      })}
-                    </Pagination.Summary>
-                    <Pagination.Content>
-                      <Pagination.Item>
-                        <Pagination.Previous
-                          isDisabled={currentPage === 1}
-                          onPress={() =>
-                            applyFilters({
-                              offset: Math.max(0, currentPage - 2) * PAGE_SIZE,
-                            })
-                          }
-                        >
-                          <Pagination.PreviousIcon />
-                          <span className="hidden sm:inline">
-                            {copy.list.previous}
-                          </span>
-                        </Pagination.Previous>
-                      </Pagination.Item>
-                      {pageItems(currentPage, totalPages).map((item, index) =>
-                        item === "ellipsis" ? (
-                          <Pagination.Item key={`ellipsis-${index}`}>
-                            <Pagination.Ellipsis />
-                          </Pagination.Item>
-                        ) : (
-                          <Pagination.Item key={item}>
-                            <Pagination.Link
-                              isActive={item === currentPage}
-                              onPress={() =>
-                                applyFilters({ offset: (item - 1) * PAGE_SIZE })
-                              }
+                  <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                    <Pagination className="min-w-0 flex-1" size="sm">
+                      <Pagination.Summary>
+                        {formatMessage(copy.list.pageSummary, locale, {
+                          start: pageStart,
+                          end: pageEnd,
+                          total: payload.total,
+                        })}
+                      </Pagination.Summary>
+                      <Pagination.Content>
+                        <Pagination.Item>
+                          <Pagination.Previous
+                            isDisabled={currentPage === 1}
+                            onPress={() =>
+                              applyFilters({
+                                offset:
+                                  Math.max(0, currentPage - 2) *
+                                  filters.pageSize,
+                              })
+                            }
+                          >
+                            <Pagination.PreviousIcon />
+                            <span className="hidden sm:inline">
+                              {copy.list.previous}
+                            </span>
+                          </Pagination.Previous>
+                        </Pagination.Item>
+                        {pageItems(currentPage, totalPages).map(
+                          (item, index) =>
+                            item === "ellipsis" ? (
+                              <Pagination.Item key={`ellipsis-${index}`}>
+                                <Pagination.Ellipsis />
+                              </Pagination.Item>
+                            ) : (
+                              <Pagination.Item key={item}>
+                                <Pagination.Link
+                                  isActive={item === currentPage}
+                                  onPress={() =>
+                                    applyFilters({
+                                      offset: (item - 1) * filters.pageSize,
+                                    })
+                                  }
+                                >
+                                  {item}
+                                </Pagination.Link>
+                              </Pagination.Item>
+                            ),
+                        )}
+                        <Pagination.Item>
+                          <Pagination.Next
+                            isDisabled={currentPage === totalPages}
+                            onPress={() =>
+                              applyFilters({
+                                offset:
+                                  (Math.min(totalPages, currentPage + 1) - 1) *
+                                  filters.pageSize,
+                              })
+                            }
+                          >
+                            <span className="hidden sm:inline">
+                              {copy.list.next}
+                            </span>
+                            <Pagination.NextIcon />
+                          </Pagination.Next>
+                        </Pagination.Item>
+                      </Pagination.Content>
+                    </Pagination>
+                    <Select
+                      aria-label={copy.list.pageSize}
+                      className="w-32"
+                      value={String(filters.pageSize)}
+                      onChange={(key) => {
+                        if (key == null) return;
+                        const next = Number(key) as PageSize;
+
+                        // Keep the current page anchored when the size
+                        // changes; an explicit offset skips the auto-reset.
+                        const page = Math.floor(
+                          filters.offset / filters.pageSize,
+                        );
+
+                        applyFilters({ pageSize: next, offset: page * next });
+                      }}
+                    >
+                      <Select.Trigger>
+                        <Select.Value />
+                        <Select.Indicator />
+                      </Select.Trigger>
+                      <Select.Popover>
+                        <Popover.Arrow />
+                        <ListBox>
+                          {PAGE_SIZE_OPTIONS.map((option) => (
+                            <ListBox.Item
+                              key={option}
+                              id={String(option)}
+                              textValue={String(option)}
                             >
-                              {item}
-                            </Pagination.Link>
-                          </Pagination.Item>
-                        ),
-                      )}
-                      <Pagination.Item>
-                        <Pagination.Next
-                          isDisabled={currentPage === totalPages}
-                          onPress={() =>
-                            applyFilters({
-                              offset:
-                                (Math.min(totalPages, currentPage + 1) - 1) *
-                                PAGE_SIZE,
-                            })
-                          }
-                        >
-                          <span className="hidden sm:inline">
-                            {copy.list.next}
-                          </span>
-                          <Pagination.NextIcon />
-                        </Pagination.Next>
-                      </Pagination.Item>
-                    </Pagination.Content>
-                  </Pagination>
+                              {formatMessage(copy.list.pageSizeItem, locale, {
+                                count: option,
+                              })}
+                            </ListBox.Item>
+                          ))}
+                        </ListBox>
+                      </Select.Popover>
+                    </Select>
+                  </div>
                 </>
               )}
             </Card.Content>

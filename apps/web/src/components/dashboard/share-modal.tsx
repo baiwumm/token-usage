@@ -48,7 +48,7 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   alt={copy.shareCard.title}
-                  className="max-h-[52vh] w-auto rounded-xl border shadow-sm"
+                  className="max-h-[52vh] w-auto rounded-3xl border shadow-sm"
                   src={dataUrl}
                 />
               ) : (
