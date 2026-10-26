@@ -2,6 +2,15 @@
 
 This project includes third-party assets and code. The following notices apply.
 
+## TokenTracker (upstream)
+
+The `tokenusage` CLI in this package is forked from
+[TokenTracker](https://github.com/xiufengsun/TokenTracker) (MIT License,
+Copyright (c) xiufengsun). Substantial portions of `src/` originate from the
+upstream repository and were then modified for the token-usage contract
+(`docs/cli-contract.md` in the repository root). The upstream MIT license text
+and copyright notice are preserved in this package's `LICENSE` file.
+
 ## RunCat menu bar cat frames
 
 The running-cat animation frames used by the macOS menu bar icon

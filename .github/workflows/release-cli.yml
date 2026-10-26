@@ -1,0 +1,140 @@
+name: Release CLI
+
+# packages/cli（npm: tokenusage-cli）发布流水线 — 机制对齐
+# theme-switch-animation 的 release.yml：tag 触发、npm Trusted Publishing
+# （OIDC 免 token）、tag 与 package.json 版本强校验、CHANGELOG 生成 GitHub Release。
+#
+# 版本策略：workspace 各包各管各的版本线，tag 用 <pkg>-v<semver> 隔离
+# （cli-v* / 未来 desktop-v*）。apps/web 不发 npm，自托管部署以 main 分支的
+# CI（ci.yml 的 pnpm verify）为准，不出 npm 版本号。契约文档「CLI 版本 ↔
+# 服务端版本配对演进」指的是兼容窗口语义（旧路径别名保旧客户端不坏），
+# 不是版本号同步——所以不需要各包联动 bump。
+#
+# 一次性前置（仅当包已存在于 npm 时需要）：
+#   npmjs.com → tokenusage-cli 包页 → Settings → Trusted Publisher →
+#   登记仓库 baiwumm/token-usage + workflow 文件名 release-cli.yml。
+#   全新包可直接由本 workflow 首发建立关联（OIDC claim 即凭证）。
+#
+# 日常发布（全部本地，之后交给 CI）：
+#   1. 改 packages/cli/package.json 的 version，并在 packages/cli/CHANGELOG.md
+#      顶部补一节该版本的说明
+#   2. git push（tag 必须落在 main 上——workflow 取自 tag 指向的 commit，
+#      在旧提交上打 tag 不会触发任何东西，且没有报错）
+#   3. git tag cli-v0.x.y && git push origin cli-v0.x.y   # 一推即全自动发包
+#
+# 与参考实现的差异：单包手动 version bump + 手写 CHANGELOG，不引入 changesets
+# （单维护者直推 main、各包版本互不联动，changesets 的版本生成价值有限；
+# 以后包多了需要联动 bump 再上，机制不冲突）。
+
+on:
+  push:
+    tags:
+      - 'cli-v*'
+
+permissions:
+  contents: write # 创建 GitHub Release
+  id-token: write # npm provenance（OIDC）
+
+concurrency:
+  group: release-cli-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify & Publish tokenusage-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # 下面要判 tag 是否落在 main 上，需要 origin/main 可达
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v5
+        # 版本取自根 package.json 的 packageManager 字段
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches version and sits on main
+        run: |
+          node -e "const p=require('./packages/cli/package.json');const t=process.env.GITHUB_REF_NAME.replace(/^cli-v/,'');if(p.version!==t){console.error('packages/cli version '+p.version+' != tag '+t);process.exit(1)}"
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "tag 不在 origin/main 上，拒绝发布（避免把没进主干的代码发出去）"; exit 1; }
+
+      - name: Verify (web lint/typecheck/build + CLI tests)
+        run: pnpm verify
+
+      - name: Ensure npm supports Trusted Publishing
+        # Trusted Publishing 要求 npm ≥ 11.5.1；setup-node 的 Node 24 自带 npm 10.x
+        run: npm install -g npm@^11.5.1
+
+      # 手动首发过的版本再推 tag 时跳过发布而不是撞 EPUBLISHCONFLICT——
+      # 后面的 gh release create 仍能把 GitHub Release 补上。
+      # npm view 查不存在的版本以非零码退出，误判方向安全：只会照常尝试发布并大声报错。
+      - name: Check whether this version is already on npm
+        id: npm_published
+        run: |
+          NAME=$(node -p "require('./packages/cli/package.json').name")
+          VERSION=$(node -p "require('./packages/cli/package.json').version")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$NAME@$VERSION 已存在于 npm，跳过 publish"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to npm (Trusted Publishing, no token)
+        if: steps.npm_published.outputs.exists == 'false'
+        run: npm publish --provenance --access public
+        working-directory: packages/cli
+
+      # Release 正文取 packages/cli/CHANGELOG.md 里本版本的那一段。
+      # 不用 --generate-notes：它靠合并的 PR 列表生成摘要，本仓库直推 main 无 PR，
+      # 结果只剩一行 compare 链接。取不到段落时退回自动生成，不让发布链路变红。
+      - name: Build release notes from CHANGELOG
+        id: notes
+        working-directory: packages/cli
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const v = process.env.GITHUB_REF_NAME.replace(/^cli-v/, "");
+            let lines = [];
+            try { lines = fs.readFileSync("CHANGELOG.md", "utf8").split(/\r?\n/); } catch {}
+            const start = lines.findIndex((l) => l.trim() === "## " + v);
+            let body = "";
+            if (start >= 0) {
+              let end = lines.length;
+              for (let i = start + 1; i < lines.length; i += 1) {
+                if (/^##\s/.test(lines[i])) { end = i; break; }
+              }
+              body = lines.slice(start, end).join("\n").trim();
+            }
+            if (body) {
+              fs.writeFileSync("/tmp/release-notes.md", body + "\n");
+              console.log("Release 正文取 CHANGELOG 的 " + v + " 段（" + body.split("\n").length + " 行）");
+            } else {
+              console.log("::notice::CHANGELOG 没有 " + v + " 段，退回 --generate-notes");
+            }
+          '
+          if [ -s /tmp/release-notes.md ]; then
+            echo "has_notes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_notes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        run: |
+          if [ "${{ steps.notes.outputs.has_notes }}" = "true" ]; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag --notes-file /tmp/release-notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
