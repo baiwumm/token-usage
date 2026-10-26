@@ -30,6 +30,7 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 | 任务 | 先读 |
 |------|------|
 | 改 CLI 契约层（`app/api/functions/token-usage-*`） | `docs/cli-contract.md` |
+| CLI 发版与 npm 发布 | `docs/cli-release.md` |
 | 改数据库、写迁移、迁移/切换/退役操作 | `docs/rewrite-plan.md` §3、§6–7 |
 | 写任何 UI | `docs/ui-spec.md` |
 | 部署与回滚 | `docs/launch-runbook.md` |
