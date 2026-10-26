@@ -15,12 +15,15 @@ import {
   Card,
   DateField,
   DateRangePicker,
+  Input,
+  Label,
   ListBox,
   RangeCalendar,
   Select,
   Skeleton,
   Spinner,
   Tabs,
+  TextField,
   Typography,
   Popover,
 } from "@heroui/react";
@@ -71,6 +74,7 @@ import {
   ALL_RANGE_START,
   browserTimezone,
   dayKeyInTz,
+  isValidDayKey,
   rangeForSelection,
   RANGE_PRESETS,
   TIMEZONE_OPTIONS,
@@ -100,21 +104,14 @@ function isUnauthorized(error: unknown): boolean {
   return error instanceof DashboardApiError && error.status === 401;
 }
 
+// Range filters never round-trip the URL (operator call 2026-10-26): a stale
+// ?range=custom&from=… bookmark must not pin the dashboard to old dates, so
+// only tz / device_id persist and every load starts at the default window.
 function parseFilters(params: URLSearchParams): Filters {
-  const rawRange = params.get("range");
-  const range: RangeKey =
-    rawRange === "7d" ||
-    rawRange === "30d" ||
-    rawRange === "90d" ||
-    rawRange === "all" ||
-    rawRange === "custom"
-      ? rawRange
-      : "30d";
-
   return {
-    range,
-    from: params.get("from") ?? "",
-    to: params.get("to") ?? "",
+    range: "30d",
+    from: "",
+    to: "",
     tz: params.get("tz") ?? "",
     deviceId: params.get("device_id") ?? "",
   };
@@ -123,11 +120,6 @@ function parseFilters(params: URLSearchParams): Filters {
 function serializeFilters(filters: Filters): string {
   const query = new URLSearchParams();
 
-  if (filters.range !== "30d") query.set("range", filters.range);
-  if (filters.range === "custom") {
-    if (filters.from) query.set("from", filters.from);
-    if (filters.to) query.set("to", filters.to);
-  }
   if (filters.tz) query.set("tz", filters.tz);
   if (filters.deviceId) query.set("device_id", filters.deviceId);
 
@@ -219,20 +211,21 @@ export function DashboardClient() {
   const [hourlyRefresh, setHourlyRefresh] = useState(0);
   const [costOpen, setCostOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [rangePickerOpen, setRangePickerOpen] = useState(false);
 
   const timezone = filters.tz || browserTimezone();
   const range = useMemo(
     () => rangeForSelection(filters.range, timezone, filters.from, filters.to),
     [filters.range, filters.from, filters.to, timezone],
   );
-  // Custom-range picker state: rangeForSelection already resolves the URL day
-  // keys (valid custom pairs pass through, missing/reversed ones fall back to
-  // the 30d preset), so the picker always shows a well-formed window.
-  const customRangeValue = useMemo(
+  // Range picker state: rangeForSelection resolves the URL day keys — valid
+  // custom pairs pass through, presets resolve to their relative window
+  // ending today — so the picker always shows a well-formed window.
+  const rangePickerValue = useMemo(
     () => ({ start: parseDate(range.fromDay), end: parseDate(range.toDay) }),
     [range],
   );
-  const customRangeMax = useMemo(
+  const rangePickerMax = useMemo(
     () => parseDate(dayKeyInTz(new Date(), timezone)),
     [timezone],
   );
@@ -260,6 +253,23 @@ export function DashboardClient() {
     window.addEventListener("popstate", onPopState);
 
     return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Scrub legacy range params from the address bar on load so a stale link
+  // doesn't keep advertising filters the page no longer restores.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (!params.has("range") && !params.has("from") && !params.has("to")) {
+      return;
+    }
+
+    params.delete("range");
+    params.delete("from");
+    params.delete("to");
+    const query = params.toString();
+
+    window.history.replaceState(null, "", query ? `/?${query}` : "/");
   }, []);
 
   useEffect(() => {
@@ -642,106 +652,83 @@ export function DashboardClient() {
           <Typography color="muted" type="body-xs">
             {copy.rangeLabel}
           </Typography>
-          <Select
+          <DateRangePicker
             aria-label={copy.rangeLabel}
-            className="w-40"
-            value={filters.range}
-            onChange={(key) => {
-              if (key == null) return;
-              const next = String(key) as RangeKey;
+            className="w-80"
+            isOpen={rangePickerOpen}
+            maxValue={rangePickerMax}
+            minValue={parseDate(ALL_RANGE_START)}
+            value={rangePickerValue}
+            onChange={(value) => {
+              if (!value) return;
 
               applyFilters({
-                range: next,
-                from: next === "custom" ? range.fromDay : "",
-                to: next === "custom" ? range.toDay : "",
+                range: "custom",
+                from: value.start.toString(),
+                to: value.end.toString(),
               });
             }}
+            onOpenChange={setRangePickerOpen}
           >
-            <Select.Trigger>
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <Popover.Arrow />
-              <ListBox>
-                {[...RANGE_PRESETS, "custom" as const].map((key) => (
-                  <ListBox.Item key={key} id={key} textValue={copy.ranges[key]}>
-                    {copy.ranges[key]}
-                  </ListBox.Item>
+            <DateField.Group fullWidth>
+              <DateField.Input slot="start">
+                {(segment) => <DateField.Segment segment={segment} />}
+              </DateField.Input>
+              <DateRangePicker.RangeSeparator />
+              <DateField.Input slot="end">
+                {(segment) => <DateField.Segment segment={segment} />}
+              </DateField.Input>
+              <DateField.Suffix>
+                <DateRangePicker.Trigger>
+                  <DateRangePicker.TriggerIndicator />
+                </DateRangePicker.Trigger>
+              </DateField.Suffix>
+            </DateField.Group>
+            <DateRangePicker.Popover>
+              <div className="flex flex-wrap gap-1 pb-2">
+                {RANGE_PRESETS.map((preset) => (
+                  <Button
+                    key={preset}
+                    aria-pressed={filters.range === preset}
+                    size="sm"
+                    variant={filters.range === preset ? "secondary" : "ghost"}
+                    onPress={() => {
+                      applyFilters({ range: preset, from: "", to: "" });
+                      setRangePickerOpen(false);
+                    }}
+                  >
+                    {copy.ranges[preset]}
+                  </Button>
                 ))}
-              </ListBox>
-            </Select.Popover>
-          </Select>
+              </div>
+              <RangeCalendar aria-label={copy.rangeLabel}>
+                <RangeCalendar.Header>
+                  <RangeCalendar.YearPickerTrigger>
+                    <RangeCalendar.YearPickerTriggerHeading />
+                    <RangeCalendar.YearPickerTriggerIndicator />
+                  </RangeCalendar.YearPickerTrigger>
+                  <RangeCalendar.NavButton slot="previous" />
+                  <RangeCalendar.NavButton slot="next" />
+                </RangeCalendar.Header>
+                <RangeCalendar.Grid>
+                  <RangeCalendar.GridHeader>
+                    {(day) => (
+                      <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>
+                    )}
+                  </RangeCalendar.GridHeader>
+                  <RangeCalendar.GridBody>
+                    {(date) => <RangeCalendar.Cell date={date} />}
+                  </RangeCalendar.GridBody>
+                </RangeCalendar.Grid>
+                <RangeCalendar.YearPickerGrid>
+                  <RangeCalendar.YearPickerGridBody>
+                    {({ year }) => <RangeCalendar.YearPickerCell year={year} />}
+                  </RangeCalendar.YearPickerGridBody>
+                </RangeCalendar.YearPickerGrid>
+              </RangeCalendar>
+            </DateRangePicker.Popover>
+          </DateRangePicker>
         </label>
-
-        {filters.range === "custom" ? (
-          <label className="flex flex-col gap-1">
-            <Typography color="muted" type="body-xs">
-              {copy.customRange}
-            </Typography>
-            <DateRangePicker
-              aria-label={copy.customRange}
-              className="w-80"
-              maxValue={customRangeMax}
-              minValue={parseDate(ALL_RANGE_START)}
-              value={customRangeValue}
-              onChange={(value) => {
-                if (!value) return;
-
-                applyFilters({
-                  from: value.start.toString(),
-                  to: value.end.toString(),
-                });
-              }}
-            >
-              <DateField.Group fullWidth>
-                <DateField.Input slot="start">
-                  {(segment) => <DateField.Segment segment={segment} />}
-                </DateField.Input>
-                <DateRangePicker.RangeSeparator />
-                <DateField.Input slot="end">
-                  {(segment) => <DateField.Segment segment={segment} />}
-                </DateField.Input>
-                <DateField.Suffix>
-                  <DateRangePicker.Trigger>
-                    <DateRangePicker.TriggerIndicator />
-                  </DateRangePicker.Trigger>
-                </DateField.Suffix>
-              </DateField.Group>
-              <DateRangePicker.Popover>
-                <RangeCalendar aria-label={copy.customRange}>
-                  <RangeCalendar.Header>
-                    <RangeCalendar.YearPickerTrigger>
-                      <RangeCalendar.YearPickerTriggerHeading />
-                      <RangeCalendar.YearPickerTriggerIndicator />
-                    </RangeCalendar.YearPickerTrigger>
-                    <RangeCalendar.NavButton slot="previous" />
-                    <RangeCalendar.NavButton slot="next" />
-                  </RangeCalendar.Header>
-                  <RangeCalendar.Grid>
-                    <RangeCalendar.GridHeader>
-                      {(day) => (
-                        <RangeCalendar.HeaderCell>
-                          {day}
-                        </RangeCalendar.HeaderCell>
-                      )}
-                    </RangeCalendar.GridHeader>
-                    <RangeCalendar.GridBody>
-                      {(date) => <RangeCalendar.Cell date={date} />}
-                    </RangeCalendar.GridBody>
-                  </RangeCalendar.Grid>
-                  <RangeCalendar.YearPickerGrid>
-                    <RangeCalendar.YearPickerGridBody>
-                      {({ year }) => (
-                        <RangeCalendar.YearPickerCell year={year} />
-                      )}
-                    </RangeCalendar.YearPickerGridBody>
-                  </RangeCalendar.YearPickerGrid>
-                </RangeCalendar>
-              </DateRangePicker.Popover>
-            </DateRangePicker>
-          </label>
-        ) : null}
 
         <label className="flex flex-col gap-1">
           <Typography color="muted" type="body-xs">

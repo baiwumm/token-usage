@@ -9,7 +9,6 @@ export interface DashboardCopy {
   tzBrowser: string;
   deviceLabel: string;
   allDevices: string;
-  customRange: string;
   clearFilters: string;
   refresh: string;
   share: string;
@@ -151,7 +150,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     tzBrowser: "浏览器时区",
     deviceLabel: "设备",
     allDevices: "全部设备",
-    customRange: "自定义范围",
     clearFilters: "清除筛选",
     refresh: "刷新",
     share: "分享",
@@ -299,7 +297,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     tzBrowser: "Browser timezone",
     deviceLabel: "Device",
     allDevices: "All devices",
-    customRange: "Custom range",
     clearFilters: "Clear filters",
     refresh: "Refresh",
     share: "Share",

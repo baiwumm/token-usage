@@ -4,19 +4,23 @@
 // metadata only — the API never returns prompts, bodies, titles, absolute
 // paths or resume commands, and session_id stays an internal key.
 //
-// Filters, search and the server-side offset all live in the URL; changing
-// them only refetches data (replaceState + popstate sync, no navigation).
+// Device/source filters, search and the server-side offset live in the URL;
+// the time range is session-only (mirrors the dashboard, 2026-10-26). Filter
+// changes only refetch data (replaceState + popstate sync, no navigation).
 
 import { ChartColumn, Clock, ListUl, Wallet } from "@gravity-ui/icons";
 import {
   Button,
   Card,
   Chip,
+  DateField,
+  DateRangePicker,
   Input,
   Label,
   ListBox,
   Modal,
   Pagination,
+  RangeCalendar,
   Select,
   Skeleton,
   Spinner,
@@ -25,6 +29,7 @@ import {
   Typography,
   Popover,
 } from "@heroui/react";
+import { parseDate } from "@internationalized/date";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
@@ -48,8 +53,9 @@ import {
   type SessionsPayload,
 } from "@/lib/dashboard/api";
 import {
+  ALL_RANGE_START,
   browserTimezone,
-  isValidDayKey,
+  dayKeyInTz,
   rangeForSelection,
 } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";
@@ -60,9 +66,9 @@ const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 350;
 const UPGRADE_URL = "https://github.com/baiwumm/token-usage#readme";
 
-const SESSION_RANGES = ["7d", "30d", "90d", "custom"] as const;
+const SESSION_RANGE_PRESETS = ["7d", "30d", "90d"] as const;
 
-type SessionRange = (typeof SESSION_RANGES)[number];
+type SessionRange = (typeof SESSION_RANGE_PRESETS)[number] | "custom";
 
 type LoadStatus = "loading" | "ready" | "error";
 type Loadable<T> = { status: LoadStatus; data: T | null };
@@ -77,18 +83,17 @@ interface Filters {
   offset: number;
 }
 
+// Range filters never round-trip the URL (operator call 2026-10-26, same as
+// the dashboard): a stale ?range=…&from=… link must not pin the list to old
+// dates, so only device/source/search/offset persist and every load starts
+// at the default window.
 function parseFilters(params: { get(name: string): string | null }): Filters {
-  const rawRange = params.get("range");
-  const range: SessionRange =
-    rawRange === "7d" || rawRange === "90d" || rawRange === "custom"
-      ? rawRange
-      : "30d";
   const rawOffset = Number(params.get("offset"));
 
   return {
-    range,
-    from: params.get("from") ?? "",
-    to: params.get("to") ?? "",
+    range: "30d",
+    from: "",
+    to: "",
     deviceId: params.get("device_id") ?? "",
     source: params.get("source") ?? "",
     q: params.get("q") ?? "",
@@ -100,11 +105,6 @@ function parseFilters(params: { get(name: string): string | null }): Filters {
 function serializeFilters(filters: Filters): string {
   const query = new URLSearchParams();
 
-  if (filters.range !== "30d") query.set("range", filters.range);
-  if (filters.range === "custom") {
-    if (filters.from) query.set("from", filters.from);
-    if (filters.to) query.set("to", filters.to);
-  }
   if (filters.deviceId) query.set("device_id", filters.deviceId);
   if (filters.source) query.set("source", filters.source);
   if (filters.q) query.set("q", filters.q);
@@ -451,12 +451,24 @@ export function SessionsClient() {
   const [knownDevices, setKnownDevices] = useState<Record<string, string>>({});
   const [detail, setDetail] = useState<SessionItem | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [rangePickerOpen, setRangePickerOpen] = useState(false);
   const requestId = useRef(0);
 
   const timezone = browserTimezone();
   const range = useMemo(
     () => rangeForSelection(filters.range, timezone, filters.from, filters.to),
     [filters.range, filters.from, filters.to, timezone],
+  );
+  // Range picker state: rangeForSelection resolves the URL day keys — valid
+  // custom pairs pass through, presets resolve to their relative window
+  // ending today — so the picker always shows a well-formed window.
+  const rangePickerValue = useMemo(
+    () => ({ start: parseDate(range.fromDay), end: parseDate(range.toDay) }),
+    [range],
+  );
+  const rangePickerMax = useMemo(
+    () => parseDate(dayKeyInTz(new Date(), timezone)),
+    [timezone],
   );
 
   const redirectToLogin = useCallback(() => {
@@ -489,6 +501,27 @@ export function SessionsClient() {
     window.addEventListener("popstate", onPopState);
 
     return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Scrub legacy range params from the address bar on load so a stale link
+  // doesn't keep advertising filters the page no longer restores.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (!params.has("range") && !params.has("from") && !params.has("to")) {
+      return;
+    }
+
+    params.delete("range");
+    params.delete("from");
+    params.delete("to");
+    const query = params.toString();
+
+    window.history.replaceState(
+      null,
+      "",
+      query ? `/sessions?${query}` : "/sessions",
+    );
   }, []);
 
   useEffect(() => {
@@ -674,70 +707,83 @@ export function SessionsClient() {
           <Typography color="muted" type="body-xs">
             {copy.rangeLabel}
           </Typography>
-          <Select
+          <DateRangePicker
             aria-label={copy.rangeLabel}
-            className="w-40"
-            value={filters.range}
-            onChange={(key: Key | null) => {
-              if (key == null) return;
-              const next = String(key) as SessionRange;
+            className="w-80"
+            isOpen={rangePickerOpen}
+            maxValue={rangePickerMax}
+            minValue={parseDate(ALL_RANGE_START)}
+            value={rangePickerValue}
+            onChange={(value) => {
+              if (!value) return;
 
               applyFilters({
-                range: next,
-                from: next === "custom" ? range.fromDay : "",
-                to: next === "custom" ? range.toDay : "",
+                range: "custom",
+                from: value.start.toString(),
+                to: value.end.toString(),
               });
             }}
+            onOpenChange={setRangePickerOpen}
           >
-            <Select.Trigger>
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <Popover.Arrow />
-              <ListBox>
-                {SESSION_RANGES.map((key) => (
-                  <ListBox.Item key={key} id={key} textValue={copy.ranges[key]}>
-                    {copy.ranges[key]}
-                  </ListBox.Item>
+            <DateField.Group fullWidth>
+              <DateField.Input slot="start">
+                {(segment) => <DateField.Segment segment={segment} />}
+              </DateField.Input>
+              <DateRangePicker.RangeSeparator />
+              <DateField.Input slot="end">
+                {(segment) => <DateField.Segment segment={segment} />}
+              </DateField.Input>
+              <DateField.Suffix>
+                <DateRangePicker.Trigger>
+                  <DateRangePicker.TriggerIndicator />
+                </DateRangePicker.Trigger>
+              </DateField.Suffix>
+            </DateField.Group>
+            <DateRangePicker.Popover>
+              <div className="flex flex-wrap gap-1 pb-2">
+                {SESSION_RANGE_PRESETS.map((preset) => (
+                  <Button
+                    key={preset}
+                    aria-pressed={filters.range === preset}
+                    size="sm"
+                    variant={filters.range === preset ? "secondary" : "ghost"}
+                    onPress={() => {
+                      applyFilters({ range: preset, from: "", to: "" });
+                      setRangePickerOpen(false);
+                    }}
+                  >
+                    {copy.ranges[preset]}
+                  </Button>
                 ))}
-              </ListBox>
-            </Select.Popover>
-          </Select>
+              </div>
+              <RangeCalendar aria-label={copy.rangeLabel}>
+                <RangeCalendar.Header>
+                  <RangeCalendar.YearPickerTrigger>
+                    <RangeCalendar.YearPickerTriggerHeading />
+                    <RangeCalendar.YearPickerTriggerIndicator />
+                  </RangeCalendar.YearPickerTrigger>
+                  <RangeCalendar.NavButton slot="previous" />
+                  <RangeCalendar.NavButton slot="next" />
+                </RangeCalendar.Header>
+                <RangeCalendar.Grid>
+                  <RangeCalendar.GridHeader>
+                    {(day) => (
+                      <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>
+                    )}
+                  </RangeCalendar.GridHeader>
+                  <RangeCalendar.GridBody>
+                    {(date) => <RangeCalendar.Cell date={date} />}
+                  </RangeCalendar.GridBody>
+                </RangeCalendar.Grid>
+                <RangeCalendar.YearPickerGrid>
+                  <RangeCalendar.YearPickerGridBody>
+                    {({ year }) => <RangeCalendar.YearPickerCell year={year} />}
+                  </RangeCalendar.YearPickerGridBody>
+                </RangeCalendar.YearPickerGrid>
+              </RangeCalendar>
+            </DateRangePicker.Popover>
+          </DateRangePicker>
         </label>
-
-        {filters.range === "custom" ? (
-          <>
-            <TextField
-              className="w-40"
-              value={filters.from || range.fromDay}
-              onChange={(value) => {
-                if (isValidDayKey(value)) applyFilters({ from: value });
-              }}
-            >
-              <Label>{copy.customFrom}</Label>
-              <Input
-                aria-label={copy.customFrom}
-                type="date"
-                variant="secondary"
-              />
-            </TextField>
-            <TextField
-              className="w-40"
-              value={filters.to || range.toDay}
-              onChange={(value) => {
-                if (isValidDayKey(value)) applyFilters({ to: value });
-              }}
-            >
-              <Label>{copy.customTo}</Label>
-              <Input
-                aria-label={copy.customTo}
-                type="date"
-                variant="secondary"
-              />
-            </TextField>
-          </>
-        ) : null}
 
         <label className="flex flex-col gap-1">
           <Typography color="muted" type="body-xs">

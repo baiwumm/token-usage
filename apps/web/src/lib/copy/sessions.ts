@@ -5,8 +5,6 @@
 export interface SessionsCopy {
   rangeLabel: string;
   ranges: Record<"7d" | "30d" | "90d" | "custom", string>;
-  customFrom: string;
-  customTo: string;
   deviceLabel: string;
   allDevices: string;
   sourceLabel: string;
@@ -81,8 +79,6 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
       "90d": "近 90 天",
       custom: "自定义",
     },
-    customFrom: "开始日期",
-    customTo: "结束日期",
     deviceLabel: "设备",
     allDevices: "全部设备",
     sourceLabel: "来源",
@@ -156,8 +152,6 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
       "90d": "Last 90 days",
       custom: "Custom",
     },
-    customFrom: "Start date",
-    customTo: "End date",
     deviceLabel: "Device",
     allDevices: "All devices",
     sourceLabel: "Source",
