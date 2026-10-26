@@ -45,6 +45,27 @@ function safeInt(value) {
   return n;
 }
 
+// zcode/opencode report reasoning outside output_tokens (vendor semantics:
+// total = identity + reasoning), but the contract's identity requires
+// reasoning to sit inside output (docs/cli-contract.md §2.4: total = input +
+// cached + creation + output, reasoning single-column). Fold that exact shape
+// so the row satisfies the identity; any other mismatch still fails it and
+// the row is dropped — guessing a fix for unknown skews would silently
+// rewrite totals the vendor did report.
+function foldReasoningIntoOutput(tokens) {
+  const identity =
+    tokens.input_tokens +
+    tokens.cached_input_tokens +
+    tokens.cache_creation_input_tokens +
+    tokens.output_tokens;
+  if (
+    tokens.total_tokens !== identity &&
+    tokens.total_tokens === identity + tokens.reasoning_output_tokens
+  ) {
+    tokens.output_tokens += tokens.reasoning_output_tokens;
+  }
+}
+
 function basenameKey(value) {
   const raw = String(value || "").replace(/[\\/]+$/, "");
   if (!raw || raw === "." || raw === "..") return null;
@@ -108,6 +129,7 @@ function mapSessionRow(row) {
     if (value === null) return null;
     tokens[field] = value;
   }
+  foldReasoningIntoOutput(tokens);
   const identity =
     tokens.input_tokens +
     tokens.cached_input_tokens +
@@ -136,6 +158,7 @@ function mapSessionRow(row) {
         modelTokens[field] = value;
       }
       if (!modelsValid) break;
+      foldReasoningIntoOutput(modelTokens);
       const modelIdentity =
         modelTokens.input_tokens +
         modelTokens.cached_input_tokens +

@@ -134,6 +134,39 @@ test("drops rows failing the token identity instead of failing the batch", () =>
   assert.equal(skipped, 1);
 });
 
+test("folds zcode/opencode reasoning-outside-output rows into the contract identity", () => {
+  // Vendor shape (zcode/opencode): total includes reasoning, output does not.
+  // The contract requires reasoning ⊆ output, so the mapper folds it in and
+  // total_tokens survives untouched (185 = 100 + 10 + 5 + 50 + 20).
+  const skewedTokens = {
+    input_tokens: 100,
+    cached_input_tokens: 10,
+    cache_creation_input_tokens: 5,
+    output_tokens: 50,
+    reasoning_output_tokens: 20,
+    total_tokens: 185,
+  };
+  const row = validRow({
+    tokens: skewedTokens,
+    total_tokens: 185,
+    model_usage: [{ model: "glm-5.3", ...skewedTokens }],
+  });
+  const mapped = mapSessionRow(row);
+  assert.ok(mapped, "skewed-but-reconcilable row must not be dropped");
+  assert.equal(mapped.total_tokens, 185);
+  assert.equal(mapped.output_tokens, 70);
+  assert.equal(mapped.reasoning_output_tokens, 20);
+  assert.equal(mapped.models.length, 1);
+  assert.equal(mapped.models[0].output_tokens, 70);
+  assert.equal(mapped.models[0].total_tokens, 185);
+
+  // An unreconcilable skew (total matches neither identity shape) still drops.
+  assert.equal(
+    mapSessionRow(validRow({ total_tokens: 186, session_id: "bad-skew" })),
+    null
+  );
+});
+
 test("drops rows with missing/invalid identity fields", () => {
   const badTokens = (patch) => ({ tokens: { ...validRow().tokens, ...patch } });
   const cases = [
