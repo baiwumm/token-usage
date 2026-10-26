@@ -29,7 +29,16 @@ import {
 } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type Key } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type Key,
+  type SetStateAction,
+} from "react";
 
 import { CostAnalysisModal } from "./cost-modal";
 import { DetailTable, type DetailRow } from "./detail-table";
@@ -288,135 +297,111 @@ export function DashboardClient() {
     })();
   }, [redirectToLogin]);
 
+  // Run id for loadAll: switching range/filters starts a new run while the
+  // old one may still be in flight; late responses of a superseded run must
+  // never overwrite the newer run's state.
+  const loadSeq = useRef(0);
+
   const loadAll = useCallback(
     async (token: string) => {
       // Keep the previous payloads mounted: only show the initial-load
-      // skeleton; refreshes overlay the existing cards instead.
+      // skeleton; refreshes overlay the existing cards instead. Each slot
+      // settles into place as its own response arrives, so one slow request
+      // (the heatmap's 52 weeks) no longer holds the other cards back.
       setRefreshing(true);
+      const seq = ++loadSeq.current;
+      let pending = 6;
+      let redirected = false;
 
-      const results = await Promise.allSettled([
+      const finishOne = () => {
+        if (loadSeq.current === seq && --pending === 0) setRefreshing(false);
+      };
+
+      const slot = <T,>(
+        request: Promise<T>,
+        setState: Dispatch<SetStateAction<Loadable<T>>>,
+        select: (value: T) => T = (value) => value,
+      ) => {
+        void request.then(
+          (value) => {
+            if (loadSeq.current !== seq) return;
+            setState({ status: "ready", data: select(value) });
+            finishOne();
+          },
+          (reason: unknown) => {
+            if (loadSeq.current !== seq) return;
+            if (isUnauthorized(reason)) {
+              if (!redirected) {
+                redirected = true;
+                redirectToLogin();
+              }
+            } else {
+              // A failed refresh keeps the previous data on screen; only an
+              // empty slot (no data yet) falls through to the error state.
+              setState((previous) =>
+                previous.data != null
+                  ? previous
+                  : { status: "error", data: null },
+              );
+            }
+            finishOne();
+          },
+        );
+      };
+
+      slot(
         fetchSummary(token, {
           fromDay: range.fromDay,
           toDay: range.toDay,
           tz: timezone,
           deviceId: filters.deviceId || null,
         }),
+        setSummaryState,
+      );
+      slot(
         fetchDashboard(token, {
           fromIso: range.fromIso,
           toIso: range.toIso,
           tz: timezone,
           rangeKey: filters.range,
         }),
+        setDashboardState,
+      );
+      slot(
         fetchDaily(token, {
           fromDay: range.fromDay,
           toDay: range.toDay,
           tz: timezone,
           deviceId: filters.deviceId || null,
-        }),
+        }).then((point) => point.data),
+        setDailyState,
+      );
+      slot(
         fetchMonthly(token, {
           fromDay: range.fromDay,
           toDay: range.toDay,
           deviceId: filters.deviceId || null,
-        }),
+        }).then((point) => point.data),
+        setMonthlyState,
+      );
+      slot(
         fetchHeatmap(token, {
           weeks: 52,
           toDay: range.toDay,
           tz: timezone,
           deviceId: filters.deviceId || null,
         }),
+        setHeatmapState,
+      );
+      slot(
         fetchModelBreakdown(token, {
           fromDay: range.fromDay,
           toDay: range.toDay,
           tz: timezone,
           deviceId: filters.deviceId || null,
-        }),
-      ]);
-
-      if (
-        results.some(
-          (result) =>
-            result.status === "rejected" && isUnauthorized(result.reason),
-        )
-      ) {
-        setRefreshing(false);
-        redirectToLogin();
-
-        return;
-      }
-
-      // A failed refresh keeps the previous data on screen; only an empty
-      // slot (no data yet) falls through to the error state.
-      const settledKeep = <T,>(
-        previous: Loadable<T>,
-        result: PromiseSettledResult<T>,
-      ): Loadable<T> =>
-        result.status === "fulfilled"
-          ? { status: "ready", data: result.value }
-          : previous.data != null
-            ? previous
-            : { status: "error", data: null };
-
-      setSummaryState((previous) =>
-        settledKeep(
-          previous,
-          results[0] as PromiseSettledResult<AccountSummary>,
-        ),
+        }).then((payload) => payload.sources),
+        setBreakdownState,
       );
-      setDashboardState((previous) =>
-        settledKeep(
-          previous,
-          results[1] as PromiseSettledResult<DashboardPayload>,
-        ),
-      );
-
-      const dailyResult = results[2] as PromiseSettledResult<{
-        data: SeriesPoint[];
-      }>;
-
-      setDailyState((previous) =>
-        settledKeep(
-          previous,
-          dailyResult.status === "fulfilled"
-            ? { status: "fulfilled", value: dailyResult.value.data }
-            : { status: "rejected", reason: dailyResult.reason },
-        ),
-      );
-
-      const monthlyResult = results[3] as PromiseSettledResult<{
-        data: MonthlyPoint[];
-      }>;
-
-      setMonthlyState((previous) =>
-        settledKeep(
-          previous,
-          monthlyResult.status === "fulfilled"
-            ? { status: "fulfilled", value: monthlyResult.value.data }
-            : { status: "rejected", reason: monthlyResult.reason },
-        ),
-      );
-      setHeatmapState((previous) =>
-        settledKeep(
-          previous,
-          results[4] as PromiseSettledResult<HeatmapPayload>,
-        ),
-      );
-
-      const breakdownResult = results[5] as PromiseSettledResult<{
-        sources: ModelBreakdownSource[];
-      }>;
-
-      setBreakdownState((previous) =>
-        settledKeep(
-          previous,
-          breakdownResult.status === "fulfilled"
-            ? {
-                status: "fulfilled",
-                value: breakdownResult.value.sources,
-              }
-            : { status: "rejected", reason: breakdownResult.reason },
-        ),
-      );
-      setRefreshing(false);
     },
     [
       filters.deviceId,

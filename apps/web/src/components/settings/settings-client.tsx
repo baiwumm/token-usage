@@ -114,26 +114,32 @@ export function SettingsClient() {
     async (token: string) => {
       setStatus("loading");
 
-      const query = new URLSearchParams({ from, to });
-      const response = await fetch(
-        `/api/functions/token-usage-account-devices?${query}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      try {
+        const query = new URLSearchParams({ from, to });
+        const response = await fetch(
+          `/api/functions/token-usage-account-devices?${query}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
 
-      if (response.status === 401) {
-        redirectToLogin();
+        if (response.status === 401) {
+          redirectToLogin();
 
-        return;
-      }
-      if (!response.ok) {
+          return;
+        }
+        if (!response.ok) {
+          setStatus("error");
+
+          return;
+        }
+        const payload = (await response.json()) as { devices?: DeviceRow[] };
+
+        setDevices(Array.isArray(payload.devices) ? payload.devices : []);
+        setStatus("ready");
+      } catch {
+        // Network-level failure must land in the retryable error state, not
+        // hang on the loading skeleton forever.
         setStatus("error");
-
-        return;
       }
-      const payload = (await response.json()) as { devices?: DeviceRow[] };
-
-      setDevices(Array.isArray(payload.devices) ? payload.devices : []);
-      setStatus("ready");
     },
     [from, to, redirectToLogin],
   );
@@ -179,38 +185,43 @@ export function SettingsClient() {
     setRenameBusy(true);
     setRenameError(null);
 
-    const response = await fetch("/api/functions/token-usage-device-rename", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ device_id: target.id, device_name: name }),
-    });
+    try {
+      const response = await fetch("/api/functions/token-usage-device-rename", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ device_id: target.id, device_name: name }),
+      });
 
-    setRenameBusy(false);
+      if (response.status === 401) {
+        redirectToLogin();
 
-    if (response.status === 401) {
-      redirectToLogin();
+        return;
+      }
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
 
-      return;
+        setRenameError(friendlyDeviceError(payload.error || "", copy));
+
+        return;
+      }
+      setDevices((rows) =>
+        rows.map((row) =>
+          row.id === target.id ? { ...row, device_name: name } : row,
+        ),
+      );
+      setRenaming(null);
+      toast.success(copy.renameSuccess);
+    } catch {
+      setRenameError(friendlyDeviceError("", copy));
+    } finally {
+      // A network-level throw must not leave the dialog permanently busy.
+      setRenameBusy(false);
     }
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => ({}))) as {
-        error?: string;
-      };
-
-      setRenameError(friendlyDeviceError(payload.error || "", copy));
-
-      return;
-    }
-    setDevices((rows) =>
-      rows.map((row) =>
-        row.id === target.id ? { ...row, device_name: name } : row,
-      ),
-    );
-    setRenaming(null);
-    toast.success(copy.renameSuccess);
   }
 
   async function submitRevoke() {
@@ -221,47 +232,53 @@ export function SettingsClient() {
     if (!target || !supabase || !token || revokeBusy) return;
     setRevokeBusy(true);
 
-    const response = await fetch("/api/functions/token-usage-device-revoke", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ device_id: target.id }),
-    });
+    try {
+      const response = await fetch("/api/functions/token-usage-device-revoke", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ device_id: target.id }),
+      });
 
-    setRevokeBusy(false);
+      if (response.status === 401) {
+        redirectToLogin();
 
-    if (response.status === 401) {
-      redirectToLogin();
+        return;
+      }
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
 
-      return;
-    }
-    if (!response.ok) {
+        toast(friendlyDeviceError(payload.error || "", copy));
+        setRevoking(null);
+
+        return;
+      }
       const payload = (await response.json().catch(() => ({}))) as {
-        error?: string;
+        revoked_tokens?: number;
       };
 
-      toast(friendlyDeviceError(payload.error || "", copy));
+      setDevices((rows) => rows.filter((row) => row.id !== target.id));
       setRevoking(null);
-
-      return;
+      toast.success(
+        `${copy.revokeSuccess} · ${formatMessage(
+          copy.revokedTokensSummary,
+          locale,
+          {
+            count: payload.revoked_tokens ?? 0,
+          },
+        )}`,
+      );
+    } catch {
+      toast(friendlyDeviceError("", copy));
+      setRevoking(null);
+    } finally {
+      // A network-level throw must not leave the confirm button disabled.
+      setRevokeBusy(false);
     }
-    const payload = (await response.json().catch(() => ({}))) as {
-      revoked_tokens?: number;
-    };
-
-    setDevices((rows) => rows.filter((row) => row.id !== target.id));
-    setRevoking(null);
-    toast.success(
-      `${copy.revokeSuccess} · ${formatMessage(
-        copy.revokedTokensSummary,
-        locale,
-        {
-          count: payload.revoked_tokens ?? 0,
-        },
-      )}`,
-    );
   }
 
   return (
