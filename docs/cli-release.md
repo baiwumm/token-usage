@@ -6,14 +6,18 @@ npm 包 `tokenusage-cli` 的发布流程、首发未竟事项与发版后检查�
 `npm publish --provenance`（Trusted Publishing，OIDC 免 token）→ 从
 `packages/cli/CHANGELOG.md` 取本版本段落生成 GitHub Release。
 
-## 0. 0.1.0 首发当前状态（2026-10-27 凌晨，待收尾）
+## 0. 0.1.0 首发实录（2026-10-27，已完成）
 
 - tag `cli-v0.1.0` 已打在 `875dd54` 并推送，仍是 main 祖先，**无需重打**。
 - release run [40359194166](https://github.com/baiwumm/token-usage/actions/runs/40359194166)
-  走到 npm publish 步失败：**npm PUT 404**。原因：Trusted Publishing 不能创建
-  新包——包必须先存在并登记 Trusted Publisher，OIDC 才能对它发版。tag 校验、
-  `pnpm verify`、provenance 签名（sigstore logIndex 3490625652）均成功。
-- GitHub Release 未创建。完成下节三步后重跑该 run 即可补齐，整条链转绿。
+  首跑在 npm publish 步失败：**npm PUT 404**（Trusted Publishing 不能创建新包）。
+  按 §一 手动首发后重跑该 run：npm 已有该版本 → 自动跳过 publish、补建 GitHub
+  Release（正文取 CHANGELOG），整条链转绿。
+- 实录教训：手动首发是交互流程——账号 2FA 绑安全密钥（GPM passkey），publish
+  会在浏览器再验一次 2FA，非交互终端直接 EOTP 退出；且曾从一个旧检出目录误发
+  开发期版本 `0.0.0-stage`，再从正确目录补发 0.1.0（publish 自动把 latest 指向
+  新版本）。残留版本清理见 §三。
+- 手动首发的 0.1.0 没有 provenance 徽章；从 0.1.1 起由 CI 发布自动带上。
 
 ## 一、完成 0.1.0 首发（一次性，任一 npm 已登录环境）
 
@@ -73,6 +77,12 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 三、发版后事项（0.1.0 发布后逐项勾掉）
 
+- [ ] **清理 npm 残留版本**：首发时误发的 `0.0.0-stage` 仍在 versions 列表
+  （latest 已正确指向 0.1.0，不影响安装）。72h 窗口内 `npm unpublish
+  tokenusage-cli@0.0.0-stage --registry=https://registry.npmjs.org` 删掉
+  （包仍保留 0.1.0，不会整包下架）；写操作须在交互终端跑，会再要一次安全密钥。
+- [ ] **登记 Trusted Publisher**：§一第二步的网页操作仍未做——这是 0.1.1 起
+  CI 自动发包的前提，趁包页在手边尽早登记。
 - [ ] **本机更新采集器**：`npm i -g tokenusage-cli@latest`。本机全局安装
   （`E:\nodejs\node_modules\tokenusage-cli`）目前是旧版——更新后 94bb8e9 的
   auto 进度输出与 875dd54 的日志降噪才生效；计划任务无需改动（VBS 包装指向
