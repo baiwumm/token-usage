@@ -373,12 +373,20 @@ export function DashboardClient() {
 
   const summary = summaryState.data;
   const dashboard = dashboardState.data;
-  const daily = dailyState.data ?? [];
-  const monthly = monthlyState.data ?? [];
-  const breakdown = breakdownState.data ?? [];
+  // Stable fallback arrays: memoized children (TopModels, CostAnalysisModal,
+  // charts) keep their memo hits across refresh renders instead of seeing a
+  // fresh [] identity each time.
+  const daily = useMemo(() => dailyState.data ?? [], [dailyState.data]);
+  const monthly = useMemo(() => monthlyState.data ?? [], [monthlyState.data]);
+  const breakdown = useMemo(
+    () => breakdownState.data ?? [],
+    [breakdownState.data],
+  );
   const heatmap = heatmapState.data;
-  const activeDevices =
-    dashboard?.devices.filter((device) => device.active) ?? [];
+  const activeDevices = useMemo(
+    () => dashboard?.devices.filter((device) => device.active) ?? [],
+    [dashboard],
+  );
   const hasData = (summary?.totals.total_tokens ?? 0) > 0;
   const hasFilters =
     filters.deviceId !== "" ||
@@ -466,6 +474,8 @@ export function DashboardClient() {
   const retryAll = () => {
     if (accessToken) void loadAll(accessToken);
   };
+
+  const openCostModal = useCallback(() => setCostOpen(true), []);
 
   const detailState =
     detailView === "hourly"
@@ -916,7 +926,7 @@ export function DashboardClient() {
                 <TopModels
                   copy={copy}
                   sources={breakdown}
-                  onViewAll={() => setCostOpen(true)}
+                  onViewAll={openCostModal}
                 />
               ) : (
                 <Card className="p-6">

@@ -15,7 +15,7 @@ import {
   toast,
   Popover,
 } from "@heroui/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { TrendChart } from "../dashboard/charts";
 
@@ -30,11 +30,20 @@ import {
   type MonthlyPoint,
 } from "@/lib/dashboard/api";
 import { useFormat } from "@/lib/format/format";
-import { yearMonthlyWindow, yearRange } from "@/lib/dashboard/ranges";
+import {
+  browserTimezone,
+  dayKeyInTz,
+  yearMonthlyWindow,
+  yearRange,
+} from "@/lib/dashboard/ranges";
 
 type LoadStatus = "loading" | "ready" | "error";
 
-const CURRENT_YEAR = new Date().getUTCFullYear();
+// The dashboard's default timezone view: the browser zone, not UTC — the
+// year boundary must match the tz the rest of the app buckets by.
+function currentYear(): number {
+  return Number(dayKeyInTz(new Date(), browserTimezone()).slice(0, 4));
+}
 
 export function WrappedClient() {
   const [locale] = useLocale();
@@ -45,19 +54,28 @@ export function WrappedClient() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [monthly, setMonthly] = useState<MonthlyPoint[]>([]);
-  const [year, setYear] = useState(CURRENT_YEAR);
+  const [year, setYear] = useState(currentYear);
   const [exporting, setExporting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  // Run id: switching years starts a new load while the old one may still be
+  // in flight; a superseded response must never overwrite the newer year.
+  const loadSeq = useRef(0);
+  // Whether any payload has landed — a failed refresh keeps the previous
+  // year's content on screen; only an empty slot falls to the error state.
+  const hasPayload = useRef(false);
 
   const { accessToken, redirectToLogin } = useSessionBootstrap("/wrapped");
 
   const loadAll = useCallback(
     async (token: string) => {
-      setStatus("loading");
+      const seq = ++loadSeq.current;
+
       setLoadError(null);
+      setRefreshing(true);
 
       try {
-        const tzRange = yearRange(year, "UTC");
+        const tzRange = yearRange(year, browserTimezone());
         const [nextPayload, nextMonthly] = await Promise.all([
           fetchDashboard(token, {
             fromIso: tzRange.fromIso,
@@ -67,17 +85,22 @@ export function WrappedClient() {
           fetchMonthly(token, yearMonthlyWindow(year)),
         ]);
 
+        if (loadSeq.current !== seq) return;
         setPayload(nextPayload);
         setMonthly(nextMonthly.data);
+        hasPayload.current = true;
         setStatus("ready");
       } catch (error) {
+        if (loadSeq.current !== seq) return;
         if (error instanceof DashboardApiError && error.status === 401) {
           redirectToLogin();
 
           return;
         }
         setLoadError(error instanceof Error ? error.message : "error");
-        setStatus("error");
+        setStatus(hasPayload.current ? "ready" : "error");
+      } finally {
+        if (loadSeq.current === seq) setRefreshing(false);
       }
     },
     [year, redirectToLogin],
@@ -86,6 +109,11 @@ export function WrappedClient() {
   useEffect(() => {
     if (accessToken) void loadAll(accessToken);
   }, [accessToken, loadAll]);
+
+  const yearOptions = useMemo(
+    () => [currentYear(), currentYear() - 1, currentYear() - 2],
+    [],
+  );
 
   // Canvas-drawn share card: html-to-image hangs cloning this page's
   // Tailwind-4/oklch computed styles (tried font on/off, pixelRatio 1/2 --
@@ -264,20 +292,23 @@ export function WrappedClient() {
             <Select.Popover>
               <Popover.Arrow />
               <ListBox>
-                {[CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2].map(
-                  (candidate) => (
-                    <ListBox.Item
-                      key={candidate}
-                      id={String(candidate)}
-                      textValue={String(candidate)}
-                    >
-                      {`${candidate} ${copy.yearSuffix}`}
-                    </ListBox.Item>
-                  ),
-                )}
+                {yearOptions.map((candidate) => (
+                  <ListBox.Item
+                    key={candidate}
+                    id={String(candidate)}
+                    textValue={String(candidate)}
+                  >
+                    {`${candidate} ${copy.yearSuffix}`}
+                  </ListBox.Item>
+                ))}
               </ListBox>
             </Select.Popover>
           </Select>
+          {/* Keep-previous year switching: the old year stays on screen
+              under a small spinner instead of collapsing to the loading card. */}
+          {refreshing && status === "ready" ? (
+            <Spinner aria-hidden="true" size="sm" />
+          ) : null}
         </div>
         <Button
           isPending={exporting}

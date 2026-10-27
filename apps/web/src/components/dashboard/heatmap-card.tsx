@@ -20,6 +20,7 @@ import {
   Typography,
 } from "@heroui/react";
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -184,14 +185,15 @@ function useResponsiveWeeks(maxWeeks: number) {
     };
 
     update();
+    // The ResizeObserver alone covers it: any window resize that changes the
+    // card width re-fires the observer, so a second window listener would
+    // just run the same measurement twice per resize.
     const observer = new ResizeObserver(update);
 
     observer.observe(element);
-    window.addEventListener("resize", update);
 
     return () => {
       observer.disconnect();
-      window.removeEventListener("resize", update);
     };
   }, [maxWeeks]);
 
@@ -206,7 +208,9 @@ interface TooltipAnchor {
   bottom: number;
 }
 
-export function HeatmapCard({
+// Memoized: refresh renders keep the previous payload reference, so the
+// 364-cell grid and its tooltip state skip re-rendering entirely.
+function HeatmapCardImpl({
   payload,
   copy,
   locale,
@@ -666,3 +670,5 @@ export function HeatmapCard({
     </Card>
   );
 }
+
+export const HeatmapCard = memo(HeatmapCardImpl);

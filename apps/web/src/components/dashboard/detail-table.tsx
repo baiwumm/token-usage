@@ -12,12 +12,13 @@ import {
   Typography,
   type SortDescriptor,
 } from "@heroui/react";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 
 import { ModelListModal } from "./model-list-modal";
 
 import { formatMessage } from "@/lib/copy/message";
 import { useFormat } from "@/lib/format/format";
+import { pageItems } from "@/lib/ui/pagination";
 
 export interface DetailRow {
   id: string;
@@ -36,27 +37,9 @@ export interface DetailRow {
 
 const PAGE_SIZE = 20;
 
-function pageItems(
-  page: number,
-  totalPages: number,
-): Array<number | "ellipsis"> {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1);
-  }
-  const items: Array<number | "ellipsis"> = [1];
-
-  if (page > 3) items.push("ellipsis");
-  const start = Math.max(2, page - 1);
-  const end = Math.min(totalPages - 1, page + 1);
-
-  for (let value = start; value <= end; value += 1) items.push(value);
-  if (page < totalPages - 2) items.push("ellipsis");
-  items.push(totalPages);
-
-  return items;
-}
-
-export function DetailTable({
+// Memoized: detail rows only change when their view's request settles; the
+// dashboard's per-request slot updates then skip this table entirely.
+function DetailTableImpl({
   rows,
   copy,
   locale,
@@ -299,3 +282,5 @@ export function DetailTable({
     </div>
   );
 }
+
+export const DetailTable = memo(DetailTableImpl);

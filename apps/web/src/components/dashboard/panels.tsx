@@ -22,7 +22,7 @@ import {
   Tooltip,
   Typography,
 } from "@heroui/react";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 
 import { canonicalSourceRows, mergeModelsAcrossSources } from "./aggregate";
 import { DonutChart, seriesColor } from "./mini-charts";
@@ -257,7 +257,8 @@ export function TotalTokensHero({
   );
 }
 
-export function TopModels({
+// Memoized: the breakdown slot only changes when its request settles.
+function TopModelsImpl({
   sources,
   copy,
   onViewAll,
@@ -334,6 +335,8 @@ export function TopModels({
     </Card>
   );
 }
+
+export const TopModels = memo(TopModelsImpl);
 
 export function SourcePanel({
   sources,

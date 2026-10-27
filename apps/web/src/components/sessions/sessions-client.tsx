@@ -152,6 +152,49 @@ function isUnauthorized(error: unknown): boolean {
   return error instanceof DashboardApiError && error.status === 401;
 }
 
+// Debounced search box: owns the draft so each keystroke re-renders only
+// this subtree, not the whole sessions table (the debounce already gated
+// fetches; this gates renders the same way). External commits (popstate,
+// clear filters) sync back through `committed`.
+function SessionSearchInput({
+  committed,
+  onCommit,
+  label,
+  placeholder,
+}: {
+  committed: string;
+  onCommit: (q: string) => void;
+  label: string;
+  placeholder: string;
+}) {
+  const [draft, setDraft] = useState(committed);
+
+  useEffect(() => {
+    setDraft(committed);
+  }, [committed]);
+
+  useEffect(() => {
+    if (draft === committed) return;
+    const timer = window.setTimeout(
+      () => onCommit(draft.trim()),
+      SEARCH_DEBOUNCE_MS,
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [draft, committed, onCommit]);
+
+  return (
+    <TextField
+      aria-label={label}
+      className="w-52"
+      value={draft}
+      onChange={setDraft}
+    >
+      <Input placeholder={placeholder} type="search" />
+    </TextField>
+  );
+}
+
 function ModelChips({ models }: { models: SessionModel[] }) {
   const [locale] = useLocale();
   const copy = SESSIONS_COPY[locale];
@@ -469,7 +512,6 @@ export function SessionsClient() {
     serialize: serializeFilters,
     merge: mergeSessionFilters,
   });
-  const [qInput, setQInput] = useState(() => filters.q);
   const [state, setState] = useState<Loadable<SessionsPayload>>(loadable);
   const [facets, setFacets] = useState<SessionsPayload["facets"]>({
     sources: [],
@@ -498,18 +540,10 @@ export function SessionsClient() {
     [timezone],
   );
 
-  useEffect(() => {
-    setQInput(filters.q);
-  }, [filters.q]);
-
-  useEffect(() => {
-    if (qInput === filters.q) return;
-    const timer = window.setTimeout(() => {
-      applyFilters({ q: qInput.trim() });
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => window.clearTimeout(timer);
-  }, [qInput, filters.q, applyFilters]);
+  const commitQ = useCallback(
+    (q: string) => applyFilters({ q }),
+    [applyFilters],
+  );
 
   const load = useCallback(
     async (token: string) => {
@@ -827,14 +861,12 @@ export function SessionsClient() {
           <Typography color="muted" type="body-xs">
             {copy.projectLabel}
           </Typography>
-          <TextField
-            aria-label={copy.projectLabel}
-            className="w-52"
-            value={qInput}
-            onChange={(value) => setQInput(value)}
-          >
-            <Input placeholder={copy.projectPlaceholder} type="search" />
-          </TextField>
+          <SessionSearchInput
+            committed={filters.q}
+            label={copy.projectLabel}
+            placeholder={copy.projectPlaceholder}
+            onCommit={commitQ}
+          />
         </label>
 
         {hasNarrowingFilters ? (
