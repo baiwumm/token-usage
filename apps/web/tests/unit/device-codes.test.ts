@@ -96,8 +96,8 @@ describe("deviceNameFor", () => {
   });
 
   it("falls back to the frozen CLI name without a hostname", () => {
-    expect(deviceNameFor("", "machine-abcd-1234")).toBe("TokenTracker CLI #machine-");
-    expect(deviceNameFor(null, null)).toBe("TokenTracker CLI");
+    expect(deviceNameFor("", "machine-abcd-1234")).toBe("Token Usage CLI #machine-");
+    expect(deviceNameFor(null, null)).toBe("Token Usage CLI");
   });
 
   it("caps the hostname at 96 chars before the suffix is added", () => {

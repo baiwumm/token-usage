@@ -96,6 +96,23 @@ export function useProfile(): {
 const AVATAR_BUCKET = "avatars";
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
+// SVG is refused at the entrance: the avatars bucket is public-read, and an
+// uploaded SVG would be a stored-XSS vector (the crop→WebP pipeline is a
+// mitigation, not a guarantee — this closes the door itself).
+const REFUSED_IMAGE_TYPES = new Set(["image/svg+xml"]);
+const ACCEPTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+function avatarTypeAllowed(file: File): boolean {
+  return ACCEPTED_IMAGE_TYPES.has(file.type);
+}
+
+function avatarRejection(file: File): string | null {
+  if (REFUSED_IMAGE_TYPES.has(file.type)) return "SVG images are not allowed";
+  if (!avatarTypeAllowed(file)) return "not a PNG, JPEG, or WebP image";
+
+  return null;
+}
+
 /**
  * Upload a user-provided image to the avatars bucket under the user's own
  * prefix (storage policies scope writes to avatars/<uid>/) and persist the
@@ -115,9 +132,9 @@ export function useAvatarUpload(): {
       } = await supabase.auth.getUser();
 
       if (!user) return { error: "no session" };
-      if (!file.type.startsWith("image/")) {
-        return { error: "not an image" };
-      }
+      const typeRejection = avatarRejection(file);
+
+      if (typeRejection) return { error: typeRejection };
       if (file.size > MAX_AVATAR_BYTES) {
         return { error: "file too large (max 2 MB)" };
       }

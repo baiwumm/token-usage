@@ -181,6 +181,14 @@ describe("ingest dedup + last-wins", () => {
     });
   });
 
+  it("clamps forged provider costs at the §2.4 per-row cap instead of rejecting", async () => {
+    const res = await ingest({
+      hourly: [bucket({ source: "grok", total_cost_usd: 999 })],
+    });
+    expect(res.status).toBe(200);
+    expect(fake.table("token_usage_hourly").at(-1)!.total_cost_usd).toBe(10);
+  });
+
   it("upserts session states per user+source+session and enforces trae-cn", async () => {
     const state = (session_id: string, total: number) => ({
       source: "trae-cn",

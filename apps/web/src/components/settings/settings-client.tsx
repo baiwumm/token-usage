@@ -550,7 +550,7 @@ function AvatarCard() {
           <div className="flex flex-row gap-2">
             <input
               ref={fileInputRef}
-              accept="image/*"
+              accept="image/png,image/jpeg,image/webp"
               className="hidden"
               type="file"
               onChange={(event) => {

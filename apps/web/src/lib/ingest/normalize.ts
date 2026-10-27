@@ -40,6 +40,12 @@ export function nonNegativeInteger(value: unknown): number | null {
   return Number.isSafeInteger(number) && number >= 0 ? number : null;
 }
 
+// Per-row cost clamp (docs/cli-contract.md §2.4, 2026-10-27): grok/cline
+// report provider costs from the device, so a leaked device token could
+// otherwise forge arbitrary dashboard totals. Clamped, not rejected — a
+// whole-batch 400 would stall deployed collectors on one stray row.
+export const MAX_BUCKET_COST_USD = 10;
+
 export function normalizeBucket(raw: unknown): NormalizedBucket | null {
   if (!raw || typeof raw !== "object") return null;
   const record = raw as RawRecord;
@@ -83,7 +89,10 @@ export function normalizeBucket(raw: unknown): NormalizedBucket | null {
     ...values,
     billable_total_tokens: billable,
     conversations,
-    total_cost_usd: Number.isFinite(cost) && cost >= 0 ? cost : 0,
+    total_cost_usd:
+      Number.isFinite(cost) && cost >= 0
+        ? Math.min(cost, MAX_BUCKET_COST_USD)
+        : 0,
   };
 }
 

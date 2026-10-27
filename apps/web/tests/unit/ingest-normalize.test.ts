@@ -8,6 +8,7 @@ import {
   dedupeSessions,
   dedupeStates,
   isAccountLevelSessionSource,
+  MAX_BUCKET_COST_USD,
   normalizeBucket,
   normalizeProjectKey,
   normalizeSession,
@@ -104,6 +105,12 @@ describe("normalizeBucket", () => {
   it("clamps negative or non-finite cost to 0", () => {
     expect(normalizeBucket(validBucket({ total_cost_usd: -1 }))?.total_cost_usd).toBe(0);
     expect(normalizeBucket(validBucket({ total_cost_usd: "abc" }))?.total_cost_usd).toBe(0);
+  });
+
+  it("clamps per-row cost at MAX_BUCKET_COST_USD (§2.4, forged-cost cap)", () => {
+    expect(normalizeBucket(validBucket({ total_cost_usd: 9.5 }))?.total_cost_usd).toBe(9.5);
+    expect(normalizeBucket(validBucket({ total_cost_usd: 10 }))?.total_cost_usd).toBe(10);
+    expect(normalizeBucket(validBucket({ total_cost_usd: 1234.56 }))?.total_cost_usd).toBe(MAX_BUCKET_COST_USD);
   });
 
   it("rejects non-object input", () => {

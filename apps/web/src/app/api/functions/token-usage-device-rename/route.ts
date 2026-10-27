@@ -11,7 +11,7 @@ import {
   preflightResponse,
   readJsonBody,
 } from "@/lib/api/http";
-import { assertConfigured, select, update } from "@/lib/api/supabase-rest";
+import { assertConfigured, select, update, SupabaseError } from "@/lib/api/supabase-rest";
 import { invalidateAccountUsage } from "@/lib/api/account-data";
 import { resolvePrincipal } from "@/lib/api/principal";
 
@@ -103,15 +103,26 @@ export async function POST(request: Request) {
       return jsonResponse(409, { error: "device_name_taken" });
     }
 
-    await update(
-      "token_devices",
-      { device_name: deviceName },
-      [
-        ["id", "eq", target.id],
-        ["user_id", "eq", principal.userId],
-      ],
-      { returning: false },
-    );
+    try {
+      await update(
+        "token_devices",
+        { device_name: deviceName },
+        [
+          ["id", "eq", target.id],
+          ["user_id", "eq", principal.userId],
+        ],
+        { returning: false },
+      );
+    } catch (error) {
+      // §2.8 forbids leaking the PostgREST message: a rename racing another
+      // rename past the pre-check above surfaces as a unique violation here,
+      // which must still answer with the stable 409 code (SupabaseError
+      // carries status 409 for unique violations).
+      if (error instanceof SupabaseError && error.status === 409) {
+        return jsonResponse(409, { error: "device_name_taken" });
+      }
+      throw error;
+    }
     // Device rows ride along in the cached account snapshot.
     invalidateAccountUsage(principal.userId);
 

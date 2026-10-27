@@ -47,5 +47,5 @@ export function deviceNameFor(clientInfo: unknown, machineId: unknown): string {
   const hostname = clientHostname(clientInfo);
   const suffix = machineId ? ` #${String(machineId).slice(0, 8)}` : "";
 
-  return `${hostname || "TokenTracker CLI"}${suffix}`.slice(0, 128);
+  return `${hostname || "Token Usage CLI"}${suffix}`.slice(0, 128);
 }
