@@ -21,7 +21,6 @@ import {
   Pagination,
   RangeCalendar,
   Select,
-  Skeleton,
   Spinner,
   Table,
   TextField,
@@ -29,7 +28,7 @@ import {
   Popover,
 } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -39,11 +38,13 @@ import {
   type Key,
 } from "react";
 
-import { authBrowserClient } from "@/lib/auth/browser";
-import { LOGIN_PATH } from "@/lib/auth/next-path";
+import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
 import { SESSIONS_COPY, type SessionsCopy } from "@/lib/copy/sessions";
+import { useUrlFilters } from "@/lib/dashboard/url-filters";
+import { loadable, type Loadable } from "@/lib/loadable";
+import { pageItems } from "@/lib/ui/pagination";
 import {
   DashboardApiError,
   fetchSessions,
@@ -58,6 +59,7 @@ import {
   rangeForSelection,
 } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";
+import { SectionSkeleton } from "@/components/section-states";
 import { FlowNumber } from "@/components/flow-number";
 import { SourceIcon } from "@/components/dashboard/source-icon";
 import { sourceDisplayLabel } from "@/components/dashboard/sources";
@@ -73,9 +75,6 @@ const UPGRADE_URL = "https://github.com/baiwumm/token-usage#readme";
 const SESSION_RANGE_PRESETS = ["today", "7d", "30d", "90d"] as const;
 
 type SessionRange = (typeof SESSION_RANGE_PRESETS)[number] | "custom";
-
-type LoadStatus = "loading" | "ready" | "error";
-type Loadable<T> = { status: LoadStatus; data: T | null };
 
 interface Filters {
   range: SessionRange;
@@ -125,6 +124,18 @@ function serializeFilters(filters: Filters): string {
   return query.toString();
 }
 
+// Any filter change restarts paging unless the patch is the page itself.
+function mergeSessionFilters(
+  previous: Filters,
+  patch: Partial<Filters>,
+): Filters {
+  const next = { ...previous, ...patch };
+
+  if (!("offset" in patch)) next.offset = 0;
+
+  return next;
+}
+
 function rowKey(session: SessionItem): string {
   return `${session.device_id}|${session.source}|${session.session_id}`;
 }
@@ -135,26 +146,6 @@ function sortedModels(models: SessionModel[]): SessionModel[] {
       second.total_tokens - first.total_tokens ||
       first.model.localeCompare(second.model),
   );
-}
-
-function pageItems(
-  page: number,
-  totalPages: number,
-): Array<number | "ellipsis"> {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1);
-  }
-  const items: Array<number | "ellipsis"> = [1];
-
-  if (page > 3) items.push("ellipsis");
-  const start = Math.max(2, page - 1);
-  const end = Math.min(totalPages - 1, page + 1);
-
-  for (let value = start; value <= end; value += 1) items.push(value);
-  if (page < totalPages - 2) items.push("ellipsis");
-  items.push(totalPages);
-
-  return items;
 }
 
 function isUnauthorized(error: unknown): boolean {
@@ -273,7 +264,7 @@ function SessionDetailModal({
   onOpenChange: (open: boolean) => void;
 }) {
   const {
-    formatTokensExact,
+    formatTokens,
     formatCost,
     formatDuration,
     formatDateTime,
@@ -379,7 +370,7 @@ function SessionDetailModal({
                           type="body-sm"
                           weight="medium"
                         >
-                          {formatTokensExact(value)}
+                          {formatTokens(value)}
                         </Typography>
                       </div>
                     ))}
@@ -430,7 +421,7 @@ function SessionDetailModal({
                                   </span>
                                 </Table.Cell>
                                 <Table.Cell className="whitespace-nowrap text-end tabular-nums">
-                                  {formatTokensExact(model.total_tokens)}
+                                  {formatTokens(model.total_tokens)}
                                 </Table.Cell>
                                 <Table.Cell className="text-muted whitespace-nowrap text-end tabular-nums">
                                   {formatPercent(model.share)}
@@ -464,33 +455,22 @@ function SessionDetailModal({
   );
 }
 
-function SectionSkeleton({ className }: { className?: string }) {
-  // Same radius as HeroUI cards (min(32px, --radius-3xl)) so loading blocks
-  // match the layout they stand in for.
-  return (
-    <Skeleton
-      className={`rounded-[min(32px,var(--radius-3xl))] ${className ?? "h-40 w-full"}`}
-    />
-  );
-}
-
 export function SessionsClient() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [locale] = useLocale();
   const copy = SESSIONS_COPY[locale];
   const { formatTokens, formatCost, formatDuration, formatDateTime } =
     useFormat();
 
-  const [filters, setFilters] = useState<Filters>(() =>
-    parseFilters(searchParams),
-  );
-  const [qInput, setQInput] = useState(() => filters.q);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [state, setState] = useState<Loadable<SessionsPayload>>({
-    status: "loading",
-    data: null,
+  const { accessToken, redirectToLogin } = useSessionBootstrap("/sessions");
+  const [filters, applyFilters] = useUrlFilters<Filters>({
+    basePath: "/sessions",
+    parse: parseFilters,
+    serialize: serializeFilters,
+    merge: mergeSessionFilters,
   });
+  const [qInput, setQInput] = useState(() => filters.q);
+  const [state, setState] = useState<Loadable<SessionsPayload>>(loadable);
   const [facets, setFacets] = useState<SessionsPayload["facets"]>({
     sources: [],
     devices: [],
@@ -518,59 +498,6 @@ export function SessionsClient() {
     [timezone],
   );
 
-  const redirectToLogin = useCallback(() => {
-    router.replace(`${LOGIN_PATH}?next=${encodeURIComponent("/sessions")}`);
-  }, [router]);
-
-  const applyFilters = useCallback((patch: Partial<Filters>) => {
-    setFilters((previous) => {
-      const next = { ...previous, ...patch };
-
-      // Any filter change restarts paging unless the patch is the page itself.
-      if (!("offset" in patch)) next.offset = 0;
-      const query = serializeFilters(next);
-
-      window.history.replaceState(
-        null,
-        "",
-        query ? `/sessions?${query}` : "/sessions",
-      );
-
-      return next;
-    });
-  }, []);
-
-  useEffect(() => {
-    const onPopState = () => {
-      setFilters(parseFilters(new URLSearchParams(window.location.search)));
-    };
-
-    window.addEventListener("popstate", onPopState);
-
-    return () => window.removeEventListener("popstate", onPopState);
-  }, []);
-
-  // Scrub legacy range params from the address bar on load so a stale link
-  // doesn't keep advertising filters the page no longer restores.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-
-    if (!params.has("range") && !params.has("from") && !params.has("to")) {
-      return;
-    }
-
-    params.delete("range");
-    params.delete("from");
-    params.delete("to");
-    const query = params.toString();
-
-    window.history.replaceState(
-      null,
-      "",
-      query ? `/sessions?${query}` : "/sessions",
-    );
-  }, []);
-
   useEffect(() => {
     setQInput(filters.q);
   }, [filters.q]);
@@ -583,23 +510,6 @@ export function SessionsClient() {
 
     return () => window.clearTimeout(timer);
   }, [qInput, filters.q, applyFilters]);
-
-  useEffect(() => {
-    const supabase = authBrowserClient();
-
-    void (async () => {
-      const {
-        data: { session },
-      } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
-
-      if (!session?.access_token) {
-        redirectToLogin();
-
-        return;
-      }
-      setAccessToken(session.access_token);
-    })();
-  }, [redirectToLogin]);
 
   const load = useCallback(
     async (token: string) => {

@@ -15,13 +15,11 @@ import {
   toast,
   Popover,
 } from "@heroui/react";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TrendChart } from "../dashboard/charts";
 
-import { authBrowserClient } from "@/lib/auth/browser";
-import { LOGIN_PATH } from "@/lib/auth/next-path";
+import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { WRAPPED_COPY } from "@/lib/copy/wrapped";
 import { useLocale } from "@/lib/copy/locale";
 import {
@@ -39,7 +37,6 @@ type LoadStatus = "loading" | "ready" | "error";
 const CURRENT_YEAR = new Date().getUTCFullYear();
 
 export function WrappedClient() {
-  const router = useRouter();
   const [locale] = useLocale();
   const copy = WRAPPED_COPY[locale];
   const { formatTokens, formatCost } = useFormat();
@@ -50,12 +47,9 @@ export function WrappedClient() {
   const [monthly, setMonthly] = useState<MonthlyPoint[]>([]);
   const [year, setYear] = useState(CURRENT_YEAR);
   const [exporting, setExporting] = useState(false);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
-  const redirectToLogin = useCallback(() => {
-    router.replace(`${LOGIN_PATH}?next=${encodeURIComponent("/wrapped")}`);
-  }, [router]);
+  const { accessToken, redirectToLogin } = useSessionBootstrap("/wrapped");
 
   const loadAll = useCallback(
     async (token: string) => {
@@ -90,22 +84,8 @@ export function WrappedClient() {
   );
 
   useEffect(() => {
-    const supabase = authBrowserClient();
-
-    void (async () => {
-      const {
-        data: { session },
-      } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
-
-      if (!session?.access_token) {
-        redirectToLogin();
-
-        return;
-      }
-      setAccessToken(session.access_token);
-      await loadAll(session.access_token);
-    })();
-  }, [loadAll, redirectToLogin]);
+    if (accessToken) void loadAll(accessToken);
+  }, [accessToken, loadAll]);
 
   // Canvas-drawn share card: html-to-image hangs cloning this page's
   // Tailwind-4/oklch computed styles (tried font on/off, pixelRatio 1/2 --
