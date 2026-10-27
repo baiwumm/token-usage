@@ -109,9 +109,62 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 > **0.2.0 实施进度（2026-10-28）**：P1 服务端（`token_sync_runs` 迁移、
 > `token-usage-sync-report`、第 8 个 series `account-sync-runs` + golden 20 例 +
-> §2.11/§2.12 转正式）已推送（`731f6f5`）；P2 CLI 侧（下述采集控制 + 五修）已实现，
-> 42 个 node --test 全绿。**剩余**：P3 仪表盘"采集记录"页（web 侧）与 P4 发版收尾
-> （bump 0.2.0 + CHANGELOG + 勾本节剩余项）。
+> §2.11/§2.12 转正式）已推送（`731f6f5`）；P2 CLI 侧（采集控制 + 五修 + 运行上报）
+> 已推送（`2ea48be`），两条 CI 均绿，web `pnpm verify` 全绿（325 vitest + 42 CLI
+> node --test）。**剩余 P3/P4 见下方接续清单**（跨机器接手照此执行，无需其他上下文）。
+
+### P3/P4 接续清单（0.2.0 收尾，2026-10-28 交接）
+
+**P3 —— web 采集记录页**（apps/web，一个 commit 推完；改动全部在 apps/web 侧）：
+
+1. 数据路径（任务书裁定：`/api/app/*` route + service-role）：新建
+   `apps/web/src/app/api/app/sync-runs/route.ts`——GET；用 `@supabase/ssr`
+   的 server client（cookie store）解析浏览器会话拿 `user_id`，401 时回
+   `{"error":"Unauthorized"}`；然后直接调
+   `syncRunsPayloadForUser(userId, url.searchParams)`
+   （已导出自 `src/lib/api/account-series-handlers.ts`，内部走 service-role +
+   TTL 缓存，参数/响应逐字 = §2.12，含 366 天钳制与错误码）。仓库尚无
+   `/api/app/*` 先例，这是第一个——不要动 `/api/functions/*` 冻结面。
+2. 页面：`apps/web/src/app/sync-runs/page.tsx`（只放路由 + metadata +
+   显式组合 AppShell 壳，对齐 2026-10-26 目录规范）+ 客户端代码
+   `apps/web/src/components/sync-runs/sync-runs-client.tsx`。
+3. 列表页复用 `components/sessions/sessions-client.tsx` 模式（先通读它）：
+   `useSessionBootstrap` 引导（登录回跳 `/sync-runs`）、`useUrlFilters`
+   （device/trigger/result/offset/page_size 写 URL，时间范围仅组件内状态、
+   默认近 30 天、首帧清旧参数）、`DateRangePicker` + `RangePresetButtons`
+   + `DeviceFilterSelect`（设备）、trigger/result 两个 Select（枚举
+   scheduled/manual/watch/notify 与 ok/partial/error，全部选项 + 空跑可作
+   筛选值）、`TablePagination` 默认 20/页、加载遮罩/骨架/错误重试/筛选空态。
+4. 列：开始时间（started_at，倒序已由服务端保证）、设备、触发方式、结果
+   （error 时显 `error_code`）、耗时（duration_ms）、解析文件/上传桶/上报
+   Token（tabular-nums）、空跑 `Chip`（`empty === true`，样式弱化）。
+5. 顶部小块（同 Sessions 汇总卡样式）："今日采集次数"与"最近采集时间"——
+   复用同一 route：`totals.runs`/`totals.empty_runs`（今日窗口，浏览器时区
+   `from=今日00:00&to=明日00:00`，与列表请求并行）、最近采集时间取列表首行
+   `started_at`（今日窗口无结果时再发一个近 7 天窗口或直接 `—`）。
+6. copy：`apps/web/src/lib/copy/sync-runs.ts`（zh/en typed 字典，对齐
+   `lib/copy/sessions.ts` 结构）；文案中英齐、页面 375px 可用、语义组件
+   （Typography/Card 复合结构）、Tailwind 数字简写（`N/4`，不写 px）。
+7. 侧边栏：`components/app-shell.tsx` 导航加"采集记录"（Sessions 之后；
+   图标用 `@gravity-ui/icons`，候选 `ClockArrowRotate` / `ArrowRepeat` /
+   `History`——以实际存在为准）；语言切换文案同步进 copy 字典。
+8. 验收：`pnpm verify` 全绿；真实账号手测一轮（CLI 0.1.0 不上报，页面
+   空态要可看；空态文案引导"升级采集器到 0.2.0 后可见运行记录"）。
+
+**P4 —— 发版前收尾**（一个 commit；**做完即停，tag/npm publish 归操作者**）：
+
+1. `packages/cli/package.json` bump `0.2.0`；
+2. `packages/cli/CHANGELOG.md` 顶部补 `## 0.2.0` 节（面向用户：pause/resume、
+   init 接管计划任务（隐藏窗口）、autoLog 滚动日志、每轮运行上报（可关）、
+   五个正确性修复——措辞参考 0.1.0 节）；
+3. 勾掉本节 P3/P4 待办项、更新本进度注记；
+4. `pnpm verify` 全绿 → push main → `gh run watch` 确认 CI 绿 → 停手。
+5. 操作者手动收尾（勿代行）：`git tag cli-v0.2.0 && git push origin cli-v0.2.0`。
+
+纪律提醒（全程有效）：只 `git add` 明确路径并核对暂存区（并行会话可能同时
+在工作）；conventional commits + `Co-Authored-By: ZCode`；不碰
+`~/.tokenusage`、不跑 sync、不发 tag、不 publish、不 force push。web 侧既有
+4 条 no-console lint 警告与本任务无关。
 
 功能（采集控制，2026-10-27 用户场景提出：不想自动采集、只想手动 `sync`）——**已实现**：
 
