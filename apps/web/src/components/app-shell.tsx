@@ -134,18 +134,44 @@ function Brand({ collapsed }: { collapsed: boolean }) {
         }`}
         href="/"
       >
-        <span className="bg-accent text-accent-foreground shadow-accent/20 flex size-7 shrink-0 items-center justify-center rounded-lg shadow-md">
-          <Display aria-hidden="true" className="size-4" />
+        <span aria-hidden="true" className="grid size-8 shrink-0 select-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            alt=""
+            className="col-start-1 row-start-1 size-8 rounded-lg dark:hidden"
+            height={32}
+            src="/logo.svg"
+            width={32}
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            alt=""
+            className="col-start-1 row-start-1 hidden size-8 rounded-lg dark:block"
+            height={32}
+            src="/logo-dark.svg"
+            width={32}
+          />
         </span>
         {collapsed ? null : (
-          <span className="flex min-w-0 flex-col">
-            <span className="truncate text-sm leading-tight font-semibold">
+          <div className="flex min-w-0 flex-col">
+            <Typography
+              truncate
+              className="leading-tight"
+              type="h6"
+              weight="semibold"
+            >
               Token Usage
-            </span>
-            <span className="text-muted mt-0.5 truncate text-[10px] font-medium tracking-[0.16em] uppercase">
+            </Typography>
+            <Typography
+              truncate
+              className="text-[10px] tracking-[0.16em] uppercase"
+              color="muted"
+              type="body-xs"
+              weight="medium"
+            >
               {copy.brandTagline}
-            </span>
-          </span>
+            </Typography>
+          </div>
         )}
       </Link>
     </div>
