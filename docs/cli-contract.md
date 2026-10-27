@@ -264,6 +264,62 @@ Query：`range`(≤20 字符，默认 `"custom"`)、`from`、`to`（ISO 时间�
 
 设备列表排序：活跃设备在前，同状态按用量降序；`last_used_at` 取该设备所有令牌的 `last_used_at`/`created_at` 最大值。
 
+### 2.11 `POST /api/functions/token-usage-sync-report`（仅设备令牌｜CLI 面）【提案，未实现】
+
+> 状态：2026-10-27 契约草案（`docs/cli-release.md` §四"采集记录"项）。按仓库规矩，
+> golden 测试随实现一起落地，届时在 §3 补冻结条目；实现前本端点不存在（404）。
+> 客户端语义：CLI 每完成一轮 sync（**含空跑**）上报一条运行记录；仅在 init 持久配置
+> run-report（默认开，`--run-report=off` 关闭）时发送；`pause` 期间不产生运行。
+> 上报是 best-effort——失败只记本地日志，绝不影响当轮数据采集（ingest）。
+
+请求体（单个 JSON 对象；字段白名单之外一律忽略）：
+
+| 字段 | 说明 |
+|---|---|
+| `run_id` | 必填。客户端生成的运行幂等键（如 `<started_at epoch ms>-<4位hex>`）；trim 非空 ≤128，不含 `/`、`\` 与 Unicode Cc（对齐 `session_id` 的防路径哲学） |
+| `started_at` `ended_at` | 必填。可解析 ISO；`ended_at >= started_at`；`duration_ms` 由服务端计算，客户端不上报 |
+| `trigger` | 必填。枚举 `scheduled` \| `manual` \| `watch` \| `notify` |
+| `result` | 必填。枚举 `ok` \| `partial` \| `error` |
+| `error_code` | 可选。trim ≤64 的稳定短码；`result=ok` 时应省略 |
+| `parsed_files` | 必填。非负安全整数，本轮扫描的会话文件数 |
+| `buckets_uploaded` | 必填。非负安全整数，本轮放入 ingest 请求的桶数 |
+| `tokens_ingested` | 必填。非负安全整数，上述桶的 `total_tokens` 之和。**客户端上报口径的遥测**：桶被更大的重放按 last-wins 覆盖时可能高于净增，**不参与对账**——对账基线仍是 §2.4 的桶 upsert 键与本地 queue last-wins 总数 |
+| `sessions_uploaded` `sessions_skipped` | 必填。非负安全整数 |
+| `queue_bytes` | 可选。非负整数或 `null`，本轮结束后本地待传队列字节数（离线/退避排障用） |
+| `cli_version` | 必填。trim ≤32（如 `"0.1.0"`） |
+| `os` | 可选。trim ≤64（如 `"win32 10.0.26200"`） |
+
+- 校验失败 → `400 {"error":"invalid_sync_report"}`（单一稳定码，细节只进服务端日志）；畸形 JSON → `400 {"error":"invalid_json"}`（§1.2）；鉴权走 §1.4 设备令牌路径（401/403 语义一致）。
+- 落库表 `token_sync_runs`：upsert 键 `(user_id, device_id, run_id)`——重放（响应丢失后的重试）返回 `200 {"ok":true,"duplicate":true}`，不产生重复行。RLS 对 anon/authenticated 保持零 policy，读取走 service-role。
+- 服务端派生 `empty = tokens_ingested === 0 && sessions_uploaded === 0`，客户端不传该字段；派生规则属于本契约。
+- 体量：每设备每小时至多数行，暂不设清理策略；设备"最近采集时间"由读侧 `max(started_at)` 派生，不新增设备列。
+- 隐私白名单：只有聚合计数、枚举与版本字符串；不含路径、项目名、会话 ID、错误堆栈。
+- 成功 `200 {"ok":true,"duplicate":false}`。
+
+### 2.12 `GET /api/functions/token-usage-account-sync-runs`（设备令牌或 JWT｜Dashboard 面）【提案，未实现】
+
+> 状态：§2.11 的读取面，实现后作为 §2.7 catch-all 的**第 8 个 series**（不新增函数
+> 数目，对齐 Vercel 12 函数上限的既有约束）；分页与全集语义对齐 `sessions` series。
+
+Query：`from`、`to`（ISO 瞬时，按 `started_at ∈ [from,to)`）、`device_id`（可选，UUID）、`trigger`（可选，枚举同 §2.11）、`result`（可选，枚举同 §2.11）、`limit`(1–200，默认 50)、`offset`(≥0)。
+
+- 错误：`400 {"error":"Missing from/to"}`｜`400 {"error":"Invalid from/to"}`（`from > to`）｜`400 {"error":"Invalid device_id"}`；窗口 > 366 天时把 `from` 钳制到 `to - 366d`（运行记录高频滚动，窗口比 sessions 的 1095 天短）；`trigger` / `result` 非法值按无结果处理（不 400，对齐 sessions 对 `source` 的处理）。
+- 排序 `started_at` 倒序（同刻按 `run_id` 升序）；已吊销设备的运行行保留在库但**整段剔除**（对齐 sessions）；`total` 是筛选全集计数，`totals` 是筛选全集汇总而非当前页。
+- 响应：
+
+```json
+{
+  "from": "...", "to": "...", "total": 0, "limit": 50, "offset": 0,
+  "totals": { "runs": 0, "empty_runs": 0, "tokens_ingested": 0, "sessions_uploaded": 0, "duration_ms": 0 },
+  "runs": [ { "device_id", "device_name", "run_id", "started_at", "ended_at", "duration_ms",
+              "trigger", "result", "error_code", "empty",
+              "parsed_files", "buckets_uploaded", "tokens_ingested",
+              "sessions_uploaded", "sessions_skipped", "queue_bytes", "cli_version", "os" } ]
+}
+```
+
+- `empty` 为服务端派生布尔（规则同 §2.11），供 UI 打"空跑"标记与筛选，客户端无需自行推导。
+
 ## 3. 冻结不变量清单（逐条对应契约测试）
 
 适用范围：涉及 §2.6–2.10 的条目（6、7 的字段形态与聚合规则，含 `sessions` series）属
@@ -282,6 +338,9 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
 10. `token_sessions` upsert 键 `(user_id, device_id, source, session_id)` 与 `ended_at` 严格 last-wins；旧/等值快照只计 `sessions_skipped`；请求内同键保留 `ended_at` 最大的一条。
 11. `account-sessions` 的 `[from,to)` 过滤、`ended_at` 倒序、`total`/`totals` 全集语义、吊销设备剔除、成本读取时计算、`total_cost_usd` 6dp、分页钳制。
 12. 旧 CLI 不携带 `sessions` 时请求与响应逐字不变；`sessions_upserted` / `sessions_skipped` 是可选追加字段。
+
+> §2.11 / §2.12 为**提案**（2026-10-27 草案，未实现）：实现落地时在本清单补对应
+> 冻结条目并同步 golden 测试，经操作者确认后转正式。实现前两端点均不存在（404）。
 
 ## 4. 兼容演进规则
 

@@ -118,6 +118,15 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 - 现状边界：0.1.0 无任何暂停开关，`uninstall` 是彻底拆除（拆 hooks/notify、
   删 `~/.tokenusage` 配对与队列），不是暂停——别用它当"停采集"。
 
+功能（采集记录，跨 CLI + web，契约草案已入 `docs/cli-contract.md` §2.11/§2.12）：
+
+- CLI 每轮 sync（含空跑）向 `token-usage-sync-report` 上报运行记录（幂等
+  `run_id` 去重、best-effort 不影响数据采集），受 init 持久配置 run-report
+  （默认开）控制；`pause` 期间不产生运行。
+- 仪表盘新增"采集记录"菜单：读取 `token-usage-account-sync-runs`（§2.7 第 8
+  个 series），列表页含设备/触发方式/结果筛选与空跑标记。**实现等 web 大施工
+  收尾后进行**（端点与页面都在 apps/web 侧）。
+
 正确性修复（审计 P2）：
 
 - `init.js` 死常量 `www.tokenusage.cc`；
