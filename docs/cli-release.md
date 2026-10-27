@@ -18,10 +18,15 @@ npm 包 `tokenusage-cli` 的发布流程、首发未竟事项与发版后检查�
 ## 一、完成 0.1.0 首发（一次性，任一 npm 已登录环境）
 
 ```bash
-npm login                                   # 2FA 会提示 OTP
+npm login --registry=https://registry.npmjs.org   # 2FA 会提示 OTP
 cd <仓库>/packages/cli
-npm publish --access public                 # 手动首发；只打包已提交的 CLI 文件
+npm publish --access public --registry=https://registry.npmjs.org   # 手动首发；只打包已提交的 CLI 文件
 ```
+
+注：默认源是 npmmirror 等国内镜像的机器（本机 `~/.npmrc` 即如此）必须显式
+`--registry` 指回 npmjs——镜像是只读代理，登录它对发包无用，publish 也发不
+上去。npm 凭证按源分别存储（`//registry.npmjs.org/:_authToken`），这样登录
+不影响日常安装继续走镜像。
 
 然后在网页上登记 Trusted Publisher（无法用命令完成）：
 
@@ -73,6 +78,9 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
   换成 npm 正式产物（同版本号下直接 `npm i -g tokenusage-cli` 会被 "up to
   date" 跳过，等价命令 `npm i -g tokenusage-cli@0.1.0 --force`），装完
   `tokenusage status` 确认 device token 仍在，跑一次 `tokenusage sync` 收尾。
+  默认源走镜像的机器要等 npmmirror 同步上游后才装得到
+  （`curl https://registry.npmmirror.com/sync/tokenusage-cli` 可手动触发），
+  急用可对 npmjs 显式 `--registry` 强装。
   旧账迁移按 `docs/launch-runbook.md` 与桌面 replay 材料（约 13.6B 待迁）。
 - [ ] **观察首日**：仪表盘数据、sync.log、GitHub Release 页面三处对账。
 
