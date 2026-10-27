@@ -67,10 +67,13 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 - [ ] **本机计划任务复验**：`Start-ScheduledTask TokenUsageSync` 后确认
   `LastTaskResult=0`、日志 `C:\Users\i\.tokenusage\logs\sync.log` 正常追加且
   不再出现 SQLite ExperimentalWarning。
-- [ ] **公司机部署采集器**：`npm i -g tokenusage-cli` → `tokenusage init` →
-  `tokenusage device-login`（浏览器开 `/device?user_code=…` 批准）→
-  `tokenusage sync --drain` → `tokenusage status` 核对。旧账迁移按
-  `docs/launch-runbook.md` 与桌面 replay 材料（约 13.6B 待迁）。
+- [ ] **公司机换装正式包**（2026-10-27 实查：公司机已装开发期 0.1.0（Volta
+  全局），且已配对在传——`tokenusage status` 显示 device token set、queue 0，
+  `init` / `device-login` 不必重做）：发布后 `volta install tokenusage-cli@0.1.0`
+  换成 npm 正式产物（同版本号下直接 `npm i -g tokenusage-cli` 会被 "up to
+  date" 跳过，等价命令 `npm i -g tokenusage-cli@0.1.0 --force`），装完
+  `tokenusage status` 确认 device token 仍在，跑一次 `tokenusage sync` 收尾。
+  旧账迁移按 `docs/launch-runbook.md` 与桌面 replay 材料（约 13.6B 待迁）。
 - [ ] **观察首日**：仪表盘数据、sync.log、GitHub Release 页面三处对账。
 
 ## 四、已知待办（不阻塞发版）
