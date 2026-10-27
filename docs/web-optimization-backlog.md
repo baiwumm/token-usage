@@ -91,19 +91,29 @@
 
 ### C. 服务端性能与健壮性
 
-- [ ] C1 `hourly` 端点：先按请求日 ±1 天 UTC 窗口预过滤行再逐行算时区
-      （现在对全历史逐行 `zonedParts`）。
-- [ ] C2 `loadSessionRows` / sessions facets：facets 是无窗口全量拉 + JS 过滤，
-      历史增长后是该端点慢查询来源 → q/device/source 下推 PostgREST 或加短 TTL 缓存。
-- [ ] C3 契约 GET 端点加 ETag / `Cache-Control: private, max-age=N`
-      （按账户 `max(updated_at)` 版本化；CLI 轮询与仪表盘刷新受益）。
-- [ ] C4 `readJsonBody` 先整读 body 再验 1MiB 上限 → 先查 content-length 或流式累计；
-      坏 JSON 现在返回 500，应归 400。
-- [ ] C5 pricing `negativeCache` 无界增长（模型名可被设备注入）→ 设上限。
+- [x] C1 `hourly` 端点：先按请求日 ±1 天 UTC 窗口预过滤行再逐行算时区
+      （现在对全历史逐行 `zonedParts`）→ `hourlySeriesForDay` 以 ±15h UTC 毫秒窗口
+      粗滤（IANA 偏移极值 −12..+14），行内只 parse 一次 ms 并复用。
+- [x] C2 `loadSessionRows` / sessions facets → 采 TTL 缓存方案（下推 q/device/source
+      需要为 facets 再拉一遍，得不偿失）：按 (user, from, to) 单飞 + 10s TTL，与
+      account 快照共用失效 revision（ingest/revoke/rename 自动击穿），
+      `TOKEN_USAGE_SESSION_CACHE=off` 供测试关闭。
+- [x] C3 契约 GET 端点加 ETag → 用协商缓存而非 max-age：account series（catch-all
+      七个）+ account-summary + dashboard 的成功 GET 现在带强 ETag（payload sha256）
+      和 `Cache-Control: private, no-cache`，If-None-Match 命中回 304——新鲜度永不
+      被信任（ingest 随时写数据），省的是响应体传输。§1.2/§2.7 已回写，golden 加
+      4 个用例。CLI 面端点保持冻结的 no-store。
+- [x] C4 `readJsonBody` → Content-Length 预检（超限未读 body 即 413，读后仍验实际
+      长度防谎报）；坏 JSON 归 `400 {"error":"invalid_json"}`（原 reference 的
+      generic 500 对客户端错误语义不当，§1.2 已回写，golden 两个用例更新）。
+- [x] C5 pricing `negativeCache` 上限 4096，满则清空（照 formatterCache 先例；
+      注入名风暴只会重走表，不会无界增长）。
 - [ ] C6 索引（数据量涨了再做）：hourly 若做 SQL 聚合需 `(user_id, source, hour_start)`
       类索引；`token_device_tokens` 缺 `(user_id)`（现按 user_id 拉取走 seq scan）。
-- [ ] C7 `eslint.config.mjs` 的 `react-hooks/exhaustive-deps: "off"` 降为 `"warn"`，
-      修暴露出的真问题（预期有少量）。
+      **保持待办**：当前量级（~20B tokens / 448 sessions）无感知，动迁移要走
+      rewrite-plan §3/§6 流程。
+- [x] C7 `react-hooks/exhaustive-deps` 已降为 `"warn"`：零警告——A/B 组的 hook 化
+      重构后依赖数组全部规范，无历史欠账要还。
 
 ### D. 功能建议（产品，逐项独立可做）
 

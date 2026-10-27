@@ -40,8 +40,9 @@
 | `Access-Control-Max-Age` | `86400` |
 | `OPTIONS` 预检 | `204`，无 body |
 | 方法不匹配 | `405 {"error":"Method not allowed"}` |
-| 所有 JSON 响应 | `Cache-Control: no-store` |
-| 请求体上限 | 1 MiB，超出 `413` |
+| 所有 JSON 响应 | `Cache-Control: no-store`（例外：account series 成功 `GET` 为 `private, no-cache` + 强 ETag 协商缓存，见 §2.7，2026-10-27 起，Dashboard 面） |
+| 请求体上限 | 1 MiB，超出 `413`；显式 `Content-Length` 超限时未读 body 即拒 |
+| 畸形 JSON 请求体 | `400 {"error":"invalid_json"}`（2026-10-27 起；此前沿袭 reference 的 generic 500，对客户端错误返回 5xx 语义不当） |
 
 ### 1.3 错误格式
 
