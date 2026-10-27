@@ -6,6 +6,7 @@ const { cmdDoctor } = require("./commands/doctor");
 const { cmdUninstall } = require("./commands/uninstall");
 const { cmdDeviceLogin } = require("./commands/device-login");
 const { cmdSessions } = require("./commands/sessions");
+const { cmdPause, cmdResume } = require("./commands/pause");
 
 async function run(argv) {
   // Best-effort Sentry init (no-op without DSN / when telemetry opted out).
@@ -49,6 +50,12 @@ async function run(argv) {
       }
       await cmdSync(rest);
       return;
+    case "pause":
+      await cmdPause(rest);
+      return;
+    case "resume":
+      await cmdResume(rest);
+      return;
     case "status":
       await cmdStatus(rest);
       return;
@@ -75,6 +82,8 @@ async function run(argv) {
 // --watch: keep the process alive and re-run sync on an interval. Each pass
 // reuses the session-analytics sidecar cache and the upload watermarks, so a
 // pass with nothing new is cheap (a directory signature stat + a no-op).
+// The trigger tag rides context into cmdSync so run telemetry can report
+// `watch` runs distinctly from scheduled/manual/notify ones (§2.11).
 async function watchSync(rest) {
   const args = rest.filter((arg) => arg !== "--watch");
   const intervalIndex = args.indexOf("--interval");
@@ -90,7 +99,7 @@ async function watchSync(rest) {
   process.stdout.write(`tokenusage sync --watch: every ${Math.round(intervalMs / 60_000)} min (Ctrl+C to stop)\n`);
   for (;;) {
     try {
-      await cmdSync(args);
+      await cmdSync(args, { trigger: "watch" });
     } catch (error) {
       // A failed pass (offline, backend 5xx) must not kill the watcher; the
       // queue and watermarks retain everything for the next pass.
@@ -108,9 +117,10 @@ function printHelp() {
       "",
       "Usage:",
       "  tokenusage -v, --version                                 Show version info",
-      "  tokenusage [--debug] init [--yes] [--dry-run] [--no-open] [--link-code <code>]",
+      "  tokenusage [--debug] init [--yes] [--dry-run] [--no-open] [--link-code <code>] [--run-report=on|off]",
       "  tokenusage [--debug] sync [--auto] [--drain] [--no-sessions] [--watch]",
       "  tokenusage [--debug] status [--probe-keychain] [--probe-keychain-details]",
+      "  tokenusage [--debug] pause | resume",
       "  tokenusage [--debug] diagnostics [--out diagnostics.json]",
       "  tokenusage [--debug] doctor [--json] [--out doctor.json] [--base-url <url>]",
       "  tokenusage [--debug] uninstall [--purge]",
@@ -124,6 +134,8 @@ function printHelp() {
       "  - --watch keeps running and syncs on an interval (increments only).",
       "  - --no-sessions skips the session metadata upload (hourly buckets only).",
       "  - auto sync waits for a device token.",
+      "  - pause/resume stop and restart automatic collection (flag + scheduled",
+      "    task); manual sync always runs.",
       "  - --debug shows original backend errors.",
       "  - sessions exports metadata-only efficiency analytics; no prompt or response text is retained.",
       "",

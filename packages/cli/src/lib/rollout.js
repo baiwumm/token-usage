@@ -4458,6 +4458,28 @@ function addTotals(target, delta) {
   target.conversation_count += delta.conversation_count || 0;
 }
 
+// Signed-delta defense (audit fix): OpenCode corrections subtract a prior
+// contribution that may not actually sit in the bucket (lost cursor,
+// compacted state). Floors every counter at zero so a correction can never
+// leave negative bucket totals behind.
+function clampTotalsNonNegative(totals) {
+  if (!totals || typeof totals !== "object") return totals;
+  for (const key of [
+    "input_tokens",
+    "cached_input_tokens",
+    "cache_creation_input_tokens",
+    "output_tokens",
+    "reasoning_output_tokens",
+    "total_tokens",
+    "billable_total_tokens",
+    "conversation_count",
+  ]) {
+    if (totals[key] != null) totals[key] = Math.max(0, totals[key]);
+  }
+  if (totals.total_cost_usd != null) totals.total_cost_usd = Math.max(0, totals.total_cost_usd);
+  return totals;
+}
+
 function subtractTotals(target, totals) {
   for (const [field] of PRIORITY_SUBSET_FIELDS) {
     const current = Number(target[field]) || 0;
@@ -4579,19 +4601,25 @@ function groupBucketKey(source, hourStart) {
   return `${safeSource}${BUCKET_SEPARATOR}${hourStart}`;
 }
 
+// Inverse of bucketKey(): `source|model|hourStart`. hour_start is an ISO
+// string and never contains `|`, so it is everything after the LAST
+// separator — parsing from the front (source, then "the model") truncated
+// model names that themselves contain `|` and shifted hourStart to the
+// remainder (audit fix: 桶键 `|` 分隔符与含 `|` model 名的往返解析). A
+// two-part key is a group key (`source|hourStart`) with no model segment.
 function parseBucketKey(key) {
   if (typeof key !== "string")
     return { source: DEFAULT_SOURCE, model: DEFAULT_MODEL, hourStart: "" };
   const first = key.indexOf(BUCKET_SEPARATOR);
   if (first <= 0) return { source: DEFAULT_SOURCE, model: DEFAULT_MODEL, hourStart: key };
-  const second = key.indexOf(BUCKET_SEPARATOR, first + 1);
-  if (second <= 0) {
+  const last = key.lastIndexOf(BUCKET_SEPARATOR);
+  if (last === first) {
     return { source: key.slice(0, first), model: DEFAULT_MODEL, hourStart: key.slice(first + 1) };
   }
   return {
     source: key.slice(0, first),
-    model: key.slice(first + 1, second),
-    hourStart: key.slice(second + 1),
+    model: key.slice(first + 1, last),
+    hourStart: key.slice(last + 1),
   };
 }
 
@@ -6315,6 +6343,12 @@ async function parseOpencodeDbIncremental({
       : { ...delta, conversation_count: effectiveLastTotals ? 0 : 1 };
     const bucket = getHourlyBucket(hourlyState, defaultSource, model, bucketStart);
     addTotals(bucket.totals, contribution);
+    // Signed-delta chain defense (audit fix): a downward correction whose
+    // prior contribution is not actually in this bucket (lost cursor, compacted
+    // state) would otherwise drive the persistent totals negative — the upload
+    // sanitizer would clamp the row, but the recorded queuedKey would pin that
+    // clamped value forever. Negative bucket totals are never meaningful.
+    clampTotalsNonNegative(bucket.totals);
     touchedBuckets.add(bucketKey(defaultSource, model, bucketStart));
 
     if (attribution.projectKey && projectState && projectTouchedBuckets) {
@@ -6326,6 +6360,7 @@ async function parseOpencodeDbIncremental({
         attribution.projectRef,
       );
       addTotals(projectBucket.totals, contribution);
+      clampTotalsNonNegative(projectBucket.totals);
       projectTouchedBuckets.add(
         projectBucketKey(attribution.projectKey, defaultSource, bucketStart),
       );
@@ -25718,6 +25753,10 @@ module.exports = {
   readZcodeDbMessages,
   coerceEpochMs,
   normalizeOpencodeModelFields,
+  parseBucketKey,
+  bucketKey,
+  diffOpencodeTotals,
+  clampTotalsNonNegative,
   hasZcodeNativeUsageSchema,
   zcodeDbHasContent,
   hasZcodeCursorState,

@@ -31,22 +31,27 @@ function resolveRuntimeConfig({ cli = {}, config = {}, env = process.env, defaul
   // isolation bug is fixed, but existing installs must recover instead of
   // backing off cloud uploads forever against the reserved placeholder host.
   const persistedBaseUrl = normalizePersistedBaseUrl(config.baseUrl);
+  // envBaseNewName wins over the retired upstream-era INSFORGE_* names (audit
+  // fix: the backend is token-usage's own Supabase deployment, not InsForge);
+  // the old names stay as a legacy fallback so existing scripts keep working.
+  const envBaseUrl = env?.TOKENUSAGE_BASE_URL ?? env?.TOKENUSAGE_INSFORGE_BASE_URL;
+  const envAnonKey = env?.TOKENUSAGE_ANON_KEY ?? env?.TOKENUSAGE_INSFORGE_ANON_KEY;
   const baseUrl = pickString(
     cli.baseUrl,
     persistedBaseUrl,
-    env?.TOKENUSAGE_INSFORGE_BASE_URL,
+    envBaseUrl,
     defaults.baseUrl,
     DEFAULT_BASE_URL,
   );
   const selectedBase = normalizeInstanceBaseUrl(baseUrl.value);
   const configBase = normalizeInstanceBaseUrl(persistedBaseUrl || DEFAULT_BASE_URL);
-  const envBase = normalizeInstanceBaseUrl(env?.TOKENUSAGE_INSFORGE_BASE_URL || baseUrl.value);
+  const envBase = normalizeInstanceBaseUrl(envBaseUrl || baseUrl.value);
   const defaultBase = normalizeInstanceBaseUrl(defaults.baseUrl || DEFAULT_BASE_URL);
   const custom = selectedBase !== DEFAULT_BASE_URL;
   const anonKey = pickString(
     cli.anonKey,
     configBase === selectedBase ? config.anonKey : undefined,
-    envBase === selectedBase ? env?.TOKENUSAGE_INSFORGE_ANON_KEY : undefined,
+    envBase === selectedBase ? envAnonKey : undefined,
     defaultBase === selectedBase ? defaults.anonKey : undefined,
     custom ? null : DEFAULT_ANON_KEY,
   );
@@ -61,7 +66,7 @@ function resolveRuntimeConfig({ cli = {}, config = {}, env = process.env, defaul
     cli.deviceToken,
     configBase === selectedBase && (!custom || normalizeInstanceBaseUrl(config.deviceTokenBaseUrl) === selectedBase)
       ? config.deviceToken : undefined,
-    envBase === selectedBase && (!custom || normalizeInstanceBaseUrl(env?.TOKENUSAGE_INSFORGE_BASE_URL) === selectedBase)
+    envBase === selectedBase && (!custom || normalizeInstanceBaseUrl(envBaseUrl) === selectedBase)
       ? env?.TOKENUSAGE_DEVICE_TOKEN : undefined,
     defaultBase === selectedBase ? defaults.deviceToken : undefined,
     null,

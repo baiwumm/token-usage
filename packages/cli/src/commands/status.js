@@ -49,6 +49,10 @@ const {
 const { resolveTrackerPaths } = require("../lib/tracker-paths");
 const { resolveDeviceTokenPresence } = require("../lib/cloud-device-token");
 const {
+  isCollectionPaused,
+  isRunReportEnabled,
+} = require("../lib/collection-pause");
+const {
   resolveKimiWireFiles,
   resolveKimiCodeWireFiles,
   resolveKiroCliDbPath,
@@ -286,6 +290,9 @@ async function cmdStatus(argv = []) {
   // Written by sync whenever it had to skip a run. Present here so a stalled
   // parse has a visible cause instead of only a frozen "Last parse".
   const syncSkip = await readJson(syncSkipPath);
+  // Collection controls (0.2.0): pause flag + per-run report preference.
+  const collectionPaused = isCollectionPaused(trackerDir);
+  const runReportEnabled = isRunReportEnabled(trackerDir);
 
   const queueSize = await safeStatSize(queuePath);
   const pendingBytes = Math.max(0, queueSize - (queueState.offset || 0));
@@ -1287,6 +1294,10 @@ async function cmdStatus(argv = []) {
       "Status:",
       `- Base URL: ${config?.baseUrl || "unset"}`,
       `- Device token: ${deviceTokenPresence.set ? "set" : "unset"}`,
+      collectionPaused
+        ? "- Collection: PAUSED (auto/notify/watch syncs skip; manual sync runs; `tokenusage resume` to re-enable)"
+        : "- Collection: active",
+      `- Run report: ${runReportEnabled ? "on (each sync reports a run record)" : "off"}`,
       `- Queue: ${pendingBytes} bytes pending`,
       `- Last parse: ${cursors?.updatedAt || "never"}`,
       `- Last notify: ${lastNotify || "never"}`,

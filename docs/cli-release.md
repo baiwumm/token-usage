@@ -107,33 +107,42 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 下版本候选（0.1.1 / 0.2.0，不阻塞已发版本）
 
-功能（采集控制，2026-10-27 用户场景提出：不想自动采集、只想手动 `sync`）：
+> **0.2.0 实施进度（2026-10-28）**：P1 服务端（`token_sync_runs` 迁移、
+> `token-usage-sync-report`、第 8 个 series `account-sync-runs` + golden 20 例 +
+> §2.11/§2.12 转正式）已推送（`731f6f5`）；P2 CLI 侧（下述采集控制 + 五修）已实现，
+> 42 个 node --test 全绿。**剩余**：P3 仪表盘"采集记录"页（web 侧）与 P4 发版收尾
+> （bump 0.2.0 + CHANGELOG + 勾本节剩余项）。
 
-- `tokenusage pause` / `resume` 子命令：在 `~/.tokenusage` 写采集开关标志，
-  `sync --auto` / `--watch` 检测到即静默退出；`status` 显示当前采集状态。
-  标志位方案跨平台通用（cron/launchd 任务天然兼容）。
-- `init` 接管 Windows 计划任务注册（默认隐藏窗口方式，免弹 conhost），
-  pause/resume 顺势对任务做 disable/enable；autoLog 落滚动日志文件
-  （不再依赖注册时的 `>>` 重定向）。
-- 现状边界：0.1.0 无任何暂停开关，`uninstall` 是彻底拆除（拆 hooks/notify、
-  删 `~/.tokenusage` 配对与队列），不是暂停——别用它当"停采集"。
+功能（采集控制，2026-10-27 用户场景提出：不想自动采集、只想手动 `sync`）——**已实现**：
 
-功能（采集记录，跨 CLI + web，契约草案已入 `docs/cli-contract.md` §2.11/§2.12）：
+- [x] `tokenusage pause` / `resume` 子命令：`~/.tokenusage/pause.flag.json` 持久标志，
+  `sync --auto` / `--watch`（及 notify/retry/background 派生）检测到即静默退出且不上报；
+  `status` 显示采集状态。标志位方案跨平台通用（cron/launchd 任务天然兼容）。
+- [x] `init` 接管 Windows 计划任务注册（`TokenUsageSync`，每小时；默认经
+  `bin/run-sync-hidden.vbs` 隐藏窗口运行、免 conhost；`--no-task` 可跳过）；
+  pause/resume 顺势对任务做 disable/enable（无任务时报"not found"不报错）；
+  autoLog 落滚动日志 `<trackerDir>/logs/sync.log`（1 MiB 轮转一代），注册不再依赖
+  `>>` 重定向；uninstall 顺势删任务与 VBS。
+- [x] `init` 持久配置 `--run-report=on|off`（默认开，off 写 `config.json` 的
+  `runReport:false` 关闭上报）；`status` 可见；sync 收尾按 §2.11 上报运行记录
+  （每轮含空跑；幂等 `run_id`；trigger 区分 scheduled/manual/watch/notify；
+  best-effort——失败/404/5xx 只记本地日志，绝不影响 ingest 与退出码）。
 
-- CLI 每轮 sync（含空跑）向 `token-usage-sync-report` 上报运行记录（幂等
-  `run_id` 去重、best-effort 不影响数据采集），受 init 持久配置 run-report
-  （默认开）控制；`pause` 期间不产生运行。
-- 仪表盘新增"采集记录"菜单：读取 `token-usage-account-sync-runs`（§2.7 第 8
-  个 series），列表页含设备/触发方式/结果筛选与空跑标记。**实现等 web 大施工
-  收尾后进行**（端点与页面都在 apps/web 侧）。
+功能（采集记录，跨 CLI + web，契约 `docs/cli-contract.md` §2.11/§2.12 已转正式）：
 
-正确性修复（审计 P2）：
+- [x] CLI 每轮 sync（含空跑）向 `token-usage-sync-report` 上报运行记录（见上）。
+- [ ] 仪表盘"采集记录"菜单与列表页：读取 `token-usage-account-sync-runs`（§2.7 第 8
+  个 series，服务端已上线）。**待 P3**（web 大施工收尾后的最后一块）。
 
-- `init.js` 死常量 `www.tokenusage.cc`；
-- zcode 恢复行缺 billable/cost 字段；
-- 桶键 `|` 分隔符与含 `|` model 名的往返解析；
-- OpenCode 负 delta 链路；
-- `runtime-config` 的 `INSFORGE_*` env 名。
+正确性修复（审计 P2）——**五项全修，用例在 `packages/cli/test/audit-fixes.test.js`**：
+
+- [x] `init.js` 死常量 `www.tokenusage.cc`（已删除并有源码级防回归测试）；
+- [x] zcode 恢复行补 billable/cost 字段（`zcodeRowTotals` 填充，恢复行 schema 齐全）；
+- [x] 桶键 `|` 分隔符与含 `|` model 名的往返解析（`parseBucketKey` 改末段规则 +
+  `zcodeHourFromMainBucketKey` 对齐）；
+- [x] OpenCode 负 delta 链路（DB 路径应用签名 delta 后 `clampTotalsNonNegative`）；
+- [x] `runtime-config` 的 `INSFORGE_*` env 名（新增 `TOKENUSAGE_BASE_URL` /
+  `TOKENUSAGE_ANON_KEY` 优先，旧名保留为兼容回退）。
 
 另案处理：apps/web 的 10 条依赖审计通告（1 low / 5 moderate / 2 high /
 2 critical），属仪表盘侧。

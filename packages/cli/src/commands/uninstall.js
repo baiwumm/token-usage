@@ -29,6 +29,7 @@ const { removeOpenclawSessionPluginConfig } = require("../lib/openclaw-session-p
 const { removeGrokHook } = require("../lib/grok-hook");
 const { removeOmpHook } = require("../lib/omp-hook");
 const { resolveTrackerPaths } = require("../lib/tracker-paths");
+const { deleteWindowsScheduledTask, TASK_NAME } = require("../lib/scheduled-task");
 
 async function cmdUninstall(argv) {
   const opts = parseArgs(argv);
@@ -136,6 +137,12 @@ async function cmdUninstall(argv) {
   // Remove installed notify handler.
   await fs.unlink(notifyPath).catch(() => {});
 
+  // Remove the hidden-runner wrapper and the hourly scheduled task init
+  // registered (0.2.0). Both best-effort: a machine that never registered
+  // them simply reports no change.
+  await fs.unlink(path.join(binDir, "run-sync-hidden.vbs")).catch(() => {});
+  const taskDelete = deleteWindowsScheduledTask();
+
   // Remove local app runtime (installed by init for notify-driven sync).
   await fs.rm(path.join(trackerDir, "app"), { recursive: true, force: true }).catch(() => {});
 
@@ -240,6 +247,9 @@ async function cmdUninstall(argv) {
         ? `- Grok Build hook removed: ${grokHookRemove.hookPath}`
         : "- Grok Build hook: no change",
       formatOmpHookRemoveLine(ompHookRemove),
+      taskDelete.deleted
+        ? `- Scheduled task deleted: ${TASK_NAME}`
+        : "- Scheduled task: none",
       opts.purge ? `- Purged: ${path.join(home, ".tokenusage")}` : "- Purge: skipped (use --purge)",
       ...(machineIdSeedKept
         ? [`- Kept: ${machineIdSeedPath} (cloud device identity — a reinstall reuses the same device; delete it to fully reset)`]

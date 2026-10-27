@@ -84,6 +84,7 @@ const {
 } = require("../lib/rollout");
 const { resolveRuntimeConfig, DEFAULT_BASE_URL, normalizeInstanceBaseUrl, assertInsforgeRuntime,
   clearDeviceIdentity, resetInstanceState } = require("../lib/runtime-config");
+const { registerWindowsScheduledTask, TASK_NAME } = require("../lib/scheduled-task");
 const {
   BOLD,
   DIM,
@@ -113,7 +114,11 @@ const ASCII_LOGO = [
 ].join("\n");
 
 const DIVIDER = "----------------------------------------------";
-const DEFAULT_DASHBOARD_URL = "https://www.tokenusage.cc";
+// NOTE: the effective default dashboard/base URL lives in lib/runtime-config
+// (DEFAULT_DASHBOARD_URL = the production deployment). A local copy here went
+// stale when the deployment moved (audit fix: the dead hardcoded landing
+// domain was removed and guarded against by test/audit-fixes.test.js) —
+// resolve it through runtime-config, never re-declare it.
 
 // Single source of truth for the welcome screen's provider count + sample list.
 // test/discovery-metadata.test.js keeps this aligned with public tool copy.
@@ -401,6 +406,9 @@ async function runSetup({
     config.baseUrl = runtime.baseUrl;
     config.dashboardUrl = runtime.dashboardUrl;
   }
+  // §2.11 run-report persistence (default on; --run-report=off disables the
+  // per-run telemetry POST).
+  if (opts.runReport != null) config.runReport = opts.runReport;
 
   await writeJson(configPath, config);
   await chmod600IfPossible(configPath);
@@ -414,6 +422,31 @@ async function runSetup({
     notifyOriginalPath,
     dryRun: Boolean(opts.dryRun),
   });
+
+  // Windows scheduled task takeover (0.2.0): hourly auto sync behind a hidden
+  // VBS runner — no conhost flash, no shell redirect (sync self-logs to the
+  // rolling logs/sync.log). Best-effort; pause/resume toggle this task.
+  if (opts.noTask) {
+    summary.push({
+      label: "Scheduled task",
+      status: "skipped",
+      detail: "Skipped (--no-task); auto syncs stay manual",
+    });
+  } else {
+    const taskOutcome = registerWindowsScheduledTask({
+      binDir,
+      cliJs: path.resolve(__dirname, "..", "cli.js"),
+    });
+    summary.push({
+      label: "Scheduled task",
+      status: taskOutcome.registered ? "installed" : "skipped",
+      detail: taskOutcome.registered
+        ? `${TASK_NAME}: hourly, hidden window (pause/resume toggles it)`
+        : taskOutcome.reason === "not_windows"
+          ? "Windows-only; use cron/launchd + `tokenusage pause` elsewhere"
+          : `Not registered: ${taskOutcome.reason}`,
+    });
+  }
 
   return {
     summary,
@@ -1418,6 +1451,8 @@ function parseArgs(argv) {
     noOpen: false,
     yes: false,
     dryRun: false,
+    runReport: null,
+    noTask: false,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -1430,6 +1465,9 @@ function parseArgs(argv) {
     else if (a === "--password") out.password = argv[++i] || null;
     else if (a === "--device-name") out.deviceName = argv[++i] || null;
     else if (a === "--link-code") out.linkCode = argv[++i] || null;
+    else if (a === "--run-report") out.runReport = normalizeRunReportFlag(argv[++i]);
+    else if (a.startsWith("--run-report=")) out.runReport = normalizeRunReportFlag(a.slice("--run-report=".length));
+    else if (a === "--no-task") out.noTask = true;
     else if (a === "--no-auth") out.noAuth = true;
     else if (a === "--no-open") out.noOpen = true;
     else if (a === "--yes") out.yes = true;
@@ -1442,6 +1480,16 @@ function parseArgs(argv) {
 function sleep(ms) {
   if (!ms || ms <= 0) return Promise.resolve();
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// §2.11 run-report persistence: `--run-report=off` writes runReport:false into
+// config.json so every later sync skips the POST; absent leaves the default
+// (enabled) untouched. Invalid values fail loudly like unknown options.
+function normalizeRunReportFlag(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "on" || normalized === "true" || normalized === "1") return true;
+  if (normalized === "off" || normalized === "false" || normalized === "0") return false;
+  throw new Error(`Unknown value for --run-report: ${value} (use on|off)`);
 }
 
 function normalizePlatform(value) {

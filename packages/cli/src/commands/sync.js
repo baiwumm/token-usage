@@ -194,6 +194,8 @@ const {
 } = require("../lib/cursor-store");
 const { resolveTrackerPaths } = require("../lib/tracker-paths");
 const { readCloudSyncEnabled } = require("../lib/cloud-sync-prefs");
+const { isCollectionPaused, isRunReportEnabled } = require("../lib/collection-pause");
+const { createSyncRunTelemetry, resolveSyncTrigger } = require("../lib/sync-report");
 const {
   appendUniqueDirs,
   extraScanRootPaths,
@@ -445,11 +447,33 @@ function sleep(ms) {
 // Auto/scheduled runs are otherwise silent, which leaves --watch consoles and
 // any visible task window blank. Log one concise line per phase only when the
 // run owns a real terminal; piped hook consumers (stdio ignored) stay quiet.
-function autoLog(message) {
-  if (!process.stdout.isTTY) return;
-  const stamp = new Date().toISOString().replace("T", " ").slice(0, 19);
+// Auto-flavored runs ALSO append to the rolling <trackerDir>/logs/sync.log
+// (0.2.0): the scheduled task registration no longer depends on a `>>`
+// redirect, and TTY-less runs keep a durable trail. Rotation keeps one
+// 1 MiB generation (sync.log.1) plus the live file.
+const AUTO_LOG_MAX_BYTES = 1_048_576;
+let autoLogSinkPath = null;
 
-  process.stdout.write(`[${stamp}] ${message}\n`);
+function setAutoLogSink(filePath) {
+  autoLogSinkPath = filePath;
+}
+
+function autoLog(message) {
+  const stamp = new Date().toISOString().replace("T", " ").slice(0, 19);
+  const line = `[${stamp}] ${message}\n`;
+  if (process.stdout.isTTY) process.stdout.write(line);
+  if (autoLogSinkPath) {
+    try {
+      try {
+        const stat = fssync.statSync(autoLogSinkPath);
+        if (stat.size > AUTO_LOG_MAX_BYTES) {
+          fssync.renameSync(autoLogSinkPath, `${autoLogSinkPath}.1`);
+        }
+      } catch { /* no live file yet */ }
+      fssync.mkdirSync(path.dirname(autoLogSinkPath), { recursive: true });
+      fssync.appendFileSync(autoLogSinkPath, line);
+    } catch { /* logging must never break a sync */ }
+  }
 }
 
 async function acquireSyncLock(
@@ -565,6 +589,23 @@ async function cmdSync(argv, context = {}) {
   const syncDiagnostics = diagnostics && typeof diagnostics === "object" ? diagnostics : null;
   const home = context.home || os.homedir();
   const trackerDir = context.trackerDataDir || (await resolveTrackerPaths({ home })).trackerDir;
+  // Collection pause (0.2.0): auto-flavored runs exit silently — no lock, no
+  // log line, no run record. A manual sync is the user's explicit request
+  // and runs regardless of the flag.
+  const autoishSync = opts.auto || opts.background || opts.fromRetry || opts.fromNotify ||
+    opts.fromOpenclaw || context.trigger === "watch";
+  if (autoishSync && isCollectionPaused(trackerDir)) return;
+  // Auto-flavored runs self-log to the rolling file so neither the scheduled
+  // task nor a TTY-less hook run loses its trail.
+  if (autoishSync) setAutoLogSink(path.join(trackerDir, "logs", "sync.log"));
+  // §2.11 run telemetry (empty runs included), only when the persisted
+  // run-report pref (init --run-report=off) has not disabled it.
+  const syncRun = isRunReportEnabled(trackerDir)
+    ? createSyncRunTelemetry({
+        trigger: resolveSyncTrigger(opts, context),
+        cliVersion: require("../package.json").version,
+      })
+    : null;
   // Manual CLI sync is a one-time upload request, without changing the toggle.
   // Hooks, native publication and detached retries must honor the saved opt-in.
   const requiresCloudSyncPref = opts.auto || opts.background || opts.fromRetry || opts.fromNotify || opts.fromOpenclaw ||
@@ -3498,6 +3539,7 @@ async function cmdSync(argv, context = {}) {
       dshResult.bucketsQueued +
       commandCodeResult.bucketsQueued +
       droidResult.bucketsQueued;
+    syncRun?.noteParsedFiles(totalParsed);
     const skipNoOpCursorCommit =
       opts.auto &&
       !isFullSourceScan &&
@@ -3582,6 +3624,7 @@ async function cmdSync(argv, context = {}) {
 
     let uploadResult = { inserted: 0, skipped: 0 };
     let uploadAttempted = false;
+    let uploadError = null;
     let autoUploadDecision = null;
 
     if (canUpload() && (opts.auto || opts.publishAccount) && runtime.deviceToken && runtime.baseUrl &&
@@ -3711,6 +3754,7 @@ async function cmdSync(argv, context = {}) {
           await writeJson(uploadThrottlePath, uploadThrottleState);
         }
       } catch (e) {
+        uploadError = e;
         if (e.uploadResult?.batches > 0) {
           uploadResult = e.uploadResult;
           uploadThrottleState = recordUploadSuccess({
@@ -3740,6 +3784,15 @@ async function cmdSync(argv, context = {}) {
         // historical backfill and switch away from the intact local data.
         if (opts.drain) throw e;
       }
+    }
+
+    // §2.11 run counters for the hourly drain: buckets that went into
+    // successful ingest requests plus their token sum (client-side telemetry
+    // semantics). A failed upload reports the run as partial — data stays
+    // queued locally for the next pass.
+    if (syncRun && uploadAttempted) {
+      syncRun.noteUpload({ inserted: uploadResult.inserted, tokens: uploadResult.tokens || 0 });
+      if (uploadError) syncRun.setOutcome({ result: "partial", errorCode: "upload_failed" });
     }
 
     // Session metadata upload (docs/cli-contract.md section 2.4 `sessions`):
@@ -3772,7 +3825,12 @@ async function cmdSync(argv, context = {}) {
             autoLog(sessionLine);
           }
         }
+        syncRun?.noteSessions({
+          upserted: result.upserted,
+          skipped: (result.skippedServer || 0) + (result.skippedLocal || 0),
+        });
       } catch (sessionError) {
+        syncRun?.setOutcome({ result: "partial", errorCode: "sessions_upload_failed" });
         if (!opts.auto) {
           const detail = sessionError?.message || String(sessionError);
           process.stderr.write(
@@ -3795,6 +3853,7 @@ async function cmdSync(argv, context = {}) {
     // is local project-usage state, so counting it here creates false backlog
     // and can keep auto retry alive even after cloud sync has drained.
     const pendingBytes = Math.max(0, queueSize - Number(afterState.offset || 0));
+    syncRun?.noteQueueBytes(pendingBytes);
 
     if (pendingBytes === 0 && canUpload() && runtime.deviceToken) {
       await finishCloudDeviceUsageReset({ trackerDir, ownerId: process.env.TOKENUSAGE_CLOUD_OWNER_ID,
@@ -3854,6 +3913,30 @@ async function cmdSync(argv, context = {}) {
     // request; the throttle makes it a network no-op on all but the first
     // sync of the day, and maybeSendHeartbeat never throws.
     await maybeSendHeartbeat({ trackerDir });
+
+    // §2.11 run record (empty runs included) — the last thing a run does,
+    // strictly best-effort: failures only reach the local log, never the
+    // ingest outcome above or this process's exit code.
+    if (syncRun) {
+      await syncRun.report({
+        baseUrl: runtime.baseUrl,
+        anonKey: runtime.anonKey,
+        deviceToken: runtime.deviceToken,
+      });
+    }
+  } catch (error) {
+    // A crashed run still reports (§2.11 error outcome) — best-effort and
+    // never masking the original error. cloudResetRuntime carries the
+    // resolved backend once known; before that there is nothing to report to.
+    if (syncRun) {
+      syncRun.setOutcome({ result: "error", errorCode: "sync_error" });
+      await syncRun.report({
+        baseUrl: cloudResetRuntime?.baseUrl || null,
+        anonKey: cloudResetRuntime?.anonKey || null,
+        deviceToken: cloudResetRuntime?.deviceToken || null,
+      });
+    }
+    throw error;
   } finally {
     progress?.stop();
     await lock.release();
@@ -3977,6 +4060,8 @@ module.exports = {
   acquireSyncLock,
   readQueueBatch,
   drainQueueToCloud,
+  zcodeRowTotals,
+  buildZcodeRestorationRow,
   migrateCursorUnknownBuckets,
   migrateRolloutCumulativeDeltaBuckets,
   repairCodebuddyLogJsonlOverlap,
@@ -4481,12 +4566,13 @@ async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, que
   let inserted = 0;
   let skipped = 0;
   let batches = 0;
+  let tokensIngested = 0;
   let cloudAccess = null;
   const uploadId = crypto.randomUUID();
   const deadline = Date.now() + maxDurationMs;
   let batchBudget = Math.min(maxBatches, 100);
   let requestSignal = null;
-  const resultSoFar = () => ({ inserted, skipped, batches, ...(cloudAccess?.next_allowed_at ? { cloudAccess } : {}) });
+  const resultSoFar = () => ({ inserted, skipped, batches, tokens: tokensIngested, ...(cloudAccess?.next_allowed_at ? { cloudAccess } : {}) });
 
   const queueSize = await safeStatSize(queuePath);
   const limit = Math.min(Math.max(1, Math.floor(Number(batchSize || 200))), MAX_INGEST_BUCKETS);
@@ -4555,6 +4641,12 @@ async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, que
       if (data.upload_scope === "community") batchBudget = Math.min(batchBudget, 10);
       inserted += Number(data?.inserted || 0);
       skipped += Number(data?.skipped || 0);
+      // Client-side §2.11 telemetry: the total_tokens of the buckets this
+      // request carried (a larger replay may last-wins-override them later;
+      // this figure never participates in reconciliation).
+      for (const bucketRow of result.buckets) {
+        tokensIngested += Number(bucketRow?.total_tokens) || 0;
+      }
       batches += 1;
 
       offset = result.nextOffset;
@@ -5062,10 +5154,28 @@ function zcodeHourStartMs(hourStart) {
   return Number.isFinite(ms) ? ms : null;
 }
 
+// One restored queue row from a backup peak (repairZcodePruneWindowRestore).
+// peak.totals comes from zcodeRowTotals, which fills the billable/cost columns
+// older backup rows are missing — the restored row must match the live queue
+// schema exactly (audit fix: 恢复行缺 billable/cost 字段).
+function buildZcodeRestorationRow(peak) {
+  return {
+    source: "zcode",
+    model: peak.model,
+    hour_start: peak.hour_start,
+    ...peak.totals,
+  };
+}
+
+// Main bucket keys are `source|model|hour_start` — hour_start (an ISO string)
+// never contains `|`, so it is everything after the LAST separator. Splitting
+// on every `|` mis-parses models whose name contains one (audit fix).
 function zcodeHourFromMainBucketKey(key) {
   if (typeof key !== "string" || !key.startsWith("zcode|")) return null;
-  const parts = key.split("|");
-  return parts.length >= 3 ? parts.slice(2).join("|") : null;
+  const last = key.lastIndexOf("|");
+  if (last <= "zcode|".length - 1) return null;
+  const hour = key.slice(last + 1);
+  return hour || null;
 }
 
 function zcodeHourFromProjectBucketKey(key) {
@@ -5392,6 +5502,15 @@ function zcodeRowTotals(row) {
     output_tokens: Number(row?.output_tokens) || 0,
     reasoning_output_tokens: Number(row?.reasoning_output_tokens) || 0,
     total_tokens: Number(row?.total_tokens) || 0,
+    // Queue-schema completeness (audit fix): backup rows written by older
+    // versions may lack these two columns; restored rows must carry them or
+    // the restored (recovered) usage uploads with a shape the cloud and the
+    // local readers have to heal. billable falls back to total (zcode counts
+    // plan-included usage as billable), cost to 0 (read-side pricing recomputes).
+    billable_total_tokens: row?.billable_total_tokens == null
+      ? Math.max(0, Number(row?.total_tokens) || 0)
+      : Math.max(0, Number(row.billable_total_tokens) || 0),
+    total_cost_usd: Math.max(0, Number(row?.total_cost_usd) || 0),
     conversation_count: Number(row?.conversation_count) || 0,
   };
 }
@@ -5591,12 +5710,7 @@ async function repairZcodePruneWindowRestore({
   }
 
   await backupExistingFile(queuePath);
-  const append = restorations.map((peak) => JSON.stringify({
-    source: "zcode",
-    model: peak.model,
-    hour_start: peak.hour_start,
-    ...peak.totals,
-  }));
+  const append = restorations.map((peak) => JSON.stringify(buildZcodeRestorationRow(peak)));
   await fs.appendFile(queuePath, `${append.join("\n")}\n`, "utf8");
   await resetUploadOffsetForZcodeRepair(
     queueStatePath,
