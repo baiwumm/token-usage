@@ -78,12 +78,14 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 三、发版后事项（0.1.0 发布后逐项勾掉）
 
-- [ ] **清理 npm 残留版本**：首发时误发的 `0.0.0-stage` 仍在 versions 列表
-  （latest 已正确指向 0.1.0，不影响安装）。72h 窗口内 `npm unpublish
-  tokenusage-cli@0.0.0-stage --registry=https://registry.npmjs.org` 删掉
-  （包仍保留 0.1.0，不会整包下架）；写操作须在交互终端跑，会再要一次安全密钥。
-- [ ] **登记 Trusted Publisher**：§一第二步的网页操作仍未做——这是 0.1.1 起
-  CI 自动发包的前提，趁包页在手边尽早登记。
+- [x] **清理 npm 残留版本**（2026-10-27 已删，npm 现仅 0.1.0）：首发时误发的
+  `0.0.0-stage`，`npm unpublish` 72h 窗口内删除。
+- [x] **登记 Trusted Publisher**（2026-10-27 已配）：§一第二步的网页操作，
+  0.1.1 起 CI 自动发包的前提。
+- [x] **公司机换装正式包**（2026-10-27 完成）：`volta uninstall tokenusage-cli`
+  → `volta install tokenusage-cli@0.1.0`（镜像可见后 Volta 可直装，未需
+  --force 回退）；装后 `status` 配对信息完好，`sync` 增量 25,387 文件、
+  2 会话 + 2 桶上传成功。开发期安装的 init / device-login 无需重做。
 - [ ] **本机更新采集器**：`npm i -g tokenusage-cli@latest`。本机全局安装
   （`E:\nodejs\node_modules\tokenusage-cli`）目前是旧版——更新后 94bb8e9 的
   auto 进度输出与 875dd54 的日志降噪才生效；计划任务无需改动（VBS 包装指向
