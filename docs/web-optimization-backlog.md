@@ -10,46 +10,32 @@
 
 ---
 
-## 一、待拍板项（先决策，再动代码）
+## 一、待拍板项（2026-10-27 操作者裁定：全部按建议执行，已落实）
 
-- [ ] **1. Sessions 的 DeepSeek 时间分段计价口径**
-  Sessions 每模型成本合成的行没有 `hour_start`，DeepSeek 峰谷/周末半价一律不生效
-  （`apps/web/src/lib/api/account-series-handlers.ts` `sessionModelsWire`），同一笔用量
-  Sessions 视图成本**高于**仪表盘（hourly 按 `hour_start` 走 `isDeepSeekOffPeak`）。
-  二选一：
-  - (a) 给 session 模型行带计价时间戳（`ended_at` 近似，多时段会话有误差），与仪表盘对齐
-        —— 动 §2.7 响应数值，按冻结流程走；
-  - (b) 维持现状，在 §2.7 明示"sessions 每模型成本按峰值计"的口径差异（只改文档）。
-
-- [ ] **2. 仓库行尾治理**
-  `core.autocrlf=true` 且无 `.gitattributes`，工作区常年挂 39 个假 M 文件。建议加
-  `* text=auto eol=lf` + `git add --renormalize .`（一次全仓库索引变更，需单独提交）。
-  顺带处理：`apps/web/src/components/range-preset-buttons.tsx` 有一行非审计产生的
-  `fullWidth` prop 排序改动未提交——提交或还原，二选一。
-
-- [ ] **3. ingest 信任面收紧**（三项可一起拍）
-  - grok/cline 的 `total_cost_usd` 客户端可信且无上限，持设备令牌者可伪造任意成本
-    → 服务端加单行上限（如 ≤ $1/行，超限拒行或钳制）；
-  - 头像上传 `useAvatarUpload` 只校验 `image/*`，会放行 SVG 而桶是公共读（存储型 XSS 面，
-    UI 走 crop 转 WebP 只是缓解）→ 入口显式拒绝 `image/svg+xml`；
-  - `hour_start` 不校验整点精度，非对齐值可造成日桶重复计数 → normalize 收紧为整点
-    （或明确接受并在契约注明）。
-
-- [ ] **4. 契约错误信息与限流**
-  - 409 透传 PostgREST 原始 `error.message`（含约束名/键值）→ 收敛为稳定错误码；
-  - `/api/functions/*` 对 401/404、device-flow `user_code` 猜解无速率限制 → 代码层限流
-    或部署侧 WAF 二选一。
-
-- [ ] **5. 热力图大偏移时区边缘天**
-  网格按 UTC 日迭代、桶键是 tz-local 日键，UTC+14 等大偏移首尾天的数据落在网格外被丢弃。
-  量级小；要修的话把网格首尾各外扩一天再裁剪显示层。
-
-- [ ] **6. 设备名兜底 "TokenTracker CLI" 改名**（A6 移交）
-  `device-codes.ts` 的兜底设备名仍是旧品牌，但该规则是冻结契约 §2.2 的明文
-  （设备名 = 主机名 #machine 前 8 位，client_info 缺失时回退 `TokenTracker CLI`），
-  且 `tests/unit/device-codes.test.ts` 断言该字面值。改名的正确顺序：先改
-  `docs/cli-contract.md` §2.2 与单测 → 操作者确认 → 再改实现。"走 copy 体系"
-  不可行：`device-codes.ts` 是服务端纯模块，copy 体系是浏览器端 React 层。
+- [x] **1. Sessions 的 DeepSeek 时间分段计价口径** → 选 (b)：维持现状，§2.7 已明示
+      "sessions 每模型成本按峰值计"的口径差异（`9ea6102`）。
+- [x] **2. 仓库行尾治理** → 已加 `.gitattributes`（`* text=auto` + 二进制标注）。
+      renormalize 实测零变化：历史 blob 本就是 LF，假 M 是 stat 缓存噪声，attributes
+      落地后消失。range-preset-buttons 残留已在 `78ad4e4` 提交。（提交归属注意：该文件
+      被并行会话的 docs 提交 `844ee35` 带上远端。）
+- [x] **3. ingest 信任面收紧**（`e72a8cf`）——两项与原建议有偏差，基于实现证据修正：
+  - `total_cost_usd`：**钳制 ≤ $10/行**（原建议 $1 + 拒行）。改钳制：整批 400 会卡住
+    已部署采集机的队列（CLI 侧 sanitize 不知道新规则）；放宽到 $10：一小时 API 成本
+    超 $1 的重度使用真实存在，$1 会误伤。
+  - `hour_start`：**明确接受非整点并在 §2.4 注明**（原建议拒整点）。证据：CLI 采集端
+    大量使用半小时桶（`toUtcHalfHourStart`，`:00`/`:30`），golden 也有 `09:30:00Z`
+    用例——强制整点会打断现网采集，"日桶重复计数"的前提不成立（读取侧是累加非 upsert）。
+  - 头像 SVG：入口显式拒绝（`useAvatarUpload` + accept 白名单收紧为 PNG/JPEG/WebP）。
+- [x] **4. 契约错误信息与限流**（`e72a8cf` + `9ea6102`）
+  - 409：rename 的 update 竞态（预检后撞唯一约束）现在捕获 `SupabaseError(409)` 并返回
+    稳定码 `device_name_taken`，不再透传 PostgREST 原文（契约 §2.8 本就定义了该码，
+    属实现对齐）。
+  - 限流：**部署侧**（新契约 §1.6）：serverless 下进程内计数不成立；user_code 猜解
+    风险接受（32⁸ 空间 + 15 分钟过期 + 无枚举侧信道），部署时配平台速率规则即可。
+- [x] **5. 热力图大偏移时区边缘天** → 接受现状：只影响 UTC+14 等极端时区的首尾各一天
+      显示，等真实用户出现再修（修复是纯客户端网格外扩，不动契约）。
+- [x] **6. 设备名兜底改名** → 已按冻结流程执行：§2.2 文本 + 单测断言先改（`9ea6102`），
+      实现改 `Token Usage CLI`（`e72a8cf`）。仅影响更名后新配对的设备显示名。
 
 ---
 
