@@ -99,8 +99,7 @@ function parseFilters(params: { get(name: string): string | null }): Filters {
   const rawPageSize = Number(params.get("page_size"));
   const from = params.get("from") ?? "";
   const to = params.get("to") ?? "";
-  const hasWindow =
-    isValidDayKey(from) && isValidDayKey(to) && from <= to;
+  const hasWindow = isValidDayKey(from) && isValidDayKey(to) && from <= to;
 
   return {
     range: hasWindow ? "custom" : "30d",

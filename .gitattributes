@@ -1,7 +1,8 @@
-# Normalize line endings (拍板项 2, 2026-10-27): the repository stores LF
-# for all text files; checkouts translate per core.autocrlf. This ends the
-# long-standing ghost-modified files from the mixed CRLF/LF history.
-* text=auto
+# Normalize line endings (拍板项 2, 2026-10-27): the repository and the
+# working tree both stay LF (eol=lf overrides core.autocrlf's CRLF checkout,
+# which kept ghost-modified files alive on Windows); explicit binary markers
+# keep images/fonts out of any translation.
+* text=auto eol=lf
 
 # Binary assets must never be line-ending translated or diffed as text.
 *.png binary

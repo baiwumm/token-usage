@@ -11,7 +11,12 @@ import {
   preflightResponse,
   readJsonBody,
 } from "@/lib/api/http";
-import { assertConfigured, select, update, SupabaseError } from "@/lib/api/supabase-rest";
+import {
+  assertConfigured,
+  select,
+  update,
+  SupabaseError,
+} from "@/lib/api/supabase-rest";
 import { invalidateAccountUsage } from "@/lib/api/account-data";
 import { resolvePrincipal } from "@/lib/api/principal";
 
