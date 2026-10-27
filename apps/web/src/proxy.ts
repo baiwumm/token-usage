@@ -20,14 +20,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { authConfig } from "@/lib/auth/config";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
-
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, apikey, x-api-key",
-  "Access-Control-Max-Age": "86400",
-};
+import { CORS_HEADERS } from "@/lib/api/http";
 
 const CONTRACT_API_PREFIX = "/api/functions/";
 

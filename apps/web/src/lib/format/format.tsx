@@ -28,7 +28,6 @@ import {
   formatPercent,
   formatRelativeTime,
   formatTokens,
-  formatTokensExact,
   type FormatPreferences,
   type FxSnapshot,
 } from "./core";
@@ -46,7 +45,6 @@ interface FormatContextValue {
   ) => void;
   resetPreferences: () => void;
   formatTokens: (value: unknown) => string;
-  formatTokensExact: (value: unknown) => string;
   formatNumber: (value: unknown) => string;
   formatPercent: (ratio: unknown) => string;
   formatCost: (valueUsd: unknown) => string;
@@ -108,8 +106,6 @@ export function FormatProvider({
       setPreference,
       resetPreferences,
       formatTokens: (value) => formatTokens(value, preferences, locale),
-      formatTokensExact: (value) =>
-        formatTokensExact(value, preferences, locale),
       formatNumber: (value) =>
         formatNumber(value, locale, preferences.tokenGrouping),
       formatPercent: (ratio) => formatPercent(ratio, locale),

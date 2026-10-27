@@ -52,18 +52,32 @@ export function stripReasoningSuffix(model: string): string {
   return model;
 }
 
+// Shared slug chain: trim, drop parenthesized ranges, lowercase, collapse
+// non-alphanumeric runs to single dashes. Zed keeps dots AND slashes (its ids
+// carry provider paths); everyone else drops slashes.
+const SLUG_RE = /[^a-z0-9.]+/g;
+const SLUG_KEEP_SLASH_RE = /[^a-z0-9./]+/g;
+
+function normalizeModelSlug(model: string, keepSlash = false): string {
+  return model
+    .trim()
+    .replace(/\([^)]*\)/g, " ")
+    .toLowerCase()
+    .replace(keepSlash ? SLUG_KEEP_SLASH_RE : SLUG_RE, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
 export function normalizeAntigravityModel(
   model: string | null | undefined,
 ): string | null | undefined {
   if (!model || typeof model !== "string") return model;
-  let lower = model
-    .trim()
+  // Reasoning-effort words must go before slugging (they are word-boundary
+  // matched against the raw mixed-case id).
+  const stripped = model
     .replace(/\([^)]*\)/g, " ")
-    .replace(/\b(thinking|xhigh|high|medium|low|fast)\b/gi, " ")
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
+    .replace(/\b(thinking|xhigh|high|medium|low|fast)\b/gi, " ");
+  let lower = normalizeModelSlug(stripped);
 
   lower = stripReasoningSuffix(lower);
 
@@ -92,16 +106,10 @@ export function normalizeZedModel(
   model: string | null | undefined,
 ): string | null | undefined {
   if (!model || typeof model !== "string") return model;
-  let m = model
-    .trim()
-    .replace(/\([^)]*\)/g, " ")
-    .toLowerCase()
-    .replace(/[^a-z0-9./]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
+  const m = normalizeModelSlug(model, true);
 
   if (/^claude-(sonnet|opus|haiku)-\d+\.\d+/.test(m)) {
-    m = m.replace(/^(claude-(?:sonnet|opus|haiku)-\d+)\.(\d+)/, "$1-$2");
+    return m.replace(/^(claude-(?:sonnet|opus|haiku)-\d+)\.(\d+)/, "$1-$2");
   }
 
   return m;
@@ -116,13 +124,7 @@ export function normalizeClaudeModel(
   const base = model.includes("/")
     ? model.slice(model.lastIndexOf("/") + 1)
     : model;
-  let m = base
-    .trim()
-    .replace(/\([^)]*\)/g, " ")
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
+  const m = normalizeModelSlug(base);
 
   if (/^claude-(sonnet|opus|haiku)-\d+\.\d+/.test(m)) {
     return m.replace(/^(claude-(?:sonnet|opus|haiku)-\d+)\.(\d+)/, "$1-$2");
@@ -149,13 +151,7 @@ export function normalizeCursorModel(
   model: string | null | undefined,
 ): string | null | undefined {
   if (!model || typeof model !== "string") return model;
-  let m = model
-    .trim()
-    .replace(/\([^)]*\)/g, " ")
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
+  const m = normalizeModelSlug(model);
   const parts = m.split("-");
   const isFast = parts.includes("fast");
 
@@ -178,10 +174,11 @@ export function normalizeCursorModel(
     "minimal",
   ]);
 
-  m = parts.filter((part) => !decorations.has(part)).join("-");
-  if (m.startsWith("claude-")) return normalizeClaudeModel(m);
+  const stripped = parts.filter((part) => !decorations.has(part)).join("-");
 
-  return m;
+  if (stripped.startsWith("claude-")) return normalizeClaudeModel(stripped);
+
+  return stripped;
 }
 
 // WorkBuddy's auto-router records the literal "auto"; map to its default

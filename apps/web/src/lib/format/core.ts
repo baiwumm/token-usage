@@ -313,19 +313,6 @@ export function formatTokens(
     : compactKmb(parsed, locale);
 }
 
-/**
- * Token count for detail surfaces (tables, tooltips, modals). Historically
- * always full digits; now follows the Token 显示 preference like everywhere
- * else — compact renders K/M/B or 万/亿, full keeps every digit grouped.
- */
-export function formatTokensExact(
-  value: unknown,
-  preferences: FormatPreferences,
-  locale: Locale,
-): string {
-  return formatTokens(value, preferences, locale);
-}
-
 export function formatNumber(
   value: unknown,
   locale: Locale,

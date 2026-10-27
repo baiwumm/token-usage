@@ -16,7 +16,6 @@ export interface DashboardCopy {
   cards: {
     totalTokens: string;
     billableTokens: string;
-    cost: string;
     conversations: string;
     activeDays: string;
     avgPerActiveDay: string;
@@ -35,8 +34,6 @@ export interface DashboardCopy {
     inputTokens: string;
     cachedTokens: string;
     outputTokens: string;
-    hourlyTitle: string;
-    hourlyEmpty: string;
     heatmapTitle: string;
     heatmapMonths: string;
     heatmapActiveDays: string;
@@ -62,22 +59,13 @@ export interface DashboardCopy {
     resetHidden: string;
     devicesTitle: string;
     devicesHint: string;
-    devicesManage: string;
     sharedNote: string;
     lastReport: string;
     never: string;
     selected: string;
-    columnModel: string;
     columnTokens: string;
     columnCost: string;
     columnShare: string;
-    columnSource: string;
-    columnDevice: string;
-    columnPlatform: string;
-    columnLastUsed: string;
-    columnStatus: string;
-    statusActive: string;
-    statusRevoked: string;
   };
   detail: {
     title: string;
@@ -119,14 +107,12 @@ export interface DashboardCopy {
     close: string;
   };
   states: {
-    loading: string;
     loadError: string;
     retry: string;
     emptyTitle: string;
     emptyBody: string;
     filterEmptyTitle: string;
     filterEmptyBody: string;
-    sessionExpired: string;
   };
   shareCard: {
     title: string;
@@ -161,7 +147,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     cards: {
       totalTokens: "总 Tokens",
       billableTokens: "计费 Tokens",
-      cost: "成本",
       conversations: "会话数",
       activeDays: "活跃天数",
       avgPerActiveDay: "日均（30 天）",
@@ -181,8 +166,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       inputTokens: "输入",
       cachedTokens: "缓存",
       outputTokens: "输出",
-      hourlyTitle: "当日分时",
-      hourlyEmpty: "选择日期查看分时用量。",
       heatmapTitle: "活跃热力图",
       heatmapMonths: "近一年",
       heatmapActiveDays: "{count} 个活跃日",
@@ -208,22 +191,13 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       resetHidden: "恢复显示全部来源",
       devicesTitle: "设备",
       devicesHint: "点击设备可只看该设备的数据。",
-      devicesManage: "前往设置",
       sharedNote: "cursor / trae-cn 为账户级来源，跨设备已去重。",
       lastReport: "最后上报",
       never: "从未",
       selected: "已筛选",
-      columnModel: "模型",
       columnTokens: "Tokens",
       columnCost: "成本",
       columnShare: "占比",
-      columnSource: "来源",
-      columnDevice: "设备",
-      columnPlatform: "平台",
-      columnLastUsed: "最近上报",
-      columnStatus: "状态",
-      statusActive: "活跃",
-      statusRevoked: "已吊销",
     },
     detail: {
       title: "用量明细",
@@ -266,14 +240,12 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       close: "关闭",
     },
     states: {
-      loading: "正在加载仪表盘…",
       loadError: "仪表盘加载失败。",
       retry: "重试",
       emptyTitle: "该时间范围内没有用量数据",
       emptyBody: "在采集机上完成配对并 sync 后，数据会出现在这里。",
       filterEmptyTitle: "当前筛选没有结果",
       filterEmptyBody: "换一个时间范围或设备，或清除筛选。",
-      sessionExpired: "登录状态已失效，请重新登录。",
     },
     shareCard: {
       title: "分享用量卡片",
@@ -306,7 +278,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     cards: {
       totalTokens: "Total tokens",
       billableTokens: "Billable tokens",
-      cost: "Cost",
       conversations: "Conversations",
       activeDays: "Active days",
       avgPerActiveDay: "Daily avg (30d)",
@@ -327,8 +298,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       inputTokens: "Input",
       cachedTokens: "Cache",
       outputTokens: "Output",
-      hourlyTitle: "Intraday",
-      hourlyEmpty: "Pick a date to see hourly usage.",
       heatmapTitle: "Activity heatmap",
       heatmapMonths: "last 12 months",
       heatmapActiveDays: "{count} active days",
@@ -355,23 +324,14 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       resetHidden: "Show all sources",
       devicesTitle: "Devices",
       devicesHint: "Select a device to filter the dashboard.",
-      devicesManage: "Open Settings",
       sharedNote:
         "cursor / trae-cn are account-level sources, deduped across devices.",
       lastReport: "Last report",
       never: "never",
       selected: "Filtered",
-      columnModel: "Model",
       columnTokens: "Tokens",
       columnCost: "Cost",
       columnShare: "Share",
-      columnSource: "Source",
-      columnDevice: "Device",
-      columnPlatform: "Platform",
-      columnLastUsed: "Last report",
-      columnStatus: "Status",
-      statusActive: "Active",
-      statusRevoked: "Revoked",
     },
     detail: {
       title: "Usage detail",
@@ -414,14 +374,12 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       close: "Close",
     },
     states: {
-      loading: "Loading dashboard…",
       loadError: "Failed to load the dashboard.",
       retry: "Retry",
       emptyTitle: "No usage in this range",
       emptyBody: "Pair a collector and sync — data will show up here.",
       filterEmptyTitle: "No results for these filters",
       filterEmptyBody: "Try another range or device, or clear the filters.",
-      sessionExpired: "Your session has expired. Please sign in again.",
     },
     shareCard: {
       title: "Share usage card",

@@ -103,8 +103,7 @@ export function TrendChart({
   };
   onSelect?: (key: string) => void;
 }) {
-  const { formatTokens, formatTokensExact, formatCost, formatNumber } =
-    useFormat();
+  const { formatTokens, formatCost, formatNumber } = useFormat();
 
   if (data.length === 0) {
     return (
@@ -152,19 +151,19 @@ export function TrendChart({
                     { label: point.key, value: "" },
                     {
                       label: labels.tokens,
-                      value: formatTokensExact(point.tokens),
+                      value: formatTokens(point.tokens),
                     },
                     {
                       label: labels.input,
-                      value: formatTokensExact(point.input),
+                      value: formatTokens(point.input),
                     },
                     {
                       label: labels.cached,
-                      value: formatTokensExact(point.cached),
+                      value: formatTokens(point.cached),
                     },
                     {
                       label: labels.output,
-                      value: formatTokensExact(point.output),
+                      value: formatTokens(point.output),
                     },
                     { label: labels.cost, value: formatCost(point.cost) },
                     {

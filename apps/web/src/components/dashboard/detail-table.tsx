@@ -65,7 +65,7 @@ export function DetailTable({
   copy: DashboardCopy;
   locale: "zh" | "en";
 }) {
-  const { formatTokensExact, formatCost, formatNumber } = useFormat();
+  const { formatTokens, formatCost, formatNumber } = useFormat();
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: "time",
     direction: "descending",
@@ -190,20 +190,20 @@ export function DetailTable({
                 <Table.Row key={row.id} id={row.id}>
                   <Table.Cell className="font-medium">{row.time}</Table.Cell>
                   <Table.Cell className="tabular-nums">
-                    {formatTokensExact(row.tokens)}
+                    {formatTokens(row.tokens)}
                   </Table.Cell>
                   <Table.Cell className="text-foreground/70 tabular-nums">
-                    {formatTokensExact(row.input)}
+                    {formatTokens(row.input)}
                   </Table.Cell>
                   <Table.Cell className="text-foreground/70 tabular-nums">
-                    {formatTokensExact(row.cached)}
+                    {formatTokens(row.cached)}
                   </Table.Cell>
 
                   <Table.Cell className="text-foreground/70 tabular-nums">
-                    {formatTokensExact(row.output)}
+                    {formatTokens(row.output)}
                   </Table.Cell>
                   <Table.Cell className="tabular-nums">
-                    {formatTokensExact(row.billable)}
+                    {formatTokens(row.billable)}
                   </Table.Cell>
                   <Table.Cell className="tabular-nums">
                     {formatCost(row.cost)}

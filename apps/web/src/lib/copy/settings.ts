@@ -7,16 +7,12 @@ export interface SettingsCopy {
   sectionAccount: string;
   sectionAppearance: string;
   sectionDevices: string;
-  accountHeading: string;
   profileHeading: string;
   profileHint: string;
   profileNameLabel: string;
   profileNamePlaceholder: string;
-  profileAvatarLabel: string;
-  profileAvatarHint: string;
   profileAvatarChange: string;
   profileAvatarDelete: string;
-  profileAvatarTooLarge: string;
   avatarHeading: string;
   avatarHint: string;
   passwordHeading: string;
@@ -46,7 +42,6 @@ export interface SettingsCopy {
   columnUsage: string;
   columnActions: string;
   usageWindowLabel: string;
-  usageUnit: string;
   loading: string;
   emptyTitle: string;
   emptyBody: string;
@@ -66,7 +61,6 @@ export interface SettingsCopy {
   revokeCancel: string;
   revokeSuccess: string;
   revokedTokensSummary: string;
-  sessionExpired: string;
   // Stable contract error codes → friendly text.
   errorDeviceNameTaken: string;
   errorGeneric: string;
@@ -78,7 +72,6 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     sectionAccount: "账户",
     sectionAppearance: "外观",
     sectionDevices: "设备",
-    accountHeading: "账户",
     avatarHeading: "头像",
     avatarHint: "上传图片作为头像；删除后显示名称首字。",
     passwordHeading: "密码",
@@ -101,11 +94,8 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     profileHint: "名称显示在侧边栏；邮箱由管理员分配，不可修改。",
     profileNameLabel: "名称",
     profileNamePlaceholder: "你的名字",
-    profileAvatarLabel: "头像",
-    profileAvatarHint: "上传图片作为头像；删除后显示名称首字。",
     profileAvatarChange: "更换头像",
     profileAvatarDelete: "删除",
-    profileAvatarTooLarge: "图片超过 2 MB。",
     profileEmailLabel: "邮箱（不可修改）",
     profileSave: "保存",
     profileSaved: "资料已更新。",
@@ -119,7 +109,6 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     columnUsage: "用量",
     columnActions: "操作",
     usageWindowLabel: "近 12 个月",
-    usageUnit: "tokens",
     loading: "正在加载设备…",
     emptyTitle: "还没有已接入的设备",
     emptyBody: "在采集机上完成配对后，设备会出现在这里。",
@@ -139,7 +128,6 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     revokeCancel: "取消",
     revokeSuccess: "设备已吊销",
     revokedTokensSummary: "{count} 个令牌已失效",
-    sessionExpired: "登录状态已失效，请重新登录。",
     errorDeviceNameTaken: "该名称已被账户内其他活跃设备使用。",
     errorGeneric: "操作失败，请稍后再试。",
   },
@@ -148,7 +136,6 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     sectionAccount: "Account",
     sectionAppearance: "Appearance",
     sectionDevices: "Devices",
-    accountHeading: "Account",
     avatarHeading: "Avatar",
     avatarHint:
       "Upload an image as your avatar; deleting it falls back to your initial.",
@@ -173,12 +160,8 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
       "The name shows in the sidebar; the email is admin-assigned and read-only.",
     profileNameLabel: "Name",
     profileNamePlaceholder: "Your name",
-    profileAvatarLabel: "Avatar",
-    profileAvatarHint:
-      "Upload an image; delete it to fall back to your initial.",
     profileAvatarChange: "Change avatar",
     profileAvatarDelete: "Delete",
-    profileAvatarTooLarge: "Image exceeds 2 MB.",
     profileEmailLabel: "Email (read-only)",
     profileSave: "Save",
     profileSaved: "Profile updated.",
@@ -192,7 +175,6 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     columnUsage: "Usage",
     columnActions: "Actions",
     usageWindowLabel: "Last 12 months",
-    usageUnit: "tokens",
     loading: "Loading devices…",
     emptyTitle: "No devices yet",
     emptyBody: "Devices appear here once a collector completes pairing.",
@@ -214,7 +196,6 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     revokeSuccess: "Device revoked",
     revokedTokensSummary:
       "{count, plural, one {# token invalidated} other {# tokens invalidated}}",
-    sessionExpired: "Your session has expired. Please sign in again.",
     errorDeviceNameTaken: "That name is already used by another active device.",
     errorGeneric: "Something went wrong. Please try again later.",
   },

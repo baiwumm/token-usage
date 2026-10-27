@@ -18,6 +18,7 @@ import {
   MAX_RANGE_DAYS,
   modelBreakdownSources,
   monthlySeries,
+  numberOr0,
   parseTzContext,
   rowsForRequest,
   uuidOrNull,
@@ -255,12 +256,6 @@ const SESSION_COST_KEYS = [
   "reasoning_output_tokens",
   "total_tokens",
 ] as const;
-
-function numberOr0(value: unknown): number {
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function sessionModelsWire(
   rawModels: unknown,

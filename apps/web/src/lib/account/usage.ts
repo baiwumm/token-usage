@@ -13,6 +13,7 @@
 
 import {
   ACCOUNT_LEVEL_SOURCES,
+  numberOr0,
   rowCost,
   zonedDayKey,
   type UsageRow,
@@ -26,12 +27,6 @@ const TOKEN_KEYS = [
   "reasoning_output_tokens",
   "total_tokens",
 ];
-
-export function number(value: unknown): number {
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function text(value: unknown): string {
   return String(value ?? "");
@@ -51,8 +46,8 @@ function pickCanonicalRow(rows: UsageRow[]): UsageRow | null {
       best = row;
       continue;
     }
-    const rowTotal = number(row.total_tokens);
-    const bestTotal = number(best.total_tokens);
+    const rowTotal = numberOr0(row.total_tokens);
+    const bestTotal = numberOr0(best.total_tokens);
 
     if (rowTotal !== bestTotal) {
       if (rowTotal > bestTotal) best = row;
@@ -114,9 +109,9 @@ function aggregateSessionStates(states: UsageRow[]): UsageRow[] {
       } as UsageRow);
 
     for (const keyName of TOKEN_KEYS)
-      row[keyName] = number(row[keyName]) + number(state[keyName]);
+      row[keyName] = numberOr0(row[keyName]) + numberOr0(state[keyName]);
     row.billable_total_tokens = row.total_tokens;
-    row.conversations = number(row.conversations) + 1;
+    row.conversations = numberOr0(row.conversations) + 1;
     groups.set(key, row);
   }
 
@@ -173,15 +168,15 @@ function emptyTotals(): DashboardTotals {
 }
 
 function addRow(totals: DashboardTotals, row: UsageRow, cost: number): void {
-  const total = number(row.total_tokens);
+  const total = numberOr0(row.total_tokens);
 
   totals.total_tokens += total;
   totals.billable_total_tokens +=
     row.billable_total_tokens == null
       ? total
-      : number(row.billable_total_tokens);
+      : numberOr0(row.billable_total_tokens);
   totals.total_cost_usd += cost;
-  totals.conversations += number(row.conversations);
+  totals.conversations += numberOr0(row.conversations);
   totals.buckets += 1;
   const start = iso(row.hour_start);
 
@@ -270,13 +265,13 @@ export function summarizeRows(
       conversations: 0,
     };
 
-    day.total_tokens += number(row.total_tokens);
+    day.total_tokens += numberOr0(row.total_tokens);
     day.billable_total_tokens +=
       row.billable_total_tokens == null
-        ? number(row.total_tokens)
-        : number(row.billable_total_tokens);
+        ? numberOr0(row.total_tokens)
+        : numberOr0(row.billable_total_tokens);
     day.total_cost_usd += cost;
-    day.conversations += number(row.conversations);
+    day.conversations += numberOr0(row.conversations);
     days.set(key, day);
 
     const model = text(row.model) || "unknown";
@@ -288,11 +283,11 @@ export function summarizeRows(
       buckets: 0,
     };
 
-    modelEntry.total_tokens += number(row.total_tokens);
+    modelEntry.total_tokens += numberOr0(row.total_tokens);
     modelEntry.billable_total_tokens +=
       row.billable_total_tokens == null
-        ? number(row.total_tokens)
-        : number(row.billable_total_tokens);
+        ? numberOr0(row.total_tokens)
+        : numberOr0(row.billable_total_tokens);
     modelEntry.total_cost_usd += cost;
     modelEntry.buckets += 1;
     models.set(model, modelEntry);
@@ -305,7 +300,7 @@ export function summarizeRows(
       buckets: 0,
     };
 
-    sourceEntry.total_tokens += number(row.total_tokens);
+    sourceEntry.total_tokens += numberOr0(row.total_tokens);
     sourceEntry.total_cost_usd += cost;
     sourceEntry.buckets += 1;
     sources.set(source, sourceEntry);
@@ -320,11 +315,11 @@ export function summarizeRows(
         last_hour: null,
       };
 
-      deviceEntry.total_tokens += number(row.total_tokens);
+      deviceEntry.total_tokens += numberOr0(row.total_tokens);
       deviceEntry.billable_total_tokens +=
         row.billable_total_tokens == null
-          ? number(row.total_tokens)
-          : number(row.billable_total_tokens);
+          ? numberOr0(row.total_tokens)
+          : numberOr0(row.billable_total_tokens);
       deviceEntry.total_cost_usd += cost;
       deviceEntry.buckets += 1;
       if (!deviceEntry.last_hour || start > deviceEntry.last_hour)
