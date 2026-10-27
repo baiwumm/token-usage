@@ -44,6 +44,13 @@
   网格按 UTC 日迭代、桶键是 tz-local 日键，UTC+14 等大偏移首尾天的数据落在网格外被丢弃。
   量级小；要修的话把网格首尾各外扩一天再裁剪显示层。
 
+- [ ] **6. 设备名兜底 "TokenTracker CLI" 改名**（A6 移交）
+  `device-codes.ts` 的兜底设备名仍是旧品牌，但该规则是冻结契约 §2.2 的明文
+  （设备名 = 主机名 #machine 前 8 位，client_info 缺失时回退 `TokenTracker CLI`），
+  且 `tests/unit/device-codes.test.ts` 断言该字面值。改名的正确顺序：先改
+  `docs/cli-contract.md` §2.2 与单测 → 操作者确认 → 再改实现。"走 copy 体系"
+  不可行：`device-codes.ts` 是服务端纯模块，copy 体系是浏览器端 React 层。
+
 ---
 
 ## 二、任务清单（按组推进，A → B → C → D）
@@ -75,18 +82,26 @@
 
 ### B. 客户端性能
 
-- [ ] B1 sessions 搜索输入下沉子组件：`qInput` 在根组件受控，每击键重渲染整表
-      （防抖只挡了 fetch 没挡渲染）。
-- [ ] B2 dashboard-client 传给 TopModels 的 `models={breakdown.flatMap(...)}` 与
+- [x] B1 sessions 搜索输入下沉子组件：`qInput` 在根组件受控，每击键重渲染整表
+      （防抖只挡了 fetch 没挡渲染）→ `SessionSearchInput` 内聚 draft，外部提交经
+      `committed` prop 同步回来。
+- [x] B2 dashboard-client 传给 TopModels 的 `models={breakdown.flatMap(...)}` 与
       `daily={dashboard?.daily ?? []}` 内联数组移入 useMemo，恢复下游 useMemo 命中；
       HeatmapCard / DetailTable 加 React.memo。
-- [ ] B3 CostAnalysisModal 关闭后仍常驻挂载 → 条件渲染（或内部数据 memo）。
-- [ ] B4 wrapped 年份切换：无竞态防护（对照 dashboard 新写法加 run-id）、切换整页回落
-      loading（改 keep-previous）；年份目前固定 UTC（`getUTCFullYear`），与
-      dashboard 的 tz 选择口径不一致。
-- [ ] B5 heatmap-card 同时挂 ResizeObserver 和 window resize，尺寸计算跑两遍 → 留一个。
-- [ ] B6 `applyFilters` 在 setState updater 里调 `history.replaceState`
+      注：flatMap 已随 A4 消除（TopModels 直接收 sources）；useMemo 化的是
+      daily/monthly/breakdown 三个 fallback 数组与 activeDevices；TopModels 同样
+      memo 化。
+- [x] B3 CostAnalysisModal 关闭后仍常驻挂载 → 内部数据 memo（选了方案二的变体：
+      保留挂载以维持关闭动画，models/trend/sourceRows 全部 useMemo，关闭态引用
+      不变时重渲染成本趋近零）。
+- [x] B4 wrapped 年份切换：无竞态防护（对照 dashboard 新写法加 run-id）、切换整页
+      回落 loading（改 keep-previous，header 内联 Spinner 指示）；年份目前固定
+      UTC（`getUTCFullYear`），与 dashboard 的 tz 选择口径不一致 → 改浏览器时区。
+- [x] B5 heatmap-card 同时挂 ResizeObserver 和 window resize，尺寸计算跑两遍 →
+      留 ResizeObserver。
+- [x] B6 `applyFilters` 在 setState updater 里调 `history.replaceState`
       （dashboard + sessions 两处）——副作用移出 updater（StrictMode 双调用风险）。
+      注：随 A2 `useUrlFilters` 完成（URL 重写在 effect 中，updater 只做纯 merge）。
 
 ### C. 服务端性能与健壮性
 
