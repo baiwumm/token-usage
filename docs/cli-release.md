@@ -105,12 +105,26 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
   旧账迁移按 `docs/launch-runbook.md` 与桌面 replay 材料（约 13.6B 待迁）。
 - [ ] **观察首日**：仪表盘数据、sync.log、GitHub Release 页面三处对账。
 
-## 四、已知待办（不阻塞发版）
+## 四、CLI 下版本候选（0.1.1 / 0.2.0，不阻塞已发版本）
 
-- 下个 CLI 版本：`init` 接管 Windows 计划任务注册（默认隐藏窗口方式，免弹
-  conhost）+ autoLog 落滚动日志文件（不再依赖注册时的 `>>` 重定向）。
-- 审计 P2：zcode 恢复行缺 billable/cost 字段；桶键 `|` 分隔符与含 `|` model
-  名的往返解析；OpenCode 负 delta 链路；`runtime-config` 的 `INSFORGE_*` env
-  名；`init.js` 死常量 `www.tokenusage.cc`。
-- apps/web 依赖有 10 条审计通告（1 low / 5 moderate / 2 high / 2 critical），
-  属仪表盘侧，另行处理。
+功能（采集控制，2026-10-27 用户场景提出：不想自动采集、只想手动 `sync`）：
+
+- `tokenusage pause` / `resume` 子命令：在 `~/.tokenusage` 写采集开关标志，
+  `sync --auto` / `--watch` 检测到即静默退出；`status` 显示当前采集状态。
+  标志位方案跨平台通用（cron/launchd 任务天然兼容）。
+- `init` 接管 Windows 计划任务注册（默认隐藏窗口方式，免弹 conhost），
+  pause/resume 顺势对任务做 disable/enable；autoLog 落滚动日志文件
+  （不再依赖注册时的 `>>` 重定向）。
+- 现状边界：0.1.0 无任何暂停开关，`uninstall` 是彻底拆除（拆 hooks/notify、
+  删 `~/.tokenusage` 配对与队列），不是暂停——别用它当"停采集"。
+
+正确性修复（审计 P2）：
+
+- `init.js` 死常量 `www.tokenusage.cc`；
+- zcode 恢复行缺 billable/cost 字段；
+- 桶键 `|` 分隔符与含 `|` model 名的往返解析；
+- OpenCode 负 delta 链路；
+- `runtime-config` 的 `INSFORGE_*` env 名。
+
+另案处理：apps/web 的 10 条依赖审计通告（1 low / 5 moderate / 2 high /
+2 critical），属仪表盘侧。
