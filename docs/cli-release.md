@@ -44,7 +44,8 @@ npm login --registry=https://registry.npmjs.org --auth-type=legacy
 
 > npmjs.com → tokenusage-cli 包页 → Settings → Trusted Publisher →
 > Repository: `baiwumm/token-usage`，Workflow filename: `release-cli.yml`，
-> Environment 留空。
+> Environment 留空，Allowed actions 勾 `Allow npm publish`（workflow 直接
+> `npm publish`，不勾则 CI 发包被拒；`Allow npm dist-tag` 不勾，用不到）。
 
 登记完成后重跑失败的 run（npm 已有该版本 → 自动跳过 publish，只补 Release）：
 
