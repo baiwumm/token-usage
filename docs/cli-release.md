@@ -28,6 +28,14 @@ npm publish --access public --registry=https://registry.npmjs.org   # 手动首�
 上去。npm 凭证按源分别存储（`//registry.npmjs.org/:_authToken`），这样登录
 不影响日常安装继续走镜像。
 
+注：浏览器登录若卡在 passkey/Google 密码管理器（到不了 Google 的网络取不出
+GPM 里的通行密钥，2026-10-27 公司机实测），改用终端登录，完全不经浏览器：
+
+```bash
+npm login --registry=https://registry.npmjs.org --auth-type=legacy
+# 依次输入 Username / Password / OTP（2FA 验证器 App 的动态码）
+```
+
 然后在网页上登记 Trusted Publisher（无法用命令完成）：
 
 > npmjs.com → tokenusage-cli 包页 → Settings → Trusted Publisher →
