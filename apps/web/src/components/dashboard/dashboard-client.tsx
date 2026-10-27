@@ -12,17 +12,16 @@ import type { ShareCardInput } from "./share-card";
 import { ArrowsRotateRight, NodesRight } from "@gravity-ui/icons";
 import {
   Button,
+  Calendar,
   Card,
   DateField,
+  DatePicker,
   DateRangePicker,
-  Input,
-  Label,
   ListBox,
   RangeCalendar,
   Select,
   Spinner,
   Tabs,
-  TextField,
   toast,
   Typography,
   Popover,
@@ -78,7 +77,6 @@ import {
   ALL_RANGE_START,
   browserTimezone,
   dayKeyInTz,
-  isValidDayKey,
   rangeForSelection,
   RANGE_PRESETS,
   TIMEZONE_OPTIONS,
@@ -1084,32 +1082,64 @@ export function DashboardClient() {
                 <Card.Title>{copy.detail.title}</Card.Title>
                 <div className="flex flex-wrap items-end gap-2">
                   {detailView === "hourly" ? (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="tertiary"
-                        onPress={() => {
-                          setHourlyDay("");
-                          setDetailView("daily");
-                        }}
+                    <DatePicker
+                      aria-label={copy.detail.dayLabel}
+                      className="w-40"
+                      maxValue={rangePickerMax}
+                      value={parseDate(effectiveHourlyDay)}
+                      onChange={(value) => {
+                        if (value && value.compare(rangePickerMax) <= 0) {
+                          setHourlyDay(value.toString());
+                        }
+                      }}
+                    >
+                      <DateField.Group
+                        fullWidth
+                        className="rounded-3xl h-8"
+                        variant="secondary"
                       >
-                        {`${effectiveHourlyDay} · ${copy.detail.backToDaily}`}
-                      </Button>
-                      <TextField
-                        className="w-40"
-                        value={effectiveHourlyDay}
-                        onChange={(value) => {
-                          if (isValidDayKey(value)) setHourlyDay(value);
-                        }}
-                      >
-                        <Label>{copy.detail.dayLabel}</Label>
-                        <Input
+                        <DateField.Input>
+                          {(segment) => <DateField.Segment segment={segment} />}
+                        </DateField.Input>
+                        <DateField.Suffix>
+                          <DatePicker.Trigger>
+                            <DatePicker.TriggerIndicator />
+                          </DatePicker.Trigger>
+                        </DateField.Suffix>
+                      </DateField.Group>
+                      <DatePicker.Popover>
+                        <Calendar
                           aria-label={copy.detail.dayLabel}
-                          type="date"
-                          variant="secondary"
-                        />
-                      </TextField>
-                    </>
+                          maxValue={rangePickerMax}
+                        >
+                          <Calendar.Header>
+                            <Calendar.YearPickerTrigger>
+                              <Calendar.YearPickerTriggerHeading />
+                              <Calendar.YearPickerTriggerIndicator />
+                            </Calendar.YearPickerTrigger>
+                            <Calendar.NavButton slot="previous" />
+                            <Calendar.NavButton slot="next" />
+                          </Calendar.Header>
+                          <Calendar.Grid>
+                            <Calendar.GridHeader>
+                              {(day) => (
+                                <Calendar.HeaderCell>{day}</Calendar.HeaderCell>
+                              )}
+                            </Calendar.GridHeader>
+                            <Calendar.GridBody>
+                              {(date) => <Calendar.Cell date={date} />}
+                            </Calendar.GridBody>
+                          </Calendar.Grid>
+                          <Calendar.YearPickerGrid>
+                            <Calendar.YearPickerGridBody>
+                              {({ year }) => (
+                                <Calendar.YearPickerCell year={year} />
+                              )}
+                            </Calendar.YearPickerGridBody>
+                          </Calendar.YearPickerGrid>
+                        </Calendar>
+                      </DatePicker.Popover>
+                    </DatePicker>
                   ) : null}
                   <Tabs
                     selectedKey={detailView}

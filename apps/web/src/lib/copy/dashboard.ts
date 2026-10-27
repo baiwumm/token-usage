@@ -89,7 +89,6 @@ export interface DashboardCopy {
     pageSummary: string;
     previous: string;
     next: string;
-    backToDaily: string;
   };
   cost: {
     title: string;
@@ -225,7 +224,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       pageSummary: "{start}–{end} / {total}",
       previous: "上一页",
       next: "下一页",
-      backToDaily: "返回日视图",
     },
     cost: {
       title: "成本分析",
@@ -363,7 +361,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       pageSummary: "{start}–{end} / {total}",
       previous: "Previous",
       next: "Next",
-      backToDaily: "Back to daily view",
     },
     cost: {
       title: "Cost analysis",
