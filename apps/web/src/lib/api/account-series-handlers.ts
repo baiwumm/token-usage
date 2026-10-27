@@ -5,7 +5,11 @@
 import type { Principal } from "./principal";
 
 import { jsonResponse } from "./http";
-import { loadAccountUsage, loadSessionRows } from "./account-data";
+import {
+  loadAccountUsage,
+  loadSessionRows,
+  loadSyncRunRows,
+} from "./account-data";
 
 import {
   boundRangeStart,
@@ -220,6 +224,178 @@ async function devices({ url, principal }: SeriesArgs) {
 }
 
 const DAY_MS = 86_400_000;
+
+// Sync runs roll fast (one per sync, hourly at most per device), so their
+// window is shorter than sessions' 1095 days (docs/cli-contract.md §2.12).
+const SYNC_RUNS_MAX_RANGE_DAYS = 366;
+
+// The series handler extracted so both faces share it: the [...slug] catch-all
+// (§2.12, principal resolved from bearer) and the dashboard's own
+// /api/app/sync-runs route (userId resolved from the browser session).
+export async function syncRunsPayloadForUser(
+  userId: string,
+  searchParams: URLSearchParams,
+): Promise<Response> {
+  const fromParam = searchParams.get("from") || "";
+  const toParam = searchParams.get("to") || "";
+  const fromMs = Date.parse(fromParam);
+  const toMs = Date.parse(toParam);
+
+  if (
+    !fromParam ||
+    !toParam ||
+    !Number.isFinite(fromMs) ||
+    !Number.isFinite(toMs)
+  ) {
+    return jsonResponse(400, { error: "Missing from/to" });
+  }
+  if (fromMs > toMs) return jsonResponse(400, { error: "Invalid from/to" });
+
+  const clampedFromMs = Math.max(
+    fromMs,
+    toMs - SYNC_RUNS_MAX_RANGE_DAYS * DAY_MS,
+  );
+  const from = new Date(clampedFromMs).toISOString();
+  const to = new Date(toMs).toISOString();
+
+  const rawDeviceId = (searchParams.get("device_id") || "").trim();
+  let deviceId: string | null = null;
+
+  if (rawDeviceId) {
+    deviceId = uuidOrNull(rawDeviceId);
+    if (!deviceId) return jsonResponse(400, { error: "Invalid device_id" });
+  }
+
+  // Unknown trigger/result values simply match nothing — an empty result, not
+  // a 400 (aligned with sessions' handling of unknown sources, §2.12).
+  const trigger = (searchParams.get("trigger") || "").trim().toLowerCase();
+  const result = (searchParams.get("result") || "").trim().toLowerCase();
+  const limitParam = searchParams.get("limit");
+  const limitRaw =
+    limitParam == null || limitParam === "" ? Number.NaN : Number(limitParam);
+  const limit = Number.isFinite(limitRaw)
+    ? Math.min(Math.max(Math.trunc(limitRaw), 1), 200)
+    : 50;
+  const offsetParam = searchParams.get("offset");
+  const offsetRaw =
+    offsetParam == null || offsetParam === "" ? 0 : Number(offsetParam);
+  const offset =
+    Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.trunc(offsetRaw) : 0;
+
+  const { runs, devices } = await loadSyncRunRows(userId, from, to);
+  const deviceNames = new Map(
+    devices
+      .filter((device) => !device.revoked_at)
+      .map((device) => [String(device.id), String(device.device_name ?? "")]),
+  );
+
+  // Revoked devices are excluded wholesale (§2.12): their run rows stay in the
+  // table but never surface, matching the sessions series.
+  const filtered = runs
+    .map((row) => {
+      const rowDeviceId = String(row.device_id ?? "");
+      const deviceName = deviceNames.get(rowDeviceId);
+
+      if (deviceName == null) return null;
+      const startedMs = Date.parse(String(row.started_at ?? ""));
+      const endedMs = Date.parse(String(row.ended_at ?? ""));
+
+      if (!Number.isFinite(startedMs) || !Number.isFinite(endedMs)) return null;
+
+      return {
+        device_id: rowDeviceId,
+        device_name: deviceName,
+        run_id: String(row.run_id ?? ""),
+        started_at: String(row.started_at ?? ""),
+        ended_at: String(row.ended_at ?? ""),
+        startedMs,
+        duration_ms: numberOr0(row.duration_ms),
+        trigger: String(row.trigger ?? ""),
+        result: String(row.result ?? ""),
+        error_code: row.error_code == null ? null : String(row.error_code),
+        empty: row.empty === true,
+        parsed_files: numberOr0(row.parsed_files),
+        buckets_uploaded: numberOr0(row.buckets_uploaded),
+        tokens_ingested: numberOr0(row.tokens_ingested),
+        sessions_uploaded: numberOr0(row.sessions_uploaded),
+        sessions_skipped: numberOr0(row.sessions_skipped),
+        queue_bytes:
+          row.queue_bytes == null ? null : numberOr0(row.queue_bytes),
+        cli_version: String(row.cli_version ?? ""),
+        os: row.os == null ? null : String(row.os),
+      };
+    })
+    .filter(
+      (item): item is NonNullable<typeof item> =>
+        item != null &&
+        (!deviceId || item.device_id === deviceId) &&
+        (!trigger || item.trigger === trigger) &&
+        (!result || item.result === result),
+    )
+    .sort(
+      (first, second) =>
+        second.startedMs - first.startedMs ||
+        (first.run_id < second.run_id
+          ? -1
+          : first.run_id > second.run_id
+            ? 1
+            : 0),
+    );
+
+  // totals aggregate the FULL filtered set, not the current page (§2.12).
+  let emptyRuns = 0;
+  let tokensIngested = 0;
+  let sessionsUploaded = 0;
+  let durationMs = 0;
+
+  for (const item of filtered) {
+    if (item.empty) emptyRuns += 1;
+    tokensIngested += item.tokens_ingested;
+    sessionsUploaded += item.sessions_uploaded;
+    durationMs += item.duration_ms;
+  }
+
+  const page = filtered.slice(offset, offset + limit).map((item) => ({
+    device_id: item.device_id,
+    device_name: item.device_name,
+    run_id: item.run_id,
+    started_at: item.started_at,
+    ended_at: item.ended_at,
+    duration_ms: item.duration_ms,
+    trigger: item.trigger,
+    result: item.result,
+    error_code: item.error_code,
+    empty: item.empty,
+    parsed_files: item.parsed_files,
+    buckets_uploaded: item.buckets_uploaded,
+    tokens_ingested: item.tokens_ingested,
+    sessions_uploaded: item.sessions_uploaded,
+    sessions_skipped: item.sessions_skipped,
+    queue_bytes: item.queue_bytes,
+    cli_version: item.cli_version,
+    os: item.os,
+  }));
+
+  return jsonResponse(200, {
+    from,
+    to,
+    total: filtered.length,
+    limit,
+    offset,
+    totals: {
+      runs: filtered.length,
+      empty_runs: emptyRuns,
+      tokens_ingested: tokensIngested,
+      sessions_uploaded: sessionsUploaded,
+      duration_ms: durationMs,
+    },
+    runs: page,
+  });
+}
+
+async function syncRuns({ url, principal }: SeriesArgs) {
+  return syncRunsPayloadForUser(principal.userId, url.searchParams);
+}
 
 interface SessionModelWire {
   model: string;
@@ -564,4 +740,5 @@ export const SERIES: Record<string, (args: SeriesArgs) => Promise<Response>> = {
   "model-breakdown": modelBreakdown,
   devices,
   sessions,
+  "sync-runs": syncRuns,
 };

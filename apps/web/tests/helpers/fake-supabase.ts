@@ -95,6 +95,16 @@ function defaultTables(): Record<string, TableDef> {
         },
       ],
     },
+    token_sync_runs: {
+      rows: [],
+      generate: ["id", "created_at", "updated_at"],
+      unique: [
+        {
+          name: "token_sync_runs_user_id_device_id_run_id_key",
+          columns: ["user_id", "device_id", "run_id"],
+        },
+      ],
+    },
     token_allowed_emails: { rows: [], generate: ["created_at"], unique: [{ name: "token_allowed_emails_email_key", columns: ["email"] }] },
   };
 }

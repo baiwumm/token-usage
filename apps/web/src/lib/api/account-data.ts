@@ -75,15 +75,19 @@ function usageCacheDisabled(): boolean {
 }
 
 export function invalidateAccountUsage(userId?: string): void {
-  // One revision bump invalidates both caches (sessions share it).
+  // One revision bump invalidates every cache (sessions and sync runs share it).
   usageRevision += 1;
   if (userId == null) {
     usageCache.clear();
     sessionCache.clear();
+    syncRunCache.clear();
   } else {
     usageCache.delete(userId);
     for (const key of sessionCache.keys()) {
       if (key.startsWith(`${userId}|`)) sessionCache.delete(key);
+    }
+    for (const key of syncRunCache.keys()) {
+      if (key.startsWith(`${userId}|`)) syncRunCache.delete(key);
     }
   }
 }
@@ -224,6 +228,75 @@ export function loadSessionRows(
   sessionCache.set(cacheKey, {
     revision: usageRevision,
     expiresAt: now + SESSION_TTL_MS,
+    promise,
+  });
+
+  return promise;
+}
+
+// Sync runs are queried by absolute started_at instants (docs/cli-contract.md
+// §2.12); the device rows let the handler drop revoked machines and resolve
+// display names without trusting client input. Same single-flight + TTL
+// pattern as the session loads above — the collector reports one run per sync
+// (hourly), so a dashboard refresh plus the record page can easily refire the
+// same window. Writes (sync-report, revoke) bump the shared revision; tests
+// opt out via TOKEN_USAGE_SESSION_CACHE=off like the session cache.
+const SYNC_RUN_TTL_MS = 10_000;
+
+type SyncRunCacheEntry = {
+  revision: number;
+  expiresAt: number;
+  promise: Promise<{ runs: RestRow[]; devices: RestRow[] }>;
+};
+
+const syncRunCache = new Map<string, SyncRunCacheEntry>();
+
+export function loadSyncRunRows(
+  userId: string,
+  fromIso: string,
+  toIso: string,
+): Promise<{ runs: RestRow[]; devices: RestRow[] }> {
+  const fetchRows = async () => {
+    const [runs, devices] = await Promise.all([
+      selectAll("token_sync_runs", {
+        columns:
+          "device_id,run_id,started_at,ended_at,duration_ms,trigger,result,error_code,empty,parsed_files,buckets_uploaded,tokens_ingested,sessions_uploaded,sessions_skipped,queue_bytes,cli_version,os",
+        filters: [
+          ["user_id", "eq", userId],
+          ["started_at", "gte", fromIso],
+          ["started_at", "lt", toIso],
+        ],
+        order: "started_at.desc,run_id.asc",
+      }),
+      selectAll("token_devices", {
+        columns: "id,device_name,revoked_at",
+        filters: [["user_id", "eq", userId]],
+      }),
+    ]);
+
+    return { runs, devices };
+  };
+
+  if (sessionCacheDisabled()) return fetchRows();
+
+  const now = Date.now();
+  const cacheKey = `${userId}|${fromIso}|${toIso}`;
+  const hit = syncRunCache.get(cacheKey);
+
+  if (hit && hit.revision === usageRevision && hit.expiresAt > now) {
+    return hit.promise;
+  }
+  const promise = fetchRows();
+
+  // A failed load must not pin its rejection for the TTL window.
+  promise.catch(() => {
+    const entry = syncRunCache.get(cacheKey);
+
+    if (entry?.promise === promise) syncRunCache.delete(cacheKey);
+  });
+  syncRunCache.set(cacheKey, {
+    revision: usageRevision,
+    expiresAt: now + SYNC_RUN_TTL_MS,
     promise,
   });
 

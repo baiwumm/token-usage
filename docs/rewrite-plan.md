@@ -60,10 +60,10 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
   `sync` 只上传到配对实例；实例的 route.ts 用它自己环境里的 service-role 写入它自己的
   Supabase。数据跨实例零共享，自部署者无需任何额外配置。
 - 账户级来源（cursor / trae-cn）的去重与会话状态聚合、读取时定价引擎（vendored LiteLLM 快照 + curated 覆盖）从旧仓库 `api/_lib/` 移植，作为**纯函数模块**保留并被两层共用。
-- Vercel Hobby 12 函数上限：`account-[series]` 一个动态路由覆盖 7 个 series（2026-10-25 追加 `sessions`），总计仍为 10 个 route handler，余量 2。
+- Vercel Hobby 12 函数上限：`account-[series]` 一个动态路由覆盖 8 个 series（2026-10-25 追加 `sessions`，2026-10-27 追加 `sync-runs`），总计仍为 10 个 route handler，余量 2。
 - 数据访问（2026-10-24 修订，操作者指令）：route.ts 经 **@supabase/supabase-js**（secret key 客户端）访问 PostgREST；封装层保持异常式错误语义（唯一约束 → 409，其余 → 500），与 CLI 契约 §1.3 对齐。
 
-## 3. 新表结构（M1 定稿成 migration；`token_sessions` 于 M5.6 追加）
+## 3. 新表结构（M1 定稿成 migration；`token_sessions` 于 M5.6 追加，`token_sync_runs` 于 0.2.0 追加）
 
 所有表 `enable row level security`，且对 `anon, authenticated` **无任何 policy**（全拒）；`service_role` 全量授权。迁移文件放在 `supabase/migrations/`，幂等（`if not exists`），部署者可 `supabase db push` 一键建库。
 
@@ -76,6 +76,7 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 | `token_account_session_states` | trae-cn 规范会话 | 主键 `(user_id, source, session_id)`；`total = input+cached+cache_creation+output` check |
 | `token_sessions` | 设备级会话明细（Sessions 页，B 阶段） | `id uuid pk`, `user_id`, `device_id → token_devices`, `source`（check 1–100）, `session_id`（check 1–256）, `project_key`（可空，check ≤120，basename），`started_at`, `ended_at`, 6 个 token 列（非负 check）+ `billable_total_tokens`（可空、非负），`models jsonb not null default '[]'`（`[{model, 6 个 token 列}]`，数组 ≤32），`created_at`, `updated_at`；唯一 `(user_id, device_id, source, session_id)`；check `ended_at >= started_at`；check `total_tokens = input_tokens + cached_input_tokens + cache_creation_input_tokens + output_tokens`（reasoning 单列，不计入 total）；check `jsonb_typeof(models) = 'array' and jsonb_array_length(models) <= 32`；check `lower(source) not in ('cursor','trae-cn')`；索引 `(user_id, ended_at desc)` / `(user_id, device_id, ended_at desc)` / `(user_id, source, ended_at desc)` / `(user_id, project_key)` |
 | `token_allowed_emails` | 可选：自助注册白名单 | `email citext unique`, `added_by`, `created_at`；配套触发器迁移（单独文件，注释标明 optional） |
+| `token_sync_runs` | 采集端每轮 sync 运行记录（§2.11/§2.12，0.2.0，含空跑） | `id uuid pk`, `user_id → auth.users`, `device_id → token_devices`, `run_id`（check 1–128）, `started_at`, `ended_at`, `duration_ms`（服务端派生，≥0）, `trigger`（check scheduled/manual/watch/notify）, `result`（check ok/partial/error）, `error_code`（可空 ≤64）, `empty`（服务端派生 bool）, `parsed_files`/`buckets_uploaded`/`tokens_ingested`/`sessions_uploaded`/`sessions_skipped`（非负 check）, `queue_bytes`（可空 ≥0）, `cli_version`, `os`（可空）, `created_at`, `updated_at`；唯一 `(user_id, device_id, run_id)`（幂等键，重放 duplicate:true、首写胜出）；check `ended_at >= started_at`；索引 `(user_id, started_at desc)`；RLS 零 policy |
 
 与旧结构的映射（迁移用）：`tokentracker_* → token_*` 一一对应，`device_machine` 折叠进 `token_devices.machine_cluster_id`，其余列语义不变——**upsert 键与 last-wins 语义逐字保留**。
 
