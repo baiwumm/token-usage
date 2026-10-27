@@ -41,6 +41,7 @@ import {
 } from "react";
 
 import { CostAnalysisModal } from "./cost-modal";
+import { DashboardSkeleton } from "./dashboard-skeleton";
 import { DetailTable, type DetailRow } from "./detail-table";
 import { HeatmapCard } from "./heatmap-card";
 import { ShareModal } from "./share-modal";
@@ -875,17 +876,9 @@ export function DashboardClient() {
       </div>
 
       {summaryState.status === "loading" ? (
-        // Mirrors the loaded layout: KPI tiles, hero card, heatmap, trend.
-        <div className="flex flex-col gap-5">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {Array.from({ length: 4 }, (_, index) => (
-              <SectionSkeleton key={index} className="h-28 w-full" />
-            ))}
-          </div>
-          <SectionSkeleton className="h-52 w-full" />
-          <SectionSkeleton className="h-72 w-full" />
-          <SectionSkeleton className="h-96 w-full" />
-        </div>
+        // Mirrors the loaded card stack: hero, heatmap, trend, breakdown,
+        // devices and the detail table.
+        <DashboardSkeleton />
       ) : null}
 
       {summaryState.status === "error" ? (
