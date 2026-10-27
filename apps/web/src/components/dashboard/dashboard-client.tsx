@@ -86,6 +86,8 @@ import { useFormat } from "@/lib/format/format";
 type TrendMode = "daily" | "monthly";
 type DetailView = "daily" | "hourly" | "monthly";
 
+const AUTO_REFRESH_MS = 5 * 60_000;
+
 interface Filters {
   range: RangeKey;
   from: string;
@@ -323,6 +325,39 @@ export function DashboardClient() {
 
   useEffect(() => {
     if (accessToken) void loadAll(accessToken);
+  }, [accessToken, loadAll]);
+
+  // Auto-refresh every five minutes while the tab is visible; switching back
+  // to the tab refreshes immediately and restarts the interval. loadAll's
+  // run-id makes a refresh racing the previous one safe, and the per-request
+  // slot updates keep the cards mounted under the blur overlay.
+  useEffect(() => {
+    if (!accessToken) return;
+
+    let timer: number | undefined;
+
+    const startTimer = () => {
+      window.clearInterval(timer);
+      timer = window.setInterval(() => {
+        if (document.visibilityState === "visible") {
+          void loadAll(accessToken);
+        }
+      }, AUTO_REFRESH_MS);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void loadAll(accessToken);
+        startTimer();
+      }
+    };
+
+    startTimer();
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [accessToken, loadAll]);
 
   const effectiveHourlyDay = hourlyDay || dayKeyInTz(new Date(), timezone);
@@ -910,6 +945,9 @@ export function DashboardClient() {
                       output: copy.charts.outputTokens,
                     }}
                     metric={trendMetric}
+                    selectedKey={
+                      trendMode === "daily" && hourlyDay ? hourlyDay : undefined
+                    }
                     onSelect={(key) => {
                       if (trendMode !== "daily" || !key) return;
                       setHourlyDay(key);
@@ -991,20 +1029,32 @@ export function DashboardClient() {
                 <Card.Title>{copy.detail.title}</Card.Title>
                 <div className="flex flex-wrap items-end gap-2">
                   {detailView === "hourly" ? (
-                    <TextField
-                      className="w-40"
-                      value={effectiveHourlyDay}
-                      onChange={(value) => {
-                        if (isValidDayKey(value)) setHourlyDay(value);
-                      }}
-                    >
-                      <Label>{copy.detail.dayLabel}</Label>
-                      <Input
-                        aria-label={copy.detail.dayLabel}
-                        type="date"
-                        variant="secondary"
-                      />
-                    </TextField>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="tertiary"
+                        onPress={() => {
+                          setHourlyDay("");
+                          setDetailView("daily");
+                        }}
+                      >
+                        {`${effectiveHourlyDay} · ${copy.detail.backToDaily}`}
+                      </Button>
+                      <TextField
+                        className="w-40"
+                        value={effectiveHourlyDay}
+                        onChange={(value) => {
+                          if (isValidDayKey(value)) setHourlyDay(value);
+                        }}
+                      >
+                        <Label>{copy.detail.dayLabel}</Label>
+                        <Input
+                          aria-label={copy.detail.dayLabel}
+                          type="date"
+                          variant="secondary"
+                        />
+                      </TextField>
+                    </>
                   ) : null}
                   <Tabs
                     selectedKey={detailView}

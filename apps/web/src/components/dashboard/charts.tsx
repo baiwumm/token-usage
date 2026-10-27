@@ -10,6 +10,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -88,6 +89,7 @@ export function TrendChart({
   emptyLabel,
   labels,
   onSelect,
+  selectedKey,
 }: {
   data: TrendPoint[];
   metric: TrendMetric;
@@ -102,6 +104,8 @@ export function TrendChart({
     output: string;
   };
   onSelect?: (key: string) => void;
+  /** Drilled-in bucket to highlight; the rest of the bars dim. */
+  selectedKey?: string;
 }) {
   const { formatTokens, formatCost, formatNumber } = useFormat();
 
@@ -206,7 +210,16 @@ export function TrendChart({
                     : undefined
                 }
                 stackId="composition"
-              />
+              >
+                {selectedKey
+                  ? data.map((point) => (
+                      <Cell
+                        key={point.key}
+                        fillOpacity={point.key === selectedKey ? 1 : 0.3}
+                      />
+                    ))
+                  : null}
+              </Bar>
             ))
           ) : (
             <Bar
@@ -214,7 +227,16 @@ export function TrendChart({
               dataKey={metric}
               fill="var(--color-chart-3)"
               radius={[3, 3, 0, 0]}
-            />
+            >
+              {selectedKey
+                ? data.map((point) => (
+                    <Cell
+                      key={point.key}
+                      fillOpacity={point.key === selectedKey ? 1 : 0.3}
+                    />
+                  ))
+                : null}
+            </Bar>
           )}
         </BarChart>
       </ResponsiveContainer>
