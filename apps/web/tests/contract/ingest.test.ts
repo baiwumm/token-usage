@@ -230,10 +230,10 @@ describe("ingest dedup + last-wins", () => {
     expect(await res.json()).toEqual({ error: "Upload too large" });
   });
 
-  it("maps malformed JSON to the generic 500 envelope", async () => {
+  it("maps malformed JSON to the stable 400 invalid_json envelope", async () => {
     const res = await ingestPost(rawRequest(base("ingest"), { body: "{broken", token: TOKEN_A }));
-    expect(res.status).toBe(500);
-    expect(await res.json()).toEqual({ error: "Internal server error" });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "invalid_json" });
   });
 });
 

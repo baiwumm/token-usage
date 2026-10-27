@@ -15,6 +15,7 @@ import {
   DEVICE_B,
   DEVICE_REVOKED,
   TOKEN_A,
+  TOKEN_B,
   USER_ID,
   JWT,
   base,
@@ -698,5 +699,47 @@ describe("series dispatch", () => {
     );
     expect(res.status).toBe(200);
     expect((await res.json()).data).toHaveLength(1);
+  });
+});
+
+describe("negotiation cache (§2.7)", () => {
+  it("serves successful GETs with a strong ETag and private no-cache", async () => {
+    const res = await series("daily", "?from=2026-10-21&to=2026-10-21");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("private, no-cache");
+    expect(res.headers.get("etag")).toMatch(/^"[0-9a-f]{32}"$/);
+  });
+
+  it("re-validates to a body-less 304 on a matching If-None-Match", async () => {
+    const first = await series("daily", "?from=2026-10-21&to=2026-10-21");
+    const etag = first.headers.get("etag")!;
+    const second = await seriesGet(
+      new Request(`${base("account-daily")}?from=2026-10-21&to=2026-10-21`, {
+        headers: { Authorization: `Bearer ${TOKEN_A}`, "If-None-Match": etag },
+      }),
+      { params: Promise.resolve({ slug: ["token-usage-account-daily"] }) },
+    );
+    expect(second.status).toBe(304);
+    expect(await second.text()).toBe("");
+    expect(second.headers.get("etag")).toBe(etag);
+  });
+
+  it("binds the ETag to the payload, not the session", async () => {
+    const first = await series("daily", "?from=2026-10-21&to=2026-10-21");
+    const etag = first.headers.get("etag")!;
+    // Different window → different payload → different ETag; the same window
+    // on the account's other device token hashes identically (same data).
+    const otherWindow = await series("daily", "?from=2026-10-20&to=2026-10-21");
+    const otherToken = await series("daily", "?from=2026-10-21&to=2026-10-21", TOKEN_B);
+
+    expect(otherWindow.headers.get("etag")).not.toBe(etag);
+    expect(otherToken.headers.get("etag")).toBe(etag);
+  });
+
+  it("keeps error envelopes on the stock no-store", async () => {
+    const res = await series("daily", "?from=bogus", TOKEN_A);
+    expect(res.status).toBe(400);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("etag")).toBeNull();
   });
 });

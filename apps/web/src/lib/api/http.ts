@@ -42,11 +42,20 @@ export class HttpError extends Error {
 
 /**
  * Read the request body with the contract's 1 MiB cap (413 beyond it) and
- * parse as JSON. An empty body parses to {}. A malformed body throws the
- * SyntaxError, which errorResponse turns into a generic 500 — the same
- * behavior the reference implementation had.
+ * parse as JSON. An empty body parses to {}. An honest Content-Length is
+ * rejected before a byte is read; the post-read check still catches clients
+ * that lie about their length. A malformed body is the client's fault and
+ * maps to the stable `400 invalid_json` (docs/cli-contract.md §1.3) — the
+ * reference implementation's 500 leaked a generic envelope for what is not a
+ * server problem.
  */
 export async function readJsonBody(request: Request): Promise<unknown> {
+  const declaredLength = Number(request.headers.get("content-length"));
+
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    throw new HttpError("Upload too large", 413);
+  }
+
   const text = await request.text();
 
   if (!text) return {};
@@ -54,7 +63,11 @@ export async function readJsonBody(request: Request): Promise<unknown> {
     throw new HttpError("Upload too large", 413);
   }
 
-  return JSON.parse(text) as unknown;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new HttpError("invalid_json", 400);
+  }
 }
 
 export function getBearer(request: Request): string {

@@ -118,10 +118,10 @@ describe("POST device-flow-authorize", () => {
     }
   });
 
-  it("maps malformed JSON to the generic 500 envelope", async () => {
+  it("maps malformed JSON to the stable 400 invalid_json envelope", async () => {
     const res = await authorizePost(rawRequest(base("device-flow-authorize"), { body: "{broken" }));
-    expect(res.status).toBe(500);
-    expect(await res.json()).toEqual({ error: "Internal server error" });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "invalid_json" });
   });
 });
 

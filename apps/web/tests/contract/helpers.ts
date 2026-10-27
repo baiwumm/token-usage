@@ -240,4 +240,5 @@ export function initContractEnv(fakeUrl: string): void {
   // Tests reseed the fake backend between cases; the read-face snapshot cache
   // must not outlive a reseed.
   process.env.TOKEN_USAGE_USAGE_CACHE = "off";
+  process.env.TOKEN_USAGE_SESSION_CACHE = "off";
 }

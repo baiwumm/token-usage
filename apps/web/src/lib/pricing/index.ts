@@ -147,9 +147,13 @@ const state = {
   litellmPerMillionMap: buildLitellmPerMillionMap(seedRaw),
   source: Object.keys(seedRaw).length ? "seed-snapshot:static" : null,
   // negativeCache prevents re-walking the LiteLLM map for models we've already
-  // determined are unknown.
+  // determined are unknown. Model names arrive from device payloads, so the
+  // set is bounded: clearing on overflow just re-walks the table for cold
+  // entries instead of letting an injected name storm grow it without end.
   negativeCache: new Set<string>(),
 };
+
+const NEGATIVE_CACHE_CAP = 4096;
 
 export async function ensurePricingLoaded() {
   state.loaded = true;
@@ -194,22 +198,29 @@ export function getModelPricing(
     source: lookupSource,
   });
 
-  if (result.hit) {
-    // Copy out and drop the _selfhost provenance flag: callers see only rate
-    // fields, and a mutating caller cannot poison the shared table.
-    const value = result.value;
+  if (!result.hit) {
+    rememberNegativeLookup(cacheKey);
 
-    if (!value || typeof value !== "object") return value;
-    const rates: Record<string, unknown> = { ...value };
-
-    delete rates._selfhost;
-
-    return rates as Rates;
+    return ZERO_PRICING;
   }
 
-  state.negativeCache.add(cacheKey);
+  // Copy out and drop the _selfhost provenance flag: callers see only rate
+  // fields, and a mutating caller cannot poison the shared table.
+  const value = result.value;
 
-  return ZERO_PRICING;
+  if (!value || typeof value !== "object") return value;
+  const rates: Record<string, unknown> = { ...value };
+
+  delete rates._selfhost;
+
+  return rates as Rates;
+}
+
+export function rememberNegativeLookup(cacheKey: string): void {
+  if (state.negativeCache.size >= NEGATIVE_CACHE_CAP) {
+    state.negativeCache.clear();
+  }
+  state.negativeCache.add(cacheKey);
 }
 
 // Memoized per pricing revision; copies go out so a mutating caller cannot

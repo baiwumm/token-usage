@@ -291,11 +291,29 @@ export function hourlySeriesForDay(
   day: string,
   tzContext: Partial<TzContext>,
 ): SeriesBucket[] {
+  const dayStartMs = Date.parse(`${day}T00:00:00Z`);
+
+  if (!Number.isFinite(dayStartMs)) return [];
+
+  // Coarse UTC pre-filter: any tz-local bucket of `day` lies within ±15h of
+  // the day's UTC midnight (the IANA offset range is −12..+14). Parsing to ms
+  // per row is far cheaper than running zonedParts over the whole history.
+  const windowStartMs = dayStartMs - 15 * 3_600_000;
+  const windowEndMs = dayStartMs + 24 * 3_600_000 + 15 * 3_600_000;
   const byHour = new Map<string, SeriesBucket>();
 
   for (const row of rows) {
     if (!row.hour_start) continue;
-    const parts = zonedParts(String(row.hour_start), tzContext);
+    const startMs = Date.parse(String(row.hour_start));
+
+    if (
+      !Number.isFinite(startMs) ||
+      startMs < windowStartMs ||
+      startMs > windowEndMs
+    ) {
+      continue;
+    }
+    const parts = zonedParts(new Date(startMs), tzContext);
 
     if (!parts || dayKeyOf(parts) !== day) continue;
     const hourKey = `${day}T${pad2(parts.hour)}:00:00`;
