@@ -129,7 +129,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
     <div className="flex h-16 shrink-0 items-center px-3">
       <Link
         aria-label="Token Usage"
-        className={`hover:bg-default/60 flex min-w-0 items-center gap-2.5 rounded-3xl p-1 transition-colors ${
+        className={`hover:bg-default flex min-w-0 items-center gap-2.5 rounded-3xl p-1 transition-colors ${
           collapsed ? "w-full justify-center" : "w-full"
         }`}
         href="/"
@@ -212,8 +212,8 @@ function NavItems({
               collapsed ? "w-9 justify-center" : "px-2.5"
             } ${
               active
-                ? "bg-default text-foreground font-medium"
-                : "text-foreground/65 hover:bg-default/60 hover:text-foreground"
+                ? "bg-surface text-surface-foreground font-medium"
+                : "text-foreground/65 hover:bg-default hover:text-foreground"
             }`}
             href={item.href}
             title={collapsed ? label : undefined}
@@ -278,7 +278,7 @@ function SidebarProfile({
       <Dropdown>
         <Dropdown.Trigger
           aria-label={collapsed ? displayName : undefined}
-          className={`hover:bg-default/70 flex items-center gap-2.5 rounded-3xl p-2 text-start transition-colors ${
+          className={`hover:bg-default flex items-center gap-2.5 rounded-3xl p-2 text-start transition-colors ${
             collapsed ? "justify-center" : "w-full"
           }`}
         >
