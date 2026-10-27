@@ -18,7 +18,6 @@ import {
   Input,
   ListBox,
   Modal,
-  Pagination,
   RangeCalendar,
   Select,
   Spinner,
@@ -44,7 +43,7 @@ import { formatMessage } from "@/lib/copy/message";
 import { SESSIONS_COPY, type SessionsCopy } from "@/lib/copy/sessions";
 import { useUrlFilters } from "@/lib/dashboard/url-filters";
 import { loadable, type Loadable } from "@/lib/loadable";
-import { pageItems } from "@/lib/ui/pagination";
+import { PAGE_SIZE_OPTIONS } from "@/lib/ui/pagination";
 import {
   DashboardApiError,
   fetchSessions,
@@ -61,15 +60,13 @@ import {
 } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";
 import { SectionSkeleton } from "@/components/section-states";
+import { TablePagination } from "@/components/table-pagination";
 import { FlowNumber } from "@/components/flow-number";
 import { SourceIcon } from "@/components/dashboard/source-icon";
 import { sourceDisplayLabel } from "@/components/dashboard/sources";
 import { RangePresetButtons } from "@/components/range-preset-buttons";
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 const DEFAULT_PAGE_SIZE = 20;
-
-type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 const SEARCH_DEBOUNCE_MS = 350;
 const UPGRADE_URL = "https://github.com/baiwumm/token-usage#readme";
 
@@ -697,10 +694,6 @@ export function SessionsClient() {
     totalPages,
     Math.floor((payload?.offset ?? 0) / filters.pageSize) + 1,
   );
-  const pageStart = payload && payload.total > 0 ? payload.offset + 1 : 0;
-  const pageEnd = payload
-    ? Math.min(payload.offset + filters.pageSize, payload.total)
-    : 0;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 md:px-8">
@@ -1093,113 +1086,27 @@ export function SessionsClient() {
                     ))}
                   </div>
 
-                  <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                    <Pagination className="min-w-0 flex-1" size="sm">
-                      <Pagination.Summary>
-                        {formatMessage(copy.list.pageSummary, locale, {
-                          start: pageStart,
-                          end: pageEnd,
-                          total: payload.total,
-                        })}
-                      </Pagination.Summary>
-                      <Pagination.Content>
-                        <Pagination.Item>
-                          <Pagination.Previous
-                            isDisabled={currentPage === 1}
-                            onPress={() =>
-                              applyFilters({
-                                offset:
-                                  Math.max(0, currentPage - 2) *
-                                  filters.pageSize,
-                              })
-                            }
-                          >
-                            <Pagination.PreviousIcon />
-                            <span className="hidden sm:inline">
-                              {copy.list.previous}
-                            </span>
-                          </Pagination.Previous>
-                        </Pagination.Item>
-                        {pageItems(currentPage, totalPages).map(
-                          (item, index) =>
-                            item === "ellipsis" ? (
-                              <Pagination.Item key={`ellipsis-${index}`}>
-                                <Pagination.Ellipsis />
-                              </Pagination.Item>
-                            ) : (
-                              <Pagination.Item key={item}>
-                                <Pagination.Link
-                                  isActive={item === currentPage}
-                                  onPress={() =>
-                                    applyFilters({
-                                      offset: (item - 1) * filters.pageSize,
-                                    })
-                                  }
-                                >
-                                  {item}
-                                </Pagination.Link>
-                              </Pagination.Item>
-                            ),
-                        )}
-                        <Pagination.Item>
-                          <Pagination.Next
-                            isDisabled={currentPage === totalPages}
-                            onPress={() =>
-                              applyFilters({
-                                offset:
-                                  (Math.min(totalPages, currentPage + 1) - 1) *
-                                  filters.pageSize,
-                              })
-                            }
-                          >
-                            <span className="hidden sm:inline">
-                              {copy.list.next}
-                            </span>
-                            <Pagination.NextIcon />
-                          </Pagination.Next>
-                        </Pagination.Item>
-                      </Pagination.Content>
-                    </Pagination>
-                    <Select
-                      aria-label={copy.list.pageSize}
-                      className="w-32"
-                      value={String(filters.pageSize)}
-                      variant="secondary"
-                      onChange={(key) => {
-                        if (key == null) return;
-                        const next = Number(key) as PageSize;
+                  <TablePagination
+                    labels={copy.list}
+                    locale={locale}
+                    page={currentPage}
+                    pageSize={filters.pageSize}
+                    total={payload.total}
+                    onPageChange={(page) =>
+                      applyFilters({
+                        offset: (page - 1) * filters.pageSize,
+                      })
+                    }
+                    onPageSizeChange={(next) => {
+                      // Keep the current page anchored when the size
+                      // changes; an explicit offset skips the auto-reset.
+                      const page = Math.floor(
+                        filters.offset / filters.pageSize,
+                      );
 
-                        // Keep the current page anchored when the size
-                        // changes; an explicit offset skips the auto-reset.
-                        const page = Math.floor(
-                          filters.offset / filters.pageSize,
-                        );
-
-                        applyFilters({ pageSize: next, offset: page * next });
-                      }}
-                    >
-                      <Select.Trigger>
-                        <Select.Value />
-                        <Select.Indicator />
-                      </Select.Trigger>
-                      <Select.Popover>
-                        <Popover.Arrow />
-                        <ListBox>
-                          {PAGE_SIZE_OPTIONS.map((option) => (
-                            <ListBox.Item
-                              key={option}
-                              id={String(option)}
-                              textValue={String(option)}
-                            >
-                              {formatMessage(copy.list.pageSizeItem, locale, {
-                                count: option,
-                              })}
-                            </ListBox.Item>
-                          ))}
-                        </ListBox>
-                      </Select.Popover>
-                    </Select>
-                  </div>
+                      applyFilters({ pageSize: next, offset: page * next });
+                    }}
+                  />
                 </>
               )}
             </Card.Content>

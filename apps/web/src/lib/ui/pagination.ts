@@ -2,6 +2,10 @@
 // run of seven or fewer pages. Shared by the sessions list and the dashboard
 // detail table.
 
+/** Rows-per-page choices offered by tables with a page-size selector. */
+export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+export type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+
 export type PageItem = number | "ellipsis";
 
 export function pageItems(page: number, totalPages: number): PageItem[] {

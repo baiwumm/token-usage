@@ -87,6 +87,8 @@ export interface DashboardCopy {
     loadError: string;
     retry: string;
     pageSummary: string;
+    pageSize: string;
+    pageSizeItem: string;
     previous: string;
     next: string;
   };
@@ -221,7 +223,9 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       empty: "该时间范围内没有明细数据。",
       loadError: "明细加载失败。",
       retry: "重试",
-      pageSummary: "{start}–{end} / {total}",
+      pageSummary: "第 {start} - {end} 条，共 {total} 条",
+      pageSize: "每页条数",
+      pageSizeItem: "每页 {count} 条",
       previous: "上一页",
       next: "下一页",
     },
@@ -358,7 +362,9 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       empty: "No detail rows in this range.",
       loadError: "Failed to load detail.",
       retry: "Retry",
-      pageSummary: "{start}–{end} / {total}",
+      pageSummary: "Rows {start}–{end} of {total}",
+      pageSize: "Rows per page",
+      pageSizeItem: "{count} / page",
       previous: "Previous",
       next: "Next",
     },

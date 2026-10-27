@@ -2,23 +2,17 @@
 
 // Sortable + paginated detail table for the dashboard's daily / hourly /
 // monthly views (docs/ui-spec.md 仪表盘 6). Server data is already bucketed;
-// this component only sorts the current window and pages it 20 rows at a time.
+// this component only sorts the current window and pages it 10 rows at a time.
 
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 
-import {
-  Pagination,
-  Table,
-  Typography,
-  type SortDescriptor,
-} from "@heroui/react";
+import { Table, Typography, type SortDescriptor } from "@heroui/react";
 import { memo, useMemo, useState } from "react";
 
 import { ModelListModal } from "./model-list-modal";
 
-import { formatMessage } from "@/lib/copy/message";
+import { TablePagination } from "@/components/table-pagination";
 import { useFormat } from "@/lib/format/format";
-import { pageItems } from "@/lib/ui/pagination";
 
 export interface DetailRow {
   id: string;
@@ -35,7 +29,7 @@ export interface DetailRow {
   modelTokens: Record<string, number>;
 }
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 10;
 
 // Memoized: detail rows only change when their view's request settles; the
 // dashboard's per-request slot updates then skip this table entirely.
@@ -54,6 +48,7 @@ function DetailTableImpl({
     direction: "descending",
   });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [modelsRow, setModelsRow] = useState<DetailRow | null>(null);
 
   const sorted = useMemo(() => {
@@ -73,14 +68,12 @@ function DetailTableImpl({
     });
   }, [rows, sortDescriptor]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const visible = sorted.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
   );
-  const start = sorted.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
-  const end = Math.min(currentPage * PAGE_SIZE, sorted.length);
 
   if (rows.length === 0) {
     return (
@@ -232,53 +225,18 @@ function DetailTableImpl({
         }}
       />
 
-      <Pagination className="w-full" size="sm">
-        <Pagination.Summary>
-          {formatMessage(copy.detail.pageSummary, locale, {
-            start,
-            end,
-            total: sorted.length,
-          })}
-        </Pagination.Summary>
-        <Pagination.Content>
-          <Pagination.Item>
-            <Pagination.Previous
-              isDisabled={currentPage === 1}
-              onPress={() => setPage((value) => Math.max(1, value - 1))}
-            >
-              <Pagination.PreviousIcon />
-              <span className="hidden sm:inline">{copy.detail.previous}</span>
-            </Pagination.Previous>
-          </Pagination.Item>
-          {pageItems(currentPage, totalPages).map((item, index) =>
-            item === "ellipsis" ? (
-              <Pagination.Item key={`ellipsis-${index}`}>
-                <Pagination.Ellipsis />
-              </Pagination.Item>
-            ) : (
-              <Pagination.Item key={item}>
-                <Pagination.Link
-                  isActive={item === currentPage}
-                  onPress={() => setPage(item)}
-                >
-                  {item}
-                </Pagination.Link>
-              </Pagination.Item>
-            ),
-          )}
-          <Pagination.Item>
-            <Pagination.Next
-              isDisabled={currentPage === totalPages}
-              onPress={() =>
-                setPage((value) => Math.min(totalPages, value + 1))
-              }
-            >
-              <span className="hidden sm:inline">{copy.detail.next}</span>
-              <Pagination.NextIcon />
-            </Pagination.Next>
-          </Pagination.Item>
-        </Pagination.Content>
-      </Pagination>
+      <TablePagination
+        labels={copy.detail}
+        locale={locale}
+        page={currentPage}
+        pageSize={pageSize}
+        total={sorted.length}
+        onPageChange={setPage}
+        onPageSizeChange={(next) => {
+          setPageSize(next);
+          setPage(1);
+        }}
+      />
     </div>
   );
 }

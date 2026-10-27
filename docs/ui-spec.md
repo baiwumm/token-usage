@@ -23,6 +23,8 @@
 - 裸标签换语义组件：标题/正文用 `Typography`，表单字段提示用 `Description`，错误用
   `ErrorMessage`（表单级）/ `FieldError`（字段级），不用裸 `h1`–`h6` / `p` 标签
   （2026-10-24 操作者指令）。
+- 表格分页统一 `components/table-pagination.tsx`：左侧范围摘要、中间页码、右侧每页条数
+  （最小尺寸 Select）；默认页大小由调用页传入（明细 10/页、Sessions 20/页）。
 - 浮层（Modal / Drawer / Popover / Tooltip / Toast）使用 HeroUI 内置组件及其触发器组件，
   受控用法遵循各组件文档，不自建浮层机制。
 - 图标：`@gravity-ui/icons`（与 HeroUI v3 官方示例一致），尺寸对齐 HeroUI 插槽惯例。
@@ -94,7 +96,7 @@
 6. **设备卡**（独占一行）：名称/平台/最后上报/Token/成本，取 `dashboard.devices`，
    仅活跃设备且不随设备筛选收窄；点击设备卡把 `device_id` 写入筛选条。
 7. **明细**：`Tabs` 日 / 时 / 月；`Table` 列（时间、Token、计费 Token、成本、会话、
-   模型数）；列头排序、`Pagination`（默认 20/页）；时视图先选日期（默认今天）；时区
+   模型数）；列头排序、`Pagination`（默认 10/页，可选 10/20/50/100）；时视图先选日期（默认今天）；时区
    切换即时重算日/时，月视图按契约固定 UTC；空窗口显示空态；模型数列可点击（桶内
    `models` 非空时），打开该桶的模型明细 Modal（同 `ModelListModal`）。
 8. **成本分析**：从 Top 模型「成本分析」按钮打开 `Modal`；`Tabs` 按模型 / 按来源；
