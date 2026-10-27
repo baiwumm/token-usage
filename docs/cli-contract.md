@@ -67,6 +67,16 @@
 别名就永久保留。别名只供已部署采集机使用，新集成一律使用规范路径。自有 `tokenusage-cli`
 全量替代旧 CLI 后，别名可退役；移除属破坏性变更，需操作者确认并清点采集机。
 
+### 1.6 限流与滥用边界（部署侧，2026-10-27 裁定）
+
+代码层**不做**速率限制：本服务部署在 serverless 平台，多实例下进程内计数器不成立。
+限流与滥用防护由**部署平台**承担（如 Vercel Firewall 的速率规则），属于部署配置而非
+本契约；公网部署应至少对 `/api/functions/*` 配置基础的 429 速率规则。
+
+已评估并接受的风险：device-flow `user_code` 猜解——字母表 32 字符 × 8 位（≈1.1×10¹²
+组合）、配对码 15 分钟过期、批准需账户持有人在 `/device` 交互确认，暴力猜解在过期窗口
+内的可行概率可忽略；401/404 响应不区分"码不存在"与"码已过期"，无枚举侧信道。
+
 ## 2. 端点规范
 
 ### 2.1 `POST /api/functions/token-usage-device-flow-authorize`（公开｜CLI 面）
@@ -106,7 +116,7 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 
 签发语义（**必须逐条保留**）：
 
-1. 设备名 = `<client_info 中的主机名> #<machine_id 前 8 位>`（client_info 缺失时主机名回退为 `TokenTracker CLI`，machine_id 缺失无后缀），总长 ≤128，`platform` 固定 `"cli-device-flow"`。
+1. 设备名 = `<client_info 中的主机名> #<machine_id 前 8 位>`（client_info 缺失时主机名回退为 `Token Usage CLI`，machine_id 缺失无后缀），总长 ≤128，`platform` 固定 `"cli-device-flow"`。（2026-10-27 品牌更名：原回退值 `TokenTracker CLI` 仅影响更名后新配对的设备显示名，既有设备名不变。）
 2. 按 `machine_id` → 精确 `device_name` 的顺序找**同账户**的活跃设备；找不到则新建（重名冲突自动追加 ` #<4位hex>` 重试，最多 5 次）。
 3. 写入 `token_device_machine`（`machine_cluster_id = machine_id ?? device_id`，已存在则幂等跳过）。
 4. **吊销该设备名下所有仍活跃的旧令牌**，再签发新令牌（新明文只出现在本响应中）。
@@ -136,13 +146,13 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 
 | 字段 | 说明 |
 |---|---|
-| `hour_start` | 可解析的 ISO 时间 |
+| `hour_start` | 可解析的 ISO 时间；**不要求整点对齐**——采集端的半小时桶（`:00` / `:30`）是既有合法形态（2026-10-27 注明），读取侧按 tz 日键聚合，非对齐起点不影响对账 |
 | `source` | trim + 转小写，≤100 字符，空则 `"unknown"` |
 | `model` | trim，≤200 字符，空则 `"unknown"` |
 | `input_tokens` `cached_input_tokens` `cache_creation_input_tokens` `output_tokens` `reasoning_output_tokens` `total_tokens` | 非负整数 |
 | `billable_total_tokens` | 非负整数或显式 `null` |
 | `conversations`（别名 `conversation_count`） | 非负整数，默认 0 |
-| `total_cost_usd` | 非负数，默认 0 |
+| `total_cost_usd` | 非负数，默认 0；**单行钳制 ≤ 10.0 USD**（2026-10-27 安全收紧，防设备令牌伪造天价成本扭曲仪表盘：超出按 10.0 计，不整批拒绝——避免卡住已部署采集机的队列） |
 
 **session 字段**（`sessions` 可选；除标注可选者外全部必填；任一非法 → 整批 `400 {"error":"Invalid session"}`）：
 
@@ -215,6 +225,8 @@ Query：`from`、`to`（`YYYY-MM-DD`，缺省= 首日 / 调用方本地今天）
 聚合语义（移植时必须保持）：`source ∈ {cursor, trae-cn}` 是**账户级来源**——cursor 桶跨设备去重（同键取 total 最大/updated_at 最新/device_id 最小者），trae-cn 由会话状态聚合而来且忽略设备状态；带 `device_id` 过滤时账户级来源**整段剔除**；已吊销设备的机器级桶**不进入账户聚合**（行保留在库，重新配对后回来）；成本按读取时定价引擎计算（grok/cline 用 provider 上报值，未知模型/订阅/本地推理计 0）。
 
 Sessions 聚合语义（2026-10-25 新增）：仅设备级来源，`cursor` / `trae-cn` 永不出现；已吊销设备的会话行保留在库但**整段剔除**；`total` 是筛选全集计数，`totals` 是筛选全集汇总而非当前页；`billable_total_tokens` 为 `null` 时按 `total_tokens` 计入；`total_cost_usd` 读取时按定价引擎逐模型计算后求和（未知模型计 0），所有层级（`totals` / 会话 / 模型）均为固定 6 位小数字符串；`duration_ms = ended_at - started_at`（毫秒非负整数，`totals.duration_ms` 为筛选全集求和）；`models[].share = model.total_tokens / session.total_tokens`（0–1，保留 4 位小数；会话 total 为 0 时记 0）；跨窗口长会话按 `ended_at` 归属单一窗口，不按天切分（v1 无会话内桶）。`facets.sources` 基于 `from/to` + `device_id` + `q`（忽略 `source`），`facets.devices` 基于 `from/to` + `source` + `q`（忽略 `device_id`）；两者均剔除吊销设备与账户级来源，按 `sessions` 降序，供筛选下拉使用，不受 `limit` / `offset` 影响。参数：`from` / `to` 缺失或不可解析 → `400 {"error":"Missing from/to"}`；`from > to` → `400 {"error":"Invalid from/to"}`；窗口 >1095 天时把 `from` 钳制到 `to - 1095d`；`device_id` 非 UUID → `400 {"error":"Invalid device_id"}`；`source` trim + 转小写、≤100，`cursor` / `trae-cn` 按无结果处理（不 400）；`limit` 非数字按 50、钳制 1–200，`offset` 非数字或负数按 0；`q` trim、≤120、大小写不敏感子串，`%` / `_` / `\` 作为字面量转义。
+
+**计价口径注记（2026-10-27）**：sessions 每模型行不带计价时间上下文，定价引擎一律按**峰值价**计算——DeepSeek 的峰谷/周末半价在 sessions 视图不生效，同一笔用量 sessions 的成本因此**可能高于**仪表盘（hourly 按 `hour_start` 走 `isDeepSeekOffPeak`）。这是已接受的口径差异：会话行只有单一 `ended_at`，按其近似计价会引入跨峰谷长会话的另一种误差，v1 保持按峰值计。
 
 ### 2.8 `POST /api/functions/token-usage-device-rename`（设备令牌=仅自身 / JWT=本账户任意设备｜CLI 面）
 
