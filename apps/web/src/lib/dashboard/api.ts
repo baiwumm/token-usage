@@ -221,13 +221,23 @@ export class DashboardApiError extends Error {
   }
 }
 
+export function isUnauthorized(error: unknown): boolean {
+  return error instanceof DashboardApiError && error.status === 401;
+}
+
 async function callContract<T>(
   slug: string,
   query: string,
-  token: string,
+  token: string | null,
+  init?: { method: "POST"; body: unknown },
 ): Promise<T> {
   const response = await fetch(`/api/functions/token-usage-${slug}${query}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    method: init?.method ?? "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init ? { "Content-Type": "application/json" } : {}),
+    },
+    body: init ? JSON.stringify(init.body) : undefined,
   });
 
   if (response.status === 401) {
@@ -245,6 +255,14 @@ async function callContract<T>(
   }
 
   return (await response.json()) as T;
+}
+
+/** GET /api/functions/token-usage-public-config (public CLI bootstrap). */
+export function fetchPublicConfig(): Promise<{
+  supabase_url?: string;
+  dashboard_url?: string | null;
+}> {
+  return callContract("public-config", "", null);
 }
 
 export function fetchDashboard(
@@ -479,4 +497,54 @@ export function fetchSessions(
   if (params.offset != null) query.set("offset", String(params.offset));
 
   return callContract<SessionsPayload>("account-sessions", `?${query}`, token);
+}
+
+// Device management (settings page, docs/cli-contract.md §2.7–2.9) and the
+// pairing approval (device page, §2.3) — same contract path, browser JWT.
+
+export interface AccountDeviceRow {
+  id: string;
+  device_name: string;
+  platform: string;
+  created_at: string;
+  total_tokens: number;
+}
+
+export function fetchAccountDevices(
+  token: string,
+  params: { from: string; to: string },
+): Promise<{ devices?: AccountDeviceRow[] }> {
+  const query = new URLSearchParams({ from: params.from, to: params.to });
+
+  return callContract("account-devices", `?${query}`, token);
+}
+
+export function renameDevice(
+  token: string,
+  params: { deviceId: string; name: string },
+): Promise<unknown> {
+  return callContract("device-rename", "", token, {
+    method: "POST",
+    body: { device_id: params.deviceId, device_name: params.name },
+  });
+}
+
+export function revokeDevice(
+  token: string,
+  params: { deviceId: string },
+): Promise<{ revoked_tokens?: number }> {
+  return callContract("device-revoke", "", token, {
+    method: "POST",
+    body: { device_id: params.deviceId },
+  });
+}
+
+export function grantDeviceFlow(
+  token: string,
+  params: { userCode: string },
+): Promise<unknown> {
+  return callContract("device-flow-grant", "", token, {
+    method: "POST",
+    body: { user_code: params.userCode },
+  });
 }

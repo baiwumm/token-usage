@@ -5,6 +5,8 @@
 // / device-revoke, docs/cli-contract.md §2.7–2.9) with the browser session's
 // Supabase JWT — the dual-principal path, never a browser→table connection.
 
+import type { LoadStatus } from "@/lib/loadable";
+
 import { Camera, Display, Palette, Person, TrashBin } from "@gravity-ui/icons";
 import {
   Avatar,
@@ -24,7 +26,6 @@ import {
   Typography,
   toast,
 } from "@heroui/react";
-import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -39,21 +40,20 @@ import { AvatarCropDialog } from "./avatar-crop-dialog";
 
 import { authBrowserClient } from "@/lib/auth/browser";
 import { useAvatarUpload, useProfile } from "@/lib/auth/profile";
-import { LOGIN_PATH } from "@/lib/auth/next-path";
+import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
 import { SETTINGS_COPY, type SettingsCopy } from "@/lib/copy/settings";
 import { useFormat } from "@/lib/format/format";
-
-interface DeviceRow {
-  id: string;
-  device_name: string;
-  platform: string;
-  created_at: string;
-  total_tokens: number;
-}
-
-type LoadStatus = "loading" | "ready" | "error";
+import { PendingButton } from "@/components/pending-button";
+import {
+  DashboardApiError,
+  fetchAccountDevices,
+  isUnauthorized,
+  renameDevice,
+  revokeDevice,
+  type AccountDeviceRow,
+} from "@/lib/dashboard/api";
 
 const USAGE_WINDOW_DAYS = 364;
 
@@ -78,7 +78,6 @@ function friendlyDeviceError(code: string, copy: SettingsCopy): string {
 }
 
 export function SettingsClient() {
-  const router = useRouter();
   const [locale] = useLocale();
   const copy = SETTINGS_COPY[locale];
   const { formatDate, formatTokens } = useFormat();
@@ -90,52 +89,39 @@ export function SettingsClient() {
   );
 
   const [status, setStatus] = useState<LoadStatus>("loading");
-  const [devices, setDevices] = useState<DeviceRow[]>([]);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [renaming, setRenaming] = useState<DeviceRow | null>(null);
+  const [devices, setDevices] = useState<AccountDeviceRow[]>([]);
+  const [renaming, setRenaming] = useState<AccountDeviceRow | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
   const [renameBusy, setRenameBusy] = useState(false);
-  const [revoking, setRevoking] = useState<DeviceRow | null>(null);
+  const [revoking, setRevoking] = useState<AccountDeviceRow | null>(null);
   const [revokeBusy, setRevokeBusy] = useState(false);
 
   const { from, to } = useMemo(() => usageWindow(), []);
 
-  const redirectToLogin = useCallback(
-    (target = "/settings") => {
-      router.replace(`${LOGIN_PATH}?next=${encodeURIComponent(target)}`);
-    },
-    [router],
-  );
-
   // The proxy guard normally guarantees a session; if the cookie state is
   // missing anyway (expired between hops), bounce to /login.
+  const handleNoClient = useCallback(() => setStatus("error"), []);
+  const { accessToken, redirectToLogin } = useSessionBootstrap(
+    "/settings",
+    handleNoClient,
+  );
+
   const loadDevices = useCallback(
     async (token: string) => {
       setStatus("loading");
 
       try {
-        const query = new URLSearchParams({ from, to });
-        const response = await fetch(
-          `/api/functions/token-usage-account-devices?${query}`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
+        const payload = await fetchAccountDevices(token, { from, to });
 
-        if (response.status === 401) {
+        setDevices(Array.isArray(payload.devices) ? payload.devices : []);
+        setStatus("ready");
+      } catch (error) {
+        if (isUnauthorized(error)) {
           redirectToLogin();
 
           return;
         }
-        if (!response.ok) {
-          setStatus("error");
-
-          return;
-        }
-        const payload = (await response.json()) as { devices?: DeviceRow[] };
-
-        setDevices(Array.isArray(payload.devices) ? payload.devices : []);
-        setStatus("ready");
-      } catch {
         // Network-level failure must land in the retryable error state, not
         // hang on the loading skeleton forever.
         setStatus("error");
@@ -145,35 +131,14 @@ export function SettingsClient() {
   );
 
   useEffect(() => {
-    const supabase = authBrowserClient();
-
-    if (!supabase) {
-      setStatus("error");
-
-      return;
-    }
-
-    void (async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        redirectToLogin();
-
-        return;
-      }
-      setAccessToken(session.access_token);
-      await loadDevices(session.access_token);
-    })();
-  }, [loadDevices, redirectToLogin]);
+    if (accessToken) void loadDevices(accessToken);
+  }, [accessToken, loadDevices]);
 
   async function submitRename() {
     const target = renaming;
-    const supabase = authBrowserClient();
     const token = accessToken;
 
-    if (!target || !supabase || !token || renameBusy) return;
+    if (!target || !token || renameBusy) return;
 
     const name = renameDraft.replace(/\s+/g, " ").trim();
 
@@ -186,29 +151,7 @@ export function SettingsClient() {
     setRenameError(null);
 
     try {
-      const response = await fetch("/api/functions/token-usage-device-rename", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ device_id: target.id, device_name: name }),
-      });
-
-      if (response.status === 401) {
-        redirectToLogin();
-
-        return;
-      }
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => ({}))) as {
-          error?: string;
-        };
-
-        setRenameError(friendlyDeviceError(payload.error || "", copy));
-
-        return;
-      }
+      await renameDevice(token, { deviceId: target.id, name });
       setDevices((rows) =>
         rows.map((row) =>
           row.id === target.id ? { ...row, device_name: name } : row,
@@ -216,8 +159,18 @@ export function SettingsClient() {
       );
       setRenaming(null);
       toast.success(copy.renameSuccess);
-    } catch {
-      setRenameError(friendlyDeviceError("", copy));
+    } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToLogin();
+
+        return;
+      }
+      setRenameError(
+        friendlyDeviceError(
+          error instanceof DashboardApiError ? error.message : "",
+          copy,
+        ),
+      );
     } finally {
       // A network-level throw must not leave the dialog permanently busy.
       setRenameBusy(false);
@@ -226,40 +179,13 @@ export function SettingsClient() {
 
   async function submitRevoke() {
     const target = revoking;
-    const supabase = authBrowserClient();
     const token = accessToken;
 
-    if (!target || !supabase || !token || revokeBusy) return;
+    if (!target || !token || revokeBusy) return;
     setRevokeBusy(true);
 
     try {
-      const response = await fetch("/api/functions/token-usage-device-revoke", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ device_id: target.id }),
-      });
-
-      if (response.status === 401) {
-        redirectToLogin();
-
-        return;
-      }
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => ({}))) as {
-          error?: string;
-        };
-
-        toast(friendlyDeviceError(payload.error || "", copy));
-        setRevoking(null);
-
-        return;
-      }
-      const payload = (await response.json().catch(() => ({}))) as {
-        revoked_tokens?: number;
-      };
+      const payload = await revokeDevice(token, { deviceId: target.id });
 
       setDevices((rows) => rows.filter((row) => row.id !== target.id));
       setRevoking(null);
@@ -272,8 +198,18 @@ export function SettingsClient() {
           },
         )}`,
       );
-    } catch {
-      toast(friendlyDeviceError("", copy));
+    } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToLogin();
+
+        return;
+      }
+      toast(
+        friendlyDeviceError(
+          error instanceof DashboardApiError ? error.message : "",
+          copy,
+        ),
+      );
       setRevoking(null);
     } finally {
       // A network-level throw must not leave the confirm button disabled.
@@ -480,19 +416,14 @@ export function SettingsClient() {
               >
                 {copy.renameCancel}
               </Button>
-              <Button
-                isPending={renameBusy}
+              <PendingButton
+                pending={renameBusy}
                 onPress={() => {
                   void submitRename();
                 }}
               >
-                {({ isPending }) => (
-                  <>
-                    {isPending ? <Spinner color="current" size="sm" /> : null}
-                    {copy.renameSave}
-                  </>
-                )}
-              </Button>
+                {copy.renameSave}
+              </PendingButton>
             </Modal.Footer>
           </Modal.Dialog>
         </Modal.Container>
@@ -524,18 +455,13 @@ export function SettingsClient() {
               >
                 {copy.revokeCancel}
               </Button>
-              <Button
-                isPending={revokeBusy}
+              <PendingButton
+                pending={revokeBusy}
                 variant="danger"
                 onPress={submitRevoke}
               >
-                {({ isPending }) => (
-                  <>
-                    {isPending ? <Spinner color="current" size="sm" /> : null}
-                    {copy.revokeConfirm}
-                  </>
-                )}
-              </Button>
+                {copy.revokeConfirm}
+              </PendingButton>
             </Modal.Footer>
           </Modal.Dialog>
         </Modal.Container>
@@ -740,14 +666,9 @@ function ProfileCard() {
             <Input variant="secondary" />
           </TextField>
           <div>
-            <Button isPending={saving} onPress={() => void save()}>
-              {({ isPending }) => (
-                <>
-                  {isPending ? <Spinner color="current" size="sm" /> : null}
-                  {copy.profileSave}
-                </>
-              )}
-            </Button>
+            <PendingButton pending={saving} onPress={() => void save()}>
+              {copy.profileSave}
+            </PendingButton>
           </div>
         </Form>
       </Card.Content>
@@ -846,14 +767,9 @@ function PasswordCard() {
           </TextField>
           {error ? <ErrorMessage role="alert">{error}</ErrorMessage> : null}
           <div>
-            <Button isPending={busy} type="submit">
-              {({ isPending }) => (
-                <>
-                  {isPending ? <Spinner color="current" size="sm" /> : null}
-                  {copy.passwordSave}
-                </>
-              )}
-            </Button>
+            <PendingButton pending={busy} type="submit">
+              {copy.passwordSave}
+            </PendingButton>
           </div>
         </Form>
       </Card.Content>

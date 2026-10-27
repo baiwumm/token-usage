@@ -20,6 +20,11 @@ import { authBrowserClient } from "@/lib/auth/browser";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
 import { DEVICE_COPY } from "@/lib/copy/device";
 import { useLocale } from "@/lib/copy/locale";
+import {
+  DashboardApiError,
+  grantDeviceFlow,
+  isUnauthorized,
+} from "@/lib/dashboard/api";
 
 // Contract alphabet: no 0/1/I/L/O (docs/cli-contract.md §2.1).
 const USER_CODE_PATTERN = /^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/;
@@ -78,42 +83,21 @@ function DeviceClientInner() {
     setErrorDetail(null);
 
     try {
-      const response = await fetch(
-        "/api/functions/token-usage-device-flow-grant",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ user_code: code }),
-        },
-      );
-
-      if (response.status === 401) {
+      await grantDeviceFlow(session.access_token, { userCode: code });
+      setPhase("success");
+    } catch (error) {
+      if (isUnauthorized(error)) {
         redirectToLogin();
 
         return;
       }
-      if (response.ok) {
-        setPhase("success");
-
-        return;
-      }
-      const payload = (await response.json().catch(() => ({}))) as {
-        error?: string;
-      };
-
       setErrorDetail(
-        response.status === 404
+        error instanceof DashboardApiError && error.status === 404
           ? copy.errorNotFound
-          : response.status === 400
+          : error instanceof DashboardApiError && error.status === 400
             ? copy.errorInvalid
-            : (payload.error ?? copy.errorGeneric),
+            : (error instanceof Error && error.message) || copy.errorGeneric,
       );
-      setPhase("error");
-    } catch {
-      setErrorDetail(copy.errorGeneric);
       setPhase("error");
     }
   }

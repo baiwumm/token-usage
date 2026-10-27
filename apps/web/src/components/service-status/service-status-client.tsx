@@ -12,6 +12,11 @@ import { authBrowserClient } from "@/lib/auth/browser";
 import { STATUS_COPY } from "@/lib/copy/status";
 import { useLocale } from "@/lib/copy/locale";
 import { browserTimezone } from "@/lib/dashboard/ranges";
+import {
+  fetchAccountDevices,
+  fetchDashboard,
+  fetchPublicConfig,
+} from "@/lib/dashboard/api";
 
 interface CheckResult {
   name: string;
@@ -73,15 +78,7 @@ export function ServiceStatusClient() {
       "public-config",
       "/api/functions/token-usage-public-config",
       async () => {
-        const response = await fetch(
-          "/api/functions/token-usage-public-config",
-        );
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const payload = (await response.json()) as {
-          supabase_url?: string;
-          dashboard_url?: string | null;
-        };
+        const payload = await fetchPublicConfig();
 
         setProjectUrl(payload.supabase_url ?? null);
         setDashboardUrl(payload.dashboard_url ?? null);
@@ -109,19 +106,11 @@ export function ServiceStatusClient() {
         "dashboard",
         "/api/functions/token-usage-dashboard",
         async () => {
-          const tzRange = {
-            from: new Date(Date.now() - 7 * 86_400_000).toISOString(),
-            to: new Date(Date.now() + 86_400_000).toISOString(),
-          };
-          const response = await fetch(
-            `/api/functions/token-usage-dashboard?from=${encodeURIComponent(tzRange.from)}&to=${encodeURIComponent(tzRange.to)}&tz=${encodeURIComponent(browserTimezone())}`,
-            { headers: { Authorization: `Bearer ${session.access_token}` } },
-          );
-
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const payload = (await response.json()) as {
-            totals?: { total_tokens?: number };
-          };
+          const payload = await fetchDashboard(session.access_token, {
+            fromIso: new Date(Date.now() - 7 * 86_400_000).toISOString(),
+            toIso: new Date(Date.now() + 86_400_000).toISOString(),
+            tz: browserTimezone(),
+          });
 
           return `totals ${payload.totals?.total_tokens ?? 0}`;
         },
@@ -136,15 +125,10 @@ export function ServiceStatusClient() {
           const from = new Date(Date.now() - 30 * 86_400_000)
             .toISOString()
             .slice(0, 10);
-          const response = await fetch(
-            `/api/functions/token-usage-account-devices?from=${from}&to=${to}`,
-            { headers: { Authorization: `Bearer ${session.access_token}` } },
-          );
-
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const payload = (await response.json()) as {
-            devices?: unknown[];
-          };
+          const payload = await fetchAccountDevices(session.access_token, {
+            from,
+            to,
+          });
 
           return `${payload.devices?.length ?? 0} devices`;
         },
