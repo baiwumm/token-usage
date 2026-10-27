@@ -134,6 +134,13 @@
 - [x] D5 月度预算告警：`stores/budget-store.ts`（zustand persist，USD 数字，
       0=关闭）；settings 账户页新增预算卡；仪表盘按当月 UTC 月桶成本对比，超阈值
       hero 成本行变 danger + toast 每次跨越只提示一次。
+- [ ] D6 采集记录页（功能，2026-10-27 新增）：契约草案已确认待实现——
+      `docs/cli-contract.md` §2.11（`POST token-usage-sync-report`，CLI 每轮
+      sync 上报，幂等 `run_id`、含空跑、best-effort、init 持久配置
+      `--run-report` 默认开）与 §2.12（`GET token-usage-account-sync-runs`，
+      §2.7 第 8 个 series）。**实现等本轮 web 大施工收尾后进行**（端点与页面
+      均在 apps/web 侧）；web 侧要做：迁移表 `token_sync_runs`、路由、侧边栏
+      "采集记录"菜单、列表页（设备/触发方式/结果筛选 + 空跑标记 + 分页）。
 
 ---
 
