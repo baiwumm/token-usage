@@ -52,10 +52,12 @@
 1. **筛选条**：时间范围为单一 `DateRangePicker`（弹层日历上方内置
    今天 / 7D / 30D / 90D / 总计 快捷按钮（`ToggleButtonGroup`，单选、
    `min-w-14` 最小宽度，活动预设高亮，点选关层）；在日历手动选取则写 `range=custom`
-   + 具体日键）、时区、设备。
+   + 具体日键）、时区、设备。设备下拉与 Sessions 共用 `DeviceFilterSelect`，选项前置
+   `Display` 图标，“全部设备”用 `Layers`；触发器复显同一图标，名称单行省略不换行。
    时间范围筛选仅存组件内状态（2026-10-26 操作者裁定）：不写入 URL、加载时不回显，
    首帧把旧链接里的 `range` / `from` / `to` 清出地址栏，刷新回到默认近 30 天；
-   URL 仅保留 `tz` / `device_id`；变更只重取数据，
+   URL 仅保留 `tz` / `device_id`；日期上限为仪表盘时区（`tz`）的今天，日历与日期输入
+   均不接受未来日期；变更只重取数据，
    不整页刷新——各卡片保留旧内容并叠加模糊遮罩 + `Spinner`（仅首载无数据时出骨架屏，
    骨架屏圆角与卡片一致：`min(32px, var(--radius-3xl))`）。筛选条右侧固定「分享」
    （`NodesRight`，打开分享卡 Modal）与「刷新」两个 tertiary 图标按钮，刷新中图标自旋；
@@ -126,14 +128,15 @@
 - 导航：侧边栏与抽屉在仪表盘后新增“Sessions”（`ListUl` 图标），页面标题取菜单名。
 - 数据源：`account-sessions`。筛选条：时间范围为单一 `DateRangePicker`（弹层内置
   今天 / 7D / 30D / 90D 快捷按钮，活动预设高亮，点选关层；日历手动选取写 `custom`；
-  控件形态与仪表盘一致）、设备、来源、项目
-  搜索（`q`）；设备/来源选项来自响应的 `facets`；设备/来源/搜索与分页偏移（`offset`）
+  控件形态与仪表盘一致，设备下拉同样复用 `DeviceFilterSelect`）、设备、来源、项目
+  搜索（`q`）；设备/来源选项来自响应的 `facets`，来源选项与触发器复显 `SourceIcon`
+  品牌图标及 `sourceDisplayLabel`（与列表 `Chip` 同源，全部来源用 `Layers`）；设备/来源/搜索与分页偏移（`offset`）
   写入 URL，时间范围仅存组件内状态（2026-10-26 操作者裁定：不写入 URL、加载不回显，
   首帧清理旧 `range` / `from` / `to` 参数）；默认近 30 天、全部设备、全部来源；分页
   默认 20/页，可选 10 / 20 / 50 / 100（`page_size` 入 URL，切页大小保持当前页）。
   范围含
   今天（`to` 为明日 00:00 本地），按浏览器本地时区换算为 ISO 瞬时，服务端窗口为
-  `[from, to)`。
+  `[from, to)`；日期上限为浏览器时区的今天，日历与日期输入均不接受未来日期。
 - 汇总卡：会话数、总 Token、成本、平均时长（`totals.duration_ms / totals.sessions`，
   0 会话显示 `—`）。
 - 列表：`≥md` 用 `Table`，`<md` 用 Card 列表。列：结束时间、来源 `Chip`（`SourceIcon`
@@ -227,8 +230,8 @@
   服务端按 `Accept-Language` 的 q 值取首个受支持语言（zh / en），否则 en；显式 zh / en
   优先。SSR 用同一解析结果设置 `<html lang>` 与首帧字典；客户端切换写 cookie、更新
   provider 与 `<html lang>`，无需整页刷新。
-- `system` 在设置页显示“跟随系统（当前：中文 / English）”；shell 语言菜单与设置页共用
-  同一偏好，两处切换互相同步。
+- `system` 在设置页显示“跟随系统（当前：中文 / English）”；顶栏语言菜单不重复当前解析
+  结果（只列 跟随系统 / 简体中文 / English）。两处共用同一偏好，切换互相同步。
 - 主题：next-themes，`attribute="class"`、`enableSystem`，沿用默认 storageKey
   `theme`（不重置现有偏好）；默认 system；设置页与顶栏明暗切换共用。
 - 货币 / Token 显示 / 单位 / 分组 / 日期格式：zustand persist（`stores/format-preferences-store.ts`，

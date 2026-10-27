@@ -8,7 +8,7 @@
 // the time range is session-only (mirrors the dashboard, 2026-10-26). Filter
 // changes only refetch data (replaceState + popstate sync, no navigation).
 
-import { ChartColumn, Clock, ListUl, Wallet } from "@gravity-ui/icons";
+import { ChartColumn, Clock, Layers, ListUl, Wallet } from "@gravity-ui/icons";
 import {
   Button,
   Card,
@@ -64,6 +64,7 @@ import { TablePagination } from "@/components/table-pagination";
 import { FlowNumber } from "@/components/flow-number";
 import { SourceIcon } from "@/components/dashboard/source-icon";
 import { sourceDisplayLabel } from "@/components/dashboard/sources";
+import { DeviceFilterSelect } from "@/components/device-filter-select";
 import { RangePresetButtons } from "@/components/range-preset-buttons";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -704,13 +705,13 @@ export function SessionsClient() {
           </Typography>
           <DateRangePicker
             aria-label={copy.rangeLabel}
-            className="w-80"
+            className="w-64"
             isOpen={rangePickerOpen}
             maxValue={rangePickerMax}
             minValue={parseDate(ALL_RANGE_START)}
             value={rangePickerValue}
             onChange={(value) => {
-              if (!value) return;
+              if (!value || value.end.compare(rangePickerMax) > 0) return;
 
               applyFilters({
                 range: "custom",
@@ -749,7 +750,10 @@ export function SessionsClient() {
                   setRangePickerOpen(false);
                 }}
               />
-              <RangeCalendar aria-label={copy.rangeLabel}>
+              <RangeCalendar
+                aria-label={copy.rangeLabel}
+                maxValue={rangePickerMax}
+              >
                 <RangeCalendar.Header>
                   <RangeCalendar.YearPickerTrigger>
                     <RangeCalendar.YearPickerTriggerHeading />
@@ -778,44 +782,13 @@ export function SessionsClient() {
           </DateRangePicker>
         </label>
 
-        <label className="flex flex-col gap-1">
-          <Typography color="muted" type="body-xs">
-            {copy.deviceLabel}
-          </Typography>
-          <Select
-            aria-label={copy.deviceLabel}
-            className="w-48"
-            value={filters.deviceId || "__all"}
-            onChange={(key: Key | null) => {
-              if (key == null) return;
-              const value = String(key);
-
-              applyFilters({ deviceId: value === "__all" ? "" : value });
-            }}
-          >
-            <Select.Trigger>
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <Popover.Arrow />
-              <ListBox>
-                <ListBox.Item id="__all" textValue={copy.allDevices}>
-                  {copy.allDevices}
-                </ListBox.Item>
-                {deviceOptions.map((device) => (
-                  <ListBox.Item
-                    key={device.device_id}
-                    id={device.device_id}
-                    textValue={device.device_name}
-                  >
-                    {device.device_name}
-                  </ListBox.Item>
-                ))}
-              </ListBox>
-            </Select.Popover>
-          </Select>
-        </label>
+        <DeviceFilterSelect
+          allLabel={copy.allDevices}
+          devices={deviceOptions}
+          label={copy.deviceLabel}
+          value={filters.deviceId}
+          onChange={(deviceId) => applyFilters({ deviceId })}
+        />
 
         <label className="flex flex-col gap-1">
           <Typography color="muted" type="body-xs">
@@ -833,22 +806,41 @@ export function SessionsClient() {
             }}
           >
             <Select.Trigger>
-              <Select.Value />
+              <Select.Value>
+                {({ selectedText }) => (
+                  <span className="flex min-w-0 items-center gap-2">
+                    {filters.source ? (
+                      <SourceIcon label={filters.source} size={14} />
+                    ) : (
+                      <Layers
+                        aria-hidden="true"
+                        className="text-muted size-4 shrink-0"
+                      />
+                    )}
+                    <span className="truncate">{selectedText}</span>
+                  </span>
+                )}
+              </Select.Value>
               <Select.Indicator />
             </Select.Trigger>
             <Select.Popover>
               <Popover.Arrow />
               <ListBox>
                 <ListBox.Item id="__all" textValue={copy.allSources}>
+                  <Layers
+                    aria-hidden="true"
+                    className="text-muted size-4 shrink-0"
+                  />
                   {copy.allSources}
                 </ListBox.Item>
                 {sourceOptions.map((entry) => (
                   <ListBox.Item
                     key={entry.source}
                     id={entry.source}
-                    textValue={entry.source}
+                    textValue={sourceDisplayLabel(entry.source)}
                   >
-                    {entry.source}
+                    <SourceIcon label={entry.source} size={14} />
+                    {sourceDisplayLabel(entry.source)}
                   </ListBox.Item>
                 ))}
               </ListBox>
@@ -982,9 +974,7 @@ export function SessionsClient() {
                             <Table.Column>{copy.list.tokens}</Table.Column>
                             <Table.Column>{copy.list.cost}</Table.Column>
                             <Table.Column>{copy.list.models}</Table.Column>
-                            <Table.Column className="text-end">
-                              {copy.list.detail}
-                            </Table.Column>
+                            <Table.Column>{copy.list.detail}</Table.Column>
                           </Table.Header>
                           <Table.Body>
                             {payload.sessions.map((session) => (
@@ -1023,7 +1013,7 @@ export function SessionsClient() {
                                 <Table.Cell>
                                   <ModelChips models={session.models} />
                                 </Table.Cell>
-                                <Table.Cell className="text-end">
+                                <Table.Cell>
                                   <Button
                                     size="sm"
                                     variant="tertiary"

@@ -24,7 +24,6 @@ export interface NavCopy {
   languageSystem: string;
   languageZh: string;
   languageEn: string;
-  languageCurrent: string;
   themeMode: string;
   themeLight: string;
   themeDark: string;
@@ -58,7 +57,6 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     languageSystem: "跟随系统",
     languageZh: "简体中文",
     languageEn: "English",
-    languageCurrent: "当前",
     themeMode: "主题模式",
     themeLight: "浅色",
     themeDark: "深色",
@@ -91,7 +89,6 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     languageSystem: "Follow system",
     languageZh: "简体中文",
     languageEn: "English",
-    languageCurrent: "current",
     themeMode: "Theme mode",
     themeLight: "Light",
     themeDark: "Dark",

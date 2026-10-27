@@ -79,7 +79,6 @@ function GitHubLink() {
 export function LanguageDropdown() {
   const { locale, preference, setPreference } = useLocalePreference();
   const copy = NAV_COPY[locale];
-  const currentLabel = locale === "zh" ? copy.languageZh : copy.languageEn;
 
   return (
     <Dropdown>
@@ -91,7 +90,7 @@ export function LanguageDropdown() {
       >
         <LanguagesIcon className="text-muted size-4" />
       </Button>
-      <Dropdown.Popover className="min-w-56 scrollbar-none">
+      <Dropdown.Popover>
         <Popover.Arrow />
         <Dropdown.Menu
           selectedKeys={[preference]}
@@ -109,12 +108,7 @@ export function LanguageDropdown() {
             <Header>{copy.language}</Header>
             <Dropdown.Item id="system" textValue={copy.languageSystem}>
               <Dropdown.ItemIndicator />
-              <Label>
-                {copy.languageSystem}
-                <span className="text-muted ml-1.5 text-xs">
-                  {copy.languageCurrent}: {currentLabel}
-                </span>
-              </Label>
+              <Label>{copy.languageSystem}</Label>
             </Dropdown.Item>
             <Dropdown.Item id="zh" textValue={copy.languageZh}>
               <Dropdown.ItemIndicator />

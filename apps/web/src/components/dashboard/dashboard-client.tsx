@@ -47,6 +47,7 @@ import { ShareModal } from "./share-modal";
 import { DevicePanel, SourcePanel, TopModels, TotalTokensHero } from "./panels";
 import { TrendChart, type TrendMetric, type TrendPoint } from "./charts";
 
+import { DeviceFilterSelect } from "@/components/device-filter-select";
 import { RangePresetButtons } from "@/components/range-preset-buttons";
 import { SectionError, SectionSkeleton } from "@/components/section-states";
 import { useProfile } from "@/lib/auth/profile";
@@ -693,13 +694,13 @@ export function DashboardClient() {
           </Typography>
           <DateRangePicker
             aria-label={copy.rangeLabel}
-            className="w-80"
+            className="w-64"
             isOpen={rangePickerOpen}
             maxValue={rangePickerMax}
             minValue={parseDate(ALL_RANGE_START)}
             value={rangePickerValue}
             onChange={(value) => {
-              if (!value) return;
+              if (!value || value.end.compare(rangePickerMax) > 0) return;
 
               applyFilters({
                 range: "custom",
@@ -738,7 +739,10 @@ export function DashboardClient() {
                   setRangePickerOpen(false);
                 }}
               />
-              <RangeCalendar aria-label={copy.rangeLabel}>
+              <RangeCalendar
+                aria-label={copy.rangeLabel}
+                maxValue={rangePickerMax}
+              >
                 <RangeCalendar.Header>
                   <RangeCalendar.YearPickerTrigger>
                     <RangeCalendar.YearPickerTriggerHeading />
@@ -806,44 +810,13 @@ export function DashboardClient() {
           </Select>
         </label>
 
-        <label className="flex flex-col gap-1">
-          <Typography color="muted" type="body-xs">
-            {copy.deviceLabel}
-          </Typography>
-          <Select
-            aria-label={copy.deviceLabel}
-            className="w-48"
-            value={filters.deviceId || "__all"}
-            onChange={(key) => {
-              if (key == null) return;
-              const value = String(key);
-
-              applyFilters({ deviceId: value === "__all" ? "" : value });
-            }}
-          >
-            <Select.Trigger>
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <Popover.Arrow />
-              <ListBox>
-                <ListBox.Item id="__all" textValue={copy.allDevices}>
-                  {copy.allDevices}
-                </ListBox.Item>
-                {activeDevices.map((device) => (
-                  <ListBox.Item
-                    key={device.device_id}
-                    id={device.device_id}
-                    textValue={device.device_name}
-                  >
-                    {device.device_name}
-                  </ListBox.Item>
-                ))}
-              </ListBox>
-            </Select.Popover>
-          </Select>
-        </label>
+        <DeviceFilterSelect
+          allLabel={copy.allDevices}
+          devices={activeDevices}
+          label={copy.deviceLabel}
+          value={filters.deviceId}
+          onChange={(deviceId) => applyFilters({ deviceId })}
+        />
 
         {hasFilters ? (
           <Button
