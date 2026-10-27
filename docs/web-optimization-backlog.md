@@ -50,24 +50,28 @@
 
 ### A. 复用抽取包（可维护性）
 
-- [ ] A1 `useSessionBootstrap`：6 个页面重复的 `authBrowserClient → getSession → 401
+- [x] A1 `useSessionBootstrap`：6 个页面重复的 `authBrowserClient → getSession → 401
       redirect` 引导 effect 收敛为一个 hook
       （dashboard / sessions / settings / wrapped / device / service-status 各 client）。
-- [ ] A2 `useUrlFilters`：dashboard-client 与 sessions-client 各一套
+      注：device 与 service-status 是按需实时取 session（非引导 effect），保留原样；
+      实际收敛 dashboard / sessions / settings / wrapped 四个引导 effect。
+- [x] A2 `useUrlFilters`：dashboard-client 与 sessions-client 各一套
       `parseFilters / serializeFilters / applyFilters / popstate` 收敛为一个 hook。
-- [ ] A3 共享 UI 小件：`SectionSkeleton`（两处逐字重复）、`SectionError`（一处封装 +
+- [x] A3 共享 UI 小件：`SectionSkeleton`（两处逐字重复）、`SectionError`（一处封装 +
       三处内联）、`pageItems` 分页省略号（detail-table 与 sessions-client 逐字重复）、
       `Loadable/LoadStatus` 三态（三处定义）、`PendingButton`（isPending+Spinner 六处）。
-- [ ] A4 canonical source 聚合：panels ×2 / cost-modal / heatmap-card 四份近似
+- [x] A4 canonical source 聚合：panels ×2 / cost-modal / heatmap-card 四份近似
       「遍历→canonicalSource→累加→排序」收敛为一个纯函数；同名模型合并两份
-      （panels TopModels + cost-modal）一并收敛。
-- [ ] A5 裸 fetch 收编：settings / device / service-status 的手写 fetch+Bearer+401 分支
+      （panels TopModels + cost-modal）一并收敛（`components/dashboard/aggregate.ts`）。
+- [x] A5 裸 fetch 收编：settings / device / service-status 的手写 fetch+Bearer+401 分支
       改走 `lib/dashboard/api.ts` 的 `callContract`（含错误消息解析去重）。
-- [ ] A6 清理：`formatTokensExact` 纯别名删除（消费点改 `formatTokens`）；
+- [x] A6 清理：`formatTokensExact` 纯别名删除（消费点改 `formatTokens`）；
       copy 死键清理（settings.ts 5 个、dashboard.ts 2 个，已 grep 验证 0 引用）；
       CORS 头 proxy.ts ← http.ts 单源；`pricing/matcher.ts` 归一化链条 4 处抽 helper；
       `numberOr0` 三份（series/handlers/usage 的 `number`）收敛；
-      `device-codes.ts` 兜底设备名 "TokenTracker CLI" 改 token-usage 并走 copy 体系。
+      ~~`device-codes.ts` 兜底设备名 "TokenTracker CLI" 改 token-usage 并走 copy 体系~~
+      **未做**：兜底名是冻结契约 §2.2 明文 + 单测断言，按硬性约束 1 需先改契约文档与
+      golden 测试并经操作者确认，移交拍板项 6。
 
 ### B. 客户端性能
 
