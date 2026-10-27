@@ -1,5 +1,6 @@
-// Appearance section copy (docs/ui-spec.md 设置 · 外观). Every control applies
-// immediately; there is no save button. Preferences stay in this browser only.
+// Appearance copy for the 偏好 tab (docs/ui-spec.md 设置 · 偏好). Every control
+// applies immediately; there is no save button. Preferences stay in this
+// browser only.
 
 export interface AppearanceCopy {
   heading: string;
@@ -24,6 +25,12 @@ export interface AppearanceCopy {
   currencyRate: string;
   currencyReference: string;
   currencyAsOf: string;
+  dateFormatLabel: string;
+  dateFormatDescription: string;
+  dateFormatLocale: string;
+  dateFormatIso: string;
+  dateFormatMdy: string;
+  dateFormatDmy: string;
   tokenDisplayLabel: string;
   tokenDisplayDescription: string;
   tokenCompact: string;
@@ -38,11 +45,26 @@ export interface AppearanceCopy {
   tokenGrouping3: string;
   tokenGrouping4: string;
   tokenGroupingDisabled: string;
+  refreshHeading: string;
+  refreshDescription: string;
+  refreshOnVisibleLabel: string;
+  refreshOnVisibleDescription: string;
+  refreshIntervalLabel: string;
+  refreshIntervalDescription: string;
+  refreshIntervalOff: string;
+  refreshIntervalValue: string;
+  refreshIntervalHour: string;
+  refreshIntervalMax: string;
   previewLabel: string;
   previewTokens: string;
   previewCost: string;
   previewDate: string;
   reset: string;
+  resetTitle: string;
+  resetBody: string;
+  resetCancel: string;
+  resetConfirm: string;
+  resetDone: string;
   storageNote: string;
 }
 
@@ -71,6 +93,13 @@ export const APPEARANCE_COPY: Record<"zh" | "en", AppearanceCopy> = {
     currencyRate: "1 USD = {rate} {currency}",
     currencyReference: "参考汇率",
     currencyAsOf: "快照日期 {date}",
+    dateFormatLabel: "日期格式",
+    dateFormatDescription:
+      "只作用于日期部分；时间仍按语言使用 12/24 小时制，图表月份保持语言格式。",
+    dateFormatLocale: "跟随语言",
+    dateFormatIso: "YYYY-MM-DD",
+    dateFormatMdy: "MM/DD/YYYY",
+    dateFormatDmy: "DD/MM/YYYY",
     tokenDisplayLabel: "Token 显示",
     tokenDisplayDescription:
       "紧凑模式使用 K/M/B 或万/亿；完整模式显示全部位数。",
@@ -86,12 +115,30 @@ export const APPEARANCE_COPY: Record<"zh" | "en", AppearanceCopy> = {
     tokenGrouping3: "3 位",
     tokenGrouping4: "4 位",
     tokenGroupingDisabled: "切换到完整模式后可调整。",
+    refreshHeading: "数据刷新",
+    refreshDescription:
+      "控制仪表盘何时自动拉取数据；默认关闭，右上角的刷新按钮随时可用。",
+    refreshOnVisibleLabel: "切回页面时刷新",
+    refreshOnVisibleDescription:
+      "标签页重新可见时立即拉取最新数据；60 秒内重复切回不会重复请求。",
+    refreshIntervalLabel: "定时刷新",
+    refreshIntervalDescription: "仅在页面可见时计时，0 表示关闭。",
+    refreshIntervalOff: "关闭",
+    refreshIntervalValue: "每 {count} 分钟",
+    refreshIntervalHour: "每 1 小时",
+    refreshIntervalMax: "1 小时",
     previewLabel: "预览",
     previewTokens: "Token",
     previewCost: "成本",
     previewDate: "日期",
     reset: "恢复默认",
-    storageNote: "外观偏好只保存在本浏览器，不写入账户；换设备需重设。",
+    resetTitle: "恢复默认偏好？",
+    resetBody:
+      "主题、语言、字体、货币、日期与数字格式、数据刷新都会恢复默认设置。此操作只影响本浏览器，不会改动账户与设备。",
+    resetCancel: "取消",
+    resetConfirm: "恢复默认",
+    resetDone: "偏好已恢复默认。",
+    storageNote: "外观与刷新偏好只保存在本浏览器，不写入账户；换设备需重设。",
   },
   en: {
     heading: "Appearance",
@@ -120,6 +167,13 @@ export const APPEARANCE_COPY: Record<"zh" | "en", AppearanceCopy> = {
     currencyRate: "1 USD = {rate} {currency}",
     currencyReference: "Reference rate",
     currencyAsOf: "snapshot {date}",
+    dateFormatLabel: "Date format",
+    dateFormatDescription:
+      "Applies to the date only; time keeps the language's 12/24-hour clock and chart month labels stay language-based.",
+    dateFormatLocale: "Follow language",
+    dateFormatIso: "YYYY-MM-DD",
+    dateFormatMdy: "MM/DD/YYYY",
+    dateFormatDmy: "DD/MM/YYYY",
     tokenDisplayLabel: "Token display",
     tokenDisplayDescription:
       "Compact uses K/M/B or 万/亿; full shows every digit.",
@@ -136,12 +190,31 @@ export const APPEARANCE_COPY: Record<"zh" | "en", AppearanceCopy> = {
     tokenGrouping3: "3 digits",
     tokenGrouping4: "4 digits",
     tokenGroupingDisabled: "Switch to full mode to change this.",
+    refreshHeading: "Data refresh",
+    refreshDescription:
+      "Controls when the dashboard fetches fresh data. Off by default; the refresh button in the header always works.",
+    refreshOnVisibleLabel: "Refresh when the page becomes visible",
+    refreshOnVisibleDescription:
+      "Fetches as soon as the tab is visible again; repeat returns within 60 seconds are skipped.",
+    refreshIntervalLabel: "Timed refresh",
+    refreshIntervalDescription:
+      "Counts only while the page is visible; 0 disables it.",
+    refreshIntervalOff: "Off",
+    refreshIntervalValue: "Every {count} min",
+    refreshIntervalHour: "Every hour",
+    refreshIntervalMax: "1 hour",
     previewLabel: "Preview",
     previewTokens: "Tokens",
     previewCost: "Cost",
     previewDate: "Date",
     reset: "Reset to defaults",
+    resetTitle: "Reset preferences?",
+    resetBody:
+      "Theme, language, font, currency, date and number formats, and data refresh return to their defaults. This only affects this browser — your account and devices are untouched.",
+    resetCancel: "Cancel",
+    resetConfirm: "Reset",
+    resetDone: "Preferences reset to defaults.",
     storageNote:
-      "Appearance preferences stay in this browser only and are not saved to your account.",
+      "Appearance and refresh preferences stay in this browser only and are not saved to your account.",
   },
 };

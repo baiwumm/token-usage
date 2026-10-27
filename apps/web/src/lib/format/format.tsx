@@ -1,8 +1,8 @@
 "use client";
 
 // Client-side format preferences (docs/ui-spec.md 语言、主题与偏好持久化):
-// currency / token display / unit / grouping persist through the zustand
-// store (stores/format-preferences-store.ts); the locale comes from LocaleProvider and the
+// currency / token display / unit / grouping / date order persist through the
+// zustand store (stores/format-preferences-store.ts); the locale comes from LocaleProvider and the
 // FX snapshot from the server layout. Components consume the bound helpers so
 // no formatter details leak into UI.
 
@@ -111,8 +111,10 @@ export function FormatProvider({
       formatPercent: (ratio) => formatPercent(ratio, locale),
       formatCost: (valueUsd) => formatCost(valueUsd, preferences, locale, fx),
       formatDuration: (valueMs) => formatDuration(valueMs, locale),
-      formatDate: (value, options) => formatDate(value, locale, options),
-      formatDateTime: (value) => formatDateTime(value, locale),
+      formatDate: (value, options) =>
+        formatDate(value, locale, options, preferences.dateFormat),
+      formatDateTime: (value) =>
+        formatDateTime(value, locale, preferences.dateFormat),
       formatRelativeTime: (value) => formatRelativeTime(value, locale),
       formatMonth: (monthKey) => formatMonth(monthKey, locale),
       formatFxRate: (currency) =>

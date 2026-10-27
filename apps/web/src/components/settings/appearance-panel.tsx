@@ -1,36 +1,51 @@
 "use client";
 
-// Appearance settings (docs/ui-spec.md 设置 · 外观): theme, language, currency
-// and number formats. Every control writes its preference immediately — theme
-// via next-themes, language via the locale cookie, the rest via localStorage.
+// Appearance settings (docs/ui-spec.md 设置 · 偏好): theme, language, currency,
+// number and date formats. Every control writes its preference immediately —
+// theme via next-themes, language via the locale cookie, the rest via
+// localStorage. The dashboard refresh card and the reset footer live here too.
 
-import { Display, Moon, Sun } from "@gravity-ui/icons";
+import { Check, Display, Moon, Sun, Xmark } from "@gravity-ui/icons";
 import {
+  AlertDialog,
   Button,
   Card,
   Description,
   ListBox,
   Popover,
   Select,
+  Slider,
+  Switch,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
+  toast,
 } from "@heroui/react";
 import { useTheme } from "next-themes";
 import { useEffect, useState, type Key } from "react";
 
 import { APPEARANCE_COPY } from "@/lib/copy/appearance";
-import { useLocalePreference, type LocalePreference } from "@/lib/copy/locale";
+import {
+  useLocale,
+  useLocalePreference,
+  type LocalePreference,
+} from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
 import { useFormat } from "@/lib/format/format";
 import {
   currencyLabel,
   SUPPORTED_CURRENCIES,
   type CurrencyCode,
+  type DateFormat,
   type FontPreference,
   type TokenDisplay,
   type TokenUnit,
 } from "@/lib/format/core";
+import {
+  REFRESH_INTERVAL_MAX,
+  REFRESH_INTERVAL_STEP,
+  useRefreshPreferencesStore,
+} from "@/stores/refresh-preferences-store";
 
 function firstKey(keys: Set<Key>): string | null {
   const key = [...keys][0];
@@ -74,7 +89,6 @@ export function AppearancePanel() {
     preferences,
     fx,
     setPreference: setFormatPreference,
-    resetPreferences,
     formatTokens,
     formatCost,
     formatFxRate,
@@ -89,12 +103,6 @@ export function AppearancePanel() {
     locale: systemLocaleLabel,
   });
 
-  const resetAll = () => {
-    setTheme("system");
-    setPreference("system");
-    resetPreferences();
-  };
-
   return (
     <Card className="p-6">
       <Card.Header>
@@ -108,6 +116,7 @@ export function AppearancePanel() {
             aria-label={copy.themeLabel}
             selectedKeys={mounted ? [theme ?? "system"] : ["system"]}
             selectionMode="single"
+            size="sm"
             onSelectionChange={(keys) => {
               const key = firstKey(keys);
 
@@ -176,6 +185,7 @@ export function AppearancePanel() {
             aria-label={copy.fontLabel}
             selectedKeys={[preferences.font]}
             selectionMode="single"
+            size="sm"
             onSelectionChange={(keys) => {
               const key = firstKey(keys);
 
@@ -239,6 +249,7 @@ export function AppearancePanel() {
             aria-label={copy.tokenDisplayLabel}
             selectedKeys={[preferences.tokenDisplay]}
             selectionMode="single"
+            size="sm"
             onSelectionChange={(keys) => {
               const key = firstKey(keys);
 
@@ -265,6 +276,7 @@ export function AppearancePanel() {
             isDisabled={preferences.tokenDisplay === "full"}
             selectedKeys={[preferences.tokenUnit]}
             selectionMode="single"
+            size="sm"
             onSelectionChange={(keys) => {
               const key = firstKey(keys);
 
@@ -294,6 +306,7 @@ export function AppearancePanel() {
             isDisabled={preferences.tokenDisplay === "compact"}
             selectedKeys={[String(preferences.tokenGrouping)]}
             selectionMode="single"
+            size="sm"
             onSelectionChange={(keys) => {
               const key = firstKey(keys);
 
@@ -313,6 +326,45 @@ export function AppearancePanel() {
               {copy.tokenGroupingDisabled}
             </Description>
           ) : null}
+        </Row>
+
+        <Row
+          description={copy.dateFormatDescription}
+          label={copy.dateFormatLabel}
+        >
+          <Select
+            aria-label={copy.dateFormatLabel}
+            className="w-40"
+            value={preferences.dateFormat}
+            variant="secondary"
+            onChange={(key) => {
+              if (key != null) {
+                setFormatPreference("dateFormat", String(key) as DateFormat);
+              }
+            }}
+          >
+            <Select.Trigger>
+              <Select.Value />
+              <Select.Indicator />
+            </Select.Trigger>
+            <Select.Popover>
+              <Popover.Arrow />
+              <ListBox>
+                <ListBox.Item id="locale" textValue={copy.dateFormatLocale}>
+                  {copy.dateFormatLocale}
+                </ListBox.Item>
+                <ListBox.Item id="iso" textValue={copy.dateFormatIso}>
+                  {copy.dateFormatIso}
+                </ListBox.Item>
+                <ListBox.Item id="mdy" textValue={copy.dateFormatMdy}>
+                  {copy.dateFormatMdy}
+                </ListBox.Item>
+                <ListBox.Item id="dmy" textValue={copy.dateFormatDmy}>
+                  {copy.dateFormatDmy}
+                </ListBox.Item>
+              </ListBox>
+            </Select.Popover>
+          </Select>
         </Row>
 
         <Row label={copy.previewLabel}>
@@ -356,14 +408,177 @@ export function AppearancePanel() {
           </div>
         </Row>
       </Card.Content>
-      <Card.Footer className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-        <Typography color="muted" type="body-xs">
-          {copy.storageNote}
-        </Typography>
-        <Button size="sm" variant="outline" onPress={resetAll}>
+    </Card>
+  );
+}
+
+// Dashboard auto-refresh preferences (2026-10-27 operator call): both default
+// to off because the dashboard already has a manual refresh button. Stored per
+// browser; the dashboard reads the same store.
+export function DataRefreshCard() {
+  const [locale] = useLocale();
+  const copy = APPEARANCE_COPY[locale];
+  const refreshOnVisible = useRefreshPreferencesStore(
+    (state) => state.refreshOnVisible,
+  );
+  const intervalMinutes = useRefreshPreferencesStore(
+    (state) => state.intervalMinutes,
+  );
+  const setRefreshOnVisible = useRefreshPreferencesStore(
+    (state) => state.setRefreshOnVisible,
+  );
+  const setIntervalMinutes = useRefreshPreferencesStore(
+    (state) => state.setIntervalMinutes,
+  );
+  // Persist on release: dragging the thumb must not restart the dashboard
+  // timer (or write localStorage) on every step.
+  const [draftMinutes, setDraftMinutes] = useState(intervalMinutes);
+
+  // The first client render replays the SSR snapshot (0); the saved value
+  // arrives with hydration. Pull it back into the draft when it changes.
+  useEffect(() => {
+    setDraftMinutes(intervalMinutes);
+  }, [intervalMinutes]);
+
+  const intervalValue =
+    draftMinutes === 0
+      ? copy.refreshIntervalOff
+      : draftMinutes >= REFRESH_INTERVAL_MAX
+        ? copy.refreshIntervalHour
+        : formatMessage(copy.refreshIntervalValue, locale, {
+            count: draftMinutes,
+          });
+
+  return (
+    <Card className="p-6">
+      <Card.Header>
+        <Card.Title>{copy.refreshHeading}</Card.Title>
+        <Card.Description>{copy.refreshDescription}</Card.Description>
+      </Card.Header>
+      <Card.Content className="divide-border/60 flex flex-col divide-y">
+        <Row
+          description={copy.refreshOnVisibleDescription}
+          label={copy.refreshOnVisibleLabel}
+        >
+          <Switch
+            aria-label={copy.refreshOnVisibleLabel}
+            isSelected={refreshOnVisible}
+            onChange={setRefreshOnVisible}
+          >
+            {({ isSelected }) => (
+              <Switch.Content>
+                <Switch.Control>
+                  <Switch.Thumb>
+                    <Switch.Icon>
+                      {isSelected ? (
+                        <Check className="size-3 text-inherit opacity-100" />
+                      ) : (
+                        <Xmark className="size-3 text-inherit opacity-70" />
+                      )}
+                    </Switch.Icon>
+                  </Switch.Thumb>
+                </Switch.Control>
+              </Switch.Content>
+            )}
+          </Switch>
+        </Row>
+
+        <Row
+          description={copy.refreshIntervalDescription}
+          label={copy.refreshIntervalLabel}
+        >
+          <div className="flex w-full flex-col gap-1.5 md:w-64">
+            <Slider
+              aria-label={copy.refreshIntervalLabel}
+              maxValue={REFRESH_INTERVAL_MAX}
+              minValue={0}
+              step={REFRESH_INTERVAL_STEP}
+              value={draftMinutes}
+              onChange={(value) => {
+                if (typeof value === "number") setDraftMinutes(value);
+              }}
+              onChangeEnd={(value) => {
+                if (typeof value === "number") setIntervalMinutes(value);
+              }}
+            >
+              <Slider.Output className="tabular-nums">
+                {intervalValue}
+              </Slider.Output>
+              <Slider.Track>
+                <Slider.Fill />
+                <Slider.Thumb />
+              </Slider.Track>
+            </Slider>
+            <div className="flex w-full justify-between">
+              <Typography color="muted" type="body-xs">
+                {copy.refreshIntervalOff}
+              </Typography>
+              <Typography color="muted" type="body-xs">
+                {copy.refreshIntervalMax}
+              </Typography>
+            </div>
+          </div>
+        </Row>
+      </Card.Content>
+    </Card>
+  );
+}
+
+// Bottom-of-tab footer (2026-10-27 operator call): the reset lives below both
+// cards and needs an explicit confirmation before wiping the local prefs.
+export function PreferencesFooter() {
+  const { locale, setPreference } = useLocalePreference();
+  const copy = APPEARANCE_COPY[locale];
+  const { setTheme } = useTheme();
+  const { resetPreferences } = useFormat();
+  const setRefreshOnVisible = useRefreshPreferencesStore(
+    (state) => state.setRefreshOnVisible,
+  );
+  const setIntervalMinutes = useRefreshPreferencesStore(
+    (state) => state.setIntervalMinutes,
+  );
+
+  const resetAll = () => {
+    setTheme("system");
+    setPreference("system");
+    resetPreferences();
+    setRefreshOnVisible(false);
+    setIntervalMinutes(0);
+    toast.success(copy.resetDone);
+  };
+
+  return (
+    <div className="flex flex-col items-start justify-between gap-3 px-1 sm:flex-row sm:items-center">
+      <Typography color="muted" type="body-xs">
+        {copy.storageNote}
+      </Typography>
+      <AlertDialog>
+        <Button size="sm" variant="danger">
           {copy.reset}
         </Button>
-      </Card.Footer>
-    </Card>
+        <AlertDialog.Backdrop variant="blur">
+          <AlertDialog.Container size="sm">
+            <AlertDialog.Dialog>
+              <AlertDialog.CloseTrigger />
+              <AlertDialog.Header>
+                <AlertDialog.Icon status="warning" />
+                <AlertDialog.Heading>{copy.resetTitle}</AlertDialog.Heading>
+              </AlertDialog.Header>
+              <AlertDialog.Body>
+                <Typography type="body-sm">{copy.resetBody}</Typography>
+              </AlertDialog.Body>
+              <AlertDialog.Footer>
+                <Button slot="close" variant="tertiary">
+                  {copy.resetCancel}
+                </Button>
+                <Button slot="close" variant="danger" onPress={resetAll}>
+                  {copy.resetConfirm}
+                </Button>
+              </AlertDialog.Footer>
+            </AlertDialog.Dialog>
+          </AlertDialog.Container>
+        </AlertDialog.Backdrop>
+      </AlertDialog>
+    </div>
   );
 }

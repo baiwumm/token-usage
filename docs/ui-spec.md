@@ -58,7 +58,10 @@
    URL 仅保留 `tz` / `device_id`；变更只重取数据，
    不整页刷新——各卡片保留旧内容并叠加模糊遮罩 + `Spinner`（仅首载无数据时出骨架屏，
    骨架屏圆角与卡片一致：`min(32px, var(--radius-3xl))`）。筛选条右侧固定「分享」
-   （`NodesRight`，打开分享卡 Modal）与「刷新」两个 tertiary 图标按钮，刷新中图标自旋。
+   （`NodesRight`，打开分享卡 Modal）与「刷新」两个 tertiary 图标按钮，刷新中图标自旋；
+   刷新按钮的 `Tooltip`（带箭头）显示上次更新时间（未加载时显示「尚未加载数据」）。仪表盘自动刷新
+   默认关闭（2026-10-27 操作者裁定，设置页「数据刷新」可控）：定时与切回刷新均为静默
+   更新（不叠加模糊遮罩），手动刷新仍带遮罩；「时」视图下手动刷新同时重取小时明细。
    `from` / `to` 为所选时区的日键（`YYYY-MM-DD`），与契约的日粒度序列一致；「总计」以
    2000-01-01 为起点（服务端按 MAX_RANGE_DAYS 钳制）。
 2. **总 Tokens 头卡**（独占一行、仪表盘首卡，参考上游 Broadsheet 视觉）：居中大号
@@ -154,14 +157,19 @@
 
 ### 设置 · 账户设置（`/settings`）
 
-设置页用 `Tabs` / 分段导航：账户 / 外观 / 设备（tab 状态为组件内 state，不写 URL）；
+设置页用 `Tabs` / 分段导航：账户 / 偏好 / 设备（tab 状态为组件内 state，不写 URL）；
 各分区用 `Card` 复合结构。账户分区自上而下为个人信息卡（名称 + 只读邮箱）、头像卡
 （更换走 `react-easy-crop` 裁剪弹窗：缩放滑杆 + ±90° 旋转，canvas 合成 256×256 WebP
-后上传，更换/删除按钮并列）、密码卡（设置/更新密码，≥8 位；魔法链接账号在此开启密码
-登录）。登录页为 HeroUI `Tabs`（密码登录 `Lock` / 魔法链接 `Envelope`），密码 tab 提供
-「忘记密码」邮箱重置入口（resetPasswordForEmail，回跳设置页设新密码）。
-外观分区用 `Card` 复合结构，逐行 label + control + `Description`（语言/货币下拉
-`variant="secondary"`，货币选项为本地化名称 + 窄符号，如 `人民币(￥)`）：
+后上传，更换/删除按钮并列）、预算卡（月度 USD 上限，`NumberField`：最小 0、最大
+1,000,000、步长 1、整数美元，保存写本机 `token-usage.budget`，0 关闭）、密码卡
+（设置/更新密码，≥8 位；
+魔法链接账号在此开启密码登录）。登录页为 HeroUI `Tabs`（密码登录 `Lock` / 魔法链接
+`Envelope`），密码 tab 提供「忘记密码」邮箱重置入口（resetPasswordForEmail，回跳设置页
+设新密码）。
+偏好分区由「外观」与「数据刷新」两张 `Card` 组成；外观卡逐行 label + control +
+`Description`（语言/货币/日期下拉 `variant="secondary"`，货币选项为本地化名称 + 窄符号，如
+`人民币(￥)`）；分区内 `ToggleButtonGroup` 统一 `size="sm"`；`Select` 无 size 属性，
+沿用默认尺寸：
 
 | 行 | 控件 | 选项 / 行为 |
 |---|---|---|
@@ -169,14 +177,27 @@
 | 字体 | `ToggleButtonGroup` | Maple（默认，内置等宽中文字体）/ 系统字体；写 `preferences.font`（zustand persist），`Providers` 内同步组件把偏好映射到 `<html data-font>`，globals.css 按属性切换 `--font-sans`/`--font-mono` |
 | 语言 | `Select` | 跟随系统 / 中文 / English；`system` 行内提示当前解析结果；写 locale cookie |
 | 货币 | `Select` | USD / EUR / GBP / CNY / JPY / HKD；下方 `Description` 显示 `1 USD = 6.6849 CNY`（非 USD）与“参考汇率 · as_of” |
+| 日期格式 | `Select` | 跟随语言（默认）/ `YYYY-MM-DD` / `MM/DD/YYYY` / `DD/MM/YYYY`；只改日期部分，时间仍按语言 12/24 小时制，图表月份标签保持语言格式 |
 | Token 显示 | `ToggleButtonGroup` | 紧凑 / 完整 |
 | 数字单位 | `ToggleButtonGroup` | K/M/B / 万/亿；仅紧凑模式生效，完整模式置灰并提示 |
 | 数字分组 | `ToggleButtonGroup` | 3 位 / 4 位；仅完整模式生效，紧凑模式置灰并提示 |
 
-- 全部即时生效，无“保存”按钮；提供“恢复默认”（主题 system、语言 system、USD、紧凑、
-  K/M/B、3 位），只重置外观，不影响账户与设备。
-- 设置页底部说明：“外观偏好只保存在本浏览器，不写入账户；换设备需重设。”
+- 全部即时生效，无“保存”按钮；分区最底部为“恢复默认”（`AlertDialog` 二次确认），重置
+  主题 system、语言 system、字体、货币 USD、日期格式跟随语言、紧凑、K/M/B、3 位，以及
+  数据刷新两项回到关闭；只重置本机偏好，不影响账户与设备。
+- 分区底部说明：“外观与刷新偏好只保存在本浏览器，不写入账户；换设备需重设。”
 - 控件旁的示例数字使用当前格式实时预览；切换时容器宽度稳定，不抖动。
+
+外观卡下方另有「数据刷新」卡（2026-10-27 操作者裁定），控制仪表盘自动刷新，同样只存
+本浏览器（`token-usage.refresh`，zustand persist），两项默认关闭：
+
+| 行 | 控件 | 选项 / 行为 |
+|---|---|---|
+| 切回页面时刷新 | `Switch`（默认尺寸，拇指内 Check / Xmark 图标） | 标签页重新可见时立即拉取；60 秒冷却内重复切回不重复请求 |
+| 定时刷新 | `Slider`（0–60，步长 5） | 0 = 关闭，仅页面可见时计时；输出 `关闭` / `每 N 分钟` / `每 1 小时`，轨道两端标注「关闭 / 1 小时」；拖拽结束才落盘 |
+
+手动刷新始终可用，不受这两项影响。仪表盘卡片里的说明文字必须写明「0 表示关闭」，
+因为 Slider 的无障碍值标签只会读出数字。
 
 ## 数字、货币与时间格式
 
@@ -194,7 +215,9 @@
   负数符号在货币符号前（`-¥1.23`）。契约的 6dp 字符串只用于传输，UI 不直接展示 6dp。
 - 汇率：`1 USD = <rate 4dp> <CODE>`；内置快照 + `TOKEN_USAGE_FX_RATES` 覆盖；UI 标注
   “参考汇率”和 `as_of`；不做实时刷新、不调用外部 API。
-- 日期/时间：按 UI locale 与所选时区格式化；Sessions 详情显示绝对时间 + 相对时间；
+- 日期/时间：按 UI locale 与所选时区格式化；日期顺序可设为跟随语言 / `YYYY-MM-DD` /
+  `MM/DD/YYYY` / `DD/MM/YYYY`，非跟随语言时时间部分仍按 UI 语言（12/24 小时制），中文以
+  空格、英文以逗号连接；图表月份标签始终跟随语言。Sessions 详情显示绝对时间 + 相对时间；
   表格数字使用 `tabular-nums`。
 - 空值：`null` / `undefined` / 空字符串显示 `—`，不显示 0；0 是有效值。
 
@@ -208,16 +231,16 @@
   同一偏好，两处切换互相同步。
 - 主题：next-themes，`attribute="class"`、`enableSystem`，沿用默认 storageKey
   `theme`（不重置现有偏好）；默认 system；设置页与顶栏明暗切换共用。
-- 货币 / Token 显示 / 单位 / 分组：zustand persist（`stores/format-preferences-store.ts`，
+- 货币 / Token 显示 / 单位 / 分组 / 日期格式：zustand persist（`stores/format-preferences-store.ts`，
   单键 `token-usage.format-preferences`，2026-10-25 起收编 zustand）；首次读取自动迁移并
   清除旧扁平键（`token-usage.currency` / `token-usage.token-format` /
   `token-usage.token-unit` / `token-usage.token-grouping`）；值分别为 ISO 4217 代码、
-  `compact|full`、`kmb|wan`、`3|4`；只影响本浏览器，不写数据库。
+  `compact|full`、`kmb|wan`、`3|4`、`locale|iso|mdy|dmy`；只影响本浏览器，不写数据库。
 - Hydration：locale cookie 保证 SSR 首帧；主题由 next-themes 首屏脚本避免闪烁；
   localStorage 显示偏好在挂载后读取，设置页可先渲染默认值；数字使用 `tabular-nums`
   且容器预留宽度，不允许明显跳动。仪表盘 / Sessions 数据本身客户端加载，不存在服务端
   数字与客户端不一致。
-- 无偏好或存储损坏：回退 `system` / USD / 紧凑 / K-M-B / 3 位，不抛错。
+- 无偏好或存储损坏：回退 `system` / USD / 紧凑 / K-M-B / 3 位 / 日期跟随语言，不抛错。
 
 ## UI 基准
 

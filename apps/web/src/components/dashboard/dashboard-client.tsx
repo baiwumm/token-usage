@@ -23,6 +23,7 @@ import {
   Spinner,
   Tabs,
   toast,
+  Tooltip,
   Typography,
   Popover,
 } from "@heroui/react";
@@ -56,6 +57,7 @@ import { formatMessage } from "@/lib/copy/message";
 import { useUrlFilters } from "@/lib/dashboard/url-filters";
 import { loadable, type Loadable } from "@/lib/loadable";
 import { useBudgetStore } from "@/stores/budget-store";
+import { useRefreshPreferencesStore } from "@/stores/refresh-preferences-store";
 import {
   DashboardApiError,
   fetchDaily,
@@ -88,7 +90,7 @@ import { useFormat } from "@/lib/format/format";
 type TrendMode = "daily" | "monthly";
 type DetailView = "daily" | "hourly" | "monthly";
 
-const AUTO_REFRESH_MS = 5 * 60_000;
+const AUTO_REFRESH_COOLDOWN_MS = 60_000;
 
 interface Filters {
   range: RangeKey;
@@ -145,9 +147,22 @@ export function DashboardClient() {
   const router = useRouter();
   const [locale] = useLocale();
   const copy = DASHBOARD_COPY[locale];
-  const { formatDate, formatMonth, formatTokens, formatCost, formatPercent } =
-    useFormat();
+  const {
+    formatDate,
+    formatMonth,
+    formatDateTime,
+    formatTokens,
+    formatCost,
+    formatPercent,
+  } = useFormat();
   const { profile } = useProfile();
+
+  const refreshOnVisible = useRefreshPreferencesStore(
+    (state) => state.refreshOnVisible,
+  );
+  const refreshIntervalMinutes = useRefreshPreferencesStore(
+    (state) => state.intervalMinutes,
+  );
 
   const { accessToken, redirectToLogin } = useSessionBootstrap("/");
 
@@ -179,6 +194,7 @@ export function DashboardClient() {
   const [detailView, setDetailView] = useState<DetailView>("daily");
   const [hourlyDay, setHourlyDay] = useState("");
   const [hourlyRefresh, setHourlyRefresh] = useState(0);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [costOpen, setCostOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [rangePickerOpen, setRangePickerOpen] = useState(false);
@@ -212,20 +228,33 @@ export function DashboardClient() {
   // old one may still be in flight; late responses of a superseded run must
   // never overwrite the newer run's state.
   const loadSeq = useRef(0);
+  // Start time of the latest run — the visibility-refresh cooldown baseline.
+  const lastAttemptAt = useRef(0);
+  // Consumed by the hourly fetch: auto refreshes skip its panel overlay.
+  const hourlySilentRef = useRef(false);
 
   const loadAll = useCallback(
-    async (token: string) => {
+    async (token: string, options?: { silent?: boolean }) => {
       // Keep the previous payloads mounted: only show the initial-load
       // skeleton; refreshes overlay the existing cards instead. Each slot
       // settles into place as its own response arrives, so one slow request
       // (the heatmap's 52 weeks) no longer holds the other cards back.
-      setRefreshing(true);
+      // Silent runs (timer / visibility) update in place without the blur.
+      const silent = options?.silent === true;
+
+      if (!silent) setRefreshing(true);
+      lastAttemptAt.current = Date.now();
       const seq = ++loadSeq.current;
       let pending = 6;
+      let succeeded = 0;
       let redirected = false;
 
       const finishOne = () => {
-        if (loadSeq.current === seq && --pending === 0) setRefreshing(false);
+        if (loadSeq.current !== seq) return;
+        if (--pending > 0) return;
+        // Always clear: a silent run may supersede an interrupted manual one.
+        setRefreshing(false);
+        if (succeeded > 0) setLastUpdatedAt(Date.now());
       };
 
       const slot = <T,>(
@@ -236,6 +265,7 @@ export function DashboardClient() {
         void request.then(
           (value) => {
             if (loadSeq.current !== seq) return;
+            succeeded += 1;
             setState({ status: "ready", data: select(value) });
             finishOne();
           },
@@ -330,28 +360,40 @@ export function DashboardClient() {
     if (accessToken) void loadAll(accessToken);
   }, [accessToken, loadAll]);
 
-  // Auto-refresh every five minutes while the tab is visible; switching back
-  // to the tab refreshes immediately and restarts the interval. loadAll's
-  // run-id makes a refresh racing the previous one safe, and the per-request
-  // slot updates keep the cards mounted under the blur overlay.
+  // Bumps the hourly fetch; `silent` keeps auto refreshes overlay-free.
+  const refreshHourly = useCallback((silent: boolean) => {
+    hourlySilentRef.current = silent;
+    setHourlyRefresh((value) => value + 1);
+  }, []);
+
+  // Auto refresh is opt-in (settings → data refresh); the manual button is the
+  // baseline. Both triggers share one cooldown so quick tab round-trips do not
+  // refetch, and scheduled runs stay silent — no blur overlay.
   useEffect(() => {
     if (!accessToken) return;
+    if (!refreshOnVisible && refreshIntervalMinutes <= 0) return;
 
     let timer: number | undefined;
 
+    const autoRefresh = () => {
+      if (Date.now() - lastAttemptAt.current < AUTO_REFRESH_COOLDOWN_MS) {
+        return;
+      }
+      void loadAll(accessToken, { silent: true });
+      if (detailView === "hourly") refreshHourly(true);
+    };
+
     const startTimer = () => {
       window.clearInterval(timer);
+      if (refreshIntervalMinutes <= 0) return;
       timer = window.setInterval(() => {
-        if (document.visibilityState === "visible") {
-          void loadAll(accessToken);
-        }
-      }, AUTO_REFRESH_MS);
+        if (document.visibilityState === "visible") autoRefresh();
+      }, refreshIntervalMinutes * 60_000);
     };
     const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        void loadAll(accessToken);
-        startTimer();
-      }
+      if (document.visibilityState !== "visible") return;
+      if (refreshOnVisible) autoRefresh();
+      startTimer();
     };
 
     startTimer();
@@ -361,7 +403,14 @@ export function DashboardClient() {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [accessToken, loadAll]);
+  }, [
+    accessToken,
+    detailView,
+    loadAll,
+    refreshHourly,
+    refreshIntervalMinutes,
+    refreshOnVisible,
+  ]);
 
   const effectiveHourlyDay = hourlyDay || dayKeyInTz(new Date(), timezone);
 
@@ -369,8 +418,12 @@ export function DashboardClient() {
     if (!accessToken || detailView !== "hourly") return;
 
     let cancelled = false;
+    // Consume the one-shot flag: dependency-driven runs (day switch, timezone)
+    // still show the panel spinner.
+    const silent = hourlySilentRef.current;
 
-    setHourlyRefreshing(true);
+    hourlySilentRef.current = false;
+    if (!silent) setHourlyRefreshing(true);
     void fetchHourly(accessToken, {
       day: effectiveHourlyDay,
       tz: timezone,
@@ -393,7 +446,7 @@ export function DashboardClient() {
         );
       })
       .finally(() => {
-        if (!cancelled) setHourlyRefreshing(false);
+        if (!cancelled && !silent) setHourlyRefreshing(false);
       });
 
     return () => {
@@ -549,7 +602,12 @@ export function DashboardClient() {
   }, [daily, detailView, formatDate, formatMonth, hourlyState.data, monthly]);
 
   const retryAll = () => {
-    if (accessToken) void loadAll(accessToken);
+    if (!accessToken) return;
+
+    void loadAll(accessToken);
+    // loadAll never touches the hourly slot; the visible hourly tab must not
+    // look stale after a manual refresh.
+    if (detailView === "hourly") refreshHourly(false);
   };
 
   const openCostModal = useCallback(() => setCostOpen(true), []);
@@ -816,18 +874,30 @@ export function DashboardClient() {
           >
             <NodesRight aria-hidden="true" className="size-4" />
           </Button>
-          <Button
-            isIconOnly
-            aria-label={copy.refresh}
-            size="sm"
-            variant="tertiary"
-            onPress={retryAll}
-          >
-            <ArrowsRotateRight
-              aria-hidden="true"
-              className={refreshing ? "size-4 animate-spin" : "size-4"}
-            />
-          </Button>
+          <Tooltip delay={0}>
+            <Button
+              isIconOnly
+              aria-label={copy.refresh}
+              size="sm"
+              variant="tertiary"
+              onPress={retryAll}
+            >
+              <ArrowsRotateRight
+                aria-hidden="true"
+                className={refreshing ? "size-4 animate-spin" : "size-4"}
+              />
+            </Button>
+            <Tooltip.Content showArrow placement="bottom">
+              <Tooltip.Arrow />
+              <Typography color="muted" type="body-xs">
+                {lastUpdatedAt == null
+                  ? copy.lastUpdatedNone
+                  : formatMessage(copy.lastUpdated, locale, {
+                      time: formatDateTime(new Date(lastUpdatedAt)),
+                    })}
+              </Typography>
+            </Tooltip.Content>
+          </Tooltip>
         </div>
       </div>
 
@@ -1186,7 +1256,7 @@ export function DashboardClient() {
                     message={copy.detail.loadError}
                     retry={
                       detailView === "hourly"
-                        ? () => setHourlyRefresh((value) => value + 1)
+                        ? () => refreshHourly(false)
                         : retryAll
                     }
                     retryLabel={copy.detail.retry}

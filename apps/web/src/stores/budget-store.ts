@@ -9,6 +9,9 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 const STORAGE_KEY = "token-usage.budget";
 
+/** Sanity ceiling so a typo cannot park an absurd cap in localStorage. */
+export const MAX_MONTHLY_BUDGET_USD = 1_000_000;
+
 interface PersistedBudgetState {
   monthlyBudgetUsd: number;
 }
@@ -22,7 +25,11 @@ interface BudgetState {
 function sanitizeBudget(value: unknown): number {
   const parsed = Number(value);
 
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+
+  // Whole dollars (the NumberField snaps to step 1) and the documented
+  // ceiling.
+  return Math.min(Math.round(parsed), MAX_MONTHLY_BUDGET_USD);
 }
 
 export const useBudgetStore = create<BudgetState>()(

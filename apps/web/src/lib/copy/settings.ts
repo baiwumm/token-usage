@@ -20,6 +20,7 @@ export interface SettingsCopy {
   passwordNewLabel: string;
   passwordNewPlaceholder: string;
   passwordConfirmLabel: string;
+  passwordConfirmPlaceholder: string;
   passwordMismatch: string;
   passwordLengthError: string;
   passwordSave: string;
@@ -75,7 +76,7 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
   zh: {
     pageTitle: "账户设置",
     sectionAccount: "账户",
-    sectionAppearance: "外观",
+    sectionAppearance: "偏好",
     sectionDevices: "设备",
     avatarHeading: "头像",
     avatarHint: "上传图片作为头像；删除后显示名称首字。",
@@ -85,6 +86,7 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     passwordNewLabel: "新密码",
     passwordNewPlaceholder: "至少 8 位",
     passwordConfirmLabel: "确认新密码",
+    passwordConfirmPlaceholder: "再次输入新密码",
     passwordMismatch: "两次输入的密码不一致。",
     passwordLengthError: "密码至少 8 位。",
     passwordSave: "更新密码",
@@ -92,7 +94,7 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     cropTitle: "裁剪头像",
     budgetHeading: "月度预算",
     budgetHint:
-      "美元计的月度花费上限；超过后仪表盘的成本指标会标红并提示。填 0 关闭。",
+      "美元计的月度花费上限（0–1,000,000）；超过后仪表盘的成本指标会标红并提示。填 0 关闭。",
     budgetLabel: "每月预算（USD）",
     budgetSave: "保存预算",
     budgetSaved: "预算已更新。",
@@ -145,7 +147,7 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
   en: {
     pageTitle: "Account settings",
     sectionAccount: "Account",
-    sectionAppearance: "Appearance",
+    sectionAppearance: "Preferences",
     sectionDevices: "Devices",
     avatarHeading: "Avatar",
     avatarHint:
@@ -156,6 +158,7 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     passwordNewLabel: "New password",
     passwordNewPlaceholder: "At least 8 characters",
     passwordConfirmLabel: "Confirm new password",
+    passwordConfirmPlaceholder: "Re-enter the new password",
     passwordMismatch: "Passwords do not match.",
     passwordLengthError: "The password must be at least 8 characters.",
     passwordSave: "Update password",
@@ -163,7 +166,7 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     cropTitle: "Crop avatar",
     budgetHeading: "Monthly budget",
     budgetHint:
-      "A USD cap on monthly spend; the dashboard cost metric turns red and warns once you cross it. Set 0 to disable.",
+      "A USD cap on monthly spend (0–1,000,000); the dashboard cost metric turns red and warns once you cross it. Set 0 to disable.",
     budgetLabel: "Monthly budget (USD)",
     budgetSave: "Save budget",
     budgetSaved: "Budget updated.",

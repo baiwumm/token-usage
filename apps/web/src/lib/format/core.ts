@@ -10,6 +10,7 @@ export type TokenDisplay = "compact" | "full";
 export type TokenUnit = "kmb" | "wan";
 export type TokenGrouping = 3 | 4;
 export type FontPreference = "maple" | "system";
+export type DateFormat = "locale" | "iso" | "mdy" | "dmy";
 
 export interface FormatPreferences {
   currency: string;
@@ -17,6 +18,7 @@ export interface FormatPreferences {
   tokenUnit: TokenUnit;
   tokenGrouping: TokenGrouping;
   font: FontPreference;
+  dateFormat: DateFormat;
 }
 
 export const DEFAULT_FORMAT_PREFERENCES: FormatPreferences = {
@@ -25,6 +27,7 @@ export const DEFAULT_FORMAT_PREFERENCES: FormatPreferences = {
   tokenUnit: "kmb",
   tokenGrouping: 3,
   font: "maple",
+  dateFormat: "locale",
 };
 
 export const FORMAT_STORAGE_KEYS = {
@@ -118,8 +121,14 @@ export function sanitizePreferences(
       : DEFAULT_FORMAT_PREFERENCES.tokenUnit;
   const tokenGrouping = input.tokenGrouping === 4 ? 4 : 3;
   const font = input.font === "system" ? "system" : "maple";
+  const dateFormat =
+    input.dateFormat === "iso" ||
+    input.dateFormat === "mdy" ||
+    input.dateFormat === "dmy"
+      ? input.dateFormat
+      : DEFAULT_FORMAT_PREFERENCES.dateFormat;
 
-  return { currency, tokenDisplay, tokenUnit, tokenGrouping, font };
+  return { currency, tokenDisplay, tokenUnit, tokenGrouping, font, dateFormat };
 }
 
 /** Merge a TOKEN_USAGE_FX_RATES JSON override over the built-in snapshot. */
@@ -440,30 +449,76 @@ export function formatDuration(valueMs: unknown, locale: Locale): string {
   return restHours ? `${days}d ${restHours}h` : `${days}d`;
 }
 
+// Date-order preferences map to the CLDR locale that already emits that
+// order. Only the date part changes; the time of day keeps the UI locale's
+// 12/24-hour convention (docs/ui-spec.md 数字、货币与时间格式).
+const DATE_ORDER_LOCALES: Record<Exclude<DateFormat, "locale">, string> = {
+  iso: "en-CA",
+  mdy: "en-US",
+  dmy: "en-GB",
+};
+
 export function formatDate(
   value: string | Date | null | undefined,
   locale: Locale,
   options: Intl.DateTimeFormatOptions = { dateStyle: "medium" },
+  dateFormat: DateFormat = "locale",
 ): string {
   if (value == null || value === "") return "—";
   const date = value instanceof Date ? value : new Date(value);
 
   if (Number.isNaN(date.getTime())) return "—";
 
-  return memoFormatter(
-    `date\0${locale}\0${JSON.stringify(options)}`,
-    () => new Intl.DateTimeFormat(localeTag(locale), options),
+  if (dateFormat === "locale") {
+    return memoFormatter(
+      `date\0${locale}\0${JSON.stringify(options)}`,
+      () => new Intl.DateTimeFormat(localeTag(locale), options),
+    ).format(date);
+  }
+
+  // Intl forbids mixing dateStyle with individual date fields, so the date
+  // and time halves are formatted separately and joined. An explicit date
+  // order therefore replaces any dateStyle the caller passed.
+  const timeZone = options.timeZone;
+  const datePart = memoFormatter(
+    `date-order\0${dateFormat}\0${timeZone ?? ""}`,
+    () =>
+      new Intl.DateTimeFormat(DATE_ORDER_LOCALES[dateFormat], {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        timeZone,
+      }),
   ).format(date);
+  const timeStyle = options.timeStyle;
+
+  if (!timeStyle) return datePart;
+
+  const timePart = memoFormatter(
+    `date-time\0${locale}\0${timeStyle}\0${timeZone ?? ""}`,
+    () =>
+      new Intl.DateTimeFormat(localeTag(locale), {
+        timeStyle,
+        timeZone,
+      }),
+  ).format(date);
+
+  return locale === "zh"
+    ? `${datePart} ${timePart}`
+    : `${datePart}, ${timePart}`;
 }
 
 export function formatDateTime(
   value: string | Date | null | undefined,
   locale: Locale,
+  dateFormat: DateFormat = "locale",
 ): string {
-  return formatDate(value, locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatDate(
+    value,
+    locale,
+    { dateStyle: "medium", timeStyle: "short" },
+    dateFormat,
+  );
 }
 
 /** Localized "3 minutes ago" for detail views (docs/ui-spec.md Sessions). */

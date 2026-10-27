@@ -128,7 +128,8 @@
       新功能，值得单独一批做并单独验收。
 - [x] D3 仪表盘自动刷新：5 分钟 interval + `visibilitychange` 暂停 +
       PanelOverlay 静默更新（切回可见立即刷新并重置计时；loadAll run-id 保证
-      叠加刷新安全）。
+      叠加刷新安全）。**2026-10-27 被设置页「数据刷新」取代**：两项默认关闭，
+      切回刷新带 60 秒冷却，定时 0–60 分钟可调（见 docs/ui-spec.md 设置）。
 - [x] D4 趋势图下钻返回路径：hourly 视图头部加"{日期} · 返回日视图"按钮；
       TrendChart 新增 `selectedKey`，下钻期间日视图其余 bar 降透明度高亮来处。
 - [x] D5 月度预算告警：`stores/budget-store.ts`（zustand persist，USD 数字，
@@ -141,6 +142,11 @@
       §2.7 第 8 个 series）。**实现等本轮 web 大施工收尾后进行**（端点与页面
       均在 apps/web 侧）；web 侧要做：迁移表 `token_sync_runs`、路由、侧边栏
       "采集记录"菜单、列表页（设备/触发方式/结果筛选 + 空跑标记 + 分页）。
+- [ ] D7 仪表盘刷新探针（2026-10-27 讨论，未开工）：新增轻量
+      `GET /api/app/dashboard-revision`，以 `max(updated_at)` 当版本号；客户端按较短的
+      固定间隔轮询探针，版本变化才拉 6 个面板接口，无变化时连遮罩都不闪。目标是把轮询
+      成本压到一次索引查询，同时比定时刷新更及时。可再评估按面板细分版本、多标签页
+      leader 去重（`BroadcastChannel` / `storage`）与合并 6 个接口。
 
 ---
 

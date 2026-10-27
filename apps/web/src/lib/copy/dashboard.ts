@@ -11,6 +11,8 @@ export interface DashboardCopy {
   allDevices: string;
   clearFilters: string;
   refresh: string;
+  lastUpdated: string;
+  lastUpdatedNone: string;
   share: string;
   ranges: Record<"today" | "7d" | "30d" | "90d" | "all" | "custom", string>;
   cards: {
@@ -140,6 +142,8 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     allDevices: "全部设备",
     clearFilters: "清除筛选",
     refresh: "刷新",
+    lastUpdated: "上次更新 {time}",
+    lastUpdatedNone: "尚未加载数据",
     share: "分享",
     ranges: {
       today: "今天",
@@ -276,6 +280,8 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     allDevices: "All devices",
     clearFilters: "Clear filters",
     refresh: "Refresh",
+    lastUpdated: "Updated {time}",
+    lastUpdatedNone: "No data loaded yet",
     share: "Share",
     ranges: {
       today: "Today",

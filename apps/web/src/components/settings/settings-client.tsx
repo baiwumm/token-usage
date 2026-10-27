@@ -19,6 +19,7 @@ import {
   Input,
   Label,
   Modal,
+  NumberField,
   Spinner,
   Table,
   Tabs,
@@ -35,12 +36,16 @@ import {
   type FormEvent,
 } from "react";
 
-import { AppearancePanel } from "./appearance-panel";
+import {
+  AppearancePanel,
+  DataRefreshCard,
+  PreferencesFooter,
+} from "./appearance-panel";
 import { AvatarCropDialog } from "./avatar-crop-dialog";
 
 import { authBrowserClient } from "@/lib/auth/browser";
 import { useAvatarUpload, useProfile } from "@/lib/auth/profile";
-import { useBudgetStore } from "@/stores/budget-store";
+import { MAX_MONTHLY_BUDGET_USD, useBudgetStore } from "@/stores/budget-store";
 import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
@@ -259,7 +264,13 @@ export function SettingsClient() {
           <PasswordCard />
         </div>
       ) : null}
-      {section === "appearance" ? <AppearancePanel /> : null}
+      {section === "appearance" ? (
+        <div className="flex flex-col gap-4">
+          <AppearancePanel />
+          <DataRefreshCard />
+          <PreferencesFooter />
+        </div>
+      ) : null}
 
       {section === "devices" ? (
         <section className="flex flex-col gap-3">
@@ -688,17 +699,24 @@ function BudgetCard() {
   const setMonthlyBudgetUsd = useBudgetStore(
     (state) => state.setMonthlyBudgetUsd,
   );
-  const [draft, setDraft] = useState(() =>
-    monthlyBudgetUsd > 0 ? String(monthlyBudgetUsd) : "",
+  // Draft, not a direct store binding: typing stays local until save. The
+  // effect also re-syncs after hydration — the first client render replays the
+  // SSR snapshot (0), so an initializer alone leaves the field empty even
+  // though the saved budget is already in localStorage. NaN is react-aria's
+  // empty number-field value.
+  const [draft, setDraft] = useState(
+    monthlyBudgetUsd > 0 ? monthlyBudgetUsd : Number.NaN,
   );
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft(monthlyBudgetUsd > 0 ? monthlyBudgetUsd : Number.NaN);
+  }, [monthlyBudgetUsd]);
 
   function save() {
     if (saving) return;
     setSaving(true);
-    const parsed = Number(draft);
-
-    setMonthlyBudgetUsd(Number.isFinite(parsed) && parsed > 0 ? parsed : 0);
+    setMonthlyBudgetUsd(Number.isFinite(draft) && draft > 0 ? draft : 0);
     setSaving(false);
     toast.success(copy.budgetSaved);
   }
@@ -717,19 +735,24 @@ function BudgetCard() {
             save();
           }}
         >
-          <TextField
+          <NumberField
+            fullWidth
+            formatOptions={{ maximumFractionDigits: 0 }}
+            maxValue={MAX_MONTHLY_BUDGET_USD}
+            minValue={0}
             name="monthly_budget_usd"
+            step={1}
             value={draft}
+            variant="secondary"
             onChange={setDraft}
           >
             <Label>{copy.budgetLabel}</Label>
-            <Input
-              inputMode="decimal"
-              placeholder="0"
-              type="number"
-              variant="secondary"
-            />
-          </TextField>
+            <NumberField.Group>
+              <NumberField.DecrementButton />
+              <NumberField.Input placeholder="0" />
+              <NumberField.IncrementButton />
+            </NumberField.Group>
+          </NumberField>
           <div>
             <PendingButton pending={saving} type="submit">
               {copy.budgetSave}
@@ -828,7 +851,11 @@ function PasswordCard() {
             onChange={setConfirm}
           >
             <Label>{copy.passwordConfirmLabel}</Label>
-            <Input autoComplete="new-password" variant="secondary" />
+            <Input
+              autoComplete="new-password"
+              placeholder={copy.passwordConfirmPlaceholder}
+              variant="secondary"
+            />
           </TextField>
           {error ? <ErrorMessage role="alert">{error}</ErrorMessage> : null}
           <div>
