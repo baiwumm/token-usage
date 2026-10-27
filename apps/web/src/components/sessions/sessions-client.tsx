@@ -56,6 +56,7 @@ import {
   ALL_RANGE_START,
   browserTimezone,
   dayKeyInTz,
+  isValidDayKey,
   rangeForSelection,
 } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";
@@ -90,15 +91,21 @@ interface Filters {
 // Range filters never round-trip the URL (operator call 2026-10-26, same as
 // the dashboard): a stale ?range=…&from=… link must not pin the list to old
 // dates, so only device/source/search/paging persist and every load starts
-// at the default window.
+// at the default window. Exception: a fresh cross-page entry (heatmap cell →
+// sessions) may seed an exact window once — serialize() never emits from/to,
+// so the first filter change rewrites it away.
 function parseFilters(params: { get(name: string): string | null }): Filters {
   const rawOffset = Number(params.get("offset"));
   const rawPageSize = Number(params.get("page_size"));
+  const from = params.get("from") ?? "";
+  const to = params.get("to") ?? "";
+  const hasWindow =
+    isValidDayKey(from) && isValidDayKey(to) && from <= to;
 
   return {
-    range: "30d",
-    from: "",
-    to: "",
+    range: hasWindow ? "custom" : "30d",
+    from: hasWindow ? from : "",
+    to: hasWindow ? to : "",
     deviceId: params.get("device_id") ?? "",
     source: params.get("source") ?? "",
     q: params.get("q") ?? "",

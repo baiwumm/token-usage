@@ -27,6 +27,7 @@ import {
   Popover,
 } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
+import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -140,6 +141,7 @@ function PanelOverlay({ active }: { active: boolean }) {
 }
 
 export function DashboardClient() {
+  const router = useRouter();
   const [locale] = useLocale();
   const copy = DASHBOARD_COPY[locale];
   const { formatDate, formatMonth, formatTokens, formatCost, formatPercent } =
@@ -512,6 +514,15 @@ export function DashboardClient() {
 
   const openCostModal = useCallback(() => setCostOpen(true), []);
 
+  // Heatmap cell → sessions for that exact day (D1). Sessions reads from/to
+  // once as an initial window; its own filter edits never round-trip them.
+  const openSessionsForDay = useCallback(
+    (day: string) => {
+      router.push(`/sessions?from=${day}&to=${day}`);
+    },
+    [router],
+  );
+
   const detailState =
     detailView === "hourly"
       ? hourlyState
@@ -828,6 +839,7 @@ export function DashboardClient() {
                 <HeatmapCard
                   copy={copy}
                   locale={locale}
+                  onDaySelect={openSessionsForDay}
                   payload={heatmap}
                   timezone={timezone}
                 />

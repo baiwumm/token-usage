@@ -215,11 +215,14 @@ function HeatmapCardImpl({
   copy,
   locale,
   timezone,
+  onDaySelect,
 }: {
   payload: HeatmapPayload;
   copy: DashboardCopy;
   locale: "zh" | "en";
   timezone: string;
+  /** Present = cells are clickable (dashboard → sessions cross-link). */
+  onDaySelect?: (day: string) => void;
 }) {
   const { formatTokens, formatPercent } = useFormat();
   const [selectedSources, setSelectedSources] = useState<Set<string> | null>(
@@ -625,22 +628,31 @@ function HeatmapCardImpl({
                         if (!cell) return null;
                         const color =
                           HEATMAP_STOPS[cell.level] ?? HEATMAP_STOPS[0];
+                        const shared = {
+                          key: cell.day,
+                          "aria-label": `${cell.day} · ${formatTokens(cell.total)}`,
+                          "data-day": cell.day,
+                          "data-day-index": dayIndex,
+                          "data-week-index": weekIndex,
+                          style: {
+                            background: color,
+                            borderRadius: 4,
+                            height: cellSize,
+                            width: cellSize,
+                          } as const,
+                        };
 
-                        return (
-                          <div
-                            key={cell.day}
-                            aria-label={`${cell.day} · ${formatTokens(cell.total)}`}
-                            data-day={cell.day}
-                            data-day-index={dayIndex}
-                            data-week-index={weekIndex}
-                            role="img"
-                            style={{
-                              background: color,
-                              borderRadius: 4,
-                              height: cellSize,
-                              width: cellSize,
-                            }}
+                        // Clickable (dashboard cross-links the day into
+                        // sessions) or plain display (aria-label only).
+                        return onDaySelect ? (
+                          <button
+                            {...shared}
+                            className="cursor-pointer appearance-none border-0 p-0 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-accent"
+                            type="button"
+                            onClick={() => onDaySelect(cell.day)}
                           />
+                        ) : (
+                          <div {...shared} role="img" />
                         );
                       }),
                     )}
