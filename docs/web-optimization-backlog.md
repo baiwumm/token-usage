@@ -117,15 +117,23 @@
 
 ### D. 功能建议（产品，逐项独立可做）
 
-- [ ] D1 热力图 cell → `/sessions?from=day&to=day` 交叉跳转（cell 已带 day key），
+- [x] D1 热力图 cell → `/sessions?from=day&to=day` 交叉跳转（cell 已带 day key），
       形成"异常高峰日 → 查当天会话"闭环。
-- [ ] D2 Sessions 表列排序（复用 DetailTable 的 SortDescriptor 实现）+ 导出当前过滤
-      结果 CSV。
-- [ ] D3 仪表盘自动刷新：5 分钟 interval + `visibilitychange` 暂停 +
-      PanelOverlay 静默更新（loadAll 已逐请求落位，直接复用）。
-- [ ] D4 趋势图下钻返回路径：hourly 视图加"YYYY-MM-DD · 返回日视图"并高亮对应 bar。
-- [ ] D5 月度预算告警：设置存预算数字（zustand persist，与 format-preferences 同模式），
-      超阈值 cost KPI 变 danger + toast。
+      实现：cell 在传入 `onDaySelect` 时渲染为 button（hover 放大 + 焦点环）；
+      sessions 的 `parseFilters` 接受一次性 from/to 初始窗（合法且顺序正确才采纳，
+      自身筛选仍不回写 URL，符合 2026-10-26 裁定）。
+- [ ] D2 Sessions 表列排序 + 导出当前过滤结果 CSV。**保留待办**：排序要给
+      account-sessions 加 `order` 参数、CSV 要加 `format=csv`（§2.7 是 Dashboard 面
+      可演进，但仍是契约变更：文档回写 + golden + 前端 UI 三块），体量相当于半个
+      新功能，值得单独一批做并单独验收。
+- [x] D3 仪表盘自动刷新：5 分钟 interval + `visibilitychange` 暂停 +
+      PanelOverlay 静默更新（切回可见立即刷新并重置计时；loadAll run-id 保证
+      叠加刷新安全）。
+- [x] D4 趋势图下钻返回路径：hourly 视图头部加"{日期} · 返回日视图"按钮；
+      TrendChart 新增 `selectedKey`，下钻期间日视图其余 bar 降透明度高亮来处。
+- [x] D5 月度预算告警：`stores/budget-store.ts`（zustand persist，USD 数字，
+      0=关闭）；settings 账户页新增预算卡；仪表盘按当月 UTC 月桶成本对比，超阈值
+      hero 成本行变 danger + toast 每次跨越只提示一次。
 
 ---
 

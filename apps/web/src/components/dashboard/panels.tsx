@@ -48,6 +48,7 @@ export function TotalTokensHero({
   locale,
   fromDay,
   toDay,
+  budgetExceeded,
 }: {
   allTime: DashboardTotals | null;
   summary: AccountSummary;
@@ -56,6 +57,8 @@ export function TotalTokensHero({
   locale: "zh" | "en";
   fromDay: string;
   toDay: string;
+  /** Monthly budget from settings is crossed — the cost line turns danger. */
+  budgetExceeded?: boolean;
 }) {
   const { formatTokens, formatCost, formatPercent, formatDate, formatNumber } =
     useFormat();
@@ -135,7 +138,10 @@ export function TotalTokensHero({
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <Typography className="text-success tabular-nums" type="body-sm">
+          <Typography
+            className={`tabular-nums ${budgetExceeded ? "text-danger" : "text-success"}`}
+            type="body-sm"
+          >
             {hasUnpriced ? "≥ " : ""}
             <FlowNumber text={formatCost(summary.totals.total_cost_usd)} />
           </Typography>

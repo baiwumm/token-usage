@@ -115,6 +115,9 @@ export interface DashboardCopy {
     filterEmptyTitle: string;
     filterEmptyBody: string;
   };
+  budget: {
+    exceeded: string;
+  };
   shareCard: {
     title: string;
     note: string;
@@ -248,6 +251,9 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       emptyBody: "在采集机上完成配对并 sync 后，数据会出现在这里。",
       filterEmptyTitle: "当前筛选没有结果",
       filterEmptyBody: "换一个时间范围或设备，或清除筛选。",
+    },
+    budget: {
+      exceeded: "已超出月度预算 {budget}：本月至今已花费 {spent}。",
     },
     shareCard: {
       title: "分享用量卡片",
@@ -383,6 +389,9 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       emptyBody: "Pair a collector and sync — data will show up here.",
       filterEmptyTitle: "No results for these filters",
       filterEmptyBody: "Try another range or device, or clear the filters.",
+    },
+    budget: {
+      exceeded: "Monthly budget {budget} exceeded: {spent} spent so far.",
     },
     shareCard: {
       title: "Share usage card",

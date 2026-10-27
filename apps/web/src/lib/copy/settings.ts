@@ -25,6 +25,11 @@ export interface SettingsCopy {
   passwordSave: string;
   passwordSaved: string;
   cropTitle: string;
+  budgetHeading: string;
+  budgetHint: string;
+  budgetLabel: string;
+  budgetSave: string;
+  budgetSaved: string;
   cropZoom: string;
   cropRotateLeft: string;
   cropRotateRight: string;
@@ -85,6 +90,12 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     passwordSave: "更新密码",
     passwordSaved: "密码已更新。",
     cropTitle: "裁剪头像",
+    budgetHeading: "月度预算",
+    budgetHint:
+      "美元计的月度花费上限；超过后仪表盘的成本指标会标红并提示。填 0 关闭。",
+    budgetLabel: "每月预算（USD）",
+    budgetSave: "保存预算",
+    budgetSaved: "预算已更新。",
     cropZoom: "缩放",
     cropRotateLeft: "左转 90°",
     cropRotateRight: "右转 90°",
@@ -150,6 +161,12 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     passwordSave: "Update password",
     passwordSaved: "Password updated.",
     cropTitle: "Crop avatar",
+    budgetHeading: "Monthly budget",
+    budgetHint:
+      "A USD cap on monthly spend; the dashboard cost metric turns red and warns once you cross it. Set 0 to disable.",
+    budgetLabel: "Monthly budget (USD)",
+    budgetSave: "Save budget",
+    budgetSaved: "Budget updated.",
     cropZoom: "Zoom",
     cropRotateLeft: "Rotate left 90°",
     cropRotateRight: "Rotate right 90°",

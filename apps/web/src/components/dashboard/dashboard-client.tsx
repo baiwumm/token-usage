@@ -23,6 +23,7 @@ import {
   Spinner,
   Tabs,
   TextField,
+  toast,
   Typography,
   Popover,
 } from "@heroui/react";
@@ -52,8 +53,10 @@ import { useProfile } from "@/lib/auth/profile";
 import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { DASHBOARD_COPY } from "@/lib/copy/dashboard";
 import { useLocale } from "@/lib/copy/locale";
+import { formatMessage } from "@/lib/copy/message";
 import { useUrlFilters } from "@/lib/dashboard/url-filters";
 import { loadable, type Loadable } from "@/lib/loadable";
+import { useBudgetStore } from "@/stores/budget-store";
 import {
   DashboardApiError,
   fetchDaily,
@@ -424,6 +427,45 @@ export function DashboardClient() {
     () => dashboard?.devices.filter((device) => device.active) ?? [],
     [dashboard],
   );
+
+  // Monthly budget (D5): compare the current UTC month's cost (monthly
+  // buckets are UTC-fixed, §2.7) against the preference from settings; the
+  // hero cost line turns danger and a toast fires once per crossing.
+  const monthlyBudgetUsd = useBudgetStore((state) => state.monthlyBudgetUsd);
+  const currentMonthKey = new Date().toISOString().slice(0, 7);
+  const monthCostUsd = useMemo(
+    () =>
+      monthly.find((point) => point.month === currentMonthKey)
+        ?.total_cost_usd ?? 0,
+    [currentMonthKey, monthly],
+  );
+  const budgetExceeded =
+    monthlyBudgetUsd > 0 && monthCostUsd > monthlyBudgetUsd;
+  const budgetWarnedRef = useRef(false);
+
+  useEffect(() => {
+    if (!budgetExceeded) {
+      budgetWarnedRef.current = false;
+
+      return;
+    }
+    if (budgetWarnedRef.current) return;
+    budgetWarnedRef.current = true;
+    toast(
+      formatMessage(copy.budget.exceeded, locale, {
+        budget: formatCost(monthlyBudgetUsd),
+        spent: formatCost(monthCostUsd),
+      }),
+    );
+  }, [
+    budgetExceeded,
+    copy,
+    formatCost,
+    locale,
+    monthCostUsd,
+    monthlyBudgetUsd,
+  ]);
+
   const hasData = (summary?.totals.total_tokens ?? 0) > 0;
   const hasFilters =
     filters.deviceId !== "" ||
@@ -825,6 +867,7 @@ export function DashboardClient() {
               <TotalTokensHero
                 allTime={dashboard?.all_time ?? null}
                 breakdown={breakdown}
+                budgetExceeded={budgetExceeded}
                 copy={copy}
                 fromDay={range.fromDay}
                 locale={locale}
@@ -839,9 +882,9 @@ export function DashboardClient() {
                 <HeatmapCard
                   copy={copy}
                   locale={locale}
-                  onDaySelect={openSessionsForDay}
                   payload={heatmap}
                   timezone={timezone}
+                  onDaySelect={openSessionsForDay}
                 />
               ) : (
                 <Card className="p-6">

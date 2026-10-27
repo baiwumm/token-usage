@@ -40,6 +40,7 @@ import { AvatarCropDialog } from "./avatar-crop-dialog";
 
 import { authBrowserClient } from "@/lib/auth/browser";
 import { useAvatarUpload, useProfile } from "@/lib/auth/profile";
+import { useBudgetStore } from "@/stores/budget-store";
 import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
@@ -254,6 +255,7 @@ export function SettingsClient() {
         <div className="flex flex-col gap-4">
           <ProfileCard />
           <AvatarCard />
+          <BudgetCard />
           <PasswordCard />
         </div>
       ) : null}
@@ -668,6 +670,69 @@ function ProfileCard() {
           <div>
             <PendingButton pending={saving} onPress={() => void save()}>
               {copy.profileSave}
+            </PendingButton>
+          </div>
+        </Form>
+      </Card.Content>
+    </Card>
+  );
+}
+
+// Budget card: the monthly spend cap (D5) is a local preference — it feeds
+// the dashboard's exceeded-budget warning and lives in localStorage, not in
+// the database.
+function BudgetCard() {
+  const [locale] = useLocale();
+  const copy = SETTINGS_COPY[locale];
+  const monthlyBudgetUsd = useBudgetStore((state) => state.monthlyBudgetUsd);
+  const setMonthlyBudgetUsd = useBudgetStore(
+    (state) => state.setMonthlyBudgetUsd,
+  );
+  const [draft, setDraft] = useState(() =>
+    monthlyBudgetUsd > 0 ? String(monthlyBudgetUsd) : "",
+  );
+  const [saving, setSaving] = useState(false);
+
+  function save() {
+    if (saving) return;
+    setSaving(true);
+    const parsed = Number(draft);
+
+    setMonthlyBudgetUsd(Number.isFinite(parsed) && parsed > 0 ? parsed : 0);
+    setSaving(false);
+    toast.success(copy.budgetSaved);
+  }
+
+  return (
+    <Card className="p-6">
+      <Card.Header>
+        <Card.Title>{copy.budgetHeading}</Card.Title>
+        <Card.Description>{copy.budgetHint}</Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <Form
+          className="flex w-full flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save();
+          }}
+        >
+          <TextField
+            name="monthly_budget_usd"
+            value={draft}
+            onChange={setDraft}
+          >
+            <Label>{copy.budgetLabel}</Label>
+            <Input
+              inputMode="decimal"
+              placeholder="0"
+              type="number"
+              variant="secondary"
+            />
+          </TextField>
+          <div>
+            <PendingButton pending={saving} type="submit">
+              {copy.budgetSave}
             </PendingButton>
           </div>
         </Form>
