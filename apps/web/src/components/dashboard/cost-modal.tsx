@@ -5,29 +5,18 @@
 // read time by the pricing engine; unpriced models are called out explicitly.
 
 import type { DashboardCopy } from "@/lib/copy/dashboard";
-import type {
-  ModelBreakdownModel,
-  ModelBreakdownSource,
-  SeriesPoint,
-} from "@/lib/dashboard/api";
+import type { ModelBreakdownSource, SeriesPoint } from "@/lib/dashboard/api";
 
 import { Chip, Modal, Tabs, Typography } from "@heroui/react";
 import { useMemo } from "react";
 
+import { canonicalSourceRows, mergeModelsAcrossSources } from "./aggregate";
 import { CostTrendChart } from "./charts";
 import { SourceIcon } from "./source-icon";
-import { canonicalSource, sourceDisplayLabel } from "./sources";
+import { sourceDisplayLabel } from "./sources";
 
 import { FlowNumber } from "@/components/flow-number";
 import { useFormat } from "@/lib/format/format";
-
-interface ModelRow {
-  model: string;
-  sources: string[];
-  tokens: number;
-  cost: number;
-  unpriced: boolean;
-}
 
 export function CostAnalysisModal({
   open,
@@ -46,67 +35,38 @@ export function CostAnalysisModal({
 }) {
   const { formatTokens, formatCost, formatPercent } = useFormat();
 
-  const models = useMemo<ModelRow[]>(() => {
-    const byModel = new Map<string, ModelRow>();
+  // One row per model name across sources, cost-ranked.
+  const models = useMemo(
+    () =>
+      mergeModelsAcrossSources(sources).sort(
+        (first, second) =>
+          second.totals.total_cost_usd - first.totals.total_cost_usd ||
+          second.totals.total_tokens - first.totals.total_tokens,
+      ),
+    [sources],
+  );
 
-    for (const source of sources) {
-      for (const entry of source.models as ModelBreakdownModel[]) {
-        const existing = byModel.get(entry.model) ?? {
-          model: entry.model,
-          sources: [],
-          tokens: 0,
-          cost: 0,
-          unpriced: false,
-        };
-
-        existing.tokens += entry.totals.total_tokens;
-        existing.cost += Number(entry.totals.total_cost_usd) || 0;
-        existing.unpriced =
-          existing.unpriced ||
-          (entry.pricing.status === "unpriced" &&
-            entry.totals.total_tokens > 0);
-        if (!existing.sources.includes(source.source)) {
-          existing.sources.push(source.source);
-        }
-        byModel.set(entry.model, existing);
-      }
-    }
-
-    return [...byModel.values()].sort(
-      (first, second) =>
-        second.cost - first.cost || second.tokens - first.tokens,
-    );
-  }, [sources]);
-
-  const totalTokens = models.reduce((sum, entry) => sum + entry.tokens, 0);
+  const totalTokens = models.reduce(
+    (sum, entry) => sum + entry.totals.total_tokens,
+    0,
+  );
   const unpriced = models.filter((entry) => entry.unpriced);
-  const trend = daily.map((point) => ({
-    label: point.day ?? "",
-    cost: point.total_cost_usd,
-  }));
-  // Merge aliases into canonical identities (Pi / DeepSeek Harness …) and
-  // sort by cost.
-  const sourceRows = (() => {
-    const byId = new Map<
-      string,
-      { source: string; cost: number; tokens: number }
-    >();
-
-    for (const entry of sources) {
-      const id = canonicalSource(entry.source);
-      const agg = byId.get(id) ?? {
-        source: sourceDisplayLabel(entry.source),
-        cost: 0,
-        tokens: 0,
-      };
-
-      agg.cost += Number(entry.totals.total_cost_usd);
-      agg.tokens += entry.totals.total_tokens;
-      byId.set(id, agg);
-    }
-
-    return [...byId.values()].sort((a, b) => b.cost - a.cost);
-  })();
+  const trend = useMemo(
+    () =>
+      daily.map((point) => ({
+        label: point.day ?? "",
+        cost: point.total_cost_usd,
+      })),
+    [daily],
+  );
+  // Canonical source rows re-sorted by cost for the by-source tab.
+  const sourceRows = useMemo(
+    () =>
+      canonicalSourceRows(sources)
+        .slice()
+        .sort((first, second) => second.totalCost - first.totalCost),
+    [sources],
+  );
 
   return (
     <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
@@ -218,15 +178,17 @@ export function CostAnalysisModal({
                           </span>
                         </span>
                         <span className="tabular-nums">
-                          {formatTokens(entry.tokens)}
+                          {formatTokens(entry.totals.total_tokens)}
                         </span>
                         <span className="text-foreground/60 tabular-nums">
                           {formatPercent(
-                            totalTokens > 0 ? entry.tokens / totalTokens : 0,
+                            totalTokens > 0
+                              ? entry.totals.total_tokens / totalTokens
+                              : 0,
                           )}
                         </span>
                         <span className="tabular-nums">
-                          {formatCost(entry.cost)}
+                          {formatCost(entry.totals.total_cost_usd)}
                         </span>
                       </div>
                     ))}
@@ -248,20 +210,20 @@ export function CostAnalysisModal({
                     </div>
                     {sourceRows.map((entry) => (
                       <div
-                        key={entry.source}
+                        key={entry.id}
                         className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-baseline gap-3 border-b py-2 text-sm last:border-b-0"
                       >
                         <span className="flex min-w-0 items-center gap-1.5">
-                          <SourceIcon label={entry.source} size={14} />
+                          <SourceIcon label={entry.id} size={14} />
                           <span className="truncate font-medium">
-                            {entry.source}
+                            {entry.label}
                           </span>
                         </span>
                         <span className="tabular-nums">
-                          {formatTokens(entry.tokens)}
+                          {formatTokens(entry.totalTokens)}
                         </span>
                         <span className="tabular-nums">
-                          {formatCost(entry.cost)}
+                          {formatCost(entry.totalCost)}
                         </span>
                       </div>
                     ))}

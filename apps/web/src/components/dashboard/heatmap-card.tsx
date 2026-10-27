@@ -31,6 +31,7 @@ import { createPortal } from "react-dom";
 
 import { SourceIcon } from "./source-icon";
 import { canonicalSource, sourceDisplayLabel } from "./sources";
+import { canonicalTokenTotals } from "./aggregate";
 
 import { formatMessage } from "@/lib/copy/message";
 import { tzLabel } from "@/lib/dashboard/ranges";
@@ -223,19 +224,20 @@ export function HeatmapCard({
 
   const columns = useMemo(() => alignWeeks(payload), [payload]);
 
-  const sourceTotals = useMemo(() => {
-    const totals = new Map<string, number>();
-
-    for (const cell of payload.weeks.flat()) {
-      for (const [source, tokens] of Object.entries(cell.sources ?? {})) {
-        const id = canonicalSource(source);
-
-        totals.set(id, (totals.get(id) ?? 0) + tokens);
-      }
-    }
-
-    return [...totals.entries()].sort((first, second) => second[1] - first[1]);
-  }, [payload]);
+  const sourceTotals = useMemo(
+    () =>
+      canonicalTokenTotals(
+        payload.weeks
+          .flat()
+          .flatMap(
+            (cell) =>
+              Object.entries(cell.sources ?? {}) as Array<
+                readonly [string, number]
+              >,
+          ),
+      ),
+    [payload],
+  );
 
   const activeSources = useMemo(
     () =>

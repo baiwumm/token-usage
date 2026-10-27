@@ -9,7 +9,6 @@ import type {
   AccountSummary,
   DashboardDevice,
   DashboardTotals,
-  ModelBreakdownModel,
   ModelBreakdownSource,
 } from "@/lib/dashboard/api";
 
@@ -25,44 +24,15 @@ import {
 } from "@heroui/react";
 import { useMemo, useState } from "react";
 
+import { canonicalSourceRows, mergeModelsAcrossSources } from "./aggregate";
 import { DonutChart, seriesColor } from "./mini-charts";
 import { ModelListModal } from "./model-list-modal";
 import { SourceIcon } from "./source-icon";
-import { canonicalSource, sourceDisplayLabel } from "./sources";
 
 import { FlowNumber } from "@/components/flow-number";
 import { formatMessage } from "@/lib/copy/message";
 import { useLocale } from "@/lib/copy/locale";
 import { useFormat } from "@/lib/format/format";
-
-/** Group raw sources by canonical identity (Pi merges, dsh → label). */
-function canonicalSourceRows(sources: ModelBreakdownSource[]) {
-  const byId = new Map<
-    string,
-    {
-      id: string;
-      label: string;
-      totalTokens: number;
-      models: ModelBreakdownModel[];
-    }
-  >();
-
-  for (const entry of sources) {
-    const id = canonicalSource(entry.source);
-    const agg = byId.get(id) ?? {
-      id,
-      label: sourceDisplayLabel(entry.source),
-      totalTokens: 0,
-      models: [],
-    };
-
-    agg.totalTokens += entry.totals.total_tokens;
-    agg.models.push(...entry.models);
-    byId.set(id, agg);
-  }
-
-  return [...byId.values()].sort((a, b) => b.totalTokens - a.totalTokens);
-}
 
 /**
  * Hero card for the range's total tokens (docs/ui-spec.md 仪表盘): big centered
@@ -102,22 +72,11 @@ export function TotalTokensHero({
       : (sources.find((source) => source.id === openSourceId) ?? null);
   const modalRows = useMemo(() => {
     if (openSourceId === "all") {
-      const byModel = new Map<string, { tokens: number; cost: number }>();
-
-      for (const source of sources) {
-        for (const model of source.models) {
-          const agg = byModel.get(model.model) ?? { tokens: 0, cost: 0 };
-
-          agg.tokens += model.totals.total_tokens;
-          agg.cost += Number(model.totals.total_cost_usd);
-          byModel.set(model.model, agg);
-        }
-      }
-
-      return [...byModel.entries()].map(([model, agg]) => ({
-        model,
-        tokens: agg.tokens,
-        cost: agg.cost,
+      // Merged cross-source ranking: one row per model name.
+      return mergeModelsAcrossSources(breakdown).map((row) => ({
+        model: row.model,
+        tokens: row.totals.total_tokens,
+        cost: row.totals.total_cost_usd,
       }));
     }
 
@@ -126,7 +85,7 @@ export function TotalTokensHero({
       tokens: model.totals.total_tokens,
       cost: Number(model.totals.total_cost_usd),
     }));
-  }, [openSource, openSourceId, sources]);
+  }, [breakdown, openSource, openSourceId]);
   const modalTitle =
     openSourceId === "all" ? copy.cards.heroAll : (openSource?.label ?? "");
   const totalTokens = summary.totals.total_tokens;
@@ -299,53 +258,31 @@ export function TotalTokensHero({
 }
 
 export function TopModels({
-  models,
+  sources,
   copy,
   onViewAll,
 }: {
-  models: ModelBreakdownModel[];
+  sources: ModelBreakdownSource[];
   copy: DashboardCopy;
   onViewAll: () => void;
 }) {
   const { formatTokens, formatCost, formatPercent } = useFormat();
-  const totalTokens = models.reduce(
+  // The wire lists models per source; the same model name can come from
+  // several sources (e.g. step-5-preview on zcode and opencode). Merging by
+  // name keeps the ranking (and its React keys) unique.
+  const merged = useMemo(() => mergeModelsAcrossSources(sources), [sources]);
+  const totalTokens = merged.reduce(
     (sum, entry) => sum + entry.totals.total_tokens,
     0,
   );
 
-  const top = useMemo(() => {
-    // The input is a flat list across sources; the same model name can come
-    // from several sources (e.g. step-5-preview on zcode and opencode).
-    // Merge same-name rows so the list (and its React keys) stay unique.
-    const byModel = new Map<string, ModelBreakdownModel>();
-
-    for (const entry of models) {
-      const prev = byModel.get(entry.model);
-
-      if (!prev) {
-        byModel.set(entry.model, entry);
-        continue;
-      }
-      byModel.set(entry.model, {
-        ...prev,
-        totals: {
-          ...prev.totals,
-          total_tokens: prev.totals.total_tokens + entry.totals.total_tokens,
-          billable_total_tokens:
-            prev.totals.billable_total_tokens +
-            entry.totals.billable_total_tokens,
-          total_cost_usd: (
-            Number(prev.totals.total_cost_usd) +
-            Number(entry.totals.total_cost_usd)
-          ).toFixed(6),
-        },
-      });
-    }
-
-    return [...byModel.values()]
-      .sort((a, b) => b.totals.total_tokens - a.totals.total_tokens)
-      .slice(0, 8);
-  }, [models]);
+  const top = useMemo(
+    () =>
+      [...merged]
+        .sort((a, b) => b.totals.total_tokens - a.totals.total_tokens)
+        .slice(0, 8),
+    [merged],
+  );
 
   return (
     <Card className="p-6">
@@ -413,30 +350,7 @@ export function SourcePanel({
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const [allOpen, setAllOpen] = useState(false);
 
-  const rows = useMemo(() => {
-    const byCanonical = new Map<
-      string,
-      { label: string; totalTokens: number; totalCost: number }
-    >();
-
-    for (const entry of sources) {
-      const id = canonicalSource(entry.source);
-      const label = sourceDisplayLabel(entry.source);
-      const agg = byCanonical.get(id) ?? {
-        label,
-        totalTokens: 0,
-        totalCost: 0,
-      };
-
-      agg.totalTokens += entry.totals.total_tokens;
-      agg.totalCost += Number(entry.totals.total_cost_usd);
-      byCanonical.set(id, agg);
-    }
-
-    return [...byCanonical.entries()]
-      .map(([id, agg]) => ({ id, ...agg }))
-      .sort((a, b) => b.totalTokens - a.totalTokens);
-  }, [sources]);
+  const rows = useMemo(() => canonicalSourceRows(sources), [sources]);
 
   const visible = rows.filter((row) => !hidden.has(row.id));
   const visibleTotal = visible.reduce((sum, row) => sum + row.totalTokens, 0);

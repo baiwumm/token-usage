@@ -20,7 +20,6 @@ import {
   ListBox,
   RangeCalendar,
   Select,
-  Skeleton,
   Spinner,
   Tabs,
   TextField,
@@ -28,7 +27,6 @@ import {
   Popover,
 } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
-import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -48,11 +46,13 @@ import { DevicePanel, SourcePanel, TopModels, TotalTokensHero } from "./panels";
 import { TrendChart, type TrendMetric, type TrendPoint } from "./charts";
 
 import { RangePresetButtons } from "@/components/range-preset-buttons";
+import { SectionError, SectionSkeleton } from "@/components/section-states";
 import { useProfile } from "@/lib/auth/profile";
-import { authBrowserClient } from "@/lib/auth/browser";
-import { LOGIN_PATH } from "@/lib/auth/next-path";
+import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { DASHBOARD_COPY } from "@/lib/copy/dashboard";
 import { useLocale } from "@/lib/copy/locale";
+import { useUrlFilters } from "@/lib/dashboard/url-filters";
+import { loadable, type Loadable } from "@/lib/loadable";
 import {
   DashboardApiError,
   fetchDaily,
@@ -83,8 +83,6 @@ import {
 } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";
 
-type LoadStatus = "loading" | "ready" | "error";
-type Loadable<T> = { status: LoadStatus; data: T | null };
 type TrendMode = "daily" | "monthly";
 type DetailView = "daily" | "hourly" | "monthly";
 
@@ -94,10 +92,6 @@ interface Filters {
   to: string;
   tz: string;
   deviceId: string;
-}
-
-function loadable<T>(): Loadable<T> {
-  return { status: "loading", data: null };
 }
 
 function isUnauthorized(error: unknown): boolean {
@@ -126,37 +120,6 @@ function serializeFilters(filters: Filters): string {
   return query.toString();
 }
 
-function SectionSkeleton({ className }: { className?: string }) {
-  // Same radius as HeroUI cards (min(32px, --radius-3xl)) so loading blocks
-  // match the layout they stand in for.
-  return (
-    <Skeleton
-      className={`rounded-[min(32px,var(--radius-3xl))] ${className ?? "h-40 w-full"}`}
-    />
-  );
-}
-
-function SectionError({
-  message,
-  retry,
-  retryLabel,
-}: {
-  message: string;
-  retry: () => void;
-  retryLabel: string;
-}) {
-  return (
-    <div className="flex flex-col items-start gap-2">
-      <Typography className="text-danger" type="body-sm">
-        {message}
-      </Typography>
-      <Button size="sm" variant="outline" onPress={retry}>
-        {retryLabel}
-      </Button>
-    </div>
-  );
-}
-
 /**
  * Blur overlay shown while a refresh refetches data in place — the previous
  * content stays visible underneath, so the layout never collapses.
@@ -175,18 +138,20 @@ function PanelOverlay({ active }: { active: boolean }) {
 }
 
 export function DashboardClient() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [locale] = useLocale();
   const copy = DASHBOARD_COPY[locale];
   const { formatDate, formatMonth, formatTokens, formatCost, formatPercent } =
     useFormat();
   const { profile } = useProfile();
 
-  const [filters, setFilters] = useState<Filters>(() =>
-    parseFilters(searchParams),
-  );
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const { accessToken, redirectToLogin } = useSessionBootstrap("/");
+
+  const [filters, applyFilters] = useUrlFilters<Filters>({
+    basePath: "/",
+    parse: parseFilters,
+    serialize: serializeFilters,
+  });
+
   const [summaryState, setSummaryState] =
     useState<Loadable<AccountSummary>>(loadable);
   const [dashboardState, setDashboardState] =
@@ -230,48 +195,6 @@ export function DashboardClient() {
     [timezone],
   );
 
-  const redirectToLogin = useCallback(() => {
-    router.replace(`${LOGIN_PATH}?next=${encodeURIComponent("/")}`);
-  }, [router]);
-
-  const applyFilters = useCallback((patch: Partial<Filters>) => {
-    setFilters((previous) => {
-      const next = { ...previous, ...patch };
-      const query = serializeFilters(next);
-
-      window.history.replaceState(null, "", query ? `/?${query}` : "/");
-
-      return next;
-    });
-  }, []);
-
-  useEffect(() => {
-    const onPopState = () => {
-      setFilters(parseFilters(new URLSearchParams(window.location.search)));
-    };
-
-    window.addEventListener("popstate", onPopState);
-
-    return () => window.removeEventListener("popstate", onPopState);
-  }, []);
-
-  // Scrub legacy range params from the address bar on load so a stale link
-  // doesn't keep advertising filters the page no longer restores.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-
-    if (!params.has("range") && !params.has("from") && !params.has("to")) {
-      return;
-    }
-
-    params.delete("range");
-    params.delete("from");
-    params.delete("to");
-    const query = params.toString();
-
-    window.history.replaceState(null, "", query ? `/?${query}` : "/");
-  }, []);
-
   useEffect(() => {
     setTrendMode(filters.range === "all" ? "monthly" : "daily");
   }, [filters.range]);
@@ -279,23 +202,6 @@ export function DashboardClient() {
   useEffect(() => {
     setHourlyDay("");
   }, [timezone]);
-
-  useEffect(() => {
-    const supabase = authBrowserClient();
-
-    void (async () => {
-      const {
-        data: { session },
-      } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
-
-      if (!session?.access_token) {
-        redirectToLogin();
-
-        return;
-      }
-      setAccessToken(session.access_token);
-    })();
-  }, [redirectToLogin]);
 
   // Run id for loadAll: switching range/filters starts a new run while the
   // old one may still be in flight; late responses of a superseded run must
@@ -1009,7 +915,7 @@ export function DashboardClient() {
               {breakdownState.status === "ready" ? (
                 <TopModels
                   copy={copy}
-                  models={breakdown.flatMap((source) => source.models)}
+                  sources={breakdown}
                   onViewAll={() => setCostOpen(true)}
                 />
               ) : (
