@@ -115,6 +115,20 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 下版本候选（0.1.1 / 0.2.0，不阻塞已发版本）
 
+> **待办（非阻塞，随下个 CLI 版本一起改）**：`npm i -g tokenusage-cli` 安装时会
+> 打印一条弃用警告 `prebuild-install@7.1.3: No longer maintained`，它来自
+> `@mongodb-js/zstd` 的传递依赖。不影响安装、初始化与采集（0.2.4 本机验收全程
+> 正常），但可以直接消除：`rollout.js` 仅在 `zlib.zstdDecompressSync` 不存在时才
+> 回落到该包，而包声明 `engines.node >= 22.19`（zlib 自带 zstd），这条回落是
+> Node 20 时代遗留、在当前支持范围内走不到。计划：下个版本删掉
+> `@mongodb-js/zstd` 依赖与两处回落分支，同步修订 `docs/rewrite-plan.md` §4 依赖
+> 预算；回归方式是 `tokenusage sync --source zcode`（zstd 归档读取路径）与现有
+> 采集测试。
+> 顺带记录运行时副本的体积分布（本机 67.1 MB）：`@sentry` 43.1 MB、
+> `@journeyapps/wa-sqlite` 17.2 MB、`@mongodb-js/zstd` 0.6 MB。Sentry 在无 DSN 时
+> 不会上报，却仍被整包复制；若下版本把 Sentry 改成动态可选加载，副本能缩到
+> ~20 MB，init 复制也更快——这属于依赖预算调整，需操作者先点头再动。
+
 > **0.2.4（2026-10-28 发 0.2.3 后立即补）**：0.2.3 的 VBS 把 npm 全局前缀里的包
 > 路径写死，而 nvm-windows 的全局前缀按 Node 版本分目录（家里机是
 > `E:\nvm\nvm\v24.4.1\node_modules\tokenusage-cli`），`nvm use` 之后路径消失，
