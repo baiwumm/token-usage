@@ -115,6 +115,15 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 下版本候选（0.1.1 / 0.2.0，不阻塞已发版本）
 
+> **0.2.3（2026-10-28 家里机按 0.2.2 升级清单实测发现）**：0.2.x 的 init 把隐藏
+> VBS 注册到 `src/cli.js`（只导出 `run()` 的库文件，没有入口）——Windows 计划
+> 任务每轮 0.1 秒退出 0，不采集、不写日志，`LastTaskResult` 恒为 0；且
+> `--from-scheduled` 运行不落 autoLog，与 0.2.2 发布说明不符。两处均已修并加
+> 回归测试。家里机已用 patch 包实测（任务 7 秒完成、滚动日志追加、
+> `token_sync_runs` 记 `trigger=scheduled`）；升级 0.2.3 的机器重跑一次
+> `init --yes --no-integrations --no-open` 修正任务入口。发版按 §二：提交 +
+> push main → 操作者打 `cli-v0.2.3`。
+
 > **0.2.2（2026-10-28）**：三小项 + 新机初始化严重缺陷修复。验收发现的
 > `bin/tracker.js` 缺失（fork 改名 bin 后安装器未跟改，0.1.0 起 npm 全新安装
 > 的 init 必崩、单测因跳过运行时拷贝漏网）已修 + 行为级回归测试（真实执行

@@ -3,6 +3,20 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## 0.2.3
+
+修复 0.2.x 计划任务的两个隐藏缺陷（0.2.2 升级验收时实测发现）。
+
+- 计划任务指向错误入口：init 注册的隐藏 VBS 调用的是 `src/cli.js`——那是只
+  导出 `run()` 的库文件、没有命令行入口，任务 0.1 秒内以退出码 0 结束，
+  既不采集也不写日志，`LastTaskResult` 永远是 0（看起来永远成功）。VBS 现
+  固定指向包内 `bin/tokenusage.js`，并有回归测试锁定（禁止再指向 `src/cli.js`）。
+- 定时运行不落日志：`sync --from-scheduled` 只打印到 stdout，隐藏窗口下没有
+  任何 trail，与 0.2.2 发布说明不符。现在所有自动风味运行（scheduled / hook /
+  retry / watch）统一追加到滚动日志 `~/.tokenusage/tracker/logs/sync.log`。
+- 已注册过任务的机器：升级后重跑一次
+  `tokenusage init --yes --no-integrations --no-open` 即可修正任务入口。
+
 ## 0.2.2
 
 新机初始化修复与采集口径修正。

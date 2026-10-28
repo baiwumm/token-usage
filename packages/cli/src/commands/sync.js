@@ -638,7 +638,10 @@ async function cmdSync(argv, context = {}) {
     // try/finally so an auxiliary diagnostic never strands the sync lock.
     await clearSyncSkip(trackerDir);
     progress = !opts.auto ? createProgress({ stream: process.stdout }) : null;
-    if (opts.auto) {
+    // Every auto-flavored run (scheduled task, hooks, retry, watch) self-logs:
+    // a hidden TTY-less task has no other trail, so --from-scheduled must not
+    // fall through to the interactive stdout summary below.
+    if (autoishSync) {
       autoLog("Auto sync started — scanning local provider sessions…");
     }
     const configPath = path.join(trackerDir, "config.json");
@@ -3878,7 +3881,7 @@ async function cmdSync(argv, context = {}) {
       }
     }
 
-    if (!opts.auto) {
+    if (!autoishSync) {
       const codexRecordOnlyWarning = formatRecordOnlyWarning(countRecordOnlyFiles(cursors));
       process.stdout.write(
         [

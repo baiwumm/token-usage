@@ -453,10 +453,9 @@ async function runSetup({
       detail: "Skipped (--no-task); auto syncs stay manual",
     });
   } else {
-    const taskOutcome = registerWindowsScheduledTask({
-      binDir,
-      cliJs: path.resolve(__dirname, "..", "cli.js"),
-    });
+    // The VBS always targets the package's bin entry (scheduled-task.js owns
+    // that path): pointing it at src/cli.js makes the hidden task a no-op.
+    const taskOutcome = registerWindowsScheduledTask({ binDir });
     summary.push({
       label: "Scheduled task",
       status: taskOutcome.registered ? "installed" : "skipped",

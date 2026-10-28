@@ -25,6 +25,7 @@ const {
 } = require("../src/lib/sync-report");
 const {
   TASK_NAME,
+  cliEntryPath,
   buildHiddenRunnerVbs,
 } = require("../src/lib/scheduled-task");
 
@@ -170,14 +171,26 @@ test("report() is strictly best-effort: never throws, skips unpaired runs, logs 
 test("hidden-runner VBS quotes paths individually and propagates the exit code", () => {
   const vbs = buildHiddenRunnerVbs({
     nodeExe: "C:\\Program Files\\nodejs\\node.exe",
-    cliJs: "C:\\Users\\me\\AppData\\tokenusage-cli\\src\\cli.js",
+    cliJs: "C:\\Users\\me\\AppData\\tokenusage-cli\\bin\\tokenusage.js",
   });
   assert.match(vbs, /WScript\.Quit shell\.Run/);
-  assert.match(vbs, /""C:\\Program Files\\nodejs\\node\.exe"" ""C:\\Users\\me\\AppData\\tokenusage-cli\\src\\cli\.js"" sync --from-scheduled/);
+  assert.match(vbs, /""C:\\Program Files\\nodejs\\node\.exe"" ""C:\\Users\\me\\AppData\\tokenusage-cli\\bin\\tokenusage\.js"" sync --from-scheduled/);
   // Hidden window (0) + wait for completion (True).
   assert.match(vbs, /, 0, True\)/);
   // The task name stays stable — pause/resume and uninstall toggle by name.
   assert.equal(TASK_NAME, "TokenUsageSync");
+});
+
+// 0.2.2 regression: init registered src/cli.js instead of the bin entry. That
+// file only exports run(), so the hidden task exited 0 within ~0.1 s without
+// collecting or logging anything — a silent, permanently "successful" task.
+test("scheduled task launches the CLI entry, never the inert src/cli.js", () => {
+  const entry = cliEntryPath().replace(/\\/g, "/");
+  assert.match(entry, /\/bin\/tokenusage\.js$/);
+  assert.ok(fs.existsSync(cliEntryPath()), "the registered entry must exist in the package");
+
+  const vbs = buildHiddenRunnerVbs({ nodeExe: "node.exe", cliJs: cliEntryPath() });
+  assert.doesNotMatch(vbs, /src[\\/]cli\.js/);
 });
 
 test("--from-scheduled reports as scheduled, unlike a plain manual run", () => {

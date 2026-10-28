@@ -31,6 +31,13 @@ function vbsPathFor(binDir) {
   return path.join(binDir, VBS_FILE);
 }
 
+// The task must launch the package's CLI entry, not src/cli.js: the latter is
+// a library that only exports run(), so a hidden `node src/cli.js sync ...`
+// exits 0 having collected nothing (the task then looks successful forever).
+function cliEntryPath() {
+  return path.resolve(__dirname, "..", "..", "bin", "tokenusage.js");
+}
+
 /**
  * The hidden-runner wrapper. Paths are quoted individually and cmd is NOT
  * involved: wscript runs node directly, so the cmd /c outer-quote-stripping
@@ -53,7 +60,7 @@ function buildHiddenRunnerVbs({ nodeExe, cliJs }) {
   ].join("\n");
 }
 
-function writeHiddenRunner({ binDir, nodeExe = process.execPath, cliJs }) {
+function writeHiddenRunner({ binDir, nodeExe = process.execPath, cliJs = cliEntryPath() }) {
   fs.mkdirSync(binDir, { recursive: true });
   const vbsPath = vbsPathFor(binDir);
   fs.writeFileSync(vbsPath, buildHiddenRunnerVbs({ nodeExe, cliJs }), { mode: 0o600 });
@@ -64,7 +71,7 @@ function writeHiddenRunner({ binDir, nodeExe = process.execPath, cliJs }) {
  * Register (idempotently — /F overwrites) the hourly hidden task. Returns
  * {registered: true} or {registered: false, reason} instead of throwing.
  */
-function registerWindowsScheduledTask({ binDir, cliJs, nodeExe = process.execPath }) {
+function registerWindowsScheduledTask({ binDir, cliJs = cliEntryPath(), nodeExe = process.execPath }) {
   if (!isWindows()) return { registered: false, reason: "not_windows" };
   try {
     const vbsPath = writeHiddenRunner({ binDir, nodeExe, cliJs });
@@ -139,6 +146,7 @@ module.exports = {
   VBS_FILE,
   isWindows,
   vbsPathFor,
+  cliEntryPath,
   buildHiddenRunnerVbs,
   writeHiddenRunner,
   registerWindowsScheduledTask,
