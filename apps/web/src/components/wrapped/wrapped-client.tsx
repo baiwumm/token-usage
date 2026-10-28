@@ -4,56 +4,45 @@
 // sources/models breakdown, highlights, and a Canvas-2D share card export.
 // Data comes from the frozen Dashboard-face endpoints (dashboard payload +
 // account-monthly).
+//
+// The page is split by concern: wrapped-header.tsx (year select + export),
+// share-card-preview.tsx / share-card-canvas.ts (the share card and its
+// export), stat-cards.tsx, monthly-card.tsx, sources-card.tsx and
+// models-table.tsx render the blocks; wrapped-skeleton.tsx is the first load.
 
-import {
-  ArrowDownToLine,
-  Calendar,
-  Comments,
-  Hashtag,
-  Wallet,
-} from "@gravity-ui/icons";
-import {
-  Button,
-  Card,
-  ListBox,
-  Meter,
-  Select,
-  Spinner,
-  Typography,
-  toast,
-  Popover,
-} from "@heroui/react";
+import type { TrendPoint } from "../dashboard/charts";
+
+import { Button, Card, Typography } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { TrendChart, type TrendPoint } from "../dashboard/charts";
-import { seriesColor } from "../dashboard/mini-charts";
-import { SourceIcon } from "../dashboard/source-icon";
 import { sourceDisplayLabel } from "../dashboard/sources";
 
+import { ModelsTable } from "./models-table";
+import { MonthlyCard } from "./monthly-card";
+import { exportShareCard } from "./share-card-canvas";
+import { ShareCardPreview } from "./share-card-preview";
+import { SourcesCard } from "./sources-card";
+import { StatCards } from "./stat-cards";
+import { WrappedHeader } from "./wrapped-header";
 import { WrappedSkeleton } from "./wrapped-skeleton";
 
-import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
-import { WRAPPED_COPY } from "@/lib/copy/wrapped";
-import { useLocale } from "@/lib/copy/locale";
-import {
-  DashboardApiError,
-  fetchDashboard,
-  fetchMonthly,
-  type DashboardModel,
-  type DashboardPayload,
-  type MonthlyPoint,
-} from "@/lib/dashboard/api";
-import { useFormat } from "@/lib/format/format";
 import {
   ALL_RANGE_START,
   browserTimezone,
   dayKeyInTz,
   yearRange,
 } from "@/lib/dashboard/ranges";
+import { useFormat } from "@/lib/format/format";
 import {
-  DataTableCard,
-  type DataTableColumn,
-} from "@/components/data-table-card";
+  DashboardApiError,
+  fetchDashboard,
+  fetchMonthly,
+  type DashboardPayload,
+  type MonthlyPoint,
+} from "@/lib/dashboard/api";
+import { useLocale } from "@/lib/copy/locale";
+import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
+import { WRAPPED_COPY } from "@/lib/copy/wrapped";
 
 type LoadStatus = "loading" | "ready" | "error";
 
@@ -79,8 +68,7 @@ function monthsOfYear(year: number, timeZone: string): string[] {
 export function WrappedClient() {
   const [locale] = useLocale();
   const copy = WRAPPED_COPY[locale];
-  const { formatTokens, formatCost, formatNumber, formatPercent, formatMonth } =
-    useFormat();
+  const { formatTokens, formatCost, formatNumber, formatMonth } = useFormat();
 
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -92,7 +80,6 @@ export function WrappedClient() {
   const [historyYears, setHistoryYears] = useState<number[]>([]);
   const [exporting, setExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const cardRef = useRef<HTMLDivElement | null>(null);
   // Run id: switching years starts a new load while the old one may still be
   // in flight; a superseded response must never overwrite the newer year.
   const loadSeq = useRef(0);
@@ -185,130 +172,6 @@ export function WrappedClient() {
     setYear(historyYears[0]);
   }, [historyYears, year]);
 
-  // Canvas-drawn share card: html-to-image hangs cloning this page's
-  // Tailwind-4/oklch computed styles (tried font on/off, pixelRatio 1/2 --
-  // the img.load step never settles), so the export draws the same design
-  // with Canvas 2D directly. Deterministic and resolution-independent.
-  function drawShareCard(): string {
-    const width = 1200;
-    const height = 630;
-    const scale = 2;
-    const canvas = document.createElement("canvas");
-
-    canvas.width = width * scale;
-    canvas.height = height * scale;
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) throw new Error("canvas unavailable");
-    ctx.scale(scale, scale);
-
-    const yearTotals = totals;
-    const font = '"Maple Mono CN", ui-monospace, monospace';
-
-    // Backdrop: dark brand surface with a soft primary glow.
-    ctx.fillStyle = "#101014";
-    ctx.fillRect(0, 0, width, height);
-    const glow = ctx.createRadialGradient(
-      width - 160,
-      120,
-      40,
-      width - 160,
-      120,
-      520,
-    );
-
-    glow.addColorStop(0, "rgba(99,102,241,0.35)");
-    glow.addColorStop(1, "rgba(99,102,241,0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.textBaseline = "top";
-
-    // Header.
-    ctx.fillStyle = "#f1f1f3";
-    ctx.font = `600 30px ${font}`;
-    ctx.fillText("Token Usage", 64, 56);
-    ctx.fillStyle = "rgba(241,241,243,0.55)";
-    ctx.font = `400 16px ${font}`;
-    ctx.fillText(copy.share.cardCaption, 64, 96);
-
-    // Year headline — same title the preview shows.
-    ctx.fillStyle = "#f1f1f3";
-    ctx.font = `700 54px ${font}`;
-    ctx.fillText(copy.share.cardTitle.replace("{year}", String(year)), 64, 150);
-
-    // Big token number.
-    ctx.fillStyle = "#818cf8";
-    ctx.font = `700 64px ${font}`;
-    ctx.fillText(formatTokens(yearTotals?.total_tokens ?? 0), 64, 236);
-    ctx.fillStyle = "rgba(241,241,243,0.55)";
-    ctx.font = `400 18px ${font}`;
-    ctx.fillText(copy.cards.totalTokens, 64, 312);
-
-    // Stat tiles.
-    const tiles: Array<[string, string]> = [
-      [copy.cards.cost, formatCost(yearTotals?.total_cost_usd ?? 0)],
-      [copy.cards.conversations, formatNumber(yearTotals?.conversations ?? 0)],
-      [copy.cards.activeDays, formatNumber(yearTotals?.active_days ?? 0)],
-    ];
-    let tileX = 64;
-
-    for (const [label, value] of tiles) {
-      ctx.fillStyle = "rgba(255,255,255,0.06)";
-      ctx.beginPath();
-      ctx.roundRect(tileX, 368, 330, 108, 14);
-      ctx.fill();
-      ctx.fillStyle = "rgba(241,241,243,0.55)";
-      ctx.font = `400 15px ${font}`;
-      ctx.fillText(label, tileX + 22, 392);
-      ctx.fillStyle = "#f1f1f3";
-      ctx.font = `600 28px ${font}`;
-      ctx.fillText(value, tileX + 22, 422);
-      tileX += 354;
-    }
-
-    // Highlights line.
-    if (highlights.length > 0) {
-      ctx.fillStyle = "rgba(241,241,243,0.7)";
-      ctx.font = `400 17px ${font}`;
-      const line = highlights
-        .map(([label, value]) => `${label}: ${value}`)
-        .join("   ·   ");
-
-      ctx.fillText(line.slice(0, 110), 64, 528);
-    }
-
-    return canvas.toDataURL("image/png");
-  }
-
-  async function exportCard() {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error("export timeout")), 15_000);
-    });
-
-    try {
-      const dataUrl = await Promise.race([drawShareCard(), timeout]);
-      const link = document.createElement("a");
-
-      link.download = `token-usage-wrapped-${year}.png`;
-      link.href = dataUrl;
-      link.click();
-      toast.success(copy.share.exported);
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : "";
-
-      toast(
-        detail
-          ? `${copy.share.exportFailed} (${detail})`
-          : copy.share.exportFailed,
-      );
-    } finally {
-      clearTimeout(timer);
-      setExporting(false);
-    }
-  }
-
   const totals = payload?.totals;
   const hasData = (totals?.total_tokens ?? 0) > 0;
   const models = payload?.models ?? [];
@@ -368,146 +231,38 @@ export function WrappedClient() {
   }
 
   const totalTokens = totals?.total_tokens ?? 0;
-  const stats = totals
-    ? [
-        {
-          key: "tokens",
-          label: copy.cards.totalTokens,
-          value: formatTokens(totals.total_tokens),
-          icon: Hashtag,
-        },
-        {
-          key: "cost",
-          label: copy.cards.cost,
-          value: formatCost(totals.total_cost_usd),
-          icon: Wallet,
-        },
-        {
-          key: "conversations",
-          label: copy.cards.conversations,
-          value: formatNumber(totals.conversations),
-          icon: Comments,
-        },
-        {
-          key: "activeDays",
-          label: copy.cards.activeDays,
-          value: formatNumber(totals.active_days),
-          icon: Calendar,
-        },
-      ]
-    : [];
 
-  const modelColumns = useMemo<DataTableColumn<DashboardModel>[]>(
-    () => [
-      {
-        id: "model",
-        header: copy.table.model,
-        cell: (entry) => (
-          <span className="flex min-w-0 items-center gap-1.5">
-            <SourceIcon label={entry.model} size={14} />
-            <span className="truncate font-medium">{entry.model}</span>
-          </span>
-        ),
-      },
-      {
-        id: "tokens",
-        header: copy.table.tokens,
-        className: "whitespace-nowrap tabular-nums",
-        cell: (entry) => formatTokens(entry.total_tokens),
-      },
-      {
-        id: "cost",
-        header: copy.table.cost,
-        className: "whitespace-nowrap tabular-nums",
-        cell: (entry) => formatCost(entry.total_cost_usd),
-      },
-      {
-        id: "share",
-        header: copy.table.share,
-        cell: (entry) => {
-          const share = totalTokens > 0 ? entry.total_tokens / totalTokens : 0;
-
-          return (
-            <div className="flex items-center gap-2">
-              <Meter
-                aria-label={`${entry.model} ${formatPercent(share)}`}
-                className="w-24 shrink-0"
-                value={share * 100}
-              >
-                <Meter.Track className="h-1.5">
-                  <Meter.Fill className="bg-accent" />
-                </Meter.Track>
-              </Meter>
-              <span className="text-foreground/60 tabular-nums text-xs">
-                {formatPercent(share)}
-              </span>
-            </div>
-          );
-        },
-      },
-    ],
-    [copy, formatCost, formatPercent, formatTokens, totalTokens],
-  );
+  async function exportCard() {
+    try {
+      await exportShareCard({
+        copy,
+        year,
+        totals,
+        highlights,
+        formatTokens,
+        formatCost,
+        formatNumber,
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-8">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <Select
-          aria-label={copy.yearAriaLabel}
-          className="w-48"
-          value={String(year)}
-          onChange={(key) => {
-            if (key == null) return;
-            yearChosen.current = true;
-            setYear(Number(key));
-          }}
-        >
-          <Select.Trigger>
-            <Select.Value />
-            {/* Options are still loading: the indicator becomes a spinner;
-                otherwise it falls back to the chevron. */}
-            {refreshing ? (
-              <Select.Indicator>
-                <Spinner size="sm" />
-              </Select.Indicator>
-            ) : (
-              <Select.Indicator />
-            )}
-          </Select.Trigger>
-          <Select.Popover>
-            <Popover.Arrow />
-            <ListBox>
-              {yearOptions.map((candidate) => (
-                <ListBox.Item
-                  key={candidate}
-                  id={String(candidate)}
-                  textValue={String(candidate)}
-                >
-                  {`${candidate} ${copy.yearSuffix}`}
-                </ListBox.Item>
-              ))}
-            </ListBox>
-          </Select.Popover>
-        </Select>
-        <Button
-          isDisabled={!hasData}
-          isPending={exporting}
-          size="sm"
-          variant="secondary"
-          onPress={() => void exportCard()}
-        >
-          {({ isPending }) => (
-            <>
-              {isPending ? (
-                <Spinner color="current" size="sm" />
-              ) : (
-                <ArrowDownToLine className="size-4" />
-              )}
-              {copy.share.button}
-            </>
-          )}
-        </Button>
-      </header>
+      <WrappedHeader
+        copy={copy}
+        exporting={exporting}
+        hasData={hasData}
+        refreshing={refreshing}
+        year={year}
+        yearOptions={yearOptions}
+        onExport={() => void exportCard()}
+        onYearChange={(next) => {
+          yearChosen.current = true;
+          setYear(next);
+        }}
+      />
 
       {status === "loading" ? <WrappedSkeleton /> : null}
 
@@ -540,190 +295,30 @@ export function WrappedClient() {
 
       {status === "ready" && hasData && totals ? (
         <>
-          {/* Share card preview — the export draws this design to canvas. */}
-          <div
-            ref={cardRef}
-            className="bg-surface flex flex-col gap-4 rounded-3xl p-8"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex flex-col gap-1">
-                <Typography type="h4">
-                  {copy.share.cardTitle.replace("{year}", String(year))}
-                </Typography>
-                <Typography color="muted" type="body-xs">
-                  {copy.share.cardCaption}
-                </Typography>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <Typography className="text-accent" type="h3" weight="bold">
-                  {formatTokens(totals.total_tokens)}
-                </Typography>
-                <Typography color="muted" type="body-xs">
-                  {copy.cards.totalTokens}
-                </Typography>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {[
-                [copy.cards.cost, formatCost(totals.total_cost_usd)],
-                [copy.cards.conversations, formatNumber(totals.conversations)],
-                [copy.cards.activeDays, formatNumber(totals.active_days)],
-              ].map(([label, value]) => (
-                <div key={label} className="bg-default rounded-3xl p-3">
-                  <Typography color="muted" type="body-xs">
-                    {label}
-                  </Typography>
-                  <Typography
-                    className="tabular-nums"
-                    type="body"
-                    weight="semibold"
-                  >
-                    {value}
-                  </Typography>
-                </div>
-              ))}
-            </div>
-            {highlights.length > 0 ? (
-              <div className="flex flex-col gap-1.5">
-                <Typography color="muted" type="body-xs">
-                  {copy.highlightsTitle}
-                </Typography>
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
-                  {highlights.map(([label, value]) => (
-                    <Typography key={label} color="muted" type="body-sm">
-                      {`${label}: `}
-                      <span className="text-foreground">{value}</span>
-                    </Typography>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
+          <ShareCardPreview
+            copy={copy}
+            highlights={highlights}
+            totals={totals}
+            year={year}
+          />
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {stats.map((card) => (
-              <Card key={card.key} className="gap-1 p-4">
-                <Card.Header className="flex-row items-center justify-between gap-2">
-                  <Card.Title className="text-muted text-xs font-normal">
-                    {card.label}
-                  </Card.Title>
-                  <card.icon
-                    aria-hidden="true"
-                    className="text-accent/70 size-4"
-                  />
-                </Card.Header>
-                <Card.Content>
-                  <Typography
-                    className="tabular-nums"
-                    type="h4"
-                    weight="semibold"
-                  >
-                    {card.value}
-                  </Typography>
-                </Card.Content>
-              </Card>
-            ))}
-          </div>
+          <StatCards copy={copy} totals={totals} />
 
-          <Card className="p-6">
-            <Card.Header>
-              <Card.Title>{copy.monthlyTitle}</Card.Title>
-            </Card.Header>
-            <Card.Content>
-              <TrendChart
-                ariaLabel={`${year} ${copy.monthlyTitle}`}
-                data={trendData}
-                emptyLabel={copy.monthlyTitle}
-                labels={{
-                  tokens: copy.cards.totalTokens,
-                  cost: copy.cards.cost,
-                  conversations: copy.cards.conversations,
-                  input: copy.trend.input,
-                  cached: copy.trend.cached,
-                  output: copy.trend.output,
-                }}
-                metric="tokens"
-              />
-            </Card.Content>
-          </Card>
+          <MonthlyCard copy={copy} data={trendData} year={year} />
 
           {sources.length > 0 ? (
-            <Card className="p-6">
-              <Card.Header>
-                <Card.Title>{copy.sourcesTitle}</Card.Title>
-              </Card.Header>
-              <Card.Content className="flex flex-col gap-3">
-                {/* One stacked bar for the year's source mix, then a row per
-                    source: brand logo, display label, volume and share. */}
-                <div
-                  aria-hidden="true"
-                  className="flex h-2 w-full overflow-hidden rounded-full"
-                >
-                  {sources.map((entry, index) => (
-                    <div
-                      key={entry.source}
-                      style={{
-                        background: seriesColor(index),
-                        width: `${
-                          totalTokens > 0
-                            ? (entry.total_tokens / totalTokens) * 100
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  ))}
-                </div>
-                {sources.map((entry, index) => {
-                  const share =
-                    totalTokens > 0 ? entry.total_tokens / totalTokens : 0;
-
-                  return (
-                    <div key={entry.source} className="flex flex-col gap-1">
-                      <div className="flex items-baseline justify-between gap-2 text-sm">
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <SourceIcon label={entry.source} size={14} />
-                          <span className="truncate font-medium">
-                            {sourceDisplayLabel(entry.source)}
-                          </span>
-                        </span>
-                        <span className="text-foreground/60 tabular-nums text-xs">
-                          {formatTokens(entry.total_tokens)} ·{" "}
-                          {formatPercent(share)} ·{" "}
-                          {formatCost(entry.total_cost_usd)}
-                        </span>
-                      </div>
-                      <div
-                        aria-hidden="true"
-                        className="bg-default h-1.5 w-full overflow-hidden rounded-full"
-                      >
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            background: seriesColor(index),
-                            width: `${share * 100}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </Card.Content>
-            </Card>
+            <SourcesCard
+              copy={copy}
+              sources={sources}
+              totalTokens={totalTokens}
+            />
           ) : null}
 
-          <DataTableCard
-            columns={modelColumns}
-            empty={
-              <Typography color="muted" type="body-sm">
-                {copy.modelsEmpty}
-              </Typography>
-            }
+          <ModelsTable
+            copy={copy}
+            models={models}
             refreshing={refreshing}
-            rowKey={(entry) => entry.model}
-            rows={models}
-            status="ready"
-            tableLabel={copy.modelsTitle}
-            title={copy.modelsTitle}
+            totalTokens={totalTokens}
           />
         </>
       ) : null}
