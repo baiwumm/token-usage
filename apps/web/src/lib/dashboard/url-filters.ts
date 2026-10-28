@@ -17,14 +17,22 @@ export function useUrlFilters<F>(config: {
   serialize: (filters: F) => string;
   /** Extra merge rules, e.g. sessions resetting paging on any other change. */
   merge?: (previous: F, patch: Partial<F>) => F;
+  /**
+   * Seeds the initial state. Pass the router's search params on pages that can
+   * be entered from a cross-page deep link: a client navigation renders the
+   * new page before Next.js updates the address bar, so reading
+   * `window.location` there still sees the previous page's query.
+   */
+  initialParams?: URLSearchParams;
 }): readonly [F, (patch: Partial<F>) => void] {
-  const { basePath, parse, serialize } = config;
+  const { basePath, parse, serialize, initialParams } = config;
   const merge = config.merge ?? mergeReplace;
   const [filters, setFilters] = useState<F>(() =>
     parse(
-      new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search,
-      ),
+      initialParams ??
+        new URLSearchParams(
+          typeof window === "undefined" ? "" : window.location.search,
+        ),
     ),
   );
 
@@ -40,9 +48,9 @@ export function useUrlFilters<F>(config: {
   }, [parse]);
 
   // Mirror the filters back to the URL. This replaces the one-off legacy
-  // scrub too: serialize() never emits range/from/to, so the first run
-  // already strips stale range bookmarks. Running in an effect (never inside
-  // a setState updater) keeps StrictMode double-invocation safe.
+  // scrub too: a page whose serialize() omits range/from/to rewrites stale
+  // bookmarks away on the first run. Running in an effect (never inside a
+  // setState updater) keeps StrictMode double-invocation safe.
   useEffect(() => {
     const query = serialize(filters);
 

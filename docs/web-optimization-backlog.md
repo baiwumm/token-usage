@@ -120,8 +120,8 @@
 - [x] D1 热力图 cell → `/sessions?from=day&to=day` 交叉跳转（cell 已带 day key），
       形成"异常高峰日 → 查当天会话"闭环。
       实现：cell 在传入 `onDaySelect` 时渲染为 button（hover 放大 + 焦点环）；
-      sessions 的 `parseFilters` 接受一次性 from/to 初始窗（合法且顺序正确才采纳，
-      自身筛选仍不回写 URL，符合 2026-10-26 裁定）。
+      sessions 的 `parseFilters` 接受 from/to 作为自定义窗口并回写地址栏（合法且顺序正确
+      才采纳；预设仍不 round-trip——2026-10-28 修订 2026-10-26 裁定）。
 - [ ] D2 Sessions 表列排序 + 导出当前过滤结果 CSV。**保留待办**：排序要给
       account-sessions 加 `order` 参数、CSV 要加 `format=csv`（§2.7 是 Dashboard 面
       可演进，但仍是契约变更：文档回写 + golden + 前端 UI 三块），体量相当于半个

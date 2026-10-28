@@ -4,9 +4,10 @@
 // metadata only — the API never returns prompts, bodies, titles, absolute
 // paths or resume commands, and session_id stays an internal key.
 //
-// Device/source filters, search and the server-side offset live in the URL;
-// the time range is session-only (mirrors the dashboard, 2026-10-26). Filter
-// changes only refetch data (replaceState + popstate sync, no navigation).
+// Device/source filters, search and the server-side offset live in the URL, as
+// does a custom time window (2026-10-28); preset ranges stay session-only.
+// Filter changes only refetch data (replaceState + popstate sync, no
+// navigation).
 
 import { ChartColumn, Clock, Layers, ListUl, Wallet } from "@gravity-ui/icons";
 import {
@@ -27,7 +28,7 @@ import {
   Popover,
 } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -86,12 +87,12 @@ interface Filters {
   pageSize: number;
 }
 
-// Range filters never round-trip the URL (operator call 2026-10-26, same as
-// the dashboard): a stale ?range=…&from=… link must not pin the list to old
-// dates, so only device/source/search/paging persist and every load starts
-// at the default window. Exception: a fresh cross-page entry (heatmap cell →
-// sessions) may seed an exact window once — serialize() never emits from/to,
-// so the first filter change rewrites it away.
+// Preset ranges stay out of the URL (operator call 2026-10-26: a stale
+// ?range=… link must not pin the list to old dates, so presets always resolve
+// relative to today). A custom window does round-trip (operator call
+// 2026-10-28): the heatmap-cell deep link and a manual calendar pick both keep
+// from/to in the address bar, so refreshing or sharing the link shows the same
+// days instead of losing them on the first rewrite.
 function parseFilters(params: { get(name: string): string | null }): Filters {
   const rawOffset = Number(params.get("offset"));
   const rawPageSize = Number(params.get("page_size"));
@@ -117,6 +118,15 @@ function parseFilters(params: { get(name: string): string | null }): Filters {
 function serializeFilters(filters: Filters): string {
   const query = new URLSearchParams();
 
+  if (
+    filters.range === "custom" &&
+    isValidDayKey(filters.from) &&
+    isValidDayKey(filters.to) &&
+    filters.from <= filters.to
+  ) {
+    query.set("from", filters.from);
+    query.set("to", filters.to);
+  }
   if (filters.deviceId) query.set("device_id", filters.deviceId);
   if (filters.source) query.set("source", filters.source);
   if (filters.q) query.set("q", filters.q);
@@ -510,11 +520,13 @@ export function SessionsClient() {
     useFormat();
 
   const { accessToken, redirectToLogin } = useSessionBootstrap("/sessions");
+  const searchParams = useSearchParams();
   const [filters, applyFilters] = useUrlFilters<Filters>({
     basePath: "/sessions",
     parse: parseFilters,
     serialize: serializeFilters,
     merge: mergeSessionFilters,
+    initialParams: searchParams,
   });
   const [state, setState] = useState<Loadable<SessionsPayload>>(loadable);
   const [facets, setFacets] = useState<SessionsPayload["facets"]>({
