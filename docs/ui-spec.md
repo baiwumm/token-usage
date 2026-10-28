@@ -187,6 +187,20 @@
 - 模型用量：`Table` 一次展示全部（不分页），列：模型（`SourceIcon` 厂商 Logo + 模型
   名）、Tokens、成本、占比（`Meter` + 百分比）。
 
+### 服务状态（`/service-status`）
+
+- 页头：副标题 + 右侧「重新检查」按钮（`isPending` 时图标位换成 `Spinner` 并禁用，
+  同一个 `Spinner` 不另挂按钮外）。检查一开始就把四项探针以「检查中」占位整表重绘，
+  重跑不折叠成单行再逐行回填。
+- 实例信息卡三行：Supabase 项目 / 配对回调地址 / 会话，前置 `Database` / `Link` /
+  `ShieldCheck` 图标（`text-accent/70`）；会话值按状态着色（success / danger / muted）。
+- 探活表：检查项列 = 图标（`Globe` / `ShieldCheck` / `ChartLine` / `Display`）+ 本地化
+  名称 + 第二行 muted 明细（总计 tokens / 设备数 / 无会话 / 错误原文，异常时用 danger）；
+  目标列显示探针目标；状态列 `Chip` soft（success / danger / default）；延迟列 ≤300ms
+  用 `text-success`、>1500ms 用 `text-warning`，会话行不是网络探针显示 `—`。
+- 明细与页脚冷启动提示（带 `{ms}` 占位）都在 `lib/copy/status.ts`，探针只返回数据
+  （`{kind: "tokens" | "devices" | "no-session" | "raw"}`），渲染时才拼语言。
+
 ### 设置 · 账户设置（`/settings`）
 
 设置页用 `Tabs` / 分段导航：账户 / 偏好 / 设备（tab 状态为组件内 state，不写 URL）；
