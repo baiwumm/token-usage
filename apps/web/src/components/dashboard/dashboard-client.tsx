@@ -869,7 +869,7 @@ export function DashboardClient() {
             </Button>
             <Tooltip.Content showArrow placement="bottom">
               <Tooltip.Arrow />
-              <Typography color="muted" type="body-xs">
+              <Typography type="body-xs">
                 {lastUpdatedAt == null
                   ? copy.lastUpdatedNone
                   : formatMessage(copy.lastUpdated, locale, {

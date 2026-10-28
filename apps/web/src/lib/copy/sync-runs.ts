@@ -11,6 +11,9 @@ export interface SyncRunsCopy {
   resultLabel: string;
   allResults: string;
   clearFilters: string;
+  refresh: string;
+  lastUpdated: string;
+  lastUpdatedNone: string;
   cards: {
     todayRuns: string;
     todayEmptyHint: string;
@@ -66,6 +69,9 @@ export const SYNC_RUNS_COPY: Record<"zh" | "en", SyncRunsCopy> = {
     resultLabel: "结果",
     allResults: "全部结果",
     clearFilters: "清除筛选",
+    refresh: "刷新",
+    lastUpdated: "上次更新 {time}",
+    lastUpdatedNone: "尚未加载数据",
     cards: {
       todayRuns: "今日采集",
       todayEmptyHint: "其中空跑 {count} 次",
@@ -129,6 +135,9 @@ export const SYNC_RUNS_COPY: Record<"zh" | "en", SyncRunsCopy> = {
     resultLabel: "Result",
     allResults: "All results",
     clearFilters: "Clear filters",
+    refresh: "Refresh",
+    lastUpdated: "Updated {time}",
+    lastUpdatedNone: "No data loaded yet",
     cards: {
       todayRuns: "Runs today",
       todayEmptyHint: "{count} empty",

@@ -8,7 +8,12 @@
 // the time range is session-only (mirrors sessions, 2026-10-26). Filter
 // changes only refetch data (replaceState + popstate sync, no navigation).
 
-import { Clock, ClockArrowRotateLeft, ListUl } from "@gravity-ui/icons";
+import {
+  ArrowsRotateRight,
+  Clock,
+  ClockArrowRotateLeft,
+  ListUl,
+} from "@gravity-ui/icons";
 import {
   Button,
   Card,
@@ -21,6 +26,7 @@ import {
   Select,
   Spinner,
   Table,
+  Tooltip,
   Typography,
 } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
@@ -292,6 +298,7 @@ export function SyncRunsClient() {
     Array<{ device_id: string; device_name: string }>
   >([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [rangePickerOpen, setRangePickerOpen] = useState(false);
   const requestId = useRef(0);
 
@@ -356,6 +363,7 @@ export function SyncRunsClient() {
         setState({ status: "ready", data: payload });
         setTodayState({ status: "ready", data: todayPayload });
         setRefreshing(false);
+        setLastUpdatedAt(Date.now());
         setAccountDevices(
           (devices.devices ?? []).map((device) => ({
             device_id: device.id,
@@ -686,6 +694,33 @@ export function SyncRunsClient() {
             {copy.clearFilters}
           </Button>
         ) : null}
+
+        <div className="ml-auto flex items-center gap-1.5">
+          <Tooltip delay={0}>
+            <Button
+              isIconOnly
+              aria-label={copy.refresh}
+              size="sm"
+              variant="tertiary"
+              onPress={retry}
+            >
+              <ArrowsRotateRight
+                aria-hidden="true"
+                className={refreshing ? "size-4 animate-spin" : "size-4"}
+              />
+            </Button>
+            <Tooltip.Content showArrow placement="bottom">
+              <Tooltip.Arrow />
+              <Typography type="body-xs">
+                {lastUpdatedAt == null
+                  ? copy.lastUpdatedNone
+                  : formatMessage(copy.lastUpdated, locale, {
+                      time: formatDateTime(new Date(lastUpdatedAt)),
+                    })}
+              </Typography>
+            </Tooltip.Content>
+          </Tooltip>
+        </div>
       </div>
 
       {state.status === "loading" ? (
@@ -713,15 +748,7 @@ export function SyncRunsClient() {
       ) : null}
 
       {state.status === "ready" && payload ? (
-        <div className="relative flex flex-col gap-5">
-          {refreshing ? (
-            <div
-              aria-hidden="true"
-              className="bg-surface/60 absolute inset-0 z-10 flex items-start justify-center pt-24 backdrop-blur-[2px]"
-            >
-              <Spinner size="sm" />
-            </div>
-          ) : null}
+        <div className="flex flex-col gap-5">
           <SummaryCards
             copy={copy}
             lastRunAt={lastRunAt}
@@ -735,7 +762,15 @@ export function SyncRunsClient() {
                 {copy.list.hint}
               </Typography>
             </Card.Header>
-            <Card.Content className="gap-4">
+            <Card.Content className="relative gap-4">
+              {refreshing ? (
+                <div
+                  aria-hidden="true"
+                  className="bg-surface/60 absolute inset-0 z-10 flex items-center justify-center rounded-2xl backdrop-blur-[2px]"
+                >
+                  <Spinner size="sm" />
+                </div>
+              ) : null}
               {payload.total === 0 ? (
                 hasNarrowingFilters ? (
                   <div className="flex flex-col items-start gap-2 py-6">
