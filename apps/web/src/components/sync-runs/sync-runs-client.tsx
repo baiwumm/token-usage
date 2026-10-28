@@ -410,6 +410,7 @@ export function SyncRunsClient() {
       filters.trigger,
       range.fromDay,
       range.fromIso,
+      range.toDay,
       range.toIso,
       redirectToLogin,
       todayRange,
