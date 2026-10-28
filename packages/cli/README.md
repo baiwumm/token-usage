@@ -7,7 +7,8 @@
 ## 快速开始（三步）
 
 ```bash
-# 1) 初始化本地扫描（配置扫描根、安装各工具的用量 hook）
+# 1) 初始化：扫描根配置、各工具用量 hook、并注册每小时自动采集的计划任务
+#    （Windows 经 VBS 隐藏窗口运行，不弹黑框；--no-task 可跳过任务注册）
 tokenusage init
 
 # 2) 配对：输出一个 user_code，浏览器打开提示的链接批准
@@ -20,7 +21,8 @@ tokenusage sync            # 手动一轮：解析 → 入队 → 上传
 tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 ```
 
-完成。之后随时跑 `tokenusage sync`，或用 `--watch` 常驻自动上报（见下）。
+完成。init 注册的计划任务每小时自动采集一次；也可以随时手动 `tokenusage sync`，
+或用 `--watch` 常驻自动上报（见下）。不想自动采集就 `tokenusage pause`（见下）。
 
 **谁批准配对？** 批准者就是配对时登录站点的那个账号——设备与其全部数据绑定到该账号，账号之间数据完全隔离。自托管用户批准自己的设备即可；站点管理员不需要、也无法替别人审批。陌生人可以对公开站点发起配对码，但没有账号就批不了（注册邀请制 / `token_allowed_emails` 白名单），码 15 分钟自动过期。
 
@@ -28,17 +30,18 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 
 | 命令 | 说明 |
 |---|---|
-| `tokenusage init` | 本地初始化（扫描根配置、各工具 hook 安装）。不含配对 |
+| `tokenusage init` | 本地初始化：扫描根配置、各工具 hook 安装、注册每小时计划任务（Windows 隐藏窗口；`--no-task` 跳过任务；`--run-report=off` 关闭运行记录上报）。不含配对 |
 | `tokenusage device-login` | 设备流配对：输出 `user_code`，在站点 `/device` 页批准后本机拿到设备令牌 |
 | `tokenusage sync` | 解析本地 AI 工具日志 → 上报小时桶 + 会话元数据 |
 | `tokenusage sync --watch` | 常驻模式，默认每 15 分钟增量一轮（`--interval <ms>` 可调，≥60000） |
 | `tokenusage sync --no-sessions` | 只上报小时桶，跳过会话元数据 |
 | `tokenusage sync --drain` | 补传模式：更大的批处理预算，适合首次接入/长期积压 |
-| `tokenusage status` | 本地状态：Base URL、令牌、队列积压、最近解析/上传时间 |
+| `tokenusage pause` / `resume` | 暂停/恢复自动采集：定时任务、hook、`--watch` 全部静默停手，手动 `sync` 不受影响（Windows 上同步启停计划任务） |
+| `tokenusage status` | 本地状态：Base URL、令牌、采集状态、运行上报开关、队列积压、最近解析/上传时间 |
 | `tokenusage doctor` | 体检（运行时 / 网络 / 各工具配置），`--json` 输出 |
 | `tokenusage diagnostics` | 诊断信息导出 |
 | `tokenusage sessions` | 本地导出会话分析（JSON/CSV，元数据级） |
-| `tokenusage uninstall [--purge]` | 移除 hook；`--purge` 连数据目录一起删 |
+| `tokenusage uninstall [--purge]` | 移除 hook 与计划任务；`--purge` 连数据目录一起删 |
 
 配置优先级：CLI 参数 > `~/.tokenusage/.../config.json` > 环境变量（`TOKENUSAGE_BASE_URL` 等）> 内置默认（你的部署地址 + 其公开 publishable key）。
 
@@ -53,6 +56,31 @@ tokenusage sync --watch --interval 3600000 --no-sessions   # 每小时，只传�
 - `--interval` 毫秒，最小 60000（小于该值回落到默认 15 分钟——每轮至少要跑一次本地扫描，过密无意义）。
 - **停止**：在运行的终端 Ctrl+C 即可；`--watch` 只是前台进程，不注册任何系统计划任务/守护。随时终止都安全——队列与水位都已落盘，下次 `sync` 从断点继续。
 - 每轮增量：首轮解析全部历史日志（可能较慢），之后只重扫有变化的文件；上报侧队列 offset + 会话水位双断点，多轮之间不重不漏。
+
+## 采集控制：pause / resume 与计划任务
+
+```bash
+tokenusage pause            # 暂停自动采集（定时任务 / hook / --watch 全部静默停手）
+tokenusage resume           # 恢复
+tokenusage status           # 查看当前采集状态
+```
+
+- 暂停是持久标志：`sync --auto`、hook/notify 触发、`--watch`、计划任务都会静默
+  退出（不报错、不上报、不留运行记录）；**手动 `tokenusage sync` 永远可用**。
+- Windows 上 init 会注册每小时计划任务 `TokenUsageSync`（隐藏窗口，无黑框），
+  pause/resume 顺势 disable/enable 它；`uninstall` 一并删除任务与脚本。
+- 自动采集的日志落在 `~/.tokenusage/tracker/logs/sync.log`（1 MiB 滚动一代），
+  不依赖终端重定向。
+
+## 运行记录上报
+
+每轮 sync 结束后（**空跑也算**），CLI 向服务端上报一条聚合运行记录：时间、触发
+方式（定时/手动/常驻/通知）、结果、耗时、解析文件数与上报量。仪表盘的
+"采集记录"页用它展示采集器健康度——空跑记录就是"活着"的心跳。
+
+- 内容只有聚合计数与版本字符串，无任何路径/标题/正文。
+- 上报尽力而为：失败只记本地日志，绝不影响用量数据采集。
+- 不想上报：`tokenusage init --run-report=off`（重跑 init 修改，配对不受影响）。
 
 ## 未配对时会发生什么
 
@@ -76,7 +104,7 @@ CLI 未配对也能正常用，只是**降级为“只采集、不上报”**：
 
 ## 数据目录
 
-`~/.tokenusage/`（`0700` 目录 + `0600` 文件）：上传队列（`queue.jsonl` + offset）、会话分析 sidecar、`session-upload-watermarks.json`（增量水位）。与旧版 tokentracker CLI 的 `~/.tokentracker/` 互不干扰，迁移期两套 CLI 可在同一台机器共存。
+`~/.tokenusage/`（`0700` 目录 + `0600` 文件）：`tracker/config.json`（配对与运行配置）、上传队列（`queue.jsonl` + offset）、会话分析 sidecar、`session-upload-watermarks.json`（增量水位）、`tracker/logs/sync.log`（自动采集滚动日志）、暂停标志。与旧版 tokentracker CLI 的 `~/.tokentracker/` 互不干扰，迁移期两套 CLI 可在同一台机器共存。
 
 ## provider 支持面
 
@@ -91,4 +119,5 @@ pnpm install            # 仓库根
 pnpm --filter tokenusage-cli test
 ```
 
-发布（npm）是操作者动作，本包 `private: true`。
+发布走仓库的 `cli-v*` tag 触发的 GitHub Actions（Trusted Publishing，见
+`docs/cli-release.md`）。
