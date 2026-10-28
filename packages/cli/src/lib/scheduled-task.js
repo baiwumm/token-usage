@@ -4,7 +4,7 @@
 //
 // init "takes over" the registration that 0.1.0 left to a manual runbook:
 // the task action launches a VBS wrapper (GUI subsystem — no conhost flash
-// on Interactive tasks), which runs `node <cli.js> sync` fully hidden and
+// on Interactive tasks), which runs `node <bin entry> sync` fully hidden and
 // propagates the exit code via WScript.Quit. The CLI logs to a rolling
 // <trackerDir>/logs/sync.log itself (autoLog sink), so the registration no
 // longer needs a `>>` redirect — which also removes the cmd /c quoting
@@ -39,31 +39,60 @@ function cliEntryPath() {
 }
 
 /**
- * The hidden-runner wrapper. Paths are quoted individually and cmd is NOT
- * involved: wscript runs node directly, so the cmd /c outer-quote-stripping
- * pitfall (paths with spaces) never applies.
+ * The hidden-runner wrapper. Paths are quoted individually (via Chr(34), so
+ * the VBS has no quote-escaping puzzles) and cmd is NOT involved: wscript
+ * runs node directly, so the cmd /c outer-quote-stripping pitfall (paths with
+ * spaces) never applies.
+ *
+ * `fallbackCliJs` is the init-copied runtime (trackerDir/app/bin/tracker.js).
+ * The primary path lives in npm's global prefix, which nvm-windows makes
+ * version-specific: after `nvm use` the package is gone from that prefix and
+ * an unconditional launch would fail every hour with "file not found". The
+ * fallback keeps collecting (with the last init-copied build) instead.
  */
-function buildHiddenRunnerVbs({ nodeExe, cliJs }) {
+function buildHiddenRunnerVbs({ nodeExe, cliJs, fallbackCliJs }) {
   // --from-scheduled: the run reports trigger=scheduled, self-logs via autoLog
   // and uploads without consulting the cloud-sync preference — the registered
   // task is the default collection path, not an opt-in flavor.
-  return [
+  const lines = [
     "' Token Usage — hidden sync runner.",
     "' The scheduled task launches this script (GUI subsystem: no conhost",
     "' flash); it runs the sync fully hidden and returns its exit code so the",
     "' task's LastTaskResult stays meaningful. Sync output lands in the CLI's",
     "' own rolling logs/sync.log — no shell redirect involved.",
-    "Dim shell",
+    "Dim shell, fso, nodeExe, cliJs, cmd, q",
     "Set shell = CreateObject(\"WScript.Shell\")",
-    `WScript.Quit shell.Run("""${nodeExe}"" ""${cliJs}"" sync --from-scheduled", 0, True)`,
+    "Set fso = CreateObject(\"Scripting.FileSystemObject\")",
+    "q = Chr(34)",
+    `nodeExe = "${nodeExe}"`,
+    `cliJs = "${cliJs}"`,
+  ];
+  if (fallbackCliJs) {
+    lines.push(
+      "' npm's global prefix is version-specific under nvm-windows, so the",
+      "' path above disappears after `nvm use`. init also copies a",
+      "' self-contained runtime into the data dir; fall back to it rather than",
+      "' failing the hourly run with \"file not found\".",
+      `If Not fso.FileExists(cliJs) Then cliJs = "${fallbackCliJs}"`,
+    );
+  }
+  lines.push(
+    "cmd = q & nodeExe & q & \" \" & q & cliJs & q & \" sync --from-scheduled\"",
+    "WScript.Quit shell.Run(cmd, 0, True)",
     "",
-  ].join("\n");
+  );
+  return lines.join("\n");
 }
 
-function writeHiddenRunner({ binDir, nodeExe = process.execPath, cliJs = cliEntryPath() }) {
+function writeHiddenRunner({
+  binDir,
+  nodeExe = process.execPath,
+  cliJs = cliEntryPath(),
+  fallbackCliJs,
+}) {
   fs.mkdirSync(binDir, { recursive: true });
   const vbsPath = vbsPathFor(binDir);
-  fs.writeFileSync(vbsPath, buildHiddenRunnerVbs({ nodeExe, cliJs }), { mode: 0o600 });
+  fs.writeFileSync(vbsPath, buildHiddenRunnerVbs({ nodeExe, cliJs, fallbackCliJs }), { mode: 0o600 });
   return vbsPath;
 }
 
@@ -71,10 +100,15 @@ function writeHiddenRunner({ binDir, nodeExe = process.execPath, cliJs = cliEntr
  * Register (idempotently — /F overwrites) the hourly hidden task. Returns
  * {registered: true} or {registered: false, reason} instead of throwing.
  */
-function registerWindowsScheduledTask({ binDir, cliJs = cliEntryPath(), nodeExe = process.execPath }) {
+function registerWindowsScheduledTask({
+  binDir,
+  cliJs = cliEntryPath(),
+  nodeExe = process.execPath,
+  fallbackCliJs,
+}) {
   if (!isWindows()) return { registered: false, reason: "not_windows" };
   try {
-    const vbsPath = writeHiddenRunner({ binDir, nodeExe, cliJs });
+    const vbsPath = writeHiddenRunner({ binDir, nodeExe, cliJs, fallbackCliJs });
     execFileSync(
       "schtasks",
       [

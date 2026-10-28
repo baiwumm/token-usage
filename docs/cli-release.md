@@ -115,6 +115,15 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 下版本候选（0.1.1 / 0.2.0，不阻塞已发版本）
 
+> **0.2.4（2026-10-28 发 0.2.3 后立即补）**：0.2.3 的 VBS 把 npm 全局前缀里的包
+> 路径写死，而 nvm-windows 的全局前缀按 Node 版本分目录（家里机是
+> `E:\nvm\nvm\v24.4.1\node_modules\tokenusage-cli`），`nvm use` 之后路径消失，
+> 计划任务每小时 `file not found`（`LastTaskResult` 非 0、日志停更）。VBS 现在先
+> 探测包路径，缺失时回落到 init 复制到数据目录的自包含运行时
+> `~/.tokenusage/tracker/app/bin/tracker.js`；引号改用 `Chr(34)` 拼接。
+> 升级/切换 Node 后仍建议重跑 `init --yes --no-integrations --no-open`，让回落
+> 副本同步到新版。CHANGELOG 见 `packages/cli/CHANGELOG.md`。
+
 > **0.2.3（2026-10-28 家里机按 0.2.2 升级清单实测发现）**：0.2.x 的 init 把隐藏
 > VBS 注册到 `src/cli.js`（只导出 `run()` 的库文件，没有入口）——Windows 计划
 > 任务每轮 0.1 秒退出 0，不采集、不写日志，`LastTaskResult` 恒为 0；且

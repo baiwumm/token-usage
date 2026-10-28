@@ -3,6 +3,22 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## 0.2.4
+
+计划任务抗 Node 版本切换（发 0.2.3 后立即补；家里机实测发现）。
+
+- 0.2.3 的隐藏 VBS 把 npm 全局前缀里的包路径写死，而 nvm-windows 的全局前缀
+  按 Node 版本分目录（如 `E:\nvm\nvm\v24.4.1\node_modules\tokenusage-cli`）。
+  `nvm use` 之后该路径消失，任务每小时以 "file not found" 失败
+  （`LastTaskResult` 非 0、日志停更），而任务本身看起来仍"已注册"。
+- VBS 现在先 `FileExists` 探测包路径，缺失时回落到 init 复制到数据目录的自包含
+  运行时 `~/.tokenusage/tracker/app/bin/tracker.js`，采集不中断。
+- VBS 的引号改用 `Chr(34)` 拼接（不再依赖转义写法），行为不变：wscript 直接起
+  node、隐藏窗口、用退出码回填 `LastTaskResult`。
+- 仍然建议升级或切换 Node 版本后重跑一次
+  `tokenusage init --yes --no-integrations --no-open`：回落副本是上次 init 的
+  快照，重跑才会同步到最新版本。
+
 ## 0.2.3
 
 修复 0.2.x 计划任务的两个隐藏缺陷（0.2.2 升级验收时实测发现）。

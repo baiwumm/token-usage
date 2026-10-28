@@ -453,9 +453,12 @@ async function runSetup({
       detail: "Skipped (--no-task); auto syncs stay manual",
     });
   } else {
-    // The VBS always targets the package's bin entry (scheduled-task.js owns
-    // that path): pointing it at src/cli.js makes the hidden task a no-op.
-    const taskOutcome = registerWindowsScheduledTask({ binDir });
+    // The VBS targets the package's bin entry (scheduled-task.js owns that
+    // path): pointing it at src/cli.js makes the hidden task a no-op. The
+    // runtime copy refresh below is also the task's fallback, so an nvm switch
+    // (which drops the version-specific npm prefix) does not kill collection.
+    const fallbackCliJs = fssync.existsSync(trackerBinPath) ? trackerBinPath : undefined;
+    const taskOutcome = registerWindowsScheduledTask({ binDir, fallbackCliJs });
     summary.push({
       label: "Scheduled task",
       status: taskOutcome.registered ? "installed" : "skipped",
