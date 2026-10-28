@@ -19,7 +19,6 @@ import {
   Meter,
   Select,
   Spinner,
-  Table,
   Typography,
   toast,
   Popover,
@@ -38,6 +37,7 @@ import {
   DashboardApiError,
   fetchDashboard,
   fetchMonthly,
+  type DashboardModel,
   type DashboardPayload,
   type MonthlyPoint,
 } from "@/lib/dashboard/api";
@@ -48,6 +48,10 @@ import {
   dayKeyInTz,
   yearRange,
 } from "@/lib/dashboard/ranges";
+import {
+  DataTableCard,
+  type DataTableColumn,
+} from "@/components/data-table-card";
 
 type LoadStatus = "loading" | "ready" | "error";
 
@@ -391,6 +395,58 @@ export function WrappedClient() {
       ]
     : [];
 
+  const modelColumns = useMemo<DataTableColumn<DashboardModel>[]>(
+    () => [
+      {
+        id: "model",
+        header: copy.table.model,
+        cell: (entry) => (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <SourceIcon label={entry.model} size={14} />
+            <span className="truncate font-medium">{entry.model}</span>
+          </span>
+        ),
+      },
+      {
+        id: "tokens",
+        header: copy.table.tokens,
+        className: "whitespace-nowrap tabular-nums",
+        cell: (entry) => formatTokens(entry.total_tokens),
+      },
+      {
+        id: "cost",
+        header: copy.table.cost,
+        className: "whitespace-nowrap tabular-nums",
+        cell: (entry) => formatCost(entry.total_cost_usd),
+      },
+      {
+        id: "share",
+        header: copy.table.share,
+        cell: (entry) => {
+          const share = totalTokens > 0 ? entry.total_tokens / totalTokens : 0;
+
+          return (
+            <div className="flex items-center gap-2">
+              <Meter
+                aria-label={`${entry.model} ${formatPercent(share)}`}
+                className="w-24 shrink-0"
+                value={share * 100}
+              >
+                <Meter.Track className="h-1.5">
+                  <Meter.Fill className="bg-accent" />
+                </Meter.Track>
+              </Meter>
+              <span className="text-foreground/60 tabular-nums text-xs">
+                {formatPercent(share)}
+              </span>
+            </div>
+          );
+        },
+      },
+    ],
+    [copy, formatCost, formatPercent, formatTokens, totalTokens],
+  );
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -659,72 +715,20 @@ export function WrappedClient() {
             </Card>
           ) : null}
 
-          {models.length > 0 ? (
-            <Card className="p-6">
-              <Card.Header>
-                <Card.Title>{copy.modelsTitle}</Card.Title>
-              </Card.Header>
-              <Card.Content>
-                <Table>
-                  <Table.ScrollContainer>
-                    <Table.Content aria-label={copy.modelsTitle}>
-                      <Table.Header>
-                        <Table.Column isRowHeader>
-                          {copy.table.model}
-                        </Table.Column>
-                        <Table.Column>{copy.table.tokens}</Table.Column>
-                        <Table.Column>{copy.table.cost}</Table.Column>
-                        <Table.Column>{copy.table.share}</Table.Column>
-                      </Table.Header>
-                      <Table.Body>
-                        {models.map((entry) => {
-                          const share =
-                            totalTokens > 0
-                              ? entry.total_tokens / totalTokens
-                              : 0;
-
-                          return (
-                            <Table.Row key={entry.model} id={entry.model}>
-                              <Table.Cell>
-                                <span className="flex min-w-0 items-center gap-1.5">
-                                  <SourceIcon label={entry.model} size={14} />
-                                  <span className="truncate font-medium">
-                                    {entry.model}
-                                  </span>
-                                </span>
-                              </Table.Cell>
-                              <Table.Cell className="whitespace-nowrap tabular-nums">
-                                {formatTokens(entry.total_tokens)}
-                              </Table.Cell>
-                              <Table.Cell className="whitespace-nowrap tabular-nums">
-                                {formatCost(entry.total_cost_usd)}
-                              </Table.Cell>
-                              <Table.Cell>
-                                <div className="flex items-center gap-2">
-                                  <Meter
-                                    aria-label={`${entry.model} ${formatPercent(share)}`}
-                                    className="w-24 shrink-0"
-                                    value={share * 100}
-                                  >
-                                    <Meter.Track className="h-1.5">
-                                      <Meter.Fill className="bg-accent" />
-                                    </Meter.Track>
-                                  </Meter>
-                                  <span className="text-foreground/60 tabular-nums text-xs">
-                                    {formatPercent(share)}
-                                  </span>
-                                </div>
-                              </Table.Cell>
-                            </Table.Row>
-                          );
-                        })}
-                      </Table.Body>
-                    </Table.Content>
-                  </Table.ScrollContainer>
-                </Table>
-              </Card.Content>
-            </Card>
-          ) : null}
+          <DataTableCard
+            columns={modelColumns}
+            empty={
+              <Typography color="muted" type="body-sm">
+                {copy.modelsEmpty}
+              </Typography>
+            }
+            refreshing={refreshing}
+            rowKey={(entry) => entry.model}
+            rows={models}
+            status="ready"
+            tableLabel={copy.modelsTitle}
+            title={copy.modelsTitle}
+          />
         </>
       ) : null}
     </main>

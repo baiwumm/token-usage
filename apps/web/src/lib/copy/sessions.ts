@@ -9,8 +9,9 @@ export interface SessionsCopy {
   allDevices: string;
   sourceLabel: string;
   allSources: string;
-  projectLabel: string;
-  projectPlaceholder: string;
+  refresh: string;
+  lastUpdated: string;
+  lastUpdatedNone: string;
   clearFilters: string;
   cards: {
     sessions: string;
@@ -87,8 +88,9 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
     allDevices: "全部设备",
     sourceLabel: "来源",
     allSources: "全部来源",
-    projectLabel: "项目",
-    projectPlaceholder: "搜索项目名",
+    refresh: "刷新",
+    lastUpdated: "上次更新 {time}",
+    lastUpdatedNone: "尚未加载数据",
     clearFilters: "清除筛选",
     cards: {
       sessions: "会话数",
@@ -164,8 +166,9 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
     allDevices: "All devices",
     sourceLabel: "Source",
     allSources: "All sources",
-    projectLabel: "Project",
-    projectPlaceholder: "Search project",
+    refresh: "Refresh",
+    lastUpdated: "Updated {time}",
+    lastUpdatedNone: "No data loaded yet",
     clearFilters: "Clear filters",
     cards: {
       sessions: "Sessions",

@@ -4,28 +4,35 @@
 // metadata only — the API never returns prompts, bodies, titles, absolute
 // paths or resume commands, and session_id stays an internal key.
 //
-// Device/source filters, search and the server-side offset live in the URL, as
+// Device/source filters and the server-side offset live in the URL, as
 // does a custom time window (2026-10-28); preset ranges stay session-only.
 // Filter changes only refetch data (replaceState + popstate sync, no
 // navigation).
 
-import { ChartColumn, Clock, Layers, ListUl, Wallet } from "@gravity-ui/icons";
+import {
+  ArrowsRotateRight,
+  ChartColumn,
+  Clock,
+  Layers,
+  ListUl,
+  Wallet,
+} from "@gravity-ui/icons";
 import {
   Button,
   Card,
   Chip,
   DateField,
   DateRangePicker,
-  Input,
   ListBox,
   Modal,
+  Popover,
   RangeCalendar,
   Select,
+  Skeleton,
   Spinner,
   Table,
-  TextField,
+  Tooltip,
   Typography,
-  Popover,
 } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -60,8 +67,10 @@ import {
   rangeForSelection,
 } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";
-import { SectionSkeleton } from "@/components/section-states";
-import { TablePagination } from "@/components/table-pagination";
+import {
+  DataTableCard,
+  type DataTableColumn,
+} from "@/components/data-table-card";
 import { FlowNumber } from "@/components/flow-number";
 import { SourceIcon } from "@/components/dashboard/source-icon";
 import { sourceDisplayLabel } from "@/components/dashboard/sources";
@@ -69,7 +78,6 @@ import { DeviceFilterSelect } from "@/components/device-filter-select";
 import { RangePresetButtons } from "@/components/range-preset-buttons";
 
 const DEFAULT_PAGE_SIZE = 20;
-const SEARCH_DEBOUNCE_MS = 350;
 const UPGRADE_URL = "https://github.com/baiwumm/token-usage#readme";
 
 const SESSION_RANGE_PRESETS = ["today", "7d", "30d", "90d"] as const;
@@ -82,7 +90,6 @@ interface Filters {
   to: string;
   deviceId: string;
   source: string;
-  q: string;
   offset: number;
   pageSize: number;
 }
@@ -106,7 +113,6 @@ function parseFilters(params: { get(name: string): string | null }): Filters {
     to: hasWindow ? to : "",
     deviceId: params.get("device_id") ?? "",
     source: params.get("source") ?? "",
-    q: params.get("q") ?? "",
     offset:
       Number.isFinite(rawOffset) && rawOffset > 0 ? Math.trunc(rawOffset) : 0,
     pageSize: (PAGE_SIZE_OPTIONS as readonly number[]).includes(rawPageSize)
@@ -129,7 +135,6 @@ function serializeFilters(filters: Filters): string {
   }
   if (filters.deviceId) query.set("device_id", filters.deviceId);
   if (filters.source) query.set("source", filters.source);
-  if (filters.q) query.set("q", filters.q);
   if (filters.offset > 0) query.set("offset", String(filters.offset));
   if (filters.pageSize !== DEFAULT_PAGE_SIZE) {
     query.set("page_size", String(filters.pageSize));
@@ -164,49 +169,6 @@ function sortedModels(models: SessionModel[]): SessionModel[] {
 
 function isUnauthorized(error: unknown): boolean {
   return error instanceof DashboardApiError && error.status === 401;
-}
-
-// Debounced search box: owns the draft so each keystroke re-renders only
-// this subtree, not the whole sessions table (the debounce already gated
-// fetches; this gates renders the same way). External commits (popstate,
-// clear filters) sync back through `committed`.
-function SessionSearchInput({
-  committed,
-  onCommit,
-  label,
-  placeholder,
-}: {
-  committed: string;
-  onCommit: (q: string) => void;
-  label: string;
-  placeholder: string;
-}) {
-  const [draft, setDraft] = useState(committed);
-
-  useEffect(() => {
-    setDraft(committed);
-  }, [committed]);
-
-  useEffect(() => {
-    if (draft === committed) return;
-    const timer = window.setTimeout(
-      () => onCommit(draft.trim()),
-      SEARCH_DEBOUNCE_MS,
-    );
-
-    return () => window.clearTimeout(timer);
-  }, [draft, committed, onCommit]);
-
-  return (
-    <TextField
-      aria-label={label}
-      className="w-52"
-      value={draft}
-      onChange={setDraft}
-    >
-      <Input placeholder={placeholder} type="search" />
-    </TextField>
-  );
 }
 
 function ModelChips({ models }: { models: SessionModel[] }) {
@@ -299,6 +261,46 @@ function SummaryCards({
             <Typography className="tabular-nums" type="h4" weight="semibold">
               <FlowNumber text={card.value} />
             </Typography>
+            {card.sub ? (
+              <Typography color="muted" type="body-xs">
+                {card.sub}
+              </Typography>
+            ) : null}
+          </Card.Content>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// First-load placeholder for the summary row: the card shells (label + icon)
+// are real, only the numbers are skeletons — the four cards must not flash as
+// one grey block before the payload lands.
+function SummaryCardsSkeleton({ copy }: { copy: SessionsCopy }) {
+  const cards = [
+    { key: "sessions", label: copy.cards.sessions, icon: ListUl },
+    { key: "tokens", label: copy.cards.tokens, icon: ChartColumn },
+    { key: "cost", label: copy.cards.cost, icon: Wallet },
+    {
+      key: "duration",
+      label: copy.cards.avgDuration,
+      icon: Clock,
+      sub: copy.cards.avgHint,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {cards.map((card) => (
+        <Card key={card.key} className="gap-1 p-4">
+          <Card.Header className="flex-row items-center justify-between gap-2">
+            <Card.Title className="text-muted text-xs font-normal">
+              {card.label}
+            </Card.Title>
+            <card.icon aria-hidden="true" className="text-accent/70 size-4" />
+          </Card.Header>
+          <Card.Content className="gap-1">
+            <Skeleton className="h-7 w-24 rounded-full" />
             {card.sub ? (
               <Typography color="muted" type="body-xs">
                 {card.sub}
@@ -536,6 +538,7 @@ export function SessionsClient() {
   const [knownDevices, setKnownDevices] = useState<Record<string, string>>({});
   const [detail, setDetail] = useState<SessionItem | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [rangePickerOpen, setRangePickerOpen] = useState(false);
   const requestId = useRef(0);
 
@@ -556,11 +559,6 @@ export function SessionsClient() {
     [timezone],
   );
 
-  const commitQ = useCallback(
-    (q: string) => applyFilters({ q }),
-    [applyFilters],
-  );
-
   const load = useCallback(
     async (token: string) => {
       const id = requestId.current + 1;
@@ -577,7 +575,6 @@ export function SessionsClient() {
           toIso: range.toIso,
           deviceId: filters.deviceId || null,
           source: filters.source || null,
-          q: filters.q || null,
           limit: filters.pageSize,
           offset: filters.offset,
         });
@@ -585,6 +582,7 @@ export function SessionsClient() {
         if (requestId.current !== id) return;
         setState({ status: "ready", data: payload });
         setRefreshing(false);
+        setLastUpdatedAt(Date.now());
         setFacets(payload.facets);
         setKnownDevices((previous) => {
           const next = { ...previous };
@@ -602,11 +600,10 @@ export function SessionsClient() {
 
           return;
         }
-        // A failed refresh keeps the previous page; only an empty slot
-        // (initial load) falls back to the error state.
-        setState((previous) =>
-          previous.data != null ? previous : { status: "error", data: null },
-        );
+        // A failed refresh keeps the previous page on screen and flags it as
+        // stale (DataTableCard shows the error bar); only an empty slot falls
+        // through to the full error state.
+        setState((previous) => ({ status: "error", data: previous.data }));
         setRefreshing(false);
       }
     },
@@ -614,7 +611,6 @@ export function SessionsClient() {
       filters.deviceId,
       filters.offset,
       filters.pageSize,
-      filters.q,
       filters.source,
       range.fromIso,
       range.toIso,
@@ -654,8 +650,7 @@ export function SessionsClient() {
     Boolean(filters.from) ||
     Boolean(filters.to) ||
     Boolean(filters.deviceId) ||
-    Boolean(filters.source) ||
-    Boolean(filters.q);
+    Boolean(filters.source);
 
   const clearFilters = useCallback(() => {
     applyFilters({
@@ -664,7 +659,6 @@ export function SessionsClient() {
       to: "",
       deviceId: "",
       source: "",
-      q: "",
     });
   }, [applyFilters]);
 
@@ -706,6 +700,158 @@ export function SessionsClient() {
   const currentPage = Math.min(
     totalPages,
     Math.floor((payload?.offset ?? 0) / filters.pageSize) + 1,
+  );
+
+  const columns = useMemo<DataTableColumn<SessionItem>[]>(
+    () => [
+      {
+        id: "endedAt",
+        header: copy.list.endedAt,
+        className: "whitespace-nowrap",
+        cell: (session) => formatDateTime(session.ended_at),
+      },
+      {
+        id: "source",
+        header: copy.list.source,
+        cell: (session) => (
+          <Chip size="sm" variant="soft">
+            <SourceIcon label={session.source} size={12} />
+            {sourceDisplayLabel(session.source)}
+          </Chip>
+        ),
+      },
+      {
+        id: "project",
+        header: copy.list.project,
+        className: "max-w-48 truncate",
+        cell: (session) => session.project_key ?? copy.list.noProject,
+      },
+      {
+        id: "device",
+        header: copy.list.device,
+        className: "max-w-40 truncate",
+        cell: (session) => session.device_name,
+      },
+      {
+        id: "duration",
+        header: copy.list.duration,
+        className: "whitespace-nowrap tabular-nums",
+        cell: (session) => formatDuration(session.duration_ms),
+      },
+      {
+        id: "tokens",
+        header: copy.list.tokens,
+        className: "whitespace-nowrap tabular-nums",
+        cell: (session) => formatTokens(session.total_tokens),
+      },
+      {
+        id: "cost",
+        header: copy.list.cost,
+        className: "whitespace-nowrap tabular-nums",
+        cell: (session) => formatCost(Number(session.total_cost_usd)),
+      },
+      {
+        id: "models",
+        header: copy.list.models,
+        cell: (session) => <ModelChips models={session.models} />,
+      },
+      {
+        id: "detail",
+        header: copy.list.detail,
+        cell: (session) => (
+          <Button
+            size="sm"
+            variant="tertiary"
+            onPress={() => setDetail(session)}
+          >
+            {copy.list.view}
+          </Button>
+        ),
+      },
+    ],
+    [copy, formatCost, formatDateTime, formatDuration, formatTokens],
+  );
+
+  const renderSessionRow = (session: SessionItem) => (
+    <Card className="p-3">
+      <Card.Content className="gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <Typography type="body-sm" weight="semibold">
+            {formatDateTime(session.ended_at)}
+          </Typography>
+          <Chip size="sm" variant="soft">
+            {session.source}
+          </Chip>
+        </div>
+        <div className="text-muted flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          <span className="max-w-48 truncate">
+            {session.project_key ?? copy.list.noProject}
+          </span>
+          <span className="max-w-40 truncate">{session.device_name}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <span className="tabular-nums">
+            {formatTokens(session.total_tokens)}
+          </span>
+          <span className="tabular-nums">
+            {formatCost(Number(session.total_cost_usd))}
+          </span>
+          <span className="text-muted tabular-nums">
+            {formatDuration(session.duration_ms)}
+          </span>
+        </div>
+        <div className="flex items-end justify-between gap-2">
+          <ModelChips models={session.models} />
+          <Button
+            size="sm"
+            variant="tertiary"
+            onPress={() => setDetail(session)}
+          >
+            {copy.list.view}
+          </Button>
+        </div>
+      </Card.Content>
+    </Card>
+  );
+
+  const filterEmpty = (
+    <div className="flex flex-col items-start gap-2 py-6">
+      <Typography type="body-sm" weight="semibold">
+        {copy.states.filterEmptyTitle}
+      </Typography>
+      <Typography color="muted" type="body-sm">
+        {copy.states.filterEmptyBody}
+      </Typography>
+      <Button size="sm" variant="outline" onPress={clearFilters}>
+        {copy.clearFilters}
+      </Button>
+    </div>
+  );
+
+  const emptyState = (
+    <div className="flex flex-col items-start gap-2 py-6">
+      <ListUl aria-hidden="true" className="text-muted size-6" />
+      <Typography type="body-sm" weight="semibold">
+        {copy.states.emptyTitle}
+      </Typography>
+      <Typography className="max-w-2xl" color="muted" type="body-sm">
+        {copy.states.emptyBody}
+      </Typography>
+      <div className="flex flex-wrap gap-2 pt-1">
+        <Button size="sm" onPress={() => router.push("/device")}>
+          {copy.states.emptyPair}
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onPress={() =>
+            window.open(UPGRADE_URL, "_blank", "noopener,noreferrer")
+          }
+        >
+          {copy.states.emptyDocs}
+        </Button>
+      </div>
+    </div>
   );
 
   return (
@@ -867,261 +1013,88 @@ export function SessionsClient() {
           </Select>
         </label>
 
-        <label className="flex flex-col gap-1">
-          <Typography color="muted" type="body-xs">
-            {copy.projectLabel}
-          </Typography>
-          <SessionSearchInput
-            committed={filters.q}
-            label={copy.projectLabel}
-            placeholder={copy.projectPlaceholder}
-            onCommit={commitQ}
-          />
-        </label>
-
         {hasNarrowingFilters ? (
           <Button size="sm" variant="ghost" onPress={clearFilters}>
             {copy.clearFilters}
           </Button>
         ) : null}
+
+        <div className="ml-auto flex items-center gap-1.5">
+          <Tooltip delay={0}>
+            <Button
+              isIconOnly
+              aria-label={copy.refresh}
+              size="sm"
+              variant="tertiary"
+              onPress={retry}
+            >
+              <ArrowsRotateRight
+                aria-hidden="true"
+                className={refreshing ? "size-4 animate-spin" : "size-4"}
+              />
+            </Button>
+            <Tooltip.Content showArrow placement="bottom">
+              <Tooltip.Arrow />
+              <Typography type="body-xs">
+                {lastUpdatedAt == null
+                  ? copy.lastUpdatedNone
+                  : formatMessage(copy.lastUpdated, locale, {
+                      time: formatDateTime(new Date(lastUpdatedAt)),
+                    })}
+              </Typography>
+            </Tooltip.Content>
+          </Tooltip>
+        </div>
       </div>
 
-      {state.status === "loading" ? (
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {Array.from({ length: 4 }, (_, index) => (
-              <SectionSkeleton key={index} className="h-28 w-full" />
-            ))}
-          </div>
-          <SectionSkeleton className="h-80 w-full" />
-        </div>
-      ) : null}
+      <div className="flex flex-col gap-5">
+        {state.status === "loading" && !payload ? (
+          <SummaryCardsSkeleton copy={copy} />
+        ) : null}
 
-      {state.status === "error" ? (
-        <Card className="p-6">
-          <Card.Content className="flex flex-col items-start gap-2">
-            <Typography className="text-danger" type="body-sm">
-              {copy.states.loadError}
-            </Typography>
-            <Button size="sm" variant="outline" onPress={retry}>
-              {copy.states.retry}
-            </Button>
-          </Card.Content>
-        </Card>
-      ) : null}
+        {payload ? <SummaryCards copy={copy} payload={payload} /> : null}
 
-      {state.status === "ready" && payload ? (
-        <div className="relative flex flex-col gap-5">
-          {refreshing ? (
-            <div
-              aria-hidden="true"
-              className="bg-surface/60 absolute inset-0 z-10 flex items-start justify-center pt-24 backdrop-blur-[2px]"
-            >
-              <Spinner size="sm" />
-            </div>
-          ) : null}
-          <SummaryCards copy={copy} payload={payload} />
+        <DataTableCard
+          columns={columns}
+          empty={hasNarrowingFilters ? filterEmpty : emptyState}
+          error={{
+            message: copy.states.loadError,
+            onRetry: retry,
+            retryLabel: copy.states.retry,
+          }}
+          hint={copy.list.hint}
+          pagination={
+            payload
+              ? {
+                  labels: copy.list,
+                  locale,
+                  onPageChange: (page) =>
+                    applyFilters({
+                      offset: (page - 1) * filters.pageSize,
+                    }),
+                  onPageSizeChange: (next) => {
+                    // Keep the current page anchored when the size changes;
+                    // an explicit offset skips the auto-reset.
+                    const page = Math.floor(filters.offset / filters.pageSize);
 
-          <Card className="p-4 md:p-6">
-            <Card.Header className="flex-col items-start gap-1">
-              <Card.Title>{copy.list.title}</Card.Title>
-              <Typography color="muted" type="body-xs">
-                {copy.list.hint}
-              </Typography>
-            </Card.Header>
-            <Card.Content className="gap-4">
-              {payload.total === 0 ? (
-                hasNarrowingFilters ? (
-                  <div className="flex flex-col items-start gap-2 py-6">
-                    <Typography type="body-sm" weight="semibold">
-                      {copy.states.filterEmptyTitle}
-                    </Typography>
-                    <Typography color="muted" type="body-sm">
-                      {copy.states.filterEmptyBody}
-                    </Typography>
-                    <Button size="sm" variant="outline" onPress={clearFilters}>
-                      {copy.clearFilters}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-start gap-2 py-6">
-                    <ListUl aria-hidden="true" className="text-muted size-6" />
-                    <Typography type="body-sm" weight="semibold">
-                      {copy.states.emptyTitle}
-                    </Typography>
-                    <Typography
-                      className="max-w-2xl"
-                      color="muted"
-                      type="body-sm"
-                    >
-                      {copy.states.emptyBody}
-                    </Typography>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <Button size="sm" onPress={() => router.push("/device")}>
-                        {copy.states.emptyPair}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onPress={() =>
-                          window.open(
-                            UPGRADE_URL,
-                            "_blank",
-                            "noopener,noreferrer",
-                          )
-                        }
-                      >
-                        {copy.states.emptyDocs}
-                      </Button>
-                    </div>
-                  </div>
-                )
-              ) : (
-                <>
-                  <div className="hidden md:block">
-                    <Table>
-                      <Table.ScrollContainer>
-                        <Table.Content aria-label={copy.list.title}>
-                          <Table.Header>
-                            <Table.Column isRowHeader>
-                              {copy.list.endedAt}
-                            </Table.Column>
-                            <Table.Column>{copy.list.source}</Table.Column>
-                            <Table.Column>{copy.list.project}</Table.Column>
-                            <Table.Column>{copy.list.device}</Table.Column>
-                            <Table.Column>{copy.list.duration}</Table.Column>
-                            <Table.Column>{copy.list.tokens}</Table.Column>
-                            <Table.Column>{copy.list.cost}</Table.Column>
-                            <Table.Column>{copy.list.models}</Table.Column>
-                            <Table.Column>{copy.list.detail}</Table.Column>
-                          </Table.Header>
-                          <Table.Body>
-                            {payload.sessions.map((session) => (
-                              <Table.Row
-                                key={rowKey(session)}
-                                id={rowKey(session)}
-                                onAction={() => setDetail(session)}
-                              >
-                                <Table.Cell className="whitespace-nowrap">
-                                  {formatDateTime(session.ended_at)}
-                                </Table.Cell>
-                                <Table.Cell>
-                                  <Chip size="sm" variant="soft">
-                                    <SourceIcon
-                                      label={session.source}
-                                      size={12}
-                                    />
-                                    {sourceDisplayLabel(session.source)}
-                                  </Chip>
-                                </Table.Cell>
-                                <Table.Cell className="max-w-48 truncate">
-                                  {session.project_key ?? copy.list.noProject}
-                                </Table.Cell>
-                                <Table.Cell className="max-w-40 truncate">
-                                  {session.device_name}
-                                </Table.Cell>
-                                <Table.Cell className="whitespace-nowrap tabular-nums">
-                                  {formatDuration(session.duration_ms)}
-                                </Table.Cell>
-                                <Table.Cell className="whitespace-nowrap tabular-nums">
-                                  {formatTokens(session.total_tokens)}
-                                </Table.Cell>
-                                <Table.Cell className="whitespace-nowrap tabular-nums">
-                                  {formatCost(Number(session.total_cost_usd))}
-                                </Table.Cell>
-                                <Table.Cell>
-                                  <ModelChips models={session.models} />
-                                </Table.Cell>
-                                <Table.Cell>
-                                  <Button
-                                    size="sm"
-                                    variant="tertiary"
-                                    onPress={() => setDetail(session)}
-                                  >
-                                    {copy.list.view}
-                                  </Button>
-                                </Table.Cell>
-                              </Table.Row>
-                            ))}
-                          </Table.Body>
-                        </Table.Content>
-                      </Table.ScrollContainer>
-                    </Table>
-                  </div>
-
-                  <div className="flex flex-col gap-3 md:hidden">
-                    {payload.sessions.map((session) => (
-                      <Card key={rowKey(session)} className="p-3">
-                        <Card.Content className="gap-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <Typography type="body-sm" weight="semibold">
-                              {formatDateTime(session.ended_at)}
-                            </Typography>
-                            <Chip size="sm" variant="soft">
-                              {session.source}
-                            </Chip>
-                          </div>
-                          <div className="text-muted flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                            <span className="max-w-48 truncate">
-                              {session.project_key ?? copy.list.noProject}
-                            </span>
-                            <span className="max-w-40 truncate">
-                              {session.device_name}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                            <span className="tabular-nums">
-                              {formatTokens(session.total_tokens)}
-                            </span>
-                            <span className="tabular-nums">
-                              {formatCost(Number(session.total_cost_usd))}
-                            </span>
-                            <span className="text-muted tabular-nums">
-                              {formatDuration(session.duration_ms)}
-                            </span>
-                          </div>
-                          <div className="flex items-end justify-between gap-2">
-                            <ModelChips models={session.models} />
-                            <Button
-                              size="sm"
-                              variant="tertiary"
-                              onPress={() => setDetail(session)}
-                            >
-                              {copy.list.view}
-                            </Button>
-                          </div>
-                        </Card.Content>
-                      </Card>
-                    ))}
-                  </div>
-
-                  <TablePagination
-                    labels={copy.list}
-                    locale={locale}
-                    page={currentPage}
-                    pageSize={filters.pageSize}
-                    total={payload.total}
-                    onPageChange={(page) =>
-                      applyFilters({
-                        offset: (page - 1) * filters.pageSize,
-                      })
-                    }
-                    onPageSizeChange={(next) => {
-                      // Keep the current page anchored when the size
-                      // changes; an explicit offset skips the auto-reset.
-                      const page = Math.floor(
-                        filters.offset / filters.pageSize,
-                      );
-
-                      applyFilters({ pageSize: next, offset: page * next });
-                    }}
-                  />
-                </>
-              )}
-            </Card.Content>
-          </Card>
-        </div>
-      ) : null}
+                    applyFilters({ pageSize: next, offset: page * next });
+                  },
+                  page: currentPage,
+                  pageSize: filters.pageSize,
+                  total: payload.total,
+                }
+              : undefined
+          }
+          refreshing={refreshing}
+          renderMobileRow={renderSessionRow}
+          rowKey={rowKey}
+          rows={payload?.sessions ?? []}
+          status={state.status}
+          tableLabel={copy.list.title}
+          title={copy.list.title}
+          onRowAction={(session) => setDetail(session)}
+        />
+      </div>
 
       <SessionDetailModal
         copy={copy}

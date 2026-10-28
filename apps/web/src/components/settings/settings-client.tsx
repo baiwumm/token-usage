@@ -30,7 +30,6 @@ import {
   Modal,
   NumberField,
   Spinner,
-  Table,
   Tabs,
   TextField,
   Tooltip,
@@ -63,6 +62,10 @@ import { formatMessage } from "@/lib/copy/message";
 import { SETTINGS_COPY, type SettingsCopy } from "@/lib/copy/settings";
 import { useFormat } from "@/lib/format/format";
 import { PendingButton } from "@/components/pending-button";
+import {
+  DataTableCard,
+  type DataTableColumn,
+} from "@/components/data-table-card";
 import {
   DashboardApiError,
   fetchAccountDevices,
@@ -261,11 +264,11 @@ export function SettingsClient() {
     }
   }
 
-  function openRevoke(device: AccountDeviceRow) {
+  const openRevoke = useCallback((device: AccountDeviceRow) => {
     setRevoking(device);
     setRevokeStep("confirm");
     setRevokeDraft("");
-  }
+  }, []);
 
   function closeRevoke() {
     setRevoking(null);
@@ -318,6 +321,88 @@ export function SettingsClient() {
     revoking !== null && revokeDraftTrimmed === revoking.device_name;
   const revokeMismatch = revokeDraftTrimmed.length > 0 && !revokeMatches;
 
+  const deviceColumns = useMemo<DataTableColumn<AccountDeviceRow>[]>(
+    () => [
+      {
+        id: "device",
+        header: copy.columnDevice,
+        className: "font-medium",
+        cell: (device) => device.device_name,
+      },
+      {
+        id: "platform",
+        header: copy.columnPlatform,
+        cell: (device) => (
+          <Chip size="sm" variant="secondary">
+            {device.platform}
+          </Chip>
+        ),
+      },
+      {
+        id: "joined",
+        header: copy.columnJoined,
+        cell: (device) => formatDate(device.created_at),
+      },
+      {
+        id: "usage",
+        header: `${copy.columnUsage}（${copy.usageWindowLabel}）`,
+        className: "tabular-nums",
+        cell: (device) => formatTokens(device.total_tokens ?? 0),
+      },
+      {
+        id: "actions",
+        header: copy.columnActions,
+        cell: (device) => (
+          <div className="flex gap-2">
+            <ActionTooltip label={copy.renameAction}>
+              <Button
+                isIconOnly
+                aria-label={copy.renameAction}
+                size="sm"
+                variant="secondary"
+                onPress={() => {
+                  setRenaming(device);
+                  setRenameDraft(device.device_name);
+                  setRenameError(null);
+                }}
+              >
+                <Pencil aria-hidden="true" className="size-4" />
+              </Button>
+            </ActionTooltip>
+            <ActionTooltip label={copy.restoreAction}>
+              <Button
+                isIconOnly
+                aria-label={copy.restoreAction}
+                isDisabled={!defaultNameFor(device)}
+                size="sm"
+                variant="tertiary"
+                onPress={() => {
+                  setRestoring(device);
+                }}
+              >
+                <ArrowRotateLeft aria-hidden="true" className="size-4" />
+              </Button>
+            </ActionTooltip>
+            <ActionTooltip label={copy.revokeAction}>
+              <Button
+                isIconOnly
+                aria-label={copy.revokeAction}
+                size="sm"
+                variant="danger-soft"
+                onPress={() => {
+                  openRevoke(device);
+                }}
+              >
+                <TrashBin aria-hidden="true" className="size-4" />
+              </Button>
+            </ActionTooltip>
+          </div>
+        ),
+      },
+    ],
+    [copy, formatDate, formatTokens, openRevoke],
+  );
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-8">
       <Tabs
@@ -368,143 +453,33 @@ export function SettingsClient() {
       ) : null}
 
       {section === "devices" ? (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <Typography type="h4" weight="medium">
-              {copy.devicesHeading}
-            </Typography>
-            <Typography color="muted" type="body-sm">
-              {copy.devicesHint}
-            </Typography>
-          </div>
-
-          {status === "loading" ? (
-            <Card className="p-10">
-              <Card.Content className="flex items-center justify-center gap-2">
-                <Spinner />
-                <Typography color="muted" type="body-sm">
-                  {copy.loading}
-                </Typography>
-              </Card.Content>
-            </Card>
-          ) : null}
-
-          {status === "error" ? (
-            <Card className="p-6">
-              <Card.Content>
-                <ErrorMessage>{copy.loadError}</ErrorMessage>
-              </Card.Content>
-              <Card.Footer>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onPress={() => {
-                    if (accessToken) void loadDevices(accessToken);
-                  }}
-                >
-                  {copy.retry}
-                </Button>
-              </Card.Footer>
-            </Card>
-          ) : null}
-
-          {status === "ready" && devices.length === 0 ? (
-            <Card className="p-10">
-              <Card.Header>
-                <Card.Title>{copy.emptyTitle}</Card.Title>
-                <Card.Description>{copy.emptyBody}</Card.Description>
-              </Card.Header>
-            </Card>
-          ) : null}
-
-          {status === "ready" && devices.length > 0 ? (
-            <Table>
-              <Table.ScrollContainer>
-                <Table.Content aria-label={copy.devicesHeading}>
-                  <Table.Header>
-                    <Table.Column isRowHeader>{copy.columnDevice}</Table.Column>
-                    <Table.Column>{copy.columnPlatform}</Table.Column>
-                    <Table.Column>{copy.columnJoined}</Table.Column>
-                    <Table.Column>
-                      {copy.columnUsage}（{copy.usageWindowLabel}）
-                    </Table.Column>
-                    <Table.Column>{copy.columnActions}</Table.Column>
-                  </Table.Header>
-                  <Table.Body>
-                    {devices.map((device) => (
-                      <Table.Row key={device.id}>
-                        <Table.Cell className="font-medium">
-                          {device.device_name}
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Chip size="sm" variant="secondary">
-                            {device.platform}
-                          </Chip>
-                        </Table.Cell>
-                        <Table.Cell>{formatDate(device.created_at)}</Table.Cell>
-                        <Table.Cell className="tabular-nums">
-                          {formatTokens(device.total_tokens ?? 0)}
-                        </Table.Cell>
-                        <Table.Cell>
-                          <div className="flex gap-2">
-                            <ActionTooltip label={copy.renameAction}>
-                              <Button
-                                isIconOnly
-                                aria-label={copy.renameAction}
-                                size="sm"
-                                variant="secondary"
-                                onPress={() => {
-                                  setRenaming(device);
-                                  setRenameDraft(device.device_name);
-                                  setRenameError(null);
-                                }}
-                              >
-                                <Pencil aria-hidden="true" className="size-4" />
-                              </Button>
-                            </ActionTooltip>
-                            <ActionTooltip label={copy.restoreAction}>
-                              <Button
-                                isIconOnly
-                                aria-label={copy.restoreAction}
-                                isDisabled={!defaultNameFor(device)}
-                                size="sm"
-                                variant="tertiary"
-                                onPress={() => {
-                                  setRestoring(device);
-                                }}
-                              >
-                                <ArrowRotateLeft
-                                  aria-hidden="true"
-                                  className="size-4"
-                                />
-                              </Button>
-                            </ActionTooltip>
-                            <ActionTooltip label={copy.revokeAction}>
-                              <Button
-                                isIconOnly
-                                aria-label={copy.revokeAction}
-                                size="sm"
-                                variant="danger-soft"
-                                onPress={() => {
-                                  openRevoke(device);
-                                }}
-                              >
-                                <TrashBin
-                                  aria-hidden="true"
-                                  className="size-4"
-                                />
-                              </Button>
-                            </ActionTooltip>
-                          </div>
-                        </Table.Cell>
-                      </Table.Row>
-                    ))}
-                  </Table.Body>
-                </Table.Content>
-              </Table.ScrollContainer>
-            </Table>
-          ) : null}
-        </section>
+        <DataTableCard
+          className="p-6"
+          columns={deviceColumns}
+          empty={
+            <div className="flex flex-col gap-1 py-4">
+              <Typography type="body-sm" weight="semibold">
+                {copy.emptyTitle}
+              </Typography>
+              <Typography color="muted" type="body-sm">
+                {copy.emptyBody}
+              </Typography>
+            </div>
+          }
+          error={{
+            message: copy.loadError,
+            onRetry: () => {
+              if (accessToken) void loadDevices(accessToken);
+            },
+            retryLabel: copy.retry,
+          }}
+          hint={copy.devicesHint}
+          rowKey={(device) => device.id}
+          rows={devices}
+          status={status}
+          tableLabel={copy.devicesHeading}
+          title={copy.devicesHeading}
+        />
       ) : null}
 
       {/* Rename dialog */}

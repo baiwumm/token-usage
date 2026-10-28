@@ -48,7 +48,6 @@ export interface SettingsCopy {
   columnUsage: string;
   columnActions: string;
   usageWindowLabel: string;
-  loading: string;
   emptyTitle: string;
   emptyBody: string;
   loadError: string;
@@ -134,7 +133,6 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     columnUsage: "用量",
     columnActions: "操作",
     usageWindowLabel: "近 12 个月",
-    loading: "正在加载设备…",
     emptyTitle: "还没有已接入的设备",
     emptyBody: "在采集机上完成配对后，设备会出现在这里。",
     loadError: "设备列表加载失败。",
@@ -220,7 +218,6 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     columnUsage: "Usage",
     columnActions: "Actions",
     usageWindowLabel: "Last 12 months",
-    loading: "Loading devices…",
     emptyTitle: "No devices yet",
     emptyBody: "Devices appear here once a collector completes pairing.",
     loadError: "Failed to load devices.",

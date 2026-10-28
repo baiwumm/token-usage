@@ -25,7 +25,6 @@ import {
   RangeCalendar,
   Select,
   Spinner,
-  Table,
   Tooltip,
   Typography,
 } from "@heroui/react";
@@ -64,7 +63,10 @@ import {
 } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";
 import { SectionSkeleton } from "@/components/section-states";
-import { TablePagination } from "@/components/table-pagination";
+import {
+  DataTableCard,
+  type DataTableColumn,
+} from "@/components/data-table-card";
 import { FlowNumber } from "@/components/flow-number";
 import { DeviceFilterSelect } from "@/components/device-filter-select";
 import { RangePresetButtons } from "@/components/range-preset-buttons";
@@ -402,11 +404,10 @@ export function SyncRunsClient() {
 
           return;
         }
-        // A failed refresh keeps the previous page; only an empty slot
-        // (initial load) falls back to the error state.
-        setState((previous) =>
-          previous.data != null ? previous : { status: "error", data: null },
-        );
+        // A failed refresh keeps the previous page on screen and flags it as
+        // stale (DataTableCard shows the error bar); only an empty slot falls
+        // through to the full error state.
+        setState((previous) => ({ status: "error", data: previous.data }));
         setRefreshing(false);
       }
     },
@@ -507,6 +508,131 @@ export function SyncRunsClient() {
   const currentPage = Math.min(
     totalPages,
     Math.floor((payload?.offset ?? 0) / filters.pageSize) + 1,
+  );
+
+  const columns = useMemo<DataTableColumn<SyncRunItem>[]>(
+    () => [
+      {
+        id: "startedAt",
+        header: copy.list.startedAt,
+        className: "whitespace-nowrap",
+        cell: (run) => formatDateTime(run.started_at),
+      },
+      {
+        id: "device",
+        header: copy.list.device,
+        className: "max-w-40 truncate",
+        cell: (run) => run.device_name,
+      },
+      {
+        id: "trigger",
+        header: copy.list.trigger,
+        cell: (run) => (
+          <Chip size="sm" variant="soft">
+            {copy.trigger[run.trigger as keyof typeof copy.trigger] ??
+              run.trigger}
+          </Chip>
+        ),
+      },
+      {
+        id: "result",
+        header: copy.list.result,
+        cell: (run) => <RunResultCell copy={copy} run={run} />,
+      },
+      {
+        id: "duration",
+        header: copy.list.duration,
+        className: "whitespace-nowrap tabular-nums",
+        cell: (run) => formatDuration(run.duration_ms),
+      },
+      {
+        id: "volume",
+        header: copy.list.volume,
+        cell: (run) => <RunVolumeCell copy={copy} run={run} />,
+      },
+    ],
+    [copy, formatDateTime, formatDuration],
+  );
+
+  const renderMobileRun = (run: SyncRunItem) => (
+    <Card className="p-3">
+      <Card.Content className="gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <Typography type="body-sm" weight="semibold">
+            {formatDateTime(run.started_at)}
+          </Typography>
+          <div className="flex items-center gap-1.5">
+            <Chip size="sm" variant="soft">
+              {copy.trigger[run.trigger as keyof typeof copy.trigger] ??
+                run.trigger}
+            </Chip>
+            {run.empty ? (
+              <Chip className="text-muted" size="sm" variant="soft">
+                {copy.emptyChip}
+              </Chip>
+            ) : null}
+          </div>
+        </div>
+        <div className="text-muted flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          <span className="max-w-40 truncate">{run.device_name}</span>
+          <span>
+            {copy.result[run.result as keyof typeof copy.result] ?? run.result}
+            {run.result === "error" && run.error_code
+              ? ` · ${run.error_code}`
+              : ""}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <span className="tabular-nums">
+            {formatDuration(run.duration_ms)}
+          </span>
+          <span className="tabular-nums">
+            {run.parsed_files} {copy.list.filesUnit} · {run.buckets_uploaded}{" "}
+            {copy.list.bucketsUnit}
+          </span>
+        </div>
+      </Card.Content>
+    </Card>
+  );
+
+  const filterEmpty = (
+    <div className="flex flex-col items-start gap-2 py-6">
+      <Typography type="body-sm" weight="semibold">
+        {copy.states.filterEmptyTitle}
+      </Typography>
+      <Typography color="muted" type="body-sm">
+        {copy.states.filterEmptyBody}
+      </Typography>
+      <Button size="sm" variant="outline" onPress={clearFilters}>
+        {copy.clearFilters}
+      </Button>
+    </div>
+  );
+
+  const emptyState = (
+    <div className="flex flex-col items-start gap-2 py-6">
+      <ListUl aria-hidden="true" className="text-muted size-6" />
+      <Typography type="body-sm" weight="semibold">
+        {copy.states.emptyTitle}
+      </Typography>
+      <Typography className="max-w-2xl" color="muted" type="body-sm">
+        {copy.states.emptyBody}
+      </Typography>
+      <div className="flex flex-wrap gap-2 pt-1">
+        <Button size="sm" onPress={() => router.push("/device")}>
+          {copy.states.emptyPair}
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onPress={() =>
+            window.open(UPGRADE_URL, "_blank", "noopener,noreferrer")
+          }
+        >
+          {copy.states.emptyUpgrade}
+        </Button>
+      </div>
+    </div>
   );
 
   return (
@@ -724,228 +850,71 @@ export function SyncRunsClient() {
         </div>
       </div>
 
-      {state.status === "loading" ? (
-        <div className="flex flex-col gap-3">
+      <div className="relative flex flex-col gap-5">
+        {refreshing && payload ? (
+          <div
+            aria-hidden="true"
+            className="bg-surface/60 absolute inset-0 z-10 flex items-start justify-center pt-24 backdrop-blur-[2px]"
+          >
+            <Spinner size="sm" />
+          </div>
+        ) : null}
+
+        {state.status === "loading" && !payload ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {Array.from({ length: 2 }, (_, index) => (
               <SectionSkeleton key={index} className="h-28 w-full" />
             ))}
           </div>
-          <SectionSkeleton className="h-80 w-full" />
-        </div>
-      ) : null}
+        ) : null}
 
-      {state.status === "error" ? (
-        <Card className="p-6">
-          <Card.Content className="flex flex-col items-start gap-2">
-            <Typography className="text-danger" type="body-sm">
-              {copy.states.loadError}
-            </Typography>
-            <Button size="sm" variant="outline" onPress={retry}>
-              {copy.states.retry}
-            </Button>
-          </Card.Content>
-        </Card>
-      ) : null}
-
-      {state.status === "ready" && payload ? (
-        <div className="flex flex-col gap-5">
+        {todayState.data ? (
           <SummaryCards
             copy={copy}
             lastRunAt={lastRunAt}
             todayRuns={todayState.data}
           />
+        ) : null}
 
-          <Card className="p-4 md:p-6">
-            <Card.Header className="flex-col items-start gap-1">
-              <Card.Title>{copy.list.title}</Card.Title>
-              <Typography color="muted" type="body-xs">
-                {copy.list.hint}
-              </Typography>
-            </Card.Header>
-            <Card.Content className="relative gap-4">
-              {refreshing ? (
-                <div
-                  aria-hidden="true"
-                  className="bg-surface/60 absolute inset-0 z-10 flex items-center justify-center rounded-2xl backdrop-blur-[2px]"
-                >
-                  <Spinner size="sm" />
-                </div>
-              ) : null}
-              {payload.total === 0 ? (
-                hasNarrowingFilters ? (
-                  <div className="flex flex-col items-start gap-2 py-6">
-                    <Typography type="body-sm" weight="semibold">
-                      {copy.states.filterEmptyTitle}
-                    </Typography>
-                    <Typography color="muted" type="body-sm">
-                      {copy.states.filterEmptyBody}
-                    </Typography>
-                    <Button size="sm" variant="outline" onPress={clearFilters}>
-                      {copy.clearFilters}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-start gap-2 py-6">
-                    <ListUl aria-hidden="true" className="text-muted size-6" />
-                    <Typography type="body-sm" weight="semibold">
-                      {copy.states.emptyTitle}
-                    </Typography>
-                    <Typography
-                      className="max-w-2xl"
-                      color="muted"
-                      type="body-sm"
-                    >
-                      {copy.states.emptyBody}
-                    </Typography>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <Button size="sm" onPress={() => router.push("/device")}>
-                        {copy.states.emptyPair}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onPress={() =>
-                          window.open(
-                            UPGRADE_URL,
-                            "_blank",
-                            "noopener,noreferrer",
-                          )
-                        }
-                      >
-                        {copy.states.emptyUpgrade}
-                      </Button>
-                    </div>
-                  </div>
-                )
-              ) : (
-                <>
-                  <div className="hidden md:block">
-                    <Table>
-                      <Table.ScrollContainer>
-                        <Table.Content aria-label={copy.list.title}>
-                          <Table.Header>
-                            <Table.Column isRowHeader>
-                              {copy.list.startedAt}
-                            </Table.Column>
-                            <Table.Column>{copy.list.device}</Table.Column>
-                            <Table.Column>{copy.list.trigger}</Table.Column>
-                            <Table.Column>{copy.list.result}</Table.Column>
-                            <Table.Column>{copy.list.duration}</Table.Column>
-                            <Table.Column>{copy.list.volume}</Table.Column>
-                          </Table.Header>
-                          <Table.Body>
-                            {payload.runs.map((run) => (
-                              <Table.Row key={rowKey(run)} id={rowKey(run)}>
-                                <Table.Cell className="whitespace-nowrap">
-                                  {formatDateTime(run.started_at)}
-                                </Table.Cell>
-                                <Table.Cell className="max-w-40 truncate">
-                                  {run.device_name}
-                                </Table.Cell>
-                                <Table.Cell>
-                                  <Chip size="sm" variant="soft">
-                                    {copy.trigger[
-                                      run.trigger as keyof typeof copy.trigger
-                                    ] ?? run.trigger}
-                                  </Chip>
-                                </Table.Cell>
-                                <Table.Cell>
-                                  <RunResultCell copy={copy} run={run} />
-                                </Table.Cell>
-                                <Table.Cell className="whitespace-nowrap tabular-nums">
-                                  {formatDuration(run.duration_ms)}
-                                </Table.Cell>
-                                <Table.Cell>
-                                  <RunVolumeCell copy={copy} run={run} />
-                                </Table.Cell>
-                              </Table.Row>
-                            ))}
-                          </Table.Body>
-                        </Table.Content>
-                      </Table.ScrollContainer>
-                    </Table>
-                  </div>
+        <DataTableCard
+          columns={columns}
+          empty={hasNarrowingFilters ? filterEmpty : emptyState}
+          error={{
+            message: copy.states.loadError,
+            onRetry: retry,
+            retryLabel: copy.states.retry,
+          }}
+          hint={copy.list.hint}
+          pagination={
+            payload
+              ? {
+                  labels: copy.list,
+                  locale,
+                  onPageChange: (page) =>
+                    applyFilters({
+                      offset: (page - 1) * filters.pageSize,
+                    }),
+                  onPageSizeChange: (next) => {
+                    // Keep the current page anchored when the size changes;
+                    // an explicit offset skips the auto-reset.
+                    const page = Math.floor(filters.offset / filters.pageSize);
 
-                  <div className="flex flex-col gap-3 md:hidden">
-                    {payload.runs.map((run) => (
-                      <Card key={rowKey(run)} className="p-3">
-                        <Card.Content className="gap-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <Typography type="body-sm" weight="semibold">
-                              {formatDateTime(run.started_at)}
-                            </Typography>
-                            <div className="flex items-center gap-1.5">
-                              <Chip size="sm" variant="soft">
-                                {copy.trigger[
-                                  run.trigger as keyof typeof copy.trigger
-                                ] ?? run.trigger}
-                              </Chip>
-                              {run.empty ? (
-                                <Chip
-                                  className="text-muted"
-                                  size="sm"
-                                  variant="soft"
-                                >
-                                  {copy.emptyChip}
-                                </Chip>
-                              ) : null}
-                            </div>
-                          </div>
-                          <div className="text-muted flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                            <span className="max-w-40 truncate">
-                              {run.device_name}
-                            </span>
-                            <span>
-                              {copy.result[
-                                run.result as keyof typeof copy.result
-                              ] ?? run.result}
-                              {run.result === "error" && run.error_code
-                                ? ` · ${run.error_code}`
-                                : ""}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                            <span className="tabular-nums">
-                              {formatDuration(run.duration_ms)}
-                            </span>
-                            <span className="tabular-nums">
-                              {run.parsed_files} {copy.list.filesUnit} ·{" "}
-                              {run.buckets_uploaded} {copy.list.bucketsUnit}
-                            </span>
-                          </div>
-                        </Card.Content>
-                      </Card>
-                    ))}
-                  </div>
-
-                  <TablePagination
-                    labels={copy.list}
-                    locale={locale}
-                    page={currentPage}
-                    pageSize={filters.pageSize}
-                    total={payload.total}
-                    onPageChange={(page) =>
-                      applyFilters({
-                        offset: (page - 1) * filters.pageSize,
-                      })
-                    }
-                    onPageSizeChange={(next) => {
-                      // Keep the current page anchored when the size
-                      // changes; an explicit offset skips the auto-reset.
-                      const page = Math.floor(
-                        filters.offset / filters.pageSize,
-                      );
-
-                      applyFilters({ pageSize: next, offset: page * next });
-                    }}
-                  />
-                </>
-              )}
-            </Card.Content>
-          </Card>
-        </div>
-      ) : null}
+                    applyFilters({ pageSize: next, offset: page * next });
+                  },
+                  page: currentPage,
+                  pageSize: filters.pageSize,
+                  total: payload.total,
+                }
+              : undefined
+          }
+          renderMobileRow={renderMobileRun}
+          rowKey={rowKey}
+          rows={payload?.runs ?? []}
+          status={state.status}
+          tableLabel={copy.list.title}
+          title={copy.list.title}
+        />
+      </div>
     </main>
   );
 }

@@ -12,10 +12,8 @@ import type { ShareCardInput } from "./share-card";
 import { ArrowsRotateRight, NodesRight } from "@gravity-ui/icons";
 import {
   Button,
-  Calendar,
   Card,
   DateField,
-  DatePicker,
   DateRangePicker,
   ListBox,
   RangeCalendar,
@@ -36,7 +34,6 @@ import {
   useRef,
   useState,
   type Dispatch,
-  type Key,
   type SetStateAction,
 } from "react";
 
@@ -612,6 +609,17 @@ export function DashboardClient() {
     if (detailView === "hourly") refreshHourly(false);
   };
 
+  // The detail card retries only the slot it shows: hourly has its own fetch,
+  // daily/monthly ride along with loadAll.
+  const retryDetail = useCallback(() => {
+    if (detailView === "hourly") {
+      refreshHourly(false);
+
+      return;
+    }
+    if (accessToken) void loadAll(accessToken);
+  }, [accessToken, detailView, loadAll, refreshHourly]);
+
   const openCostModal = useCallback(() => setCostOpen(true), []);
 
   // Heatmap cell → sessions for that exact day (D1). Sessions reads from/to
@@ -1117,128 +1125,21 @@ export function DashboardClient() {
               )}
             </div>
 
-            <Card className="relative p-6">
-              <PanelOverlay
-                active={detailView === "hourly" ? hourlyRefreshing : refreshing}
-              />
-              <Card.Header className="flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-                <Card.Title>{copy.detail.title}</Card.Title>
-                <div className="flex flex-wrap items-end gap-2">
-                  {detailView === "hourly" ? (
-                    <DatePicker
-                      aria-label={copy.detail.dayLabel}
-                      className="w-40"
-                      maxValue={rangePickerMax}
-                      value={parseDate(effectiveHourlyDay)}
-                      onChange={(value) => {
-                        if (value && value.compare(rangePickerMax) <= 0) {
-                          setHourlyDay(value.toString());
-                        }
-                      }}
-                    >
-                      <DateField.Group
-                        fullWidth
-                        className="rounded-3xl h-8"
-                        variant="secondary"
-                      >
-                        <DateField.Input>
-                          {(segment) => <DateField.Segment segment={segment} />}
-                        </DateField.Input>
-                        <DateField.Suffix>
-                          <DatePicker.Trigger>
-                            <DatePicker.TriggerIndicator />
-                          </DatePicker.Trigger>
-                        </DateField.Suffix>
-                      </DateField.Group>
-                      <DatePicker.Popover>
-                        <Calendar
-                          aria-label={copy.detail.dayLabel}
-                          maxValue={rangePickerMax}
-                        >
-                          <Calendar.Header>
-                            <Calendar.YearPickerTrigger>
-                              <Calendar.YearPickerTriggerHeading />
-                              <Calendar.YearPickerTriggerIndicator />
-                            </Calendar.YearPickerTrigger>
-                            <Calendar.NavButton slot="previous" />
-                            <Calendar.NavButton slot="next" />
-                          </Calendar.Header>
-                          <Calendar.Grid>
-                            <Calendar.GridHeader>
-                              {(day) => (
-                                <Calendar.HeaderCell>{day}</Calendar.HeaderCell>
-                              )}
-                            </Calendar.GridHeader>
-                            <Calendar.GridBody>
-                              {(date) => <Calendar.Cell date={date} />}
-                            </Calendar.GridBody>
-                          </Calendar.Grid>
-                          <Calendar.YearPickerGrid>
-                            <Calendar.YearPickerGridBody>
-                              {({ year }) => (
-                                <Calendar.YearPickerCell year={year} />
-                              )}
-                            </Calendar.YearPickerGridBody>
-                          </Calendar.YearPickerGrid>
-                        </Calendar>
-                      </DatePicker.Popover>
-                    </DatePicker>
-                  ) : null}
-                  <Tabs
-                    selectedKey={detailView}
-                    onSelectionChange={(key: Key) =>
-                      setDetailView(String(key) as DetailView)
-                    }
-                  >
-                    <Tabs.ListContainer>
-                      <Tabs.List
-                        aria-label={copy.detail.title}
-                        className="p-0.5"
-                      >
-                        <Tabs.Tab
-                          className="h-7 min-w-12 px-2.5 text-xs"
-                          id="daily"
-                        >
-                          {copy.detail.daily}
-                          <Tabs.Indicator />
-                        </Tabs.Tab>
-                        <Tabs.Tab
-                          className="h-7 min-w-12 px-2.5 text-xs"
-                          id="hourly"
-                        >
-                          {copy.detail.hourly}
-                          <Tabs.Indicator />
-                        </Tabs.Tab>
-                        <Tabs.Tab
-                          className="h-7 min-w-12 px-2.5 text-xs"
-                          id="monthly"
-                        >
-                          {copy.detail.monthly}
-                          <Tabs.Indicator />
-                        </Tabs.Tab>
-                      </Tabs.List>
-                    </Tabs.ListContainer>
-                  </Tabs>
-                </div>
-              </Card.Header>
-              <Card.Content>
-                {detailState.status === "loading" ? (
-                  <SectionSkeleton className="h-64 w-full" />
-                ) : detailState.status === "error" ? (
-                  <SectionError
-                    message={copy.detail.loadError}
-                    retry={
-                      detailView === "hourly"
-                        ? () => refreshHourly(false)
-                        : retryAll
-                    }
-                    retryLabel={copy.detail.retry}
-                  />
-                ) : (
-                  <DetailTable copy={copy} locale={locale} rows={detailRows} />
-                )}
-              </Card.Content>
-            </Card>
+            <DetailTable
+              copy={copy}
+              detailView={detailView}
+              hourlyDay={effectiveHourlyDay}
+              locale={locale}
+              rangePickerMax={rangePickerMax}
+              refreshing={
+                detailView === "hourly" ? hourlyRefreshing : refreshing
+              }
+              rows={detailRows}
+              status={detailState.status}
+              onDetailViewChange={setDetailView}
+              onHourlyDayChange={setHourlyDay}
+              onRetry={retryDetail}
+            />
           </>
         ) : (
           <Card className="p-10">

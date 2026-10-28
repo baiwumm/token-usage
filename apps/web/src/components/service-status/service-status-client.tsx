@@ -315,87 +315,83 @@ export function ServiceStatusClient() {
         </Card.Content>
       </Card>
 
-      <Card className="p-6">
-        <Card.Content>
-          <Table>
-            <Table.ScrollContainer>
-              <Table.Content aria-label={copy.pageTitle}>
-                <Table.Header>
-                  <Table.Column isRowHeader>{copy.columnCheck}</Table.Column>
-                  <Table.Column>{copy.columnTarget}</Table.Column>
-                  <Table.Column>{copy.columnStatus}</Table.Column>
-                  <Table.Column>{copy.columnLatency}</Table.Column>
-                </Table.Header>
-                <Table.Body>
-                  {results.map((result) => {
-                    const Icon = CHECK_ICONS[result.name];
+      <Table>
+        <Table.ScrollContainer>
+          <Table.Content aria-label={copy.pageTitle}>
+            <Table.Header>
+              <Table.Column isRowHeader>{copy.columnCheck}</Table.Column>
+              <Table.Column>{copy.columnTarget}</Table.Column>
+              <Table.Column>{copy.columnStatus}</Table.Column>
+              <Table.Column>{copy.columnLatency}</Table.Column>
+            </Table.Header>
+            <Table.Body>
+              {results.map((result) => {
+                const Icon = CHECK_ICONS[result.name];
 
-                    return (
-                      <Table.Row key={result.name}>
-                        <Table.Cell>
-                          <span className="flex items-center gap-2">
-                            <Icon
-                              aria-hidden="true"
-                              className="text-muted size-4 shrink-0"
-                            />
-                            <span className="flex min-w-0 flex-col">
-                              <span className="font-medium">
-                                {copy.checks[result.name]}
-                              </span>
-                              {result.detail ? (
-                                <span
-                                  className={
-                                    result.status === "fail"
-                                      ? "text-danger/80 text-xs break-words"
-                                      : "text-muted text-xs"
-                                  }
-                                >
-                                  {detailText(result.detail)}
-                                </span>
-                              ) : null}
-                            </span>
+                return (
+                  <Table.Row key={result.name}>
+                    <Table.Cell>
+                      <span className="flex items-center gap-2">
+                        <Icon
+                          aria-hidden="true"
+                          className="text-muted size-4 shrink-0"
+                        />
+                        <span className="flex min-w-0 flex-col">
+                          <span className="font-medium">
+                            {copy.checks[result.name]}
                           </span>
-                        </Table.Cell>
-                        <Table.Cell className="text-foreground/60 text-xs">
-                          {result.target}
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Chip
-                            color={
-                              result.status === "ok"
-                                ? "success"
-                                : result.status === "fail"
-                                  ? "danger"
-                                  : "default"
-                            }
-                            size="sm"
-                            variant="soft"
-                          >
-                            {result.status === "ok"
-                              ? copy.ok
-                              : result.status === "fail"
-                                ? copy.fail
-                                : copy.checking}
-                          </Chip>
-                        </Table.Cell>
-                        <Table.Cell className="tabular-nums">
-                          {result.latencyMs != null ? (
-                            <span className={latencyTone(result.latencyMs)}>
-                              {`${result.latencyMs} ms`}
+                          {result.detail ? (
+                            <span
+                              className={
+                                result.status === "fail"
+                                  ? "text-danger/80 text-xs break-words"
+                                  : "text-muted text-xs"
+                              }
+                            >
+                              {detailText(result.detail)}
                             </span>
-                          ) : (
-                            "—"
-                          )}
-                        </Table.Cell>
-                      </Table.Row>
-                    );
-                  })}
-                </Table.Body>
-              </Table.Content>
-            </Table.ScrollContainer>
-          </Table>
-        </Card.Content>
-      </Card>
+                          ) : null}
+                        </span>
+                      </span>
+                    </Table.Cell>
+                    <Table.Cell className="text-foreground/60 text-xs">
+                      {result.target}
+                    </Table.Cell>
+                    <Table.Cell>
+                      <Chip
+                        color={
+                          result.status === "ok"
+                            ? "success"
+                            : result.status === "fail"
+                              ? "danger"
+                              : "default"
+                        }
+                        size="sm"
+                        variant="soft"
+                      >
+                        {result.status === "ok"
+                          ? copy.ok
+                          : result.status === "fail"
+                            ? copy.fail
+                            : copy.checking}
+                      </Chip>
+                    </Table.Cell>
+                    <Table.Cell className="tabular-nums">
+                      {result.latencyMs != null ? (
+                        <span className={latencyTone(result.latencyMs)}>
+                          {`${result.latencyMs} ms`}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              })}
+            </Table.Body>
+          </Table.Content>
+        </Table.ScrollContainer>
+      </Table>
 
       <Typography color="muted" type="body-xs">
         {formatMessage(copy.latencyHint, locale, { ms: LATENCY_SLOW_MS })}

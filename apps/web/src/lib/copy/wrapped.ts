@@ -25,6 +25,7 @@ export interface WrappedCopy {
   peakDay: string;
   sourcesTitle: string;
   modelsTitle: string;
+  modelsEmpty: string;
   table: {
     model: string;
     tokens: string;
@@ -69,6 +70,7 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
     peakDay: "最高产的一天",
     sourcesTitle: "来源用量",
     modelsTitle: "模型用量",
+    modelsEmpty: "这一年没有上报模型明细。",
     table: {
       model: "模型",
       tokens: "Tokens",
@@ -111,6 +113,7 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
     peakDay: "Biggest day",
     sourcesTitle: "Source usage",
     modelsTitle: "Model usage",
+    modelsEmpty: "No model breakdown was reported this year.",
     table: {
       model: "Model",
       tokens: "Tokens",

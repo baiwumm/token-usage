@@ -1,17 +1,31 @@
 "use client";
 
-// Sortable + paginated detail table for the dashboard's daily / hourly /
-// monthly views (docs/ui-spec.md 仪表盘 6). Server data is already bucketed;
-// this component only sorts the current window and pages it 10 rows at a time.
+// Sortable, client-paged detail card for the dashboard's daily / hourly /
+// monthly views (docs/ui-spec.md 仪表盘 7). Server data is already bucketed;
+// this card sorts the current window and pages it 10 rows at a time, while the
+// shared DataTableCard owns the shell, pagination and the three states.
 
 import type { DashboardCopy } from "@/lib/copy/dashboard";
+import type { LoadStatus } from "@/lib/loadable";
+import type { CalendarDate } from "@internationalized/date";
+import type { Key, SortDescriptor } from "@heroui/react";
 
-import { Table, Typography, type SortDescriptor } from "@heroui/react";
+import {
+  Calendar,
+  DateField,
+  DatePicker,
+  Tabs,
+  Typography,
+} from "@heroui/react";
+import { parseDate } from "@internationalized/date";
 import { memo, useMemo, useState } from "react";
 
 import { ModelListModal } from "./model-list-modal";
 
-import { TablePagination } from "@/components/table-pagination";
+import {
+  DataTableCard,
+  type DataTableColumn,
+} from "@/components/data-table-card";
 import { useFormat } from "@/lib/format/format";
 
 export interface DetailRow {
@@ -29,6 +43,8 @@ export interface DetailRow {
   modelTokens: Record<string, number>;
 }
 
+export type DetailView = "daily" | "hourly" | "monthly";
+
 const DEFAULT_PAGE_SIZE = 10;
 
 // Memoized: detail rows only change when their view's request settles; the
@@ -37,10 +53,26 @@ function DetailTableImpl({
   rows,
   copy,
   locale,
+  status,
+  refreshing,
+  onRetry,
+  detailView,
+  onDetailViewChange,
+  hourlyDay,
+  onHourlyDayChange,
+  rangePickerMax,
 }: {
   rows: DetailRow[];
   copy: DashboardCopy;
   locale: "zh" | "en";
+  status: LoadStatus;
+  refreshing: boolean;
+  onRetry: () => void;
+  detailView: DetailView;
+  onDetailViewChange: (view: DetailView) => void;
+  hourlyDay: string;
+  onHourlyDayChange: (day: string) => void;
+  rangePickerMax: CalendarDate;
 }) {
   const { formatTokens, formatCost, formatNumber } = useFormat();
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -68,6 +100,87 @@ function DetailTableImpl({
     });
   }, [rows, sortDescriptor]);
 
+  const columns = useMemo<DataTableColumn<DetailRow>[]>(
+    () => [
+      {
+        id: "time",
+        header: copy.detail.columnTime,
+        sortable: true,
+        className: "font-medium",
+        cell: (row) => row.time,
+      },
+      {
+        id: "tokens",
+        header: copy.detail.columnTokens,
+        sortable: true,
+        className: "tabular-nums",
+        cell: (row) => formatTokens(row.tokens),
+      },
+      {
+        id: "input",
+        header: copy.detail.columnInput,
+        sortable: true,
+        className: "text-foreground/70 tabular-nums",
+        cell: (row) => formatTokens(row.input),
+      },
+      {
+        id: "cached",
+        header: copy.detail.columnCached,
+        sortable: true,
+        className: "text-foreground/70 tabular-nums",
+        cell: (row) => formatTokens(row.cached),
+      },
+      {
+        id: "output",
+        header: copy.detail.columnOutput,
+        sortable: true,
+        className: "text-foreground/70 tabular-nums",
+        cell: (row) => formatTokens(row.output),
+      },
+      {
+        id: "billable",
+        header: copy.detail.columnBillable,
+        sortable: true,
+        className: "tabular-nums",
+        cell: (row) => formatTokens(row.billable),
+      },
+      {
+        id: "cost",
+        header: copy.detail.columnCost,
+        sortable: true,
+        className: "tabular-nums",
+        cell: (row) => formatCost(row.cost),
+      },
+      {
+        id: "conversations",
+        header: copy.detail.columnConversations,
+        sortable: true,
+        className: "tabular-nums",
+        cell: (row) => formatNumber(row.conversations),
+      },
+      {
+        id: "models",
+        header: copy.detail.columnModels,
+        sortable: true,
+        className: "tabular-nums",
+        cell: (row) =>
+          Object.keys(row.modelTokens).length > 0 ? (
+            <button
+              aria-label={copy.detail.viewModels}
+              className="cursor-pointer underline-offset-2 hover:text-accent hover:underline"
+              type="button"
+              onClick={() => setModelsRow(row)}
+            >
+              {formatNumber(row.models)}
+            </button>
+          ) : (
+            formatNumber(row.models)
+          ),
+      },
+    ],
+    [copy, formatCost, formatNumber, formatTokens],
+  );
+
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const visible = sorted.slice(
@@ -75,138 +188,135 @@ function DetailTableImpl({
     currentPage * pageSize,
   );
 
-  if (rows.length === 0) {
-    return (
-      <Typography color="muted" type="body-sm">
-        {copy.detail.empty}
-      </Typography>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-3">
-      <Table>
-        <Table.ScrollContainer>
-          <Table.Content
-            aria-label={copy.detail.title}
-            sortDescriptor={sortDescriptor}
-            onSortChange={(descriptor) => {
-              setSortDescriptor(descriptor);
-              setPage(1);
-            }}
-          >
-            <Table.Header>
-              <Table.Column allowsSorting isRowHeader id="time">
-                {({ sortDirection }) => (
-                  <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    {copy.detail.columnTime}
-                  </Table.SortableColumnHeader>
-                )}
-              </Table.Column>
-              <Table.Column allowsSorting id="tokens">
-                {({ sortDirection }) => (
-                  <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    {copy.detail.columnTokens}
-                  </Table.SortableColumnHeader>
-                )}
-              </Table.Column>
-              <Table.Column allowsSorting id="input">
-                {({ sortDirection }) => (
-                  <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    {copy.detail.columnInput}
-                  </Table.SortableColumnHeader>
-                )}
-              </Table.Column>
-              <Table.Column allowsSorting id="cached">
-                {({ sortDirection }) => (
-                  <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    {copy.detail.columnCached}
-                  </Table.SortableColumnHeader>
-                )}
-              </Table.Column>
-
-              <Table.Column allowsSorting id="output">
-                {({ sortDirection }) => (
-                  <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    {copy.detail.columnOutput}
-                  </Table.SortableColumnHeader>
-                )}
-              </Table.Column>
-              <Table.Column allowsSorting id="billable">
-                {({ sortDirection }) => (
-                  <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    {copy.detail.columnBillable}
-                  </Table.SortableColumnHeader>
-                )}
-              </Table.Column>
-              <Table.Column allowsSorting id="cost">
-                {({ sortDirection }) => (
-                  <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    {copy.detail.columnCost}
-                  </Table.SortableColumnHeader>
-                )}
-              </Table.Column>
-              <Table.Column allowsSorting id="conversations">
-                {({ sortDirection }) => (
-                  <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    {copy.detail.columnConversations}
-                  </Table.SortableColumnHeader>
-                )}
-              </Table.Column>
-              <Table.Column allowsSorting id="models">
-                {({ sortDirection }) => (
-                  <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    {copy.detail.columnModels}
-                  </Table.SortableColumnHeader>
-                )}
-              </Table.Column>
-            </Table.Header>
-            <Table.Body>
-              {visible.map((row) => (
-                <Table.Row key={row.id} id={row.id}>
-                  <Table.Cell className="font-medium">{row.time}</Table.Cell>
-                  <Table.Cell className="tabular-nums">
-                    {formatTokens(row.tokens)}
-                  </Table.Cell>
-                  <Table.Cell className="text-foreground/70 tabular-nums">
-                    {formatTokens(row.input)}
-                  </Table.Cell>
-                  <Table.Cell className="text-foreground/70 tabular-nums">
-                    {formatTokens(row.cached)}
-                  </Table.Cell>
-
-                  <Table.Cell className="text-foreground/70 tabular-nums">
-                    {formatTokens(row.output)}
-                  </Table.Cell>
-                  <Table.Cell className="tabular-nums">
-                    {formatTokens(row.billable)}
-                  </Table.Cell>
-                  <Table.Cell className="tabular-nums">
-                    {formatCost(row.cost)}
-                  </Table.Cell>
-                  <Table.Cell className="tabular-nums">
-                    {formatNumber(row.conversations)}
-                  </Table.Cell>
-                  <Table.Cell className="tabular-nums">
-                    {Object.keys(row.modelTokens).length > 0 ? (
-                      <button
-                        aria-label={copy.detail.viewModels}
-                        className="cursor-pointer underline-offset-2 hover:text-accent hover:underline"
-                        type="button"
-                        onClick={() => setModelsRow(row)}
-                      >
-                        {formatNumber(row.models)}
-                      </button>
-                    ) : (
-                      formatNumber(row.models)
-                    )}
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table.Content>
-        </Table.ScrollContainer>
-      </Table>
+    <>
+      <DataTableCard
+        className="p-6"
+        columns={columns}
+        empty={
+          <Typography color="muted" type="body-sm">
+            {copy.detail.empty}
+          </Typography>
+        }
+        error={{
+          message: copy.detail.loadError,
+          onRetry,
+          retryLabel: copy.detail.retry,
+        }}
+        extra={
+          <>
+            {detailView === "hourly" ? (
+              <DatePicker
+                aria-label={copy.detail.dayLabel}
+                className="w-40"
+                maxValue={rangePickerMax}
+                value={parseDate(hourlyDay)}
+                onChange={(value) => {
+                  if (value && value.compare(rangePickerMax) <= 0) {
+                    onHourlyDayChange(value.toString());
+                  }
+                }}
+              >
+                <DateField.Group
+                  fullWidth
+                  className="rounded-3xl h-8"
+                  variant="secondary"
+                >
+                  <DateField.Input>
+                    {(segment) => <DateField.Segment segment={segment} />}
+                  </DateField.Input>
+                  <DateField.Suffix>
+                    <DatePicker.Trigger>
+                      <DatePicker.TriggerIndicator />
+                    </DatePicker.Trigger>
+                  </DateField.Suffix>
+                </DateField.Group>
+                <DatePicker.Popover>
+                  <Calendar
+                    aria-label={copy.detail.dayLabel}
+                    maxValue={rangePickerMax}
+                  >
+                    <Calendar.Header>
+                      <Calendar.YearPickerTrigger>
+                        <Calendar.YearPickerTriggerHeading />
+                        <Calendar.YearPickerTriggerIndicator />
+                      </Calendar.YearPickerTrigger>
+                      <Calendar.NavButton slot="previous" />
+                      <Calendar.NavButton slot="next" />
+                    </Calendar.Header>
+                    <Calendar.Grid>
+                      <Calendar.GridHeader>
+                        {(day) => (
+                          <Calendar.HeaderCell>{day}</Calendar.HeaderCell>
+                        )}
+                      </Calendar.GridHeader>
+                      <Calendar.GridBody>
+                        {(date) => <Calendar.Cell date={date} />}
+                      </Calendar.GridBody>
+                    </Calendar.Grid>
+                    <Calendar.YearPickerGrid>
+                      <Calendar.YearPickerGridBody>
+                        {({ year }) => <Calendar.YearPickerCell year={year} />}
+                      </Calendar.YearPickerGridBody>
+                    </Calendar.YearPickerGrid>
+                  </Calendar>
+                </DatePicker.Popover>
+              </DatePicker>
+            ) : null}
+            <Tabs
+              selectedKey={detailView}
+              onSelectionChange={(key: Key) =>
+                onDetailViewChange(String(key) as DetailView)
+              }
+            >
+              <Tabs.ListContainer>
+                <Tabs.List aria-label={copy.detail.title} className="p-0.5">
+                  <Tabs.Tab className="h-7 min-w-12 px-2.5 text-xs" id="daily">
+                    {copy.detail.daily}
+                    <Tabs.Indicator />
+                  </Tabs.Tab>
+                  <Tabs.Tab className="h-7 min-w-12 px-2.5 text-xs" id="hourly">
+                    {copy.detail.hourly}
+                    <Tabs.Indicator />
+                  </Tabs.Tab>
+                  <Tabs.Tab
+                    className="h-7 min-w-12 px-2.5 text-xs"
+                    id="monthly"
+                  >
+                    {copy.detail.monthly}
+                    <Tabs.Indicator />
+                  </Tabs.Tab>
+                </Tabs.List>
+              </Tabs.ListContainer>
+            </Tabs>
+          </>
+        }
+        pagination={{
+          labels: copy.detail,
+          locale,
+          page: currentPage,
+          pageSize,
+          total: sorted.length,
+          onPageChange: setPage,
+          onPageSizeChange: (next) => {
+            setPageSize(next);
+            setPage(1);
+          },
+        }}
+        refreshing={refreshing}
+        rowKey={(row) => row.id}
+        rows={visible}
+        sort={{
+          descriptor: sortDescriptor,
+          onChange: (descriptor) => {
+            setSortDescriptor(descriptor);
+            setPage(1);
+          },
+        }}
+        status={status}
+        tableLabel={copy.detail.title}
+        title={copy.detail.title}
+      />
 
       <ModelListModal
         copy={copy}
@@ -224,20 +334,7 @@ function DetailTableImpl({
           if (!open) setModelsRow(null);
         }}
       />
-
-      <TablePagination
-        labels={copy.detail}
-        locale={locale}
-        page={currentPage}
-        pageSize={pageSize}
-        total={sorted.length}
-        onPageChange={setPage}
-        onPageSizeChange={(next) => {
-          setPageSize(next);
-          setPage(1);
-        }}
-      />
-    </div>
+    </>
   );
 }
 

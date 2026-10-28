@@ -25,6 +25,13 @@
   （2026-10-24 操作者指令）。
 - 表格分页统一 `components/table-pagination.tsx`：左侧范围摘要、中间页码、右侧每页条数
   （最小尺寸 Select）；默认页大小由调用页传入（明细 10/页、Sessions 20/页）。
+- 列表数据面统一 `components/data-table-card.tsx`（`DataTableCard`）：头部左侧标题 + 副标题、
+  右侧 `extra` 槽（传入才渲染）、中部列配置表格（`columns: { id, header, cell, sortable?,
+  className? }`）、底部 `TablePagination`，并由它接管 Loading（骨架行）/ Empty / Error
+  三态与刷新浮层。`rows` 永远是当前页：排序与分页由调用方持有（列表页把偏移放 URL，
+  仪表盘明细页本地排序），组件不自己取数。`<md` 的卡片列表走 `renderMobileRow`。
+  刷新浮层只覆盖表格区（含移动端卡片列表），卡头标题/副标题与页脚分页保持可见
+  （2026-10-28 操作者裁定）。
 - 下拉框选项异步加载时，加载态放在触发器里：`Select.Indicator` 内渲染 `Spinner`
   （`<Select.Indicator><Spinner size="sm" /></Select.Indicator>`），加载完回落默认箭头；
   不另加触发器外的 Spinner。选项随页面数据一起到达的筛选下拉，只在首载（选项尚空）时
@@ -41,9 +48,12 @@
 ## 三态与响应式
 
 - 每个数据面必须设计 Loading（Skeleton / Spinner）、Empty、Error 三态；Error 态提供重试。
+- 列表卡在已有数据上刷新失败时，保留旧行并在卡顶给危险条 + 重试（不静默显示旧页），
+  首次加载失败才整块换成错误态。
 - 仪表盘按区块独立加载：单个区块失败不阻塞其他区块，失败区块在自己的 Card 内重试。
 - 响应式：`lg` 以下使用抽屉导航（对齐旧系统行为）；关键页面在 375px 宽度可用。
-- 页面级不得出现横向滚动；表格/代码块需要横向滚动时，滚动容器限定在 Card 内。
+- 页面级不得出现横向滚动；表格/代码块需要横向滚动时，滚动容器限定在组件自己的横向滚动
+  容器内（Card 或 `Table.ScrollContainer`），不外溢到页面。
 
 ## 页面规范（2026-10-25 增量）
 
@@ -134,9 +144,10 @@
 - 导航：侧边栏与抽屉在仪表盘后新增“Sessions”（`ListUl` 图标），页面标题取菜单名。
 - 数据源：`account-sessions`。筛选条：时间范围为单一 `DateRangePicker`（弹层内置
   今天 / 7D / 30D / 90D 快捷按钮，活动预设高亮，点选关层；日历手动选取写 `custom`；
-  控件形态与仪表盘一致，设备下拉同样复用 `DeviceFilterSelect`）、设备、来源、项目
-  搜索（`q`）；设备/来源选项来自响应的 `facets`，来源选项与触发器复显 `SourceIcon`
-  品牌图标及 `sourceDisplayLabel`（与列表 `Chip` 同源，全部来源用 `Layers`）；设备/来源/搜索与分页偏移（`offset`）
+  控件形态与仪表盘一致，设备下拉同样复用 `DeviceFilterSelect`）、设备、来源；筛选条最
+  右侧是与采集记录同款的刷新图标按钮（`ArrowsRotateRight`，刷新时图标 `animate-spin`，
+  `Tooltip` 显示上次更新时间）；设备/来源选项来自响应的 `facets`，来源选项与触发器复显 `SourceIcon`
+  品牌图标及 `sourceDisplayLabel`（与列表 `Chip` 同源，全部来源用 `Layers`）；设备/来源与分页偏移（`offset`）
   写入 URL；时间范围的预设（今天 / 7D / 30D / 90D）不写入 URL、加载不回显（2026-10-26
   裁定），自定义窗口——日历手选或热力格子跳转带来的 `from` / `to`——写入并回显，刷新与
   分享保持同一窗口（2026-10-28 裁定）；非法或顺序颠倒的 `from` / `to` 首帧清出地址栏；
@@ -146,12 +157,14 @@
   今天（`to` 为明日 00:00 本地），按浏览器本地时区换算为 ISO 瞬时，服务端窗口为
   `[from, to)`；日期上限为浏览器时区的今天，日历与日期输入均不接受未来日期。
 - 汇总卡：会话数、总 Token、成本、平均时长（`totals.duration_ms / totals.sessions`，
-  0 会话显示 `—`）。
-- 列表：`≥md` 用 `Table`，`<md` 用 Card 列表。列：结束时间、来源 `Chip`（`SourceIcon`
+  0 会话显示 `—`）。首载时四张卡保留真实标题与图标，只有数字位是骨架（不整块闪骨架）；
+  刷新时汇总卡不遮罩，数值变化由 `FlowNumber` 滚动过渡（2026-10-28 操作者裁定）。
+- 列表：`DataTableCard`（标题「会话」+ 副标题说明），`≥md` 用 `Table`、`<md` 用 Card 列表
+  都由组件承担（`renderMobileRow`）。列：结束时间、来源 `Chip`（`SourceIcon`
   Logo + 规范化显示名）、项目、设备、时长、Token、成本、模型（前 3 个 `Chip` + `+N`）、
   「详情」操作列（表头「详情」、行内按钮「查看」，`variant="tertiary"`，2026-10-26 操作者
   裁定）。v1 固定按
-  结束时间倒序；服务端分页默认 20/页（可选 10/20/50/100），`Pagination` 组件；不做列排序。
+  结束时间倒序；服务端分页默认 20/页（可选 10/20/50/100），页脚走 `TablePagination`；不做列排序。
 - 详情：行尾「查看」按钮打开 `Modal`（整行点击为增强，键盘焦点落在按钮上）；头部为来源
   （Logo `Chip`）、项目、设备三枚 `Chip`；meta 两列 结束时间（含相对时间小字）+ 时长；
   Token 拆分（input / cached / cache creation / output / reasoning /
@@ -184,8 +197,9 @@
   Tooltip 各行的标签必须互不相同（共用同一串会折叠图例/行），行 key 用序号。
 - 来源用量：顶部一条按 `seriesColor` 的堆叠占比条；每行 `SourceIcon` 品牌 Logo +
   `sourceDisplayLabel` 显示名 + `Tokens · 占比 · 成本`，下方同色细占比条。
-- 模型用量：`Table` 一次展示全部（不分页），列：模型（`SourceIcon` 厂商 Logo + 模型
-  名）、Tokens、成本、占比（`Meter` + 百分比）。
+- 模型用量：`DataTableCard` 一次展示全部（不分页、不排序），列：模型（`SourceIcon` 厂商 Logo + 模型
+  名）、Tokens、成本、占比（`Meter` + 百分比）；切换年份保留旧行并罩刷新浮层，这一年没有
+  模型明细时给「无模型明细」空态。
 
 ### 服务状态（`/service-status`）
 
@@ -194,7 +208,8 @@
   重跑不折叠成单行再逐行回填。
 - 实例信息卡三行：Supabase 项目 / 配对回调地址 / 会话，前置 `Database` / `Link` /
   `ShieldCheck` 图标（`text-accent/70`）；会话值按状态着色（success / danger / muted）。
-- 探活表：检查项列 = 图标（`Globe` / `ShieldCheck` / `ChartLine` / `Display`）+ 本地化
+- 探活表：不套 Card，直接渲染 `Table`（2026-10-28 操作者裁定），横向滚动只发生在
+  `Table.ScrollContainer` 内。检查项列 = 图标（`Globe` / `ShieldCheck` / `ChartLine` / `Display`）+ 本地化
   名称 + 第二行 muted 明细（总计 tokens / 设备数 / 无会话 / 错误原文，异常时用 danger）；
   目标列显示探针目标；状态列 `Chip` soft（success / danger / default）；延迟列 ≤300ms
   用 `text-success`、>1500ms 用 `text-warning`，会话行不是网络探针显示 `—`。
@@ -245,7 +260,8 @@
 手动刷新始终可用，不受这两项影响。仪表盘卡片里的说明文字必须写明「0 表示关闭」，
 因为 Slider 的无障碍值标签只会读出数字。
 
-设备分区表格列为 设备 / 平台 / 接入时间 / 用量 / 操作。操作列三枚**图标按钮**
+设备分区用 `DataTableCard`（标题=分区名、副标题=分区说明，Loading / Empty / Error 三态由
+卡片接管，不再另配加载卡与错误卡）。表格列为 设备 / 平台 / 接入时间 / 用量 / 操作。操作列三枚**图标按钮**
 （`Button isIconOnly` + 底部带箭头 `Tooltip`，文案即动作名；`Pencil` 改名 / `ArrowRotateLeft`
 恢复默认名称 / `TrashBin` 吊销）：
 
