@@ -476,83 +476,83 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </div>
 
-      {/* Mobile drawer (<lg) — same profile-first anatomy as the sidebar. */}
-      <Drawer>
-        <Drawer.Backdrop isOpen={menuOpen} onOpenChange={setMenuOpen}>
-          <Drawer.Content placement="left">
-            <Drawer.Dialog
-              aria-label="Token Usage"
-              className="bg-surface w-72 max-w-[86vw] p-0"
-            >
-              <Drawer.Header className="flex h-16 flex-row items-center gap-1 pr-12">
-                <div className="min-w-0 flex-1">
-                  <Brand collapsed={false} />
-                </div>
-                <Drawer.CloseTrigger aria-label={copy.closeMenu} />
-              </Drawer.Header>
-              <Drawer.Body className="mt-0 flex flex-col gap-4 px-3 py-3">
-                <NavItems
-                  collapsed={false}
-                  onNavigate={() => setMenuOpen(false)}
-                />
-              </Drawer.Body>
-              <Drawer.Footer className="mt-0 flex flex-col gap-2 px-3 py-3">
-                <div className="flex items-center justify-end">
-                  <ThemeModeToggle alwaysVisible />
-                </div>
-                <SidebarProfile
-                  collapsed={false}
-                  profile={profile}
-                  onRequestSignOut={() => {
-                    setMenuOpen(false);
-                    requestSignOut();
-                  }}
-                />
-              </Drawer.Footer>
-            </Drawer.Dialog>
-          </Drawer.Content>
-        </Drawer.Backdrop>
-      </Drawer>
+      {/* Mobile drawer (<lg) — same profile-first anatomy as the sidebar.
+          Rendered without the Drawer root: it wraps children in react-aria's
+          DialogTrigger, which warns when the overlay is controlled externally
+          without a trigger child. Backdrop carries the state here. */}
+      <Drawer.Backdrop isOpen={menuOpen} onOpenChange={setMenuOpen}>
+        <Drawer.Content placement="left">
+          <Drawer.Dialog
+            aria-label="Token Usage"
+            className="bg-surface w-72 max-w-[86vw] p-0"
+          >
+            <Drawer.Header className="flex h-16 flex-row items-center gap-1 pr-12">
+              <div className="min-w-0 flex-1">
+                <Brand collapsed={false} />
+              </div>
+              <Drawer.CloseTrigger aria-label={copy.closeMenu} />
+            </Drawer.Header>
+            <Drawer.Body className="mt-0 flex flex-col gap-4 px-3 py-3">
+              <NavItems
+                collapsed={false}
+                onNavigate={() => setMenuOpen(false)}
+              />
+            </Drawer.Body>
+            <Drawer.Footer className="mt-0 flex flex-col gap-2 px-3 py-3">
+              <div className="flex items-center justify-end">
+                <ThemeModeToggle alwaysVisible />
+              </div>
+              <SidebarProfile
+                collapsed={false}
+                profile={profile}
+                onRequestSignOut={() => {
+                  setMenuOpen(false);
+                  requestSignOut();
+                }}
+              />
+            </Drawer.Footer>
+          </Drawer.Dialog>
+        </Drawer.Content>
+      </Drawer.Backdrop>
 
-      {/* Sign-out confirmation. */}
-      <AlertDialog>
-        <AlertDialog.Backdrop
-          isDismissable={!signingOut}
-          isOpen={signOutOpen}
-          onOpenChange={(open) => {
-            if (!open) setSignOutOpen(false);
-          }}
-        >
-          <AlertDialog.Container>
-            <AlertDialog.Dialog>
-              <AlertDialog.Header>
-                <AlertDialog.Icon status="danger" />
-                <AlertDialog.Heading>{copy.signOut}</AlertDialog.Heading>
-              </AlertDialog.Header>
-              <AlertDialog.Body>
-                <Typography type="body-sm">{copy.signOutConfirm}</Typography>
-              </AlertDialog.Body>
-              <AlertDialog.Footer>
-                <Button isDisabled={signingOut} slot="close" variant="tertiary">
-                  {copy.cancel}
-                </Button>
-                <Button
-                  isPending={signingOut}
-                  variant="danger"
-                  onPress={() => void signOut()}
-                >
-                  {({ isPending }) => (
-                    <>
-                      {isPending ? <Spinner color="current" size="sm" /> : null}
-                      {copy.signOut}
-                    </>
-                  )}
-                </Button>
-              </AlertDialog.Footer>
-            </AlertDialog.Dialog>
-          </AlertDialog.Container>
-        </AlertDialog.Backdrop>
-      </AlertDialog>
+      {/* Sign-out confirmation. Same controlled-overlay workaround as the
+          drawer above: state lives on the backdrop, not the root. */}
+      <AlertDialog.Backdrop
+        isDismissable={!signingOut}
+        isOpen={signOutOpen}
+        onOpenChange={(open) => {
+          if (!open) setSignOutOpen(false);
+        }}
+      >
+        <AlertDialog.Container>
+          <AlertDialog.Dialog>
+            <AlertDialog.Header>
+              <AlertDialog.Icon status="danger" />
+              <AlertDialog.Heading>{copy.signOut}</AlertDialog.Heading>
+            </AlertDialog.Header>
+            <AlertDialog.Body>
+              <Typography type="body-sm">{copy.signOutConfirm}</Typography>
+            </AlertDialog.Body>
+            <AlertDialog.Footer>
+              <Button isDisabled={signingOut} slot="close" variant="tertiary">
+                {copy.cancel}
+              </Button>
+              <Button
+                isPending={signingOut}
+                variant="danger"
+                onPress={() => void signOut()}
+              >
+                {({ isPending }) => (
+                  <>
+                    {isPending ? <Spinner color="current" size="sm" /> : null}
+                    {copy.signOut}
+                  </>
+                )}
+              </Button>
+            </AlertDialog.Footer>
+          </AlertDialog.Dialog>
+        </AlertDialog.Container>
+      </AlertDialog.Backdrop>
     </div>
   );
 }

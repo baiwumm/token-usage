@@ -629,7 +629,6 @@ function HeatmapCardImpl({
                         const color =
                           HEATMAP_STOPS[cell.level] ?? HEATMAP_STOPS[0];
                         const shared = {
-                          key: cell.day,
                           "aria-label": `${cell.day} · ${formatTokens(cell.total)}`,
                           "data-day": cell.day,
                           "data-day-index": dayIndex,
@@ -646,13 +645,14 @@ function HeatmapCardImpl({
                         // sessions) or plain display (aria-label only).
                         return onDaySelect ? (
                           <button
+                            key={cell.day}
                             {...shared}
                             className="cursor-pointer appearance-none border-0 p-0 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-accent"
                             type="button"
                             onClick={() => onDaySelect(cell.day)}
                           />
                         ) : (
-                          <div {...shared} role="img" />
+                          <div key={cell.day} {...shared} role="img" />
                         );
                       }),
                     )}
