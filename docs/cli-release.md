@@ -121,8 +121,19 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > 计划任务每小时 `file not found`（`LastTaskResult` 非 0、日志停更）。VBS 现在先
 > 探测包路径，缺失时回落到 init 复制到数据目录的自包含运行时
 > `~/.tokenusage/tracker/app/bin/tracker.js`；引号改用 `Chr(34)` 拼接。
+> 同轮自检（"一次修完再发"要求）补齐了副本自身的可靠性：pnpm 安装下整目录
+> `fs.cp` 只复制到 junction（副本 `node_modules` 仅 1 项，运行即
+> `Cannot find module`），改为按依赖闭包复制真实目录；副本先进 `app.new` 暂存，
+> `require` 全部直接依赖 + `--version` 实跑通过后才替换并写 `.runtime-ready`，
+> 没有标记的副本所有启动点（notify / OpenClaw hook / session plugin / 自动重试）
+> 一律跳过、回落到已安装包再回落 npx；`doctor` 新增 `runtime.copy` 检查（缺标记
+> / 版本落后报 warn），`init` 复制失败不再静默，`uninstall` 清理 `app.new`。
 > 升级/切换 Node 后仍建议重跑 `init --yes --no-integrations --no-open`，让回落
-> 副本同步到新版。CHANGELOG 见 `packages/cli/CHANGELOG.md`。
+> 副本同步到新版。验证方式：临时 HOME 跑一次 init →
+> `tracker/app/bin/tracker.js --version` → `bin/notify.cjs --source claude`
+> 触发采集并看到 `tracker/logs/sync.log` 追加；删掉标记再触发，日志仍追加
+> （走回退链），即"副本坏了不会静默停采"。CHANGELOG 见
+> `packages/cli/CHANGELOG.md`。
 
 > **0.2.3（2026-10-28 家里机按 0.2.2 升级清单实测发现）**：0.2.x 的 init 把隐藏
 > VBS 注册到 `src/cli.js`（只导出 `run()` 的库文件，没有入口）——Windows 计划

@@ -5,7 +5,8 @@
 
 ## 0.2.4
 
-计划任务抗 Node 版本切换（发 0.2.3 后立即补；家里机实测发现）。
+计划任务抗 Node 版本切换 + 自检一次性收口的采集可靠性修复（发 0.2.3 后立即补；
+家里机实测发现）。
 
 - 0.2.3 的隐藏 VBS 把 npm 全局前缀里的包路径写死，而 nvm-windows 的全局前缀
   按 Node 版本分目录（如 `E:\nvm\nvm\v24.4.1\node_modules\tokenusage-cli`）。
@@ -15,6 +16,24 @@
   运行时 `~/.tokenusage/tracker/app/bin/tracker.js`，采集不中断。
 - VBS 的引号改用 `Chr(34)` 拼接（不再依赖转义写法），行为不变：wscript 直接起
   node、隐藏窗口、用退出码回填 `LastTaskResult`。
+- 运行时副本改为"依赖闭包"复制：旧实现整目录 `fs.cp`，在 pnpm 安装下只复制到
+  junction 链接（副本里 `node_modules` 只有 1 项），副本一跑就是
+  `Cannot find module`；现在按依赖图逐个复制真实目录，npm / pnpm 两种布局都能
+  得到自包含副本。
+- 副本先复制到 `app.new` 暂存目录，**实际启动一遍**（`require` 全部直接依赖 +
+  `--version`）通过后才替换 `app` 并写 `.runtime-ready` 标记。没有标记的副本
+  一律不使用——半成品副本在忽略输出的后台进程里静默死掉，表现与"采集正常"
+  完全一样，这是最难排查的一类失败。
+- notify / OpenClaw hook / OpenClaw session plugin / sync 自动重试脚本统一按
+  "带标记的副本 → 已安装包入口 → npx" 三级选择启动器。
+- `tokenusage doctor` 新增 `runtime.copy` 检查：缺标记、版本落后都会给出
+  warn 与重跑 `init` 的建议（升级 CLI 后重跑之前先能看见）。
+- `init` 复制失败不再静默：报告里列一行（stderr 同时提示），并说明会自动回退。
+- `uninstall` 一并清理暂存目录 `app.new`。
+- 后台 spawn 全部加 `windowsHide`（notify 之外的 hook / 自动重试 / 本地 API），
+  避免 GUI 宿主（如 oh-my-pi）每轮闪一个控制台窗口。
+- `sync --watch --interval=<毫秒>` 等号写法不再泄漏进 sync 参数（此前会被当成
+  未知参数导致每一轮失败）；低于 1 分钟仍按 15 分钟处理。
 - 仍然建议升级或切换 Node 版本后重跑一次
   `tokenusage init --yes --no-integrations --no-open`：回落副本是上次 init 的
   快照，重跑才会同步到最新版本。

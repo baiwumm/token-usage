@@ -761,6 +761,9 @@ function runSyncCommand(extraEnv = {}, opts = {}) {
         } : {}),
         TOKENUSAGE_LOCAL_SYNC_DEVICE_TOKEN: extraEnv.TOKENUSAGE_DEVICE_TOKEN || "",
       },
+      // The API can be hosted by a GUI process (desktop shell): keep the piped
+      // sync child console-less on Windows.
+      windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
     const cancel = () => child.kill("SIGTERM");

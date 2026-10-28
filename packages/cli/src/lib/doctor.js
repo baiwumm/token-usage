@@ -16,6 +16,7 @@ async function buildDoctorReport({
 
   if (paths.trackerDir) {
     checks.push(await checkTrackerDir(paths.trackerDir));
+    checks.push(await checkRuntimeCopy(paths.trackerDir));
   }
   if (paths.configPath) {
     checks.push(await checkConfigJson(paths.configPath));
@@ -173,6 +174,75 @@ async function checkTrackerDir(trackerDir) {
       critical: true,
       meta: { path: trackerDir, code: err?.code || "error" },
     };
+  }
+}
+
+// The init-copied runtime (`<trackerDir>/app`) is what notify hooks and the
+// hidden task prefer; without its readiness marker they fall back to the
+// installed CLI. Surface that state instead of leaving it invisible.
+async function checkRuntimeCopy(trackerDir) {
+  const { runtimeAppDir, runtimeBinPath, runtimeReadyMarkerPath } = require("./runtime-entry");
+  const appDir = runtimeAppDir(trackerDir);
+  const binPath = runtimeBinPath(trackerDir);
+  const markerPath = runtimeReadyMarkerPath(appDir);
+
+  if (!(await isDirectory(appDir))) {
+    return {
+      id: "runtime.copy",
+      status: "ok",
+      detail: "no runtime copy (hooks use the installed CLI)",
+      critical: false,
+      meta: { path: appDir },
+    };
+  }
+
+  const marker = await readJsonStrict(markerPath);
+  const cliVersion = require("../../package.json").version;
+  if (!(await isFile(binPath)) || marker.status !== "ok") {
+    return {
+      id: "runtime.copy",
+      status: "warn",
+      detail: "runtime copy incomplete; re-run `tokenusage init` (hooks currently use the installed CLI)",
+      critical: false,
+      meta: { path: appDir, marker: marker.status },
+    };
+  }
+  const version = marker.value && typeof marker.value.version === "string" ? marker.value.version : null;
+  if (version && version !== cliVersion) {
+    return {
+      id: "runtime.copy",
+      status: "warn",
+      detail: `runtime copy v${version} is older than the CLI v${cliVersion}; re-run \`tokenusage init\``,
+      critical: false,
+      meta: { path: appDir, version, cli_version: cliVersion },
+    };
+  }
+  return {
+    id: "runtime.copy",
+    status: "ok",
+    detail: `runtime copy ready${version ? ` (v${version})` : ""}`,
+    critical: false,
+    meta: {
+      path: appDir,
+      version,
+      installed_at: marker.value && typeof marker.value.installedAt === "string" ? marker.value.installedAt : null,
+    },
+  };
+}
+
+async function isDirectory(p) {
+  try {
+    return (await fs.stat(p)).isDirectory();
+  } catch (_err) {
+    return false;
+  }
+}
+
+async function isFile(p) {
+  try {
+    return (await fs.stat(p)).isFile();
+  } catch (_err) {
+    return false;
   }
 }
 

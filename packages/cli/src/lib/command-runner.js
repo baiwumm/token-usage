@@ -64,6 +64,9 @@ function runCommand(commandRunner, command, args, options = {}) {
     try {
       child = cp.spawn(shellCommand, args, {
         ...spawnOptions,
+        // Detection/probe commands pipe their output; never let Windows pop a
+        // console window when the CLI itself runs from a GUI host.
+        windowsHide: spawnOptions.windowsHide ?? true,
         detached: useProcessGroup || spawnOptions.detached,
         shell: useShell,
         stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],

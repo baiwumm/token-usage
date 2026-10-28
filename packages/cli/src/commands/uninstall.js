@@ -143,8 +143,10 @@ async function cmdUninstall(argv) {
   await fs.unlink(path.join(binDir, "run-sync-hidden.vbs")).catch(() => {});
   const taskDelete = deleteWindowsScheduledTask();
 
-  // Remove local app runtime (installed by init for notify-driven sync).
+  // Remove local app runtime (installed by init for notify-driven sync) and any
+  // staging directory left behind by an interrupted runtime copy.
   await fs.rm(path.join(trackerDir, "app"), { recursive: true, force: true }).catch(() => {});
+  await fs.rm(path.join(trackerDir, "app.new"), { recursive: true, force: true }).catch(() => {});
 
   // Deliberately NOT removed by --purge: the machine-identity seed lets a
   // reinstall reuse the same cloud device row instead of double-counting the

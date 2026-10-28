@@ -221,10 +221,28 @@ test("init's runtime copy works from the published layout (bin/tokenusage.js)", 
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "tu-init-copy-"));
   const appDir = path.join(home, "tracker", "app");
   try {
-    await installLocalTrackerApp({ appDir });
+    const result = await installLocalTrackerApp({ appDir });
+    assert.equal(result.ok, true, `installation reported a failure: ${JSON.stringify(result)}`);
     assert.ok(fs.existsSync(path.join(appDir, "bin", "tracker.js")), "app/bin/tracker.js copied");
     assert.ok(fs.existsSync(path.join(appDir, "src", "cli.js")), "app/src copied");
     assert.ok(fs.existsSync(path.join(appDir, "package.json")), "app/package.json copied");
+    // 0.2.4: the copy must be self-contained. npm links nothing, but pnpm links
+    // deps as junctions into a shared store — copying those links produced a
+    // runtime that died with MODULE_NOT_FOUND (one node_modules entry, no deps).
+    assert.ok(
+      fs.existsSync(path.join(appDir, "node_modules", "smol-toml")),
+      "declared dependency copied as a real directory",
+    );
+    assert.ok(
+      fs.existsSync(path.join(appDir, "node_modules", "@sentry", "core")),
+      "transitive dependency of @sentry/node copied too (flattened closure)",
+    );
+    // The marker is what every spawn point probes: without it hooks fall back
+    // to the installed CLI instead of spawning a half copy.
+    const markerPath = path.join(appDir, ".runtime-ready");
+    assert.ok(fs.existsSync(markerPath), ".runtime-ready written only after the copy booted");
+    const marker = JSON.parse(fs.readFileSync(markerPath, "utf8"));
+    assert.equal(marker.version, require("../package.json").version);
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
   }

@@ -3,6 +3,8 @@ const path = require("node:path");
 const fs = require("node:fs/promises");
 const fssync = require("node:fs");
 const { runOpenclawCli } = require("./openclaw-cli");
+const { cliEntryPath } = require("./scheduled-task");
+const { runtimeReadyMarkerPath } = require("./runtime-entry");
 
 const OPENCLAW_SESSION_PLUGIN_ID = "openclaw-session-sync";
 const OPENCLAW_SESSION_PLUGIN_DIRNAME = "openclaw-plugin";
@@ -344,8 +346,14 @@ function buildSessionPluginMeta() {
   )}\n`;
 }
 
-function buildSessionPluginIndex({ trackerDir, packageName = "tokenusage-cli", openclawHome }) {
+function buildSessionPluginIndex({
+  trackerDir,
+  packageName = "tokenusage-cli",
+  openclawHome,
+  packageEntry = cliEntryPath(),
+}) {
   const trackerBinPath = path.join(trackerDir, "app", "bin", "tracker.js");
+  const runtimeReadyPath = runtimeReadyMarkerPath(path.join(trackerDir, "app"));
   const fallbackPkg = packageName || "tokenusage-cli";
   const safeOpenclawHome = openclawHome || path.join(os.homedir(), ".openclaw");
 
@@ -356,9 +364,10 @@ function buildSessionPluginIndex({ trackerDir, packageName = "tokenusage-cli", o
     `\n` +
     `const trackerDir = ${JSON.stringify(trackerDir)};\n` +
     `const trackerBinPath = ${JSON.stringify(trackerBinPath)};\n` +
+    `const runtimeReadyPath = ${JSON.stringify(runtimeReadyPath)};\n` +
+    `const packageEntryPath = ${JSON.stringify(packageEntry || null)};\n` +
     `const fallbackPkg = ${JSON.stringify(fallbackPkg)};\n` +
     `const openclawHome = ${JSON.stringify(safeOpenclawHome)};\n` +
-    `const depsMarkerPath = path.join(trackerDir, 'app', 'bin', 'tracker.js');\n` +
     `const triggerStatePath = path.join(trackerDir, 'openclaw.session-sync.trigger-state.json');\n` +
     `const SESSION_TRIGGER_THROTTLE_MS = 15_000;\n` +
     `\n` +
@@ -405,14 +414,19 @@ function buildSessionPluginIndex({ trackerDir, packageName = "tokenusage-cli", o
     `}\n` +
     `\n` +
     `function spawnSync({ args, env = {} }) {\n` +
-    `  const hasLocalRuntime = fs.existsSync(trackerBinPath);\n` +
-    `  const hasLocalDeps = fs.existsSync(depsMarkerPath);\n` +
+    `  // First usable launcher: init-copied runtime (only with its readiness\n` +
+    `  // marker), then the installed package entry, then npx.\n` +
+    `  const hasLocalRuntime = fs.existsSync(runtimeReadyPath) && fs.existsSync(trackerBinPath);\n` +
+    `  const hasPackageEntry = Boolean(packageEntryPath) && fs.existsSync(packageEntryPath);\n` +
     `  const argv = Array.isArray(args) && args.length > 0 ? args : ['sync', '--auto'];\n` +
-    `  const cmd = hasLocalRuntime && hasLocalDeps\n` +
+    `  const cmd = hasLocalRuntime\n` +
     `    ? [process.execPath, trackerBinPath, ...argv]\n` +
-    `    : ['npx', '--yes', fallbackPkg, ...argv];\n` +
+    `    : hasPackageEntry\n` +
+    `      ? [process.execPath, packageEntryPath, ...argv]\n` +
+    `      : ['npx', '--yes', fallbackPkg, ...argv];\n` +
     `  const child = cp.spawn(cmd[0], cmd.slice(1), {\n` +
     `    detached: true,\n` +
+    `    windowsHide: true,\n` +
     `    stdio: 'ignore',\n` +
     `    env: { ...process.env, ...env }\n` +
     `  });\n` +

@@ -52,3 +52,32 @@ test("the unported install heartbeat stays removed", () => {
   assert.ok(!sync.includes("maybeSendHeartbeat"));
   assert.ok(!sync.includes('require("../lib/telemetry")'));
 });
+
+test("every auto-sync spawn point gates on the runtime-copy readiness marker", () => {
+  // 0.2.4: a runtime copy without its marker is a half copy (missing deps) and
+  // dies with MODULE_NOT_FOUND inside an ignored stdio stream — collection
+  // looks alive while nothing is collected. Each generated/hidden launcher must
+  // check the marker before choosing it.
+  const init = readSource("src", "commands", "init.js");
+  assert.ok(init.includes("runtimeReadyMarkerPath"), "init.js must write and probe the marker");
+
+  const notify = readSource("src", "commands", "init.js");
+  assert.ok(
+    notify.includes("const hasLocalRuntime = fs.existsSync(runtimeReadyPath) && fs.existsSync(trackerBinPath);"),
+    "the notify handler must require both the launcher and the marker",
+  );
+
+  for (const file of [["src", "lib", "openclaw-hook.js"], ["src", "lib", "openclaw-session-plugin.js"]]) {
+    const source = readSource(...file);
+    assert.ok(
+      source.includes("runtimeReadyPath") && source.includes("packageEntryPath"),
+      `${file.join("/")} must bake the marker + installed-package fallback`,
+    );
+  }
+
+  const sync = readSource("src", "commands", "sync.js");
+  assert.ok(
+    sync.includes("runtimeReadyPath") && sync.includes("packageEntryPath"),
+    "the auto-retry script must use the same launcher selection",
+  );
+});

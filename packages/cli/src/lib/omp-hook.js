@@ -116,6 +116,8 @@ function spawnNotify() {
   try {
     const child = spawn(process.execPath, [notifyPath, "--source=" + SOURCE], {
       detached: true,
+      // A GUI-hosted oh-my-pi would otherwise flash a console window per turn.
+      windowsHide: true,
       stdio: "ignore",
       env: process.env,
     });

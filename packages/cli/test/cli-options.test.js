@@ -16,6 +16,17 @@ test("a valid --interval is adopted and removed from the sync args", () => {
   });
 });
 
+test("--interval=<ms> works too and never leaks into the sync args", () => {
+  assert.deepEqual(resolveWatchInterval(["--watch", "--interval=300000", "--no-sessions"]), {
+    args: ["--no-sessions"],
+    intervalMs: 300_000,
+  });
+  assert.deepEqual(resolveWatchInterval(["--interval=1000"]), {
+    args: [],
+    intervalMs: FALLBACK_MS,
+  });
+});
+
 test("a sub-floor or missing --interval falls back to 15 min but is still removed", () => {
   for (const rest of [["--watch", "--interval", "1000"], ["--interval", "0"], ["--watch", "--interval"], ["--interval", "abc"]]) {
     const parsed = resolveWatchInterval(rest);

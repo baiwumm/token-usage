@@ -84,7 +84,8 @@ const {
 } = require("../lib/rollout");
 const { resolveRuntimeConfig, DEFAULT_BASE_URL, DEFAULT_DASHBOARD_URL, normalizeInstanceBaseUrl, assertInsforgeRuntime,
   clearDeviceIdentity, resetInstanceState } = require("../lib/runtime-config");
-const { registerWindowsScheduledTask, TASK_NAME } = require("../lib/scheduled-task");
+const { registerWindowsScheduledTask, TASK_NAME, cliEntryPath } = require("../lib/scheduled-task");
+const { runtimeReadyMarkerPath } = require("../lib/runtime-entry");
 const {
   BOLD,
   DIM,
@@ -388,7 +389,7 @@ async function runSetup({
   const installedAt = existingConfig?.installedAt || new Date().toISOString();
   let pendingBrowserAuth = false;
 
-  await installLocalTrackerApp({ appDir });
+  const runtimeCopy = await installLocalTrackerApp({ appDir });
 
   const existingPlainConfig =
     existingConfig && typeof existingConfig === "object" && !Array.isArray(existingConfig)
@@ -443,6 +444,17 @@ async function runSetup({
         dryRun: Boolean(opts.dryRun),
       });
 
+  if (runtimeCopy.ok === false) {
+    // Never silent: a missing runtime copy degrades collection to the installed
+    // package/npx, so it must show up in the report (and on stderr, since the
+    // report line is dimmed as "skipped").
+    const detail = describeRuntimeCopyFailure(runtimeCopy);
+    process.stderr.write(
+      `Runtime copy skipped (${detail}); notify and the scheduled task will use the installed CLI.\n`,
+    );
+    summary.push({ label: "Runtime copy", status: "skipped", detail });
+  }
+
   // Windows scheduled task takeover (0.2.0): hourly auto sync behind a hidden
   // VBS runner — no conhost flash, no shell redirect (sync self-logs to the
   // rolling logs/sync.log). Best-effort; pause/resume toggle this task.
@@ -456,8 +468,12 @@ async function runSetup({
     // The VBS targets the package's bin entry (scheduled-task.js owns that
     // path): pointing it at src/cli.js makes the hidden task a no-op. The
     // runtime copy refresh below is also the task's fallback, so an nvm switch
-    // (which drops the version-specific npm prefix) does not kill collection.
-    const fallbackCliJs = fssync.existsSync(trackerBinPath) ? trackerBinPath : undefined;
+    // (which drops the version-specific npm prefix) does not kill collection —
+    // but only a copy with its readiness marker counts as usable.
+    const fallbackCliJs =
+      runtimeCopy.ok === true && fssync.existsSync(runtimeReadyMarkerPath(appDir))
+        ? trackerBinPath
+        : undefined;
     const taskOutcome = registerWindowsScheduledTask({ binDir, fallbackCliJs });
     summary.push({
       label: "Scheduled task",
@@ -1523,13 +1539,14 @@ function normalizePlatform(value) {
   return "unknown";
 }
 
-function buildNotifyHandler({ trackerDir, packageName }) {
+function buildNotifyHandler({ trackerDir, packageName, packageEntry = cliEntryPath() }) {
   // Keep this file dependency-free: Node built-ins only.
   // It must never block Codex; it spawns sync in the background and exits 0.
   const queueSignalPath = path.join(trackerDir, "notify.signal");
   const originalPath = path.join(trackerDir, "codex_notify_original.json");
   const fallbackPkg = packageName || "tokenusage-cli";
   const trackerBinPath = path.join(trackerDir, "app", "bin", "tracker.js");
+  const runtimeReadyPath = runtimeReadyMarkerPath(path.join(trackerDir, "app"));
 
   return `#!/usr/bin/env node
 'use strict';
@@ -1562,7 +1579,8 @@ const codexOriginalPath = ${JSON.stringify(originalPath)};
 const acodeOriginalPath = ${JSON.stringify(path.join(trackerDir, "acode_notify_original.json"))};
 const codeOriginalPath = ${JSON.stringify(path.join(trackerDir, "code_notify_original.json"))};
 const trackerBinPath = ${JSON.stringify(trackerBinPath)};
-  const depsMarkerPath = path.join(trackerDir, 'app', 'bin', 'tracker.js');
+const runtimeReadyPath = ${JSON.stringify(runtimeReadyPath)};
+const packageEntryPath = ${JSON.stringify(packageEntry || null)};
 const fallbackPkg = ${JSON.stringify(fallbackPkg)};
 const selfPath = path.resolve(__filename);
 const home = os.homedir();
@@ -1605,14 +1623,20 @@ try {
     try { last = Number(fs.readFileSync(throttlePath, 'utf8')) || 0; } catch (_) {}
     if (now - last > 20_000) {
     try { fs.writeFileSync(throttlePath, String(now), 'utf8'); } catch (_) {}
-    const hasLocalRuntime = fs.existsSync(trackerBinPath);
-    const hasLocalDeps = fs.existsSync(depsMarkerPath);
+    // Pick the first usable launcher: the init-copied runtime (self-contained,
+    // survives an nvm switch — but only with its readiness marker), then the
+    // installed package entry, then npx as the last resort. A half-copied
+    // runtime must never be spawned: it dies with MODULE_NOT_FOUND in an
+    // ignored stdio stream, which looks exactly like a successful sync.
+    const hasLocalRuntime = fs.existsSync(runtimeReadyPath) && fs.existsSync(trackerBinPath);
+    const hasPackageEntry = Boolean(packageEntryPath) && fs.existsSync(packageEntryPath);
     const syncArgs = ['sync', '--auto', '--from-notify', '--source', source];
-    if (hasLocalRuntime && hasLocalDeps) {
-      spawnDetached([process.execPath, trackerBinPath, ...syncArgs]);
-    } else {
-      spawnDetached(['npx', '--yes', fallbackPkg, ...syncArgs]);
-    }
+    const cmd = hasLocalRuntime
+      ? [process.execPath, trackerBinPath, ...syncArgs]
+      : hasPackageEntry
+        ? [process.execPath, packageEntryPath, ...syncArgs]
+        : ['npx', '--yes', fallbackPkg, ...syncArgs];
+    spawnDetached(cmd);
   }
 } catch (_) {}
 
@@ -2344,43 +2368,158 @@ async function isDir(p) {
   }
 }
 
+// The only modules the runtime copy must carry — the CLI's declared deps.
+const PACKAGE_DEPENDENCIES = Object.keys(
+  require(path.resolve(__dirname, "../../package.json")).dependencies || {},
+);
+
 async function installLocalTrackerApp({ appDir }) {
   // Test-only escape hatch: skip the ~10 MB runtime copy (src + dashboard/dist +
   // node_modules) when a test only exercises hook/config/notify wiring. Copying
   // the bundle per test case dominates the init test suite's wall time. Tests
   // that assert on the copied runtime simply leave this unset.
-  if (process.env.TOKENUSAGE_SKIP_LOCAL_RUNTIME_COPY === "1") return;
-  // Copy the current package's runtime (bin + src) into ~/.tokenusage so notify can run sync without npx.
+  if (process.env.TOKENUSAGE_SKIP_LOCAL_RUNTIME_COPY === "1") return { ok: true, skipped: true };
+  // Copy the current package's runtime (bin + src + deps) into ~/.tokenusage so
+  // notify can run sync without npx and without npm's global prefix.
   const packageRoot = path.resolve(__dirname, "../..");
+
+  // When running from the installed local runtime (or when appDir is symlinked
+  // to this package), source and destination resolve to the same place. Do not
+  // delete appDir in that case.
+  if (await pathsPointToSameLocation(packageRoot, appDir)) {
+    return { ok: true, reused: true };
+  }
+
+  // Build into a staging dir first: a failed copy must never destroy a working
+  // runtime (or leave a half one behind that hooks would spawn and die in).
+  const stagingDir = `${appDir}.new`;
+  await fs.rm(stagingDir, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
+  const built = await buildRuntimeCopy({ packageRoot, appDir: stagingDir });
+  if (!built.ok) {
+    await fs.rm(stagingDir, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
+    return built;
+  }
+
+  await fs.rm(appDir, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
+  try {
+    await fs.rename(stagingDir, appDir);
+  } catch (_err) {
+    await fs.rm(stagingDir, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
+    return { ok: false, missing: [], reason: "swap-failed" };
+  }
+
+  // The marker is the contract every spawn point checks: only a copy that
+  // booted gets one.
+  const version = require(path.resolve(__dirname, "../../package.json")).version;
+  await fs
+    .writeFile(
+      runtimeReadyMarkerPath(appDir),
+      JSON.stringify({ version, installedAt: new Date().toISOString() }, null, 2),
+      "utf8",
+    )
+    .catch(() => {});
+  return { ok: true };
+}
+
+// Assemble bin + src + the dependency closure in `appDir` and prove it boots.
+// Returns {ok:true} / {ok:false, missing, reason}.
+async function buildRuntimeCopy({ packageRoot, appDir }) {
   const srcFrom = path.join(packageRoot, "src");
   const binFrom = path.join(packageRoot, "bin", "tokenusage.js");
   const packageJsonFrom = path.join(packageRoot, "package.json");
   const nodeModulesFrom = path.join(packageRoot, "node_modules");
   const dashboardDistFrom = path.join(packageRoot, "dashboard", "dist");
 
-  // When running from the installed local runtime (or when appDir is symlinked to this package),
-  // source and destination resolve to the same place. Do not delete appDir in that case.
-  if (await pathsPointToSameLocation(packageRoot, appDir)) {
-    return;
+  try {
+    await ensureDir(appDir);
+    await fs.cp(srcFrom, path.join(appDir, "src"), { recursive: true });
+    await ensureDir(path.join(appDir, "bin"));
+    const binTo = path.join(appDir, "bin", "tracker.js");
+    await fs.copyFile(binFrom, binTo);
+    await fs.chmod(binTo, 0o755).catch(() => {});
+    await fs.copyFile(packageJsonFrom, path.join(appDir, "package.json")).catch(() => {});
+    if (await isDir(dashboardDistFrom)) {
+      await fs.cp(dashboardDistFrom, path.join(appDir, "dashboard", "dist"), { recursive: true });
+    }
+  } catch (err) {
+    return { ok: false, missing: [], reason: `copy-failed: ${err?.message || err}` };
   }
 
-  const srcTo = path.join(appDir, "src");
-  const binToDir = path.join(appDir, "bin");
-  const binTo = path.join(binToDir, "tracker.js");
-  const nodeModulesTo = path.join(appDir, "node_modules");
-  const dashboardDistTo = path.join(appDir, "dashboard", "dist");
+  const deps = await copyRuntimeDependencies({
+    from: nodeModulesFrom,
+    to: path.join(appDir, "node_modules"),
+  });
+  if (!deps.ok) return { ok: false, missing: deps.missing, reason: "missing-dependencies" };
 
-  await fs.rm(appDir, { recursive: true, force: true }).catch(() => {});
-  await ensureDir(appDir);
-  await fs.cp(srcFrom, srcTo, { recursive: true });
-  await ensureDir(binToDir);
-  await fs.copyFile(binFrom, binTo);
-  await fs.chmod(binTo, 0o755).catch(() => {});
-  await fs.copyFile(packageJsonFrom, path.join(appDir, "package.json")).catch(() => {});
-  if (await isDir(dashboardDistFrom)) {
-    await fs.cp(dashboardDistFrom, dashboardDistTo, { recursive: true });
+  const boot = await probeRuntimeCopy(appDir);
+  if (!boot.ok) return { ok: false, missing: boot.missing, reason: boot.reason };
+  return { ok: true };
+}
+
+// Boot the staged copy with the current Node: `require` every declared
+// dependency (which loads their transitive graph too) and print the version
+// through the real CLI entry. Only a copy that survives both gets a marker.
+function probeRuntimeCopy(appDir) {
+  const trackerBinPath = path.join(appDir, "bin", "tracker.js");
+  const script = [
+    "const names = " + JSON.stringify(PACKAGE_DEPENDENCIES) + ";",
+    "const missing = [];",
+    "for (const name of names) {",
+    "  try { require(name); } catch (err) {",
+    "    if (err && (err.code === 'MODULE_NOT_FOUND' || err.code === 'ERR_MODULE_NOT_FOUND')) {",
+    "      missing.push(name);",
+    "    }",
+    "  }",
+    "}",
+    "if (missing.length > 0) { console.error(missing.join(',')); process.exit(3); }",
+  ].join("\n");
+  const env = { ...process.env };
+  // The probe must not trigger telemetry or hook spawning.
+  env.TOKENUSAGE_NO_TELEMETRY = "1";
+  try {
+    const probe = cp.spawnSync(process.execPath, ["-e", script], {
+      cwd: appDir,
+      env,
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 60_000,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (probe.status !== 0) {
+      const reported = String(probe.stderr || "").trim();
+      const missing = reported
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean);
+      return { ok: false, missing, reason: "dependency-probe-failed" };
+    }
+    const boot = cp.spawnSync(process.execPath, [trackerBinPath, "--version"], {
+      cwd: appDir,
+      env,
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 60_000,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (boot.status !== 0) {
+      return {
+        ok: false,
+        missing: [],
+        reason: `boot-failed: ${String(boot.stderr || "").trim().split("\n")[0] || `exit ${boot.status}`}`,
+      };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, missing: [], reason: `probe-error: ${err?.message || err}` };
   }
-  await copyRuntimeDependencies({ from: nodeModulesFrom, to: nodeModulesTo });
+}
+
+function describeRuntimeCopyFailure(result) {
+  const missing = Array.isArray(result?.missing) ? result.missing.filter(Boolean) : [];
+  const reason = result?.reason ? String(result.reason) : "incomplete copy";
+  if (missing.length === 0) return reason;
+  const preview = missing.slice(0, 3).join(", ");
+  return `${reason}: ${preview}${missing.length > 3 ? " …" : ""}`;
 }
 
 async function pathsPointToSameLocation(a, b) {
@@ -2413,7 +2552,12 @@ async function runFirstSyncAndRead({ trackerBinPath, trackerDir, packageName }) 
   }
   const fallbackPkg = packageName || "tokenusage-cli";
   const argv = ["sync", "--auto", "--drain"];
-  const hasLocalRuntime = typeof trackerBinPath === "string" && fssync.existsSync(trackerBinPath);
+  // Same readiness contract as notify: a runtime copy without its marker is a
+  // half copy — spawn the installed package instead of dying silently.
+  const hasLocalRuntime =
+    typeof trackerBinPath === "string" &&
+    fssync.existsSync(trackerBinPath) &&
+    fssync.existsSync(runtimeReadyMarkerPath(path.join(trackerDir, "app")));
   const cmd = hasLocalRuntime
     ? [process.execPath, trackerBinPath, ...argv]
     : ["npx", "--yes", fallbackPkg, ...argv];
@@ -2433,6 +2577,7 @@ async function runFirstSyncAndRead({ trackerBinPath, trackerDir, packageName }) 
         // detached so we can let it keep running past our timeout — the user
         // still gets data later via dashboard auto-refresh.
         detached: true,
+        windowsHide: true,
         stdio: "ignore",
         env: process.env,
       });
@@ -2488,19 +2633,117 @@ function readFirstSyncTotals(trackerDir) {
   return { totalTokens, sources: Array.from(sources) };
 }
 
+// Copy the CLI's dependency closure into `to` as a flat node_modules tree.
+//
+// npm installs the CLI's deps flat (real directories), so copying them is
+// enough. pnpm links them as junctions into a shared store: copying the links
+// yields a runtime that breaks as soon as that store entry moves (nvm switch),
+// and NOT following them yields a runtime with no deps at all. So walk the
+// declared dependency graph and copy each package's *real* directory instead —
+// that flattens both layouts into something self-contained.
 async function copyRuntimeDependencies({ from, to }) {
-  try {
-    const st = await fs.stat(from);
-    if (!st.isDirectory()) return;
-  } catch (_e) {
-    return;
-  }
+  if (!(await isDir(from))) return { ok: false, missing: PACKAGE_DEPENDENCIES };
 
+  const { packages } = collectRuntimePackages(from);
   try {
-    await fs.cp(from, to, { recursive: true });
+    await ensureDir(to);
+    for (const [name, dir] of packages) {
+      await fs.cp(dir, path.join(to, name), {
+        recursive: true,
+        dereference: true,
+        filter: skipNestedNodeModules(dir),
+      });
+    }
   } catch (_e) {
-    // Best-effort: missing dependencies will fall back to npx at notify time.
+    return { ok: false, missing: await missingRuntimeDependencies(to) };
   }
+  const missing = await missingRuntimeDependencies(to);
+  return { ok: missing.length === 0, missing };
+}
+
+// Breadth-first walk of the declared dependency graph. Follows the same lookup
+// Node does for each package — its own node_modules, then the node_modules next
+// to it (pnpm: `.pnpm/<id>/node_modules`, npm: the flat root) — so nothing from
+// the hoisted store leaks in. Optional deps are followed when present but their
+// absence is not an error.
+function collectRuntimePackages(nodeModulesRoot) {
+  const packages = new Map();
+  const unresolved = [];
+  const queue = PACKAGE_DEPENDENCIES.map((name) => ({ name, from: null, optional: false }));
+  while (queue.length > 0) {
+    const item = queue.shift();
+    if (packages.has(item.name)) continue;
+    const dir =
+      item.from === null
+        ? realDirSync(path.join(nodeModulesRoot, item.name))
+        : resolveDependencyPackage(item.from, item.name);
+    const manifest = dir ? readPackageJsonSync(dir) : null;
+    if (!dir || !manifest) {
+      if (!item.optional) unresolved.push(item.name);
+      continue;
+    }
+    packages.set(item.name, dir);
+    const required = Object.keys(manifest.dependencies || {});
+    for (const dep of required) queue.push({ name: dep, from: dir, optional: false });
+    for (const dep of Object.keys(manifest.optionalDependencies || {})) {
+      queue.push({ name: dep, from: dir, optional: true });
+    }
+  }
+  return { packages, unresolved };
+}
+
+function resolveDependencyPackage(packageDir, name) {
+  const parentNodeModules = name.startsWith("@")
+    ? path.dirname(path.dirname(packageDir))
+    : path.dirname(packageDir);
+  return (
+    realDirSync(path.join(packageDir, "node_modules", name)) ||
+    realDirSync(path.join(parentNodeModules, name))
+  );
+}
+
+// Packages that ship their own node_modules keep it linked to pnpm's shared
+// store; dereferencing those links would drag the entire workspace dependency
+// graph into the runtime copy.
+function skipNestedNodeModules(from) {
+  return (src) => {
+    const rel = path.relative(from, src);
+    return !rel || !rel.split(path.sep).includes("node_modules");
+  };
+}
+
+function realDirSync(p) {
+  if (!isDirSync(p)) return null;
+  try {
+    const real = fssync.realpathSync(p);
+    return isDirSync(real) ? real : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+function isDirSync(p) {
+  try {
+    return fssync.statSync(p).isDirectory();
+  } catch (_e) {
+    return false;
+  }
+}
+
+function readPackageJsonSync(dir) {
+  try {
+    return JSON.parse(fssync.readFileSync(path.join(dir, "package.json"), "utf8"));
+  } catch (_e) {
+    return null;
+  }
+}
+
+async function missingRuntimeDependencies(nodeModulesDir) {
+  const missing = [];
+  for (const name of PACKAGE_DEPENDENCIES) {
+    if (!(await isDir(path.join(nodeModulesDir, name)))) missing.push(name);
+  }
+  return missing;
 }
 
 function isDebugEnabled() {

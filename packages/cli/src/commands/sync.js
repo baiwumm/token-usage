@@ -8,6 +8,8 @@ const { functionUrlFor, fetchFunctionResponse } = require("../lib/function-url")
 const { cloudUsageResetBlocksUpload, finishCloudDeviceUsageReset } = require("../lib/cloud-usage-reset");
 const { KIMI_MODEL_REPAIR_KEY, repairKimiModelAttribution } = require("../lib/kimi-model-repair");
 const { readSqliteJsonRows } = require("../lib/sqlite-reader");
+const { runtimeReadyMarkerPath, runtimeBinPath } = require("../lib/runtime-entry");
+const { cliEntryPath } = require("../lib/scheduled-task");
 
 const { resolveInstallPaths, resolveZcodeNativeDbPath, resolveMimoNativeDbPath, ensureFlatCursor } = require("../lib/install-resolver");
 const { multiInstallParse, mergeBothFileSources } = require("../lib/multi-install-parser");
@@ -4458,7 +4460,9 @@ async function scheduleAutoRetry({
 
   spawnAutoRetryProcess({
     retryPath,
-    trackerBinPath: path.join(trackerDir, "app", "bin", "tracker.js"),
+    trackerBinPath: runtimeBinPath(trackerDir),
+    runtimeReadyPath: runtimeReadyMarkerPath(path.join(trackerDir, "app")),
+    packageEntryPath: cliEntryPath(),
     fallbackPkg: "tokenusage-cli",
     delayMs,
   });
@@ -4484,8 +4488,22 @@ async function clearAutoRetry(trackerDir) {
   await fs.unlink(retryPath).catch(() => {});
 }
 
-function spawnAutoRetryProcess({ retryPath, trackerBinPath, fallbackPkg, delayMs }) {
-  const script = buildAutoRetryScript({ retryPath, trackerBinPath, fallbackPkg, delayMs });
+function spawnAutoRetryProcess({
+  retryPath,
+  trackerBinPath,
+  runtimeReadyPath,
+  packageEntryPath,
+  fallbackPkg,
+  delayMs,
+}) {
+  const script = buildAutoRetryScript({
+    retryPath,
+    trackerBinPath,
+    runtimeReadyPath,
+    packageEntryPath,
+    fallbackPkg,
+    delayMs,
+  });
   try {
     const child = cp.spawn(process.execPath, ["-e", script], {
       detached: true,
@@ -4500,13 +4518,22 @@ function spawnAutoRetryProcess({ retryPath, trackerBinPath, fallbackPkg, delayMs
   } catch (_e) {}
 }
 
-function buildAutoRetryScript({ retryPath, trackerBinPath, fallbackPkg, delayMs }) {
+function buildAutoRetryScript({
+  retryPath,
+  trackerBinPath,
+  runtimeReadyPath,
+  packageEntryPath,
+  fallbackPkg,
+  delayMs,
+}) {
   return (
     `'use strict';\n` +
     `const fs = require('node:fs');\n` +
     `const cp = require('node:child_process');\n` +
     `const retryPath = ${JSON.stringify(retryPath)};\n` +
     `const trackerBinPath = ${JSON.stringify(trackerBinPath)};\n` +
+    `const runtimeReadyPath = ${JSON.stringify(runtimeReadyPath)};\n` +
+    `const packageEntryPath = ${JSON.stringify(packageEntryPath || null)};\n` +
     `const fallbackPkg = ${JSON.stringify(fallbackPkg)};\n` +
     `const delayMs = ${Math.max(0, Math.floor(delayMs || 0))};\n` +
     `setTimeout(() => {\n` +
@@ -4522,9 +4549,15 @@ function buildAutoRetryScript({ retryPath, trackerBinPath, fallbackPkg, delayMs 
     `  if (payload && typeof payload.syncSource === 'string' && payload.syncSource.trim()) {\n` +
     `    argv.push('--source', payload.syncSource.trim());\n` +
     `  }\n` +
-    `  const cmd = fs.existsSync(trackerBinPath)\n` +
+    `  // Same readiness contract as notify: a copy without its marker is half\n` +
+    `  // copied, so retry through the installed package instead.\n` +
+    `  const hasLocalRuntime = fs.existsSync(runtimeReadyPath) && fs.existsSync(trackerBinPath);\n` +
+    `  const hasPackageEntry = Boolean(packageEntryPath) && fs.existsSync(packageEntryPath);\n` +
+    `  const cmd = hasLocalRuntime\n` +
     `    ? [process.execPath, trackerBinPath, ...argv]\n` +
-    `    : ['npx', '--yes', fallbackPkg, ...argv];\n` +
+    `    : hasPackageEntry\n` +
+    `      ? [process.execPath, packageEntryPath, ...argv]\n` +
+    `      : ['npx', '--yes', fallbackPkg, ...argv];\n` +
     `  try {\n` +
     `    const child = cp.spawn(cmd[0], cmd.slice(1), { detached: true, windowsHide: true, stdio: 'ignore', env: process.env });\n` +
     `    child.unref();\n` +

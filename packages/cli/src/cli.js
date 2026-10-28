@@ -79,19 +79,25 @@ async function run(argv) {
   }
 }
 
-// Split `--interval <ms>` off the sync args. Values below the 1-minute floor
-// (or a missing value) fall back to 15 min, but the flag must ALWAYS be
-// removed: leaving it behind made cmdSync reject every pass with
-// "Unknown option: --interval" instead of the documented fallback.
+// Split `--interval <ms>` (or `--interval=<ms>`) off the sync args. Values
+// below the 1-minute floor (or a missing value) fall back to 15 min, but the
+// flag must ALWAYS be removed: leaving it behind made cmdSync reject every
+// pass with "Unknown option: --interval" instead of the documented fallback.
 function resolveWatchInterval(rest) {
   const args = rest.filter((arg) => arg !== "--watch");
-  const intervalIndex = args.indexOf("--interval");
   let intervalMs = 15 * 60_000;
-  if (intervalIndex >= 0) {
-    const value = Number(args[intervalIndex + 1]);
-    if (Number.isFinite(value) && value >= 60_000) intervalMs = value;
-    args.splice(intervalIndex, 2);
+  let value;
+  const spacedIndex = args.indexOf("--interval");
+  const equalsIndex = args.findIndex((arg) => arg.startsWith("--interval="));
+  if (spacedIndex >= 0) {
+    value = args[spacedIndex + 1];
+    args.splice(spacedIndex, 2);
+  } else if (equalsIndex >= 0) {
+    value = args[equalsIndex].slice("--interval=".length);
+    args.splice(equalsIndex, 1);
   }
+  const parsed = Number(value);
+  if (Number.isFinite(parsed) && parsed >= 60_000) intervalMs = parsed;
   return { args, intervalMs };
 }
 

@@ -3,6 +3,8 @@ const path = require("node:path");
 const fs = require("node:fs/promises");
 const fssync = require("node:fs");
 const { runOpenclawCli } = require("./openclaw-cli");
+const { cliEntryPath } = require("./scheduled-task");
+const { runtimeReadyMarkerPath } = require("./runtime-entry");
 
 const OPENCLAW_HOOK_NAME = "tokenusage-openclaw-sync";
 const OPENCLAW_HOOK_DIRNAME = "openclaw-hook";
@@ -237,8 +239,14 @@ Triggers non-blocking 'tokenusage sync --auto --from-openclaw' runs when OpenCla
 `;
 }
 
-function buildHookHandler({ trackerDir, packageName = "tokenusage-cli", openclawHome }) {
+function buildHookHandler({
+  trackerDir,
+  packageName = "tokenusage-cli",
+  openclawHome,
+  packageEntry = cliEntryPath(),
+}) {
   const trackerBinPath = path.join(trackerDir, "app", "bin", "tracker.js");
+  const runtimeReadyPath = runtimeReadyMarkerPath(path.join(trackerDir, "app"));
   const fallbackPkg = packageName || "tokenusage-cli";
   const safeOpenclawHome = openclawHome || path.join(os.homedir(), ".openclaw");
 
@@ -249,10 +257,11 @@ function buildHookHandler({ trackerDir, packageName = "tokenusage-cli", openclaw
     `const cp = require('node:child_process');\n` +
     `const trackerDir = ${JSON.stringify(trackerDir)};\n` +
     `const trackerBinPath = ${JSON.stringify(trackerBinPath)};\n` +
+    `const runtimeReadyPath = ${JSON.stringify(runtimeReadyPath)};\n` +
+    `const packageEntryPath = ${JSON.stringify(packageEntry || null)};\n` +
     `const fallbackPkg = ${JSON.stringify(fallbackPkg)};\n` +
     `const openclawHome = ${JSON.stringify(safeOpenclawHome)};\n` +
     `const throttlePath = path.join(trackerDir, 'openclaw.sync.throttle');\n` +
-    `const depsMarkerPath = path.join(trackerDir, 'app', 'bin', 'tracker.js');\n` +
     `const THROTTLE_MS = 15_000;\n` +
     `\n` +
     `module.exports = async function handler(event) {\n` +
@@ -295,13 +304,17 @@ function buildHookHandler({ trackerDir, packageName = "tokenusage-cli", openclaw
     `    if (prevModel) env.TOKENUSAGE_OPENCLAW_PREV_MODEL = prevModel;\n` +
     `    if (prevUpdatedAt) env.TOKENUSAGE_OPENCLAW_PREV_UPDATED_AT = prevUpdatedAt;\n` +
     `\n` +
-    `    const hasLocalRuntime = fs.existsSync(trackerBinPath);\n` +
-    `    const hasLocalDeps = fs.existsSync(depsMarkerPath);\n` +
-    `    const cmd = hasLocalRuntime && hasLocalDeps\n` +
+    `    // First usable launcher: init-copied runtime (only with its readiness\n` +
+    `    // marker), then the installed package entry, then npx.\n` +
+    `    const hasLocalRuntime = fs.existsSync(runtimeReadyPath) && fs.existsSync(trackerBinPath);\n` +
+    `    const hasPackageEntry = Boolean(packageEntryPath) && fs.existsSync(packageEntryPath);\n` +
+    `    const cmd = hasLocalRuntime\n` +
     `      ? [process.execPath, trackerBinPath, 'sync', '--auto', '--from-openclaw']\n` +
-    `      : ['npx', '--yes', fallbackPkg, 'sync', '--auto', '--from-openclaw'];\n` +
+    `      : hasPackageEntry\n` +
+    `        ? [process.execPath, packageEntryPath, 'sync', '--auto', '--from-openclaw']\n` +
+    `        : ['npx', '--yes', fallbackPkg, 'sync', '--auto', '--from-openclaw'];\n` +
     `\n` +
-    `    const child = cp.spawn(cmd[0], cmd.slice(1), { detached: true, stdio: 'ignore', env });\n` +
+    `    const child = cp.spawn(cmd[0], cmd.slice(1), { detached: true, windowsHide: true, stdio: 'ignore', env });\n` +
     `    child.unref();\n` +
     `  } catch (_) {}\n` +
     `};\n` +
