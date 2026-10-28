@@ -1,31 +1,24 @@
 "use client";
 
-// Header for /wrapped: the year selector (only years that carry usage) and the
-// share-card export button, which disables itself until there is data.
+// Header for /wrapped: the year selector (only years that carry usage). The
+// share-card actions live in the share panel below the header.
 
 import type { WrappedCopy } from "@/lib/copy/wrapped";
 
-import { ArrowDownToLine } from "@gravity-ui/icons";
-import { Button, ListBox, Popover, Select, Spinner } from "@heroui/react";
+import { ListBox, Popover, Select, Spinner } from "@heroui/react";
 
 export function WrappedHeader({
   copy,
   year,
   yearOptions,
   refreshing,
-  exporting,
-  hasData,
   onYearChange,
-  onExport,
 }: {
   copy: WrappedCopy;
   year: number;
   yearOptions: number[];
   refreshing: boolean;
-  exporting: boolean;
-  hasData: boolean;
   onYearChange: (year: number) => void;
-  onExport: () => void;
 }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4">
@@ -65,24 +58,6 @@ export function WrappedHeader({
           </ListBox>
         </Select.Popover>
       </Select>
-      <Button
-        isDisabled={!hasData}
-        isPending={exporting}
-        size="sm"
-        variant="secondary"
-        onPress={onExport}
-      >
-        {({ isPending }) => (
-          <>
-            {isPending ? (
-              <Spinner color="current" size="sm" />
-            ) : (
-              <ArrowDownToLine className="size-4" />
-            )}
-            {copy.share.button}
-          </>
-        )}
-      </Button>
     </header>
   );
 }

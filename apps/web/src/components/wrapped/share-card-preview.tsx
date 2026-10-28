@@ -1,83 +1,109 @@
 "use client";
 
-// Share-card preview for /wrapped — the same design the Canvas export draws.
+// Share panel for /wrapped: the shared canvas share cards in four styles.
+// The preview is the exported PNG itself (WYSIWYG); actions save or copy it.
+// Privacy: aggregated numbers only — no row-level data.
 
-import type { WrappedCopy } from "@/lib/copy/wrapped";
-import type { DashboardPayload } from "@/lib/dashboard/api";
+import type { ShareCardData, ShareCardVariant } from "@/components/share-card";
 
-import { useRef } from "react";
-import { Typography } from "@heroui/react";
+import {
+  Button,
+  Card,
+  Spinner,
+  ToggleButton,
+  ToggleButtonGroup,
+  toast,
+} from "@heroui/react";
+import { useMemo, useState } from "react";
 
-import { useFormat } from "@/lib/format/format";
+import {
+  SHARE_VARIANTS,
+  copyPngDataUrl,
+  downloadPngDataUrl,
+  drawShareCard,
+} from "@/components/share-card";
+import { useLocale } from "@/lib/copy/locale";
+import { SHARE_CARD_COPY } from "@/lib/copy/share-card";
 
-export function ShareCardPreview({
-  copy,
-  year,
-  totals,
-  highlights,
-}: {
-  copy: WrappedCopy;
-  year: number;
-  totals: DashboardPayload["totals"];
-  highlights: Array<[string, string]>;
-}) {
-  const { formatTokens, formatCost, formatNumber } = useFormat();
-  const cardRef = useRef<HTMLDivElement | null>(null);
+export function ShareCardPreview({ data }: { data: ShareCardData }) {
+  const [locale] = useLocale();
+  const copy = SHARE_CARD_COPY[locale];
+  const [variant, setVariant] = useState<ShareCardVariant>("broadsheet");
+  const [busy, setBusy] = useState(false);
+  // The preview is the same data URL the actions export — no HTML twin to
+  // drift out of sync with the canvas.
+  const dataUrl = useMemo(() => drawShareCard(variant, data), [data, variant]);
 
   return (
-    <div
-      ref={cardRef}
-      className="bg-surface flex flex-col gap-4 rounded-3xl p-8"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <Typography type="h4">
-            {copy.share.cardTitle.replace("{year}", String(year))}
-          </Typography>
-          <Typography color="muted" type="body-xs">
-            {copy.share.cardCaption}
-          </Typography>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          <Typography className="text-accent" type="h3" weight="bold">
-            {formatTokens(totals.total_tokens)}
-          </Typography>
-          <Typography color="muted" type="body-xs">
-            {copy.cards.totalTokens}
-          </Typography>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {[
-          [copy.cards.cost, formatCost(totals.total_cost_usd)],
-          [copy.cards.conversations, formatNumber(totals.conversations)],
-          [copy.cards.activeDays, formatNumber(totals.active_days)],
-        ].map(([label, value]) => (
-          <div key={label} className="bg-default rounded-3xl p-3">
-            <Typography color="muted" type="body-xs">
-              {label}
-            </Typography>
-            <Typography className="tabular-nums" type="body" weight="semibold">
-              {value}
-            </Typography>
-          </div>
+    <Card className="flex-col gap-5 p-6">
+      <Card.Header>
+        <Card.Title>{copy.panelTitle}</Card.Title>
+        <Card.Description>{copy.privacyNote}</Card.Description>
+      </Card.Header>
+
+      <ToggleButtonGroup
+        disallowEmptySelection
+        fullWidth
+        aria-label={copy.styleLabel}
+        selectedKeys={new Set([variant])}
+        selectionMode="single"
+        onSelectionChange={(keys) => {
+          const next = [...keys][0];
+
+          if (next) setVariant(next as ShareCardVariant);
+        }}
+      >
+        {SHARE_VARIANTS.map(({ id }) => (
+          <ToggleButton key={id} id={id}>
+            {copy.variants[id]}
+          </ToggleButton>
         ))}
+      </ToggleButtonGroup>
+
+      <div className="flex min-h-40 justify-center">
+        {dataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            alt={copy.panelTitle}
+            className="max-h-[70vh] w-auto rounded-2xl border shadow-sm"
+            src={dataUrl}
+          />
+        ) : (
+          <Spinner />
+        )}
       </div>
-      {highlights.length > 0 ? (
-        <div className="flex flex-col gap-1.5">
-          <Typography color="muted" type="body-xs">
-            {copy.highlightsTitle}
-          </Typography>
-          <div className="flex flex-wrap gap-x-6 gap-y-1">
-            {highlights.map(([label, value]) => (
-              <Typography key={label} color="muted" type="body-sm">
-                {`${label}: `}
-                <span className="text-foreground">{value}</span>
-              </Typography>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
+
+      <Card.Footer className="justify-end gap-2">
+        <Button
+          isDisabled={busy}
+          onPress={() => {
+            if (!dataUrl) return;
+            setBusy(true);
+            void copyPngDataUrl(dataUrl).then((ok) => {
+              setBusy(false);
+              if (ok) {
+                toast.success(copy.copied);
+              } else {
+                toast(copy.copyFailed);
+              }
+            });
+          }}
+        >
+          {busy ? <Spinner color="current" size="sm" /> : null}
+          {copy.copyImage}
+        </Button>
+        <Button
+          onPress={() => {
+            if (!dataUrl) return;
+            downloadPngDataUrl(
+              dataUrl,
+              `token-usage-${data.periodLabel}-${variant}.png`,
+            );
+          }}
+        >
+          {copy.save}
+        </Button>
+      </Card.Footer>
+    </Card>
   );
 }

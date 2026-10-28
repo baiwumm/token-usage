@@ -1,14 +1,14 @@
 "use client";
 
 // Wrapped (annual review) at /wrapped — year totals, monthly trend,
-// sources/models breakdown, highlights, and a Canvas-2D share card export.
+// sources/models breakdown, and the shared multi-style share card panel.
 // Data comes from the frozen Dashboard-face endpoints (dashboard payload +
-// account-monthly).
+// account-monthly + account-heatmap for the card's strips).
 //
-// The page is split by concern: wrapped-header.tsx (year select + export),
-// share-card-preview.tsx / share-card-canvas.ts (the share card and its
-// export), stat-cards.tsx, monthly-card.tsx, sources-card.tsx and
-// models-table.tsx render the blocks; wrapped-skeleton.tsx is the first load.
+// The page is split by concern: wrapped-header.tsx (year select),
+// share-input.ts + share-card-preview.tsx (the share card panel),
+// stat-cards.tsx, monthly-card.tsx, sources-card.tsx and models-table.tsx
+// render the blocks; wrapped-skeleton.tsx is the first load.
 
 import type { TrendPoint } from "@/components/charts";
 
@@ -17,14 +17,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ModelsTable } from "./models-table";
 import { MonthlyCard } from "./monthly-card";
-import { exportShareCard } from "./share-card-canvas";
 import { ShareCardPreview } from "./share-card-preview";
+import { buildShareInput } from "./share-input";
 import { SourcesCard } from "./sources-card";
 import { StatCards } from "./stat-cards";
 import { WrappedHeader } from "./wrapped-header";
 import { WrappedSkeleton } from "./wrapped-skeleton";
 
-import { sourceDisplayLabel } from "@/lib/sources";
+import { useProfile } from "@/lib/auth/profile";
 import {
   ALL_RANGE_START,
   browserTimezone,
@@ -35,8 +35,10 @@ import { useFormat } from "@/lib/format/format";
 import {
   DashboardApiError,
   fetchDashboard,
+  fetchHeatmap,
   fetchMonthly,
   type DashboardPayload,
+  type HeatmapPayload,
   type MonthlyPoint,
 } from "@/lib/dashboard/api";
 import { useLocale } from "@/lib/copy/locale";
@@ -67,17 +69,19 @@ function monthsOfYear(year: number, timeZone: string): string[] {
 export function WrappedClient() {
   const [locale] = useLocale();
   const copy = WRAPPED_COPY[locale];
-  const { formatTokens, formatCost, formatNumber, formatMonth } = useFormat();
+  const { formatTokens, formatCost, formatNumber, formatMonth, formatPercent } =
+    useFormat();
+  const { profile } = useProfile();
 
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [monthly, setMonthly] = useState<MonthlyPoint[]>([]);
+  const [heatmap, setHeatmap] = useState<HeatmapPayload | null>(null);
   const [year, setYear] = useState(currentYear);
   // Years that actually carry usage, newest first — the select only offers
   // these (operator call 2026-10-28).
   const [historyYears, setHistoryYears] = useState<number[]>([]);
-  const [exporting, setExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   // Run id: switching years starts a new load while the old one may still be
   // in flight; a superseded response must never overwrite the newer year.
@@ -101,7 +105,15 @@ export function WrappedClient() {
 
       try {
         const tzRange = yearRange(year, timezone);
-        const [nextPayload, nextHistory] = await Promise.all([
+        // The card's heatmap covers the review year: a past year ends Dec 31,
+        // the running year ends today in the page timezone.
+        const heatmapToDay =
+          year === currentYear()
+            ? dayKeyInTz(new Date(), timezone)
+            : `${year}-12-31`;
+        // A heatmap failure must not sink the whole review — the share panel
+        // degrades to the heatmap-less variants instead.
+        const [nextPayload, nextHistory, nextHeatmap] = await Promise.all([
           fetchDashboard(token, {
             fromIso: tzRange.fromIso,
             toIso: tzRange.toIso,
@@ -116,10 +128,16 @@ export function WrappedClient() {
             fromDay: ALL_RANGE_START,
             toDay: dayKeyInTz(new Date(), timezone),
           }),
+          fetchHeatmap(token, {
+            weeks: 52,
+            toDay: heatmapToDay,
+            tz: timezone,
+          }).catch(() => null),
         ]);
 
         if (loadSeq.current !== seq) return;
         setPayload(nextPayload);
+        setHeatmap(nextHeatmap);
         setHistoryYears(
           Array.from(
             new Set(
@@ -175,13 +193,6 @@ export function WrappedClient() {
   const hasData = (totals?.total_tokens ?? 0) > 0;
   const models = payload?.models ?? [];
   const sources = payload?.sources ?? [];
-  const daily = payload?.daily ?? [];
-  const peakDay =
-    daily.length > 0
-      ? daily.reduce((best, day) =>
-          day.total_tokens > best.total_tokens ? day : best,
-        )
-      : null;
 
   // Month buckets are UTC-fixed (docs/cli-contract.md §2.7) while the totals
   // above ride the browser tz; only rows near a year boundary can differ.
@@ -208,55 +219,41 @@ export function WrappedClient() {
     });
   }, [formatMonth, monthly, timezone, year]);
 
-  const highlights: Array<[string, string]> = [];
-
-  if (models[0]) {
-    highlights.push([
-      copy.topModel,
-      `${models[0].model} · ${formatTokens(models[0].total_tokens)}`,
-    ]);
-  }
-  if (sources[0]) {
-    highlights.push([
-      copy.topSource,
-      `${sourceDisplayLabel(sources[0].source)} · ${formatTokens(sources[0].total_tokens)}`,
-    ]);
-  }
-  if (peakDay && peakDay.total_tokens > 0) {
-    highlights.push([
-      copy.peakDay,
-      `${peakDay.date} · ${formatTokens(peakDay.total_tokens)}`,
-    ]);
-  }
-
   const totalTokens = totals?.total_tokens ?? 0;
 
-  async function exportCard() {
-    try {
-      await exportShareCard({
-        copy,
-        year,
-        totals,
-        highlights,
-        formatTokens,
+  const shareInput = useMemo(
+    () =>
+      buildShareInput({
         formatCost,
         formatNumber,
-      });
-    } finally {
-      setExporting(false);
-    }
-  }
+        formatPercent,
+        formatTokens,
+        heatmap,
+        locale,
+        payload,
+        profile,
+        year,
+      }),
+    [
+      formatCost,
+      formatNumber,
+      formatPercent,
+      formatTokens,
+      heatmap,
+      locale,
+      payload,
+      profile,
+      year,
+    ],
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-8">
       <WrappedHeader
         copy={copy}
-        exporting={exporting}
-        hasData={hasData}
         refreshing={refreshing}
         year={year}
         yearOptions={yearOptions}
-        onExport={() => void exportCard()}
         onYearChange={(next) => {
           yearChosen.current = true;
           setYear(next);
@@ -294,12 +291,7 @@ export function WrappedClient() {
 
       {status === "ready" && hasData && totals ? (
         <>
-          <ShareCardPreview
-            copy={copy}
-            highlights={highlights}
-            totals={totals}
-            year={year}
-          />
+          {shareInput ? <ShareCardPreview data={shareInput} /> : null}
 
           <StatCards copy={copy} totals={totals} />
 

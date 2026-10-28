@@ -121,10 +121,15 @@
    `models` 非空时），打开该桶的模型明细 Modal（同 `ModelListModal`）。
 8. **成本分析**：从 Top 模型「成本分析」按钮打开 `Modal`；`Tabs` 按模型 / 按来源；
    总成本、日成本趋势、未定价模型提示；只读，不提供导出。
-9. **分享卡片**：筛选条「分享」打开 `Modal`，预览 canvas 手绘的 Broadsheet 风格卡片
-   （米色纸面 + 朱红强调：报头、使用者、Token 大数、预估费用/活跃天数、52 周热力图条、
-   来源与模型占比双栏、token-usage.cc 落款），支持保存 PNG 与复制到剪贴板；沿用 M4 的
-   canvas 方案（html-to-image 在本栈挂起），只含聚合数字。
+9. **分享卡片**：筛选条「分享」打开 `Modal`，预览共享分享卡引擎
+   （`components/share-card/`，Canvas 2D 手绘——html-to-image 在本栈挂起，只含聚合数字）
+   的四种风格之一：**特刊**（Broadsheet：米白纸底 + 朱红，报头、署名、衬线大数、数据金句、
+   52 周热力图条、来源与模型双栏、token-usage.cc 落款）、**小票**（热敏收据：Maple Mono
+   白纸黑字、模型行项目、装饰条形码、PAID 章、撕纸边）、**霓虹**（深色海报：程序化光晕+
+   噪点、12 月热力图网格、连续天数/Top 模型事实条）、**唱片**（方形黑胶封面：热力图色环
+   沟纹、纸标、曲目=模型榜）。Modal 内 `ToggleButtonGroup`（单选、不允空选）切换风格，
+   预览即导出 PNG 本身（所见即所得），支持保存 PNG 与复制到剪贴板；卡片数据由
+   `dashboard/share-input.ts` 从当前 payload 投影，文案统一走 `lib/copy/share-card.ts`。
 
 状态与可访问性：
 
@@ -183,12 +188,15 @@
 
 - 页头：年份下拉只列**有数据的年份**（全历史月度桶去重、倒序；`aria-label` 为「选择
   年份」），默认当年，当年还没有数据时自动跳到最近有数据的一年；切换年份保留旧内容，
-  加载中 `Select.Indicator` 渲染为 `Spinner`（触发箭头位置）；右侧「导出分享卡片」，
-  当前年份没有数据（首载未回填、或该年为空）时禁用，避免导出全 0 的图。
-- 分享卡预览（`bg-surface` 圆角卡，与 Canvas 导出同一版式）：标题「我的 {年} Token
-  Usage」+ 副题、右侧大号全年 Tokens；成本 / 会话 / 活跃天数三块；「年度亮点」
-  （最常用模型、最常用来源、最高产的一天）一行。导出为 1200×630 @2x，画版用 Canvas 2D
-  直接绘制（html-to-image 在本页挂死），「最常用来源」用 `sourceDisplayLabel`。
+  加载中 `Select.Indicator` 渲染为 `Spinner`（触发箭头位置）。
+- 分享卡面板（页面首卡，`components/wrapped/share-card-preview.tsx`）：`Card` 复合结构
+  （标题「分享卡片」+ 隐私说明）内嵌与仪表盘同一套共享分享卡引擎
+  （`components/share-card/`）——`ToggleButtonGroup` 四风格切换（特刊/小票/霓虹/唱片，
+  文案走 `lib/copy/share-card.ts`），预览即导出 PNG 本身（Canvas 2D 手绘，所见即所得），
+  底部保存 PNG / 复制图片双操作。数据由 `wrapped/share-input.ts` 从年度 payload 投影，
+  热力图条来自随页拉取的 `account-heatmap`（52 周、窗口=所选年份，拉取失败静默降级，
+  不阻塞页面）；「最常用来源」用 `sourceDisplayLabel`；无 `导出分享卡片` 头部按钮
+  （2026-10-28 裁定：操作收敛进面板）。
 - 四张统计卡：全年 Tokens / 成本 / 会话 / 活跃天数，右上角 `text-accent/70` 图标
   （`Hashtag` / `Wallet` / `Comments` / `Calendar`）。
 - 月度趋势：复用仪表盘 `TrendChart`，输入 / 缓存 / 输出三色堆叠（缓存 = 读 + 写）；

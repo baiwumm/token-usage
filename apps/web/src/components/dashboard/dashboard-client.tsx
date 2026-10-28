@@ -80,8 +80,14 @@ export function DashboardClient() {
   const router = useRouter();
   const [locale] = useLocale();
   const copy = DASHBOARD_COPY[locale];
-  const { formatDate, formatMonth, formatTokens, formatCost, formatPercent } =
-    useFormat();
+  const {
+    formatDate,
+    formatMonth,
+    formatNumber,
+    formatTokens,
+    formatCost,
+    formatPercent,
+  } = useFormat();
   const { profile } = useProfile();
 
   const refreshOnVisible = useRefreshPreferencesStore(
@@ -506,6 +512,7 @@ export function DashboardClient() {
         breakdown,
         formatCost,
         formatDate,
+        formatNumber,
         formatPercent,
         formatTokens,
         heatmap,
@@ -520,6 +527,7 @@ export function DashboardClient() {
       breakdown,
       formatCost,
       formatDate,
+      formatNumber,
       formatPercent,
       formatTokens,
       heatmap,

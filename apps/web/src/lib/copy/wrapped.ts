@@ -1,5 +1,5 @@
-// Wrapped (annual review) copy. The share card renders from the wrapped data
-// itself, not from copy strings beyond labels.
+// Wrapped (annual review) copy. Share-card strings live in lib/copy/share-card
+// (shared with the dashboard modal).
 
 export interface WrappedCopy {
   pageTitle: string;
@@ -36,14 +36,6 @@ export interface WrappedCopy {
   emptyBody: string;
   loadError: string;
   retry: string;
-  share: {
-    button: string;
-    exporting: string;
-    exported: string;
-    exportFailed: string;
-    cardTitle: string;
-    cardCaption: string;
-  };
 }
 
 export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
@@ -80,14 +72,6 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
     emptyBody: "完成配对并同步用量后，年度回顾会在这里生成。",
     loadError: "年度回顾加载失败。",
     retry: "重试",
-    share: {
-      button: "导出分享卡片",
-      exporting: "正在生成…",
-      exported: "分享卡片已保存。",
-      exportFailed: "导出失败，请重试。",
-      cardTitle: "我的 {year} Token Usage",
-      cardCaption: "自托管 AI 用量追踪 · token-usage",
-    },
   },
   en: {
     pageTitle: "Wrapped",
@@ -122,13 +106,5 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
     emptyBody: "Pair a collector and sync — your wrapped will show up here.",
     loadError: "Failed to load your wrapped.",
     retry: "Retry",
-    share: {
-      button: "Export share card",
-      exporting: "Generating…",
-      exported: "Share card saved.",
-      exportFailed: "Export failed — try again.",
-      cardTitle: "My {year} Token Usage",
-      cardCaption: "Self-hosted AI usage tracking · token-usage",
-    },
   },
 };
