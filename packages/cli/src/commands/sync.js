@@ -603,7 +603,7 @@ async function cmdSync(argv, context = {}) {
   const syncRun = isRunReportEnabled(trackerDir)
     ? createSyncRunTelemetry({
         trigger: resolveSyncTrigger(opts, context),
-        cliVersion: require("../package.json").version,
+        cliVersion: require("../../package.json").version,
       })
     : null;
   // Manual CLI sync is a one-time upload request, without changing the toggle.

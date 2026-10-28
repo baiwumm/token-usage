@@ -179,3 +179,32 @@ test("hidden-runner VBS quotes paths individually and propagates the exit code",
   // The task name stays stable — pause/resume and uninstall toggle by name.
   assert.equal(TASK_NAME, "TokenUsageSync");
 });
+
+// Runtime-require depth guard: a `require("../package.json")` inside src/commands
+// or src/lib resolves to a nonexistent src/package.json and only explodes when
+// the lazy call site runs (0.2.0 shipped exactly this in sync.js's report tail —
+// the smoke tests never execute it). Only src/cli.js sits at the depth where the
+// one-level form is valid; everything nested deeper must use ../../.
+test("no nested module resolves package.json at the wrong depth", () => {
+  const srcDir = path.join(__dirname, "..", "src");
+  const offenders = [];
+
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.name.endsWith(".js")) {
+        const source = fs.readFileSync(full, "utf8");
+        if (source.includes('require("../package.json")')) {
+          const relative = path.relative(srcDir, full).split(path.sep).join("/");
+
+          if (relative !== "cli.js") offenders.push(relative);
+        }
+      }
+    }
+  };
+
+  walk(srcDir);
+  assert.deepEqual(offenders, []);
+});
