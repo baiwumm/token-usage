@@ -9,204 +9,30 @@
 import type { HeatmapPayload } from "@/lib/dashboard/api";
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 
-import { ChevronDown, CircleInfo } from "@gravity-ui/icons";
-import {
-  Button,
-  Card,
-  Dropdown,
-  Header,
-  Label,
-  Popover,
-  Typography,
-} from "@heroui/react";
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import { createPortal } from "react-dom";
+import { CircleInfo } from "@gravity-ui/icons";
+import { Card, Typography } from "@heroui/react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { SourceIcon } from "./source-icon";
-import { canonicalSource, sourceDisplayLabel } from "./sources";
 import { canonicalTokenTotals } from "./aggregate";
+import { HeatmapFilter } from "./heatmap-filter";
+import {
+  alignWeeks,
+  buildMonthMarkers,
+  canonicalSources,
+  CELL_GAP,
+  HEATMAP_STOPS,
+  LABEL_WIDTH,
+  TARGET_WEEKS,
+  TOOLTIP_HIDE_DELAY_MS,
+  type GridCell,
+  type TooltipAnchor,
+} from "./heatmap-geometry";
+import { HeatmapTooltip } from "./heatmap-tooltip";
+import { useResponsiveWeeks } from "./use-responsive-weeks";
 
 import { formatMessage } from "@/lib/copy/message";
 import { tzLabel } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";
-
-const MIN_CELL = 15;
-const CELL_GAP = 4;
-const LABEL_WIDTH = 26;
-const TARGET_WEEKS = 52;
-const TOOLTIP_HIDE_DELAY_MS = 80;
-
-/** Level stops mirror the --heatmap-* tokens in globals.css. */
-const HEATMAP_STOPS = [
-  "var(--heatmap-0)",
-  "var(--heatmap-1)",
-  "var(--heatmap-2)",
-  "var(--heatmap-3)",
-  "var(--heatmap-4)",
-] as const;
-
-interface GridCell {
-  day: string;
-  /** Tokens of the active source selection (falls back to the raw total). */
-  total: number;
-  level: number;
-  /** Canonical-id → tokens, aliases merged (Pi, DeepSeek Harness …). */
-  sources: Record<string, number>;
-}
-
-function canonicalSources(
-  raw: Record<string, number> | null,
-): Record<string, number> {
-  const out: Record<string, number> = {};
-
-  for (const [source, tokens] of Object.entries(raw ?? {})) {
-    const id = canonicalSource(source);
-
-    out[id] = (out[id] ?? 0) + tokens;
-  }
-
-  return out;
-}
-
-function weekdayIndex(day: string): number {
-  // getUTCDay(): 0=Sun..6=Sat
-  return new Date(`${day}T00:00:00Z`).getUTCDay();
-}
-
-/** Columns are Mon-start weeks; the head is padded so the grid aligns. */
-function alignWeeks(
-  payload: HeatmapPayload,
-): Array<
-  Array<{ day: string | null; sources: Record<string, number> | null }>
-> {
-  const flat = payload.weeks.flat();
-  const first = flat[0]?.day;
-  const pad = first != null ? (weekdayIndex(first) + 6) % 7 : 0;
-  const columns: Array<
-    Array<{ day: string | null; sources: Record<string, number> | null }>
-  > = [];
-  let row = 0;
-  let col: Array<{
-    day: string | null;
-    sources: Record<string, number> | null;
-  }> = [];
-
-  for (let index = 0; index < pad; index++) {
-    col.push({ day: null, sources: null });
-  }
-  for (const cell of flat) {
-    col.push({ day: cell.day, sources: cell.sources });
-    row += 1;
-    if (row === 7) {
-      columns.push(col);
-      col = [];
-      row = 0;
-    }
-  }
-  if (col.length > 0) {
-    while (col.length < 7) col.push({ day: null, sources: null });
-    columns.push(col);
-  }
-
-  return columns;
-}
-
-/** Month labels positioned at the week column containing each month start. */
-function buildMonthMarkers(
-  columns: number,
-  lastDay: string,
-  labels: Intl.DateTimeFormat,
-): Array<{ index: number; label: string }> {
-  if (columns <= 0) return [];
-  const end = new Date(`${lastDay}T00:00:00Z`);
-  // Anchor: the Sunday that starts the week containing `lastDay`.
-  const endWeekStart = new Date(end);
-
-  endWeekStart.setUTCDate(end.getUTCDate() - end.getUTCDay());
-  const start = new Date(endWeekStart);
-
-  start.setUTCDate(endWeekStart.getUTCDate() - (columns - 1) * 7);
-
-  const markers: Array<{ index: number; label: string }> = [];
-  const used = new Set<number>();
-
-  for (let back = 11; back >= 0; back -= 1) {
-    const month = new Date(
-      Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - back, 1),
-    );
-    const index = Math.floor(
-      (month.getTime() - start.getTime()) / (7 * 86_400_000),
-    );
-
-    if (index < 0 || index >= columns || used.has(index)) continue;
-    used.add(index);
-    markers.push({ index, label: labels.format(month) });
-  }
-
-  return markers;
-}
-
-function useResponsiveWeeks(maxWeeks: number) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [cellSize, setCellSize] = useState(MIN_CELL);
-  const [visibleWeeks, setVisibleWeeks] = useState(maxWeeks);
-
-  useEffect(() => {
-    const element = containerRef.current;
-
-    if (!element || maxWeeks <= 0) return;
-
-    const update = () => {
-      const width = element.clientWidth;
-      const fitted = Math.floor(
-        (width - LABEL_WIDTH + CELL_GAP) / (MIN_CELL + CELL_GAP),
-      );
-      const weeks = Math.max(1, Math.min(maxWeeks, fitted || 1));
-
-      if (weeks >= maxWeeks) {
-        setVisibleWeeks(maxWeeks);
-        const gaps = Math.max(0, maxWeeks - 1) * CELL_GAP;
-
-        setCellSize(
-          Math.max(1, Math.floor((width - LABEL_WIDTH - gaps) / maxWeeks)),
-        );
-      } else {
-        setVisibleWeeks(weeks);
-        setCellSize(MIN_CELL);
-      }
-    };
-
-    update();
-    // The ResizeObserver alone covers it: any window resize that changes the
-    // card width re-fires the observer, so a second window listener would
-    // just run the same measurement twice per resize.
-    const observer = new ResizeObserver(update);
-
-    observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [maxWeeks]);
-
-  return { containerRef, cellSize, visibleWeeks };
-}
-
-interface TooltipAnchor {
-  day: string;
-  cell: GridCell;
-  left: number;
-  top: number;
-  bottom: number;
-}
 
 // Memoized: refresh renders keep the previous payload reference, so the
 // 364-cell grid and its tooltip state skip re-rendering entirely.
@@ -224,7 +50,7 @@ function HeatmapCardImpl({
   /** Present = cells are clickable (dashboard → sessions cross-link). */
   onDaySelect?: (day: string) => void;
 }) {
-  const { formatTokens, formatPercent } = useFormat();
+  const { formatTokens } = useFormat();
   const [selectedSources, setSelectedSources] = useState<Set<string> | null>(
     null,
   );
@@ -404,67 +230,6 @@ function HeatmapCardImpl({
     [visible],
   );
 
-  let tooltipNode: ReactNode = null;
-
-  if (tooltip) {
-    const entries = Object.entries(tooltip.cell.sources)
-      .filter(
-        ([source]) => activeSources == null || activeSources.includes(source),
-      )
-      .sort((first, second) => second[1] - first[1]);
-    const total = tooltip.cell.total || 1;
-
-    tooltipNode = createPortal(
-      <div
-        className="bg-surface text-foreground border-border pointer-events-none fixed z-50 w-64 max-w-[calc(100vw-24px)] rounded-3xl border p-3 text-xs shadow-sm"
-        role="tooltip"
-        style={{
-          left: Math.min(
-            Math.max(tooltip.left, 128),
-            Math.max(128, window.innerWidth - 128),
-          ),
-          top: Math.max(8, tooltip.top - 8),
-          transform: "translate(-50%, -100%)",
-        }}
-      >
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <span className="font-medium">{tooltip.day}</span>
-          <span className="text-muted tabular-nums">
-            {formatTokens(tooltip.cell.total)}
-          </span>
-        </div>
-        {entries.length === 0 ? (
-          <Typography color="muted" type="body-xs">
-            {copy.charts.noData}
-          </Typography>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            {entries.slice(0, 6).map(([source, tokens]) => (
-              <div key={source} className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-1.5">
-                  <SourceIcon label={source} size={12} />
-                  <span className="min-w-0 flex-1 truncate">
-                    {sourceDisplayLabel(source)}
-                  </span>
-                  <span className="text-muted tabular-nums">
-                    {formatTokens(tokens)} · {formatPercent(tokens / total)}
-                  </span>
-                </div>
-                <div className="bg-default h-1 overflow-hidden rounded-full">
-                  <div
-                    className="bg-accent h-full rounded-full"
-                    style={{ width: `${(tokens / total) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>,
-      document.body,
-    );
-  }
-
   const weekTemplate = `${LABEL_WIDTH}px repeat(${visible.length}, ${cellSize}px)`;
   const filtersActive = selectedSources != null;
 
@@ -487,74 +252,13 @@ function HeatmapCardImpl({
               : ""}
           </Card.Description>
         </div>
-        <Dropdown>
-          <Button
-            aria-label={copy.charts.heatmapAllPlatforms}
-            size="sm"
-            variant="tertiary"
-          >
-            {filtersActive
-              ? (activeSources?.length ?? 0) === 1
-                ? sourceDisplayLabel(activeSources?.[0] ?? "")
-                : formatMessage(copy.charts.heatmapSelectedCount, locale, {
-                    count: activeSources?.length ?? 0,
-                  })
-              : copy.charts.heatmapAllPlatforms}
-            <ChevronDown aria-hidden="true" className="size-3.5" />
-          </Button>
-          <Dropdown.Popover className="min-w-56" placement="bottom end">
-            <Popover.Arrow />
-            <Dropdown.Menu
-              selectedKeys={filtersActive ? (activeSources ?? []) : "all"}
-              selectionMode="multiple"
-              onSelectionChange={(keys) => {
-                if (keys === "all") {
-                  setSelectedSources(null);
-
-                  return;
-                }
-                setSelectedSources(new Set([...keys] as string[]));
-              }}
-            >
-              <Dropdown.Section>
-                <Header>
-                  <span className="flex w-full items-center justify-between gap-2">
-                    {copy.charts.heatmapAllPlatforms}
-                    <span className="flex gap-1">
-                      <Button
-                        className="h-6 px-1.5 text-xs"
-                        size="sm"
-                        variant="ghost"
-                        onPress={() => setSelectedSources(null)}
-                      >
-                        {copy.charts.heatmapAll}
-                      </Button>
-                      <Button
-                        className="h-6 px-1.5 text-xs"
-                        size="sm"
-                        variant="ghost"
-                        onPress={() => setSelectedSources(new Set())}
-                      >
-                        {copy.charts.heatmapClear}
-                      </Button>
-                    </span>
-                  </span>
-                </Header>
-                {sourceTotals.map(([source]) => (
-                  <Dropdown.Item
-                    key={source}
-                    id={source}
-                    textValue={sourceDisplayLabel(source)}
-                  >
-                    <Dropdown.ItemIndicator />
-                    <SourceIcon label={source} size={14} />
-                    <Label>{sourceDisplayLabel(source)}</Label>
-                  </Dropdown.Item>
-                ))}
-              </Dropdown.Section>
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown>
+        <HeatmapFilter
+          activeSources={activeSources}
+          copy={copy}
+          locale={locale}
+          sourceTotals={sourceTotals}
+          onSelect={setSelectedSources}
+        />
       </Card.Header>
       <Card.Content className="gap-3">
         {filtersActive && (activeSources?.length ?? 0) === 0 ? (
@@ -678,7 +382,13 @@ function HeatmapCardImpl({
           </>
         )}
       </Card.Content>
-      {tooltipNode}
+      {tooltip ? (
+        <HeatmapTooltip
+          activeSources={activeSources}
+          copy={copy}
+          tooltip={tooltip}
+        />
+      ) : null}
     </Card>
   );
 }
