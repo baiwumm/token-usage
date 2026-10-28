@@ -4,6 +4,7 @@
 export interface WrappedCopy {
   pageTitle: string;
   yearSuffix: string;
+  yearAriaLabel: string;
   cards: {
     totalTokens: string;
     cost: string;
@@ -11,11 +12,25 @@ export interface WrappedCopy {
     activeDays: string;
   };
   monthlyTitle: string;
+  // Composition legend + tooltip rows for the monthly chart (distinct labels:
+  // reusing one string for every series collapses the legend and tooltip).
+  trend: {
+    input: string;
+    cached: string;
+    output: string;
+  };
   highlightsTitle: string;
   topModel: string;
   topSource: string;
   peakDay: string;
+  sourcesTitle: string;
   modelsTitle: string;
+  table: {
+    model: string;
+    tokens: string;
+    cost: string;
+    share: string;
+  };
   emptyTitle: string;
   emptyBody: string;
   loading: string;
@@ -35,6 +50,7 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
   zh: {
     pageTitle: "年度回顾",
     yearSuffix: "年度回顾",
+    yearAriaLabel: "选择年份",
     cards: {
       totalTokens: "全年 Tokens",
       cost: "全年成本（USD）",
@@ -42,11 +58,23 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
       activeDays: "活跃天数",
     },
     monthlyTitle: "月度趋势",
+    trend: {
+      input: "输入",
+      cached: "缓存",
+      output: "输出",
+    },
     highlightsTitle: "年度亮点",
     topModel: "最常用模型",
     topSource: "最常用来源",
     peakDay: "最高产的一天",
+    sourcesTitle: "来源用量",
     modelsTitle: "模型用量",
+    table: {
+      model: "模型",
+      tokens: "Tokens",
+      cost: "成本",
+      share: "占比",
+    },
     emptyTitle: "这一年还没有数据",
     emptyBody: "完成配对并同步用量后，年度回顾会在这里生成。",
     loading: "正在生成年度回顾…",
@@ -64,6 +92,7 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
   en: {
     pageTitle: "Wrapped",
     yearSuffix: "Wrapped",
+    yearAriaLabel: "Year",
     cards: {
       totalTokens: "Tokens this year",
       cost: "Cost this year (USD)",
@@ -71,11 +100,23 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
       activeDays: "Active days",
     },
     monthlyTitle: "Monthly trend",
+    trend: {
+      input: "Input",
+      cached: "Cached",
+      output: "Output",
+    },
     highlightsTitle: "Highlights",
     topModel: "Top model",
     topSource: "Top source",
     peakDay: "Biggest day",
+    sourcesTitle: "Source usage",
     modelsTitle: "Model usage",
+    table: {
+      model: "Model",
+      tokens: "Tokens",
+      cost: "Cost",
+      share: "Share",
+    },
     emptyTitle: "No data for this year yet",
     emptyBody: "Pair a collector and sync — your wrapped will show up here.",
     loading: "Generating your wrapped…",

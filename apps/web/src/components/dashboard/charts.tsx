@@ -59,8 +59,10 @@ interface RechartsTooltipProps {
 function TooltipBox({ rows }: { rows: TooltipRow[] }) {
   return (
     <div className="bg-surface text-foreground border-border rounded-3xl border p-3 text-xs shadow-sm">
-      {rows.map((row) => (
-        <div key={row.label} className="flex justify-between gap-4">
+      {/* Row order is static, labels are display-only — keying by label
+          collapsed rows when two series shared a caption. */}
+      {rows.map((row, index) => (
+        <div key={index} className="flex justify-between gap-4">
           <span className="text-foreground/60">{row.label}</span>
           <span className="font-medium tabular-nums">{row.value}</span>
         </div>

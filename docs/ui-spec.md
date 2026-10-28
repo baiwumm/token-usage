@@ -161,6 +161,27 @@
 - 错误：401 跳登录并回跳 `/sessions`；其他错误在列表区重试。
 - 隐私：页面不出现 prompt、正文、标题、绝对路径、resume command；项目列只显示 basename。
 
+### 年度回顾（`/wrapped`）
+
+- 页头：年份下拉只列**有数据的年份**（全历史月度桶去重、倒序；`aria-label` 为「选择
+  年份」），默认当年，当年还没有数据时自动跳到最近有数据的一年；切换年份保留旧内容，
+  加载中 `Select.Indicator` 渲染为 `Spinner`（触发箭头位置）；右侧「导出分享卡片」。
+- 分享卡预览（`bg-surface` 圆角卡，与 Canvas 导出同一版式）：标题「我的 {年} Token
+  Usage」+ 副题、右侧大号全年 Tokens；成本 / 会话 / 活跃天数三块；「年度亮点」
+  （最常用模型、最常用来源、最高产的一天）一行。导出为 1200×630 @2x，画版用 Canvas 2D
+  直接绘制（html-to-image 在本页挂死），「最常用来源」用 `sourceDisplayLabel`。
+- 四张统计卡：全年 Tokens / 成本 / 会话 / 活跃天数，右上角 `text-accent/70` 图标
+  （`Hashtag` / `Wallet` / `Comments` / `Calendar`）。
+- 月度趋势：复用仪表盘 `TrendChart`，输入 / 缓存 / 输出三色堆叠（缓存 = 读 + 写）；
+  按月补零到整年（当年截至当月），月份标签走 `formatMonth`（本地化）。数据来自
+  `account-monthly` 的全历史月桶（`from=2000-01-01` 到 tz 今天，一次拉取后按年过滤，
+  同时喂年份下拉），桶按 UTC 月切分，与页头 tz 年度汇总只在跨年边界可能微差。
+  Tooltip 各行的标签必须互不相同（共用同一串会折叠图例/行），行 key 用序号。
+- 来源用量：顶部一条按 `seriesColor` 的堆叠占比条；每行 `SourceIcon` 品牌 Logo +
+  `sourceDisplayLabel` 显示名 + `Tokens · 占比 · 成本`，下方同色细占比条。
+- 模型用量：`Table` 一次展示全部（不分页），列：模型（`SourceIcon` 厂商 Logo + 模型
+  名）、Tokens、成本、占比（`Meter` + 百分比）。
+
 ### 设置 · 账户设置（`/settings`）
 
 设置页用 `Tabs` / 分段导航：账户 / 偏好 / 设备（tab 状态为组件内 state，不写 URL）；

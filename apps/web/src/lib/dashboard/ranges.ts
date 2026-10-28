@@ -177,14 +177,6 @@ export function rangeForSelection(
   return rangeForPreset(key === "custom" ? "30d" : key, timeZone, now);
 }
 
-/** The monthly series' UTC day-key window for a calendar year. */
-export function yearMonthlyWindow(year: number): {
-  fromDay: string;
-  toDay: string;
-} {
-  return { fromDay: `${year}-01-01`, toDay: `${year}-12-31` };
-}
-
 /** Curated tz picker entries; the browser zone rides along by default. */
 export const TIMEZONE_OPTIONS = [
   "UTC",
