@@ -291,7 +291,7 @@ describe("deviceTotals", () => {
       row({ device_id: "device-a", source: "cursor", total_tokens: 1000 }),
     ],
     deviceRows: [
-      { id: "device-a", device_name: "A", platform: "cli-device-flow", revoked_at: null, created_at: "2026-01-01T00:00:00.000Z" },
+      { id: "device-a", device_name: "A", platform: "cli-device-flow", default_device_name: "A #aaaa1111", revoked_at: null, created_at: "2026-01-01T00:00:00.000Z" },
       { id: "device-b", device_name: "B", platform: "cli-device-flow", revoked_at: null, created_at: "2026-01-02T00:00:00.000Z" },
       { id: "device-c", device_name: "C", platform: "cli-device-flow", revoked_at: "2026-01-03T00:00:00.000Z", created_at: "2026-01-03T00:00:00.000Z" },
     ],
@@ -304,6 +304,9 @@ describe("deviceTotals", () => {
       tzContext: UTC0,
     });
     expect(devices.map((d) => [d.id, d.total_tokens])).toEqual([["device-a", 400], ["device-b", 60]]);
+    // Legacy rows predating the snapshot column surface as null, not the
+    // current name — the UI hides the restore action instead of guessing.
+    expect(devices.map((d) => d.default_device_name)).toEqual(["A #aaaa1111", null]);
     expect(accountSources).toEqual([
       { source: "cursor", total_tokens: 1900 },
       { source: "trae-cn", total_tokens: 600 },

@@ -703,6 +703,7 @@ export function deviceTotals(
     platform: string | null;
     created_at: string | null;
     total_tokens: number;
+    default_device_name: string | null;
   }>;
   accountSources: Array<{ source: string; total_tokens: number }>;
 } {
@@ -740,6 +741,8 @@ export function deviceTotals(
       platform: (device.platform as string | null) || null,
       created_at: (device.created_at as string | null) || null,
       total_tokens: perDevice.get(String(device.id)) || 0,
+      default_device_name:
+        (device.default_device_name as string | null) || null,
     }))
     .sort((a, b) => b.total_tokens - a.total_tokens);
 

@@ -7,8 +7,17 @@
 
 import type { LoadStatus } from "@/lib/loadable";
 
-import { Camera, Display, Palette, Person, TrashBin } from "@gravity-ui/icons";
 import {
+  ArrowRotateLeft,
+  Camera,
+  Display,
+  Palette,
+  Pencil,
+  Person,
+  TrashBin,
+} from "@gravity-ui/icons";
+import {
+  AlertDialog,
   Avatar,
   Button,
   Card,
@@ -24,6 +33,7 @@ import {
   Table,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
   toast,
 } from "@heroui/react";
@@ -34,6 +44,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type ReactNode,
 } from "react";
 
 import {
@@ -83,6 +94,34 @@ function friendlyDeviceError(code: string, copy: SettingsCopy): string {
   return copy.errorGeneric;
 }
 
+// The creation snapshot (§2.7) decides whether the restore action is live; the
+// button always renders so the actions column stays aligned across rows.
+function defaultNameFor(device: AccountDeviceRow): string | null {
+  return device.default_device_name &&
+    device.default_device_name !== device.device_name
+    ? device.default_device_name
+    : null;
+}
+
+// Icon-only table actions carry their label in a tooltip (docs/ui-spec.md).
+function ActionTooltip({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label: string;
+}) {
+  return (
+    <Tooltip delay={0}>
+      {children}
+      <Tooltip.Content showArrow placement="bottom">
+        <Tooltip.Arrow />
+        <Typography type="body-xs">{label}</Typography>
+      </Tooltip.Content>
+    </Tooltip>
+  );
+}
+
 export function SettingsClient() {
   const [locale] = useLocale();
   const copy = SETTINGS_COPY[locale];
@@ -100,7 +139,11 @@ export function SettingsClient() {
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
   const [renameBusy, setRenameBusy] = useState(false);
+  const [restoring, setRestoring] = useState<AccountDeviceRow | null>(null);
+  const [restoreBusy, setRestoreBusy] = useState(false);
   const [revoking, setRevoking] = useState<AccountDeviceRow | null>(null);
+  const [revokeStep, setRevokeStep] = useState<"confirm" | "type">("confirm");
+  const [revokeDraft, setRevokeDraft] = useState("");
   const [revokeBusy, setRevokeBusy] = useState(false);
 
   const { from, to } = useMemo(() => usageWindow(), []);
@@ -183,6 +226,53 @@ export function SettingsClient() {
     }
   }
 
+  async function submitRestore() {
+    const target = restoring;
+    const token = accessToken;
+    const name = target ? defaultNameFor(target) : null;
+
+    if (!target || !token || !name || restoreBusy) return;
+    setRestoreBusy(true);
+
+    try {
+      await renameDevice(token, { deviceId: target.id, name });
+      setDevices((rows) =>
+        rows.map((row) =>
+          row.id === target.id ? { ...row, device_name: name } : row,
+        ),
+      );
+      setRestoring(null);
+      toast.success(copy.restoreSuccess);
+    } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToLogin();
+
+        return;
+      }
+      toast(
+        friendlyDeviceError(
+          error instanceof DashboardApiError ? error.message : "",
+          copy,
+        ),
+      );
+      setRestoring(null);
+    } finally {
+      setRestoreBusy(false);
+    }
+  }
+
+  function openRevoke(device: AccountDeviceRow) {
+    setRevoking(device);
+    setRevokeStep("confirm");
+    setRevokeDraft("");
+  }
+
+  function closeRevoke() {
+    setRevoking(null);
+    setRevokeStep("confirm");
+    setRevokeDraft("");
+  }
+
   async function submitRevoke() {
     const target = revoking;
     const token = accessToken;
@@ -194,7 +284,7 @@ export function SettingsClient() {
       const payload = await revokeDevice(token, { deviceId: target.id });
 
       setDevices((rows) => rows.filter((row) => row.id !== target.id));
-      setRevoking(null);
+      closeRevoke();
       toast.success(
         `${copy.revokeSuccess} · ${formatMessage(
           copy.revokedTokensSummary,
@@ -216,12 +306,17 @@ export function SettingsClient() {
           copy,
         ),
       );
-      setRevoking(null);
+      closeRevoke();
     } finally {
       // A network-level throw must not leave the confirm button disabled.
       setRevokeBusy(false);
     }
   }
+
+  const revokeDraftTrimmed = revokeDraft.trim();
+  const revokeMatches =
+    revoking !== null && revokeDraftTrimmed === revoking.device_name;
+  const revokeMismatch = revokeDraftTrimmed.length > 0 && !revokeMatches;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-8">
@@ -352,26 +447,54 @@ export function SettingsClient() {
                         </Table.Cell>
                         <Table.Cell>
                           <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onPress={() => {
-                                setRenaming(device);
-                                setRenameDraft(device.device_name);
-                                setRenameError(null);
-                              }}
-                            >
-                              {copy.renameAction}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger-soft"
-                              onPress={() => {
-                                setRevoking(device);
-                              }}
-                            >
-                              {copy.revokeAction}
-                            </Button>
+                            <ActionTooltip label={copy.renameAction}>
+                              <Button
+                                isIconOnly
+                                aria-label={copy.renameAction}
+                                size="sm"
+                                variant="secondary"
+                                onPress={() => {
+                                  setRenaming(device);
+                                  setRenameDraft(device.device_name);
+                                  setRenameError(null);
+                                }}
+                              >
+                                <Pencil aria-hidden="true" className="size-4" />
+                              </Button>
+                            </ActionTooltip>
+                            <ActionTooltip label={copy.restoreAction}>
+                              <Button
+                                isIconOnly
+                                aria-label={copy.restoreAction}
+                                isDisabled={!defaultNameFor(device)}
+                                size="sm"
+                                variant="tertiary"
+                                onPress={() => {
+                                  setRestoring(device);
+                                }}
+                              >
+                                <ArrowRotateLeft
+                                  aria-hidden="true"
+                                  className="size-4"
+                                />
+                              </Button>
+                            </ActionTooltip>
+                            <ActionTooltip label={copy.revokeAction}>
+                              <Button
+                                isIconOnly
+                                aria-label={copy.revokeAction}
+                                size="sm"
+                                variant="danger-soft"
+                                onPress={() => {
+                                  openRevoke(device);
+                                }}
+                              >
+                                <TrashBin
+                                  aria-hidden="true"
+                                  className="size-4"
+                                />
+                              </Button>
+                            </ActionTooltip>
                           </div>
                         </Table.Cell>
                       </Table.Row>
@@ -442,36 +565,140 @@ export function SettingsClient() {
         </Modal.Container>
       </Modal.Backdrop>
 
-      {/* Revoke confirm dialog */}
-      <Modal.Backdrop
-        isOpen={revoking !== null}
+      {/* Restore-default-name confirmation. Reuses the frozen rename endpoint
+          with the creation snapshot as the new name (§2.7 + §2.8). */}
+      <AlertDialog.Backdrop
+        isOpen={restoring !== null}
         onOpenChange={(open) => {
-          if (!open) setRevoking(null);
+          if (!open) setRestoring(null);
+        }}
+      >
+        <AlertDialog.Container>
+          <AlertDialog.Dialog>
+            <AlertDialog.Header>
+              <AlertDialog.Icon status="accent" />
+              <AlertDialog.Heading>{copy.restoreTitle}</AlertDialog.Heading>
+            </AlertDialog.Header>
+            <AlertDialog.Body>
+              <Typography type="body-sm">
+                {restoring
+                  ? formatMessage(copy.restoreBody, locale, {
+                      current: restoring.device_name,
+                      defaultName: restoring.default_device_name,
+                    })
+                  : null}
+              </Typography>
+            </AlertDialog.Body>
+            <AlertDialog.Footer>
+              <Button isDisabled={restoreBusy} slot="close" variant="tertiary">
+                {copy.restoreCancel}
+              </Button>
+              <PendingButton
+                pending={restoreBusy}
+                onPress={() => {
+                  void submitRestore();
+                }}
+              >
+                {copy.restoreConfirm}
+              </PendingButton>
+            </AlertDialog.Footer>
+          </AlertDialog.Dialog>
+        </AlertDialog.Container>
+      </AlertDialog.Backdrop>
+
+      {/* Revoke step 1 — consequence summary. */}
+      <Modal.Backdrop
+        isOpen={revoking !== null && revokeStep === "confirm"}
+        onOpenChange={(open) => {
+          if (!open) closeRevoke();
+        }}
+      >
+        <Modal.Container>
+          <Modal.Dialog>
+            <Modal.Header>
+              <Modal.CloseTrigger />
+              <Modal.Heading>{copy.revokeTitle}</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body>
+              <Typography type="body-sm">
+                {revoking?.device_name} · {copy.revokeBody}
+              </Typography>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button slot="close" variant="secondary">
+                {copy.revokeCancel}
+              </Button>
+              <Button
+                variant="danger"
+                onPress={() => {
+                  setRevokeStep("type");
+                }}
+              >
+                {copy.revokeContinue}
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+
+      {/* Revoke step 2 — typed confirmation. The final button only unlocks on
+          an exact name match; this is a deliberate extra gate on a destructive,
+          irreversible action. */}
+      <Modal.Backdrop
+        isOpen={revoking !== null && revokeStep === "type"}
+        onOpenChange={(open) => {
+          if (!open && !revokeBusy) closeRevoke();
         }}
       >
         <Modal.Container>
           <Modal.Dialog>
             <Modal.Header>
               <Modal.CloseTrigger isDisabled={revokeBusy} />
-              <Modal.Heading>{copy.revokeTitle}</Modal.Heading>
+              <Modal.Heading>{copy.revokeTypeTitle}</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
-              <p>
-                {revoking?.device_name} · {copy.revokeBody}
-              </p>
+              <Form
+                className="flex flex-col gap-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (revokeMatches) void submitRevoke();
+                }}
+              >
+                <Typography type="body-sm">
+                  {formatMessage(copy.revokeTypeBody, locale, {
+                    name: revoking?.device_name ?? "",
+                  })}
+                </Typography>
+                <TextField
+                  isRequired
+                  isInvalid={revokeMismatch}
+                  name="revoke_confirm"
+                  value={revokeDraft}
+                  onChange={setRevokeDraft}
+                >
+                  <Label>{copy.revokeTypeLabel}</Label>
+                  <Input
+                    autoComplete="off"
+                    placeholder={copy.revokeTypePlaceholder}
+                    variant="secondary"
+                  />
+                  {revokeMismatch ? (
+                    <FieldError>{copy.revokeTypeMismatch}</FieldError>
+                  ) : null}
+                </TextField>
+              </Form>
             </Modal.Body>
             <Modal.Footer>
-              <Button
-                slot="close"
-                variant="secondary"
-                onPress={() => setRevoking(null)}
-              >
+              <Button isDisabled={revokeBusy} slot="close" variant="secondary">
                 {copy.revokeCancel}
               </Button>
               <PendingButton
+                isDisabled={!revokeMatches}
                 pending={revokeBusy}
                 variant="danger"
-                onPress={submitRevoke}
+                onPress={() => {
+                  void submitRevoke();
+                }}
               >
                 {copy.revokeConfirm}
               </PendingButton>

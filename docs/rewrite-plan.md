@@ -69,7 +69,7 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 
 | 表 | 说明 | 关键列 / 约束 |
 |---|------|--------------|
-| `token_devices` | 每用户多设备，软吊销 | `id uuid pk`, `user_id → auth.users`, `device_name`, `platform`, `machine_id`, `machine_cluster_id`（由旧 `tokentracker_device_machine` 1:1 表折叠为列）, `name_customized bool`, `default_device_name`, `revoked_at`, `created_at`, `updated_at`；部分唯一索引：活跃设备 `(user_id, machine_id)` 与 `(user_id, platform, device_name)` |
+| `token_devices` | 每用户多设备，软吊销 | `id uuid pk`, `user_id → auth.users`, `device_name`, `platform`, `machine_id`, `machine_cluster_id`（由旧 `tokentracker_device_machine` 1:1 表折叠为列）, `name_customized bool`（**v1 未启用**：实现从不写入，「恢复默认名称」按 `default_device_name` 快照比较判定），`default_device_name`（§2.2 签发时写入的创建期名称快照，改名不更新）, `revoked_at`, `created_at`, `updated_at`；部分唯一索引：活跃设备 `(user_id, machine_id)` 与 `(user_id, platform, device_name)` |
 | `token_device_tokens` | 设备令牌，只存哈希 | `token_hash unique`, `user_id`, `device_id → token_devices`, `revoked_at`, `last_used_at` |
 | `token_device_codes` | CLI 配对码 | `device_code pk(64hex)`, `user_code unique(XXXX-XXXX)`, `status check in (pending/approved/used/expired)`, `user_id`, `expires_at`, `client_info`, `machine_id`, `approved_at` |
 | `token_usage_hourly` | 机器级小时桶（旧 tokentracker_hourly） | 主键 `(user_id, device_id, hour_start, source, model)`；6 个 token 列非负 check；`billable_total_tokens` 可空非负；`conversations ≥0`；`total_cost_usd ≥0`（CLI 上报恒 0，成本读取时算） |

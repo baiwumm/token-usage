@@ -107,7 +107,8 @@ async function fetchAccountUsage(userId: string): Promise<AccountUsage> {
       order: "bucket_start.asc,source.asc,session_id.asc",
     }),
     selectAll("token_devices", {
-      columns: "id,device_name,platform,revoked_at,created_at,updated_at",
+      columns:
+        "id,device_name,platform,default_device_name,revoked_at,created_at,updated_at",
       filters: [["user_id", "eq", userId]],
       order: "created_at.asc",
     }),

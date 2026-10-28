@@ -65,6 +65,7 @@ export function seedScenario(fake: FakeSupabase): void {
       platform: "cli-device-flow",
       machine_id: "machine-aaaa-1111",
       machine_cluster_id: "machine-aaaa-1111",
+      default_device_name: "PC One #aaaa1111",
       revoked_at: null,
       created_at: "2026-01-01T00:00:00.000Z",
       updated_at: "2026-01-01T00:00:00.000Z",
@@ -76,6 +77,9 @@ export function seedScenario(fake: FakeSupabase): void {
       platform: "cli-device-flow",
       machine_id: "machine-bbbb-2222",
       machine_cluster_id: "machine-bbbb-2222",
+      // Renamed by the operator: the creation snapshot keeps the auto-derived
+      // name so the settings page can offer "restore default name".
+      default_device_name: "Studio Book #bbbb2222",
       revoked_at: null,
       created_at: "2026-02-01T00:00:00.000Z",
       updated_at: "2026-02-01T00:00:00.000Z",
@@ -87,6 +91,7 @@ export function seedScenario(fake: FakeSupabase): void {
       platform: "cli-device-flow",
       machine_id: "machine-cccc-3333",
       machine_cluster_id: "machine-cccc-3333",
+      default_device_name: "Old Laptop #cccc3333",
       revoked_at: "2026-03-01T00:00:00.000Z",
       created_at: "2026-01-15T00:00:00.000Z",
       updated_at: "2026-03-01T00:00:00.000Z",

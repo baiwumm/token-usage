@@ -508,6 +508,7 @@ export interface AccountDeviceRow {
   platform: string;
   created_at: string;
   total_tokens: number;
+  default_device_name: string | null;
 }
 
 export function fetchAccountDevices(

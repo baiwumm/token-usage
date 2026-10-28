@@ -309,6 +309,10 @@ describe("series: devices", () => {
     expect(body.devices).toHaveLength(2); // revoked device excluded
     expect(body.devices[0]).toMatchObject({ id: DEVICE_A, total_tokens: 4200 });
     expect(body.devices[1].total_tokens).toBe(0);
+    // The creation-time name snapshot rides along so the settings page can
+    // offer "restore default name" without a second round trip.
+    expect(body.devices[0].default_device_name).toBe("PC One #aaaa1111");
+    expect(body.devices[1].default_device_name).toBe("Studio Book #bbbb2222");
     expect(body.account_sources).toEqual([
       { source: "cursor", total_tokens: 900 },
       { source: "trae-cn", total_tokens: 600 },

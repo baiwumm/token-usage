@@ -61,8 +61,20 @@ export interface SettingsCopy {
   renameCancel: string;
   renameLengthError: string;
   renameSuccess: string;
+  restoreAction: string;
+  restoreTitle: string;
+  restoreBody: string;
+  restoreConfirm: string;
+  restoreCancel: string;
+  restoreSuccess: string;
   revokeTitle: string;
   revokeBody: string;
+  revokeContinue: string;
+  revokeTypeTitle: string;
+  revokeTypeBody: string;
+  revokeTypeLabel: string;
+  revokeTypePlaceholder: string;
+  revokeTypeMismatch: string;
   revokeConfirm: string;
   revokeCancel: string;
   revokeSuccess: string;
@@ -135,8 +147,21 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     renameCancel: "取消",
     renameLengthError: "设备名需为 1–60 个字符。",
     renameSuccess: "设备已改名。",
+    restoreAction: "恢复默认名称",
+    restoreTitle: "恢复默认名称",
+    restoreBody:
+      "「{current}」将改回配对时生成的默认名称「{defaultName}」。已上报的用量不受影响。",
+    restoreConfirm: "确认恢复",
+    restoreCancel: "取消",
+    restoreSuccess: "设备已恢复默认名称。",
     revokeTitle: "吊销设备",
     revokeBody: "吊销后该设备的令牌将立即失效，需要重新配对才能再次上报。",
+    revokeContinue: "继续",
+    revokeTypeTitle: "最后确认",
+    revokeTypeBody: "吊销是敏感操作且不可撤销。请输入设备名「{name}」以确认。",
+    revokeTypeLabel: "设备名",
+    revokeTypePlaceholder: "输入设备名",
+    revokeTypeMismatch: "名称不匹配，请完整输入设备的当前名称。",
     revokeConfirm: "确认吊销",
     revokeCancel: "取消",
     revokeSuccess: "设备已吊销",
@@ -208,9 +233,24 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     renameCancel: "Cancel",
     renameLengthError: "The name must be 1–60 characters.",
     renameSuccess: "Device renamed.",
+    restoreAction: "Restore default",
+    restoreTitle: "Restore default name",
+    restoreBody:
+      '"{current}" goes back to the default name generated at pairing, "{defaultName}". Reported usage is unaffected.',
+    restoreConfirm: "Restore",
+    restoreCancel: "Cancel",
+    restoreSuccess: "Device name restored.",
     revokeTitle: "Revoke device",
     revokeBody:
       "Revoking immediately invalidates this device's tokens; it must pair again to report.",
+    revokeContinue: "Continue",
+    revokeTypeTitle: "Final confirmation",
+    revokeTypeBody:
+      'Revoking is sensitive and cannot be undone. Type the device name "{name}" to confirm.',
+    revokeTypeLabel: "Device name",
+    revokeTypePlaceholder: "Type the device name",
+    revokeTypeMismatch:
+      "Name does not match — enter the current device name exactly.",
     revokeConfirm: "Revoke device",
     revokeCancel: "Cancel",
     revokeSuccess: "Device revoked",
