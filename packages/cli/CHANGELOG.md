@@ -3,6 +3,26 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## 0.2.0
+
+采集控制与运行记录：采集器从此可暂停、可审计。
+
+- 新增 `tokenusage pause` / `resume`：一键暂停/恢复自动采集。暂停期间
+  `sync --auto` / `--watch`（含通知触发）静默退出，手动 `tokenusage sync`
+  不受影响；`status` 显示当前采集状态。
+- `init` 接管 Windows 计划任务注册：每小时任务由 init 创建（默认经 VBS
+  隐藏窗口运行，不再弹 conhost 黑框；`--no-task` 可跳过）；pause/resume
+  顺势启停任务；`uninstall` 一并清理任务与脚本。
+- 同步日志改为滚动文件（`~/.tokenusage/tracker/logs/sync.log`，1 MiB 轮转
+  一代），不再依赖注册时的 `>>` 重定向。
+- 每轮 sync 结束后向服务端上报一条运行记录（时间、触发方式、结果、耗时、
+  上报量），仪表盘新增"采集记录"页；空跑也上报，作为采集器心跳。上报为
+  尽力而为，失败只记本地日志，绝不影响用量数据采集；不想上报可在 init 时
+  `--run-report=off` 关闭。
+- 正确性修复：zcode 恢复行补齐 billable/cost 字段；含 `|` 的模型名不再破坏
+  用量桶键的往返解析；OpenCode 负 delta 不再产生负计数；`TOKENUSAGE_*`
+  环境变量优先于旧 `INSFORGE_*` 名（旧名保留兼容）；移除 init 中的死常量。
+
 ## 0.1.0
 
 首个公开发布版本：TokenTracker CLI 采集端 fork，重接到 token-usage 契约

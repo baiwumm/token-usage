@@ -107,13 +107,20 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 下版本候选（0.1.1 / 0.2.0，不阻塞已发版本）
 
-> **0.2.0 实施进度（2026-10-28）**：P1 服务端（`token_sync_runs` 迁移、
-> `token-usage-sync-report`、第 8 个 series `account-sync-runs` + golden 20 例 +
-> §2.11/§2.12 转正式）已推送（`731f6f5`）；P2 CLI 侧（采集控制 + 五修 + 运行上报）
-> 已推送（`2ea48be`），两条 CI 均绿，web `pnpm verify` 全绿（325 vitest + 42 CLI
-> node --test）。**剩余 P3/P4 见下方接续清单**（跨机器接手照此执行，无需其他上下文）。
+> **0.2.0 实施进度（2026-10-28，P1–P4 全部完成，待操作者打 tag 发版）**：
+> P1 服务端（`token_sync_runs` 迁移、`token-usage-sync-report`、第 8 个 series
+> `account-sync-runs` + golden + §2.11/§2.12 转正式）`731f6f5`；P2 CLI 侧（采集
+> 控制 + 五修 + 运行上报）`2ea48be`；P3 web 采集记录页（首个 `/api/app/*`
+> route + `/sync-runs` 页面）`d7d6829`（同 commit 修复 account-series golden
+> 的日期敏感缺陷——滚动窗口以真实"今天"结尾，fixture 已钉时钟）；P4 版本
+> bump + CHANGELOG（本 commit）。`pnpm verify` 全绿。**下一步是操作者手动
+> 发版**：`git tag cli-v0.2.0 && git push origin cli-v0.2.0`（首次实战 Trusted
+> Publisher，发完按 §三 清单逐项收尾：家里机/公司机升级到 0.2.0 并复验）。
+> 注意：0.2.0 的 init 注册的日志在 `~/.tokenusage/tracker/logs/sync.log`（autoLog
+> 滚动文件），与旧注册的 `~/.tokenusage/logs/sync.log`（`>>` 重定向）不同路，
+> 升级后按新路径看日志。
 
-### P3/P4 接续清单（0.2.0 收尾，2026-10-28 交接）
+### P3/P4 接续清单（0.2.0 收尾，2026-10-28 交接——已由接续会话执行完毕，存档）
 
 **P3 —— web 采集记录页**（apps/web，一个 commit 推完；改动全部在 apps/web 侧）：
 
@@ -184,8 +191,8 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 功能（采集记录，跨 CLI + web，契约 `docs/cli-contract.md` §2.11/§2.12 已转正式）：
 
 - [x] CLI 每轮 sync（含空跑）向 `token-usage-sync-report` 上报运行记录（见上）。
-- [ ] 仪表盘"采集记录"菜单与列表页：读取 `token-usage-account-sync-runs`（§2.7 第 8
-  个 series，服务端已上线）。**待 P3**（web 大施工收尾后的最后一块）。
+- [x] 仪表盘"采集记录"菜单与列表页：读取 `token-usage-account-sync-runs`（§2.7 第 8
+  个 series）；`/sync-runs` 页 + 首个 `/api/app/sync-runs` route（P3，`d7d6829`）。
 
 正确性修复（审计 P2）——**五项全修，用例在 `packages/cli/test/audit-fixes.test.js`**：
 
