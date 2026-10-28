@@ -21,8 +21,8 @@ import {
   DataTableCard,
   type DataTableColumn,
 } from "@/components/data-table-card";
-import { SourceIcon } from "@/components/dashboard/source-icon";
-import { sourceDisplayLabel } from "@/components/dashboard/sources";
+import { SourceIcon } from "@/components/source-icon";
+import { sourceDisplayLabel } from "@/lib/sources";
 import { useFormat } from "@/lib/format/format";
 
 const UPGRADE_URL = "https://github.com/baiwumm/token-usage#readme";

@@ -11,8 +11,8 @@ import { Chip, Modal, Table, Typography } from "@heroui/react";
 
 import { sortedModels } from "./model-chips";
 
-import { SourceIcon } from "@/components/dashboard/source-icon";
-import { sourceDisplayLabel } from "@/components/dashboard/sources";
+import { SourceIcon } from "@/components/source-icon";
+import { sourceDisplayLabel } from "@/lib/sources";
 import { useFormat } from "@/lib/format/format";
 
 export function SessionDetailModal({

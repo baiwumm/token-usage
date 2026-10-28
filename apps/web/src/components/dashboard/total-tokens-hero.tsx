@@ -17,10 +17,10 @@ import { Button, Card, Tooltip, Typography } from "@heroui/react";
 import { useMemo, useState } from "react";
 
 import { canonicalSourceRows, mergeModelsAcrossSources } from "./aggregate";
-import { seriesColor } from "./mini-charts";
 import { ModelListModal } from "./model-list-modal";
-import { SourceIcon } from "./source-icon";
 
+import { seriesColor } from "@/components/mini-charts";
+import { SourceIcon } from "@/components/source-icon";
 import { FlowNumber } from "@/components/flow-number";
 import { formatMessage } from "@/lib/copy/message";
 import { useFormat } from "@/lib/format/format";

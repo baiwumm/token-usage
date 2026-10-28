@@ -3,7 +3,7 @@
 // Source / model icon: brand logo first (public/brand-logos, MIT assets from
 // TokenTracker + juejin-usage), deterministic colored tile as the fallback
 // for anything without a shipped logo. Identity resolution (aliases, display
-// labels, white-logo backdrops) lives in ./sources.
+// labels, white-logo backdrops) lives in @/lib/sources.
 
 import { useMemo } from "react";
 
@@ -12,7 +12,7 @@ import {
   logoNeedsBackdrop,
   modelLogoFile,
   sourceLogoFile,
-} from "./sources";
+} from "@/lib/sources";
 
 const TILE_COLORS = [
   "#2563eb",

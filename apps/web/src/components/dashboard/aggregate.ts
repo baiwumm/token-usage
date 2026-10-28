@@ -5,7 +5,7 @@
 
 import type { ModelBreakdownSource } from "@/lib/dashboard/api";
 
-import { canonicalSource, sourceDisplayLabel } from "./sources";
+import { canonicalSource, sourceDisplayLabel } from "@/lib/sources";
 
 export interface CanonicalSourceRow {
   id: string;

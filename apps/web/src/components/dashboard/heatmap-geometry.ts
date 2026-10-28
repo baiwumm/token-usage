@@ -3,7 +3,7 @@
 
 import type { HeatmapPayload } from "@/lib/dashboard/api";
 
-import { canonicalSource } from "./sources";
+import { canonicalSource } from "@/lib/sources";
 
 export const MIN_CELL = 15;
 export const CELL_GAP = 4;

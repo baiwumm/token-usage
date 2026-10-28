@@ -7,8 +7,7 @@ import type { DashboardModel } from "@/lib/dashboard/api";
 
 import { Meter, Typography } from "@heroui/react";
 
-import { SourceIcon } from "../dashboard/source-icon";
-
+import { SourceIcon } from "@/components/source-icon";
 import {
   DataTableCard,
   type DataTableColumn,

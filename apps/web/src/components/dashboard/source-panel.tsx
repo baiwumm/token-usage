@@ -10,9 +10,9 @@ import { Button, Card, Modal, Typography } from "@heroui/react";
 import { useMemo, useState } from "react";
 
 import { canonicalSourceRows } from "./aggregate";
-import { DonutChart } from "./mini-charts";
-import { SourceIcon } from "./source-icon";
 
+import { DonutChart } from "@/components/mini-charts";
+import { SourceIcon } from "@/components/source-icon";
 import { formatMessage } from "@/lib/copy/message";
 import { useLocale } from "@/lib/copy/locale";
 import { useFormat } from "@/lib/format/format";

@@ -1,5 +1,3 @@
-"use client";
-
 // Collector source identity (docs/ui-spec.md 来源/模型图标): raw collector
 // ids → canonical id → display label + logo, following juejin-usage's
 // canonicalSource/SOURCE_LABELS pattern. Display-level only — the wire and

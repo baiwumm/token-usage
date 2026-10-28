@@ -8,10 +8,9 @@ import type { DashboardPayload } from "@/lib/dashboard/api";
 
 import { Card } from "@heroui/react";
 
-import { seriesColor } from "../dashboard/mini-charts";
-import { SourceIcon } from "../dashboard/source-icon";
-import { sourceDisplayLabel } from "../dashboard/sources";
-
+import { seriesColor } from "@/components/mini-charts";
+import { SourceIcon } from "@/components/source-icon";
+import { sourceDisplayLabel } from "@/lib/sources";
 import { useFormat } from "@/lib/format/format";
 
 export function SourcesCard({

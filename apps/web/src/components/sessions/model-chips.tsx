@@ -4,7 +4,7 @@ import type { SessionModel } from "@/lib/dashboard/api";
 
 import { Chip, Typography } from "@heroui/react";
 
-import { SourceIcon } from "@/components/dashboard/source-icon";
+import { SourceIcon } from "@/components/source-icon";
 import { formatMessage } from "@/lib/copy/message";
 import { useLocale } from "@/lib/copy/locale";
 import { SESSIONS_COPY } from "@/lib/copy/sessions";

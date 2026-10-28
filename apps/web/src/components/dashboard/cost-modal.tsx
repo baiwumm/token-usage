@@ -11,10 +11,10 @@ import { Chip, Modal, Tabs, Typography } from "@heroui/react";
 import { useMemo } from "react";
 
 import { canonicalSourceRows, mergeModelsAcrossSources } from "./aggregate";
-import { CostTrendChart } from "./charts";
-import { SourceIcon } from "./source-icon";
-import { sourceDisplayLabel } from "./sources";
 
+import { CostTrendChart } from "@/components/charts";
+import { SourceIcon } from "@/components/source-icon";
+import { sourceDisplayLabel } from "@/lib/sources";
 import { FlowNumber } from "@/components/flow-number";
 import { useFormat } from "@/lib/format/format";
 

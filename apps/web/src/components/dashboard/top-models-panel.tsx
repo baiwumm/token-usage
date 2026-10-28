@@ -10,8 +10,8 @@ import { Button, Card, Meter, Typography } from "@heroui/react";
 import { memo, useMemo } from "react";
 
 import { mergeModelsAcrossSources } from "./aggregate";
-import { SourceIcon } from "./source-icon";
 
+import { SourceIcon } from "@/components/source-icon";
 import { useFormat } from "@/lib/format/format";
 
 // Memoized: the breakdown slot only changes when its request settles.

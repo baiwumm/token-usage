@@ -9,9 +9,8 @@ import type { DashboardCopy } from "@/lib/copy/dashboard";
 import { createPortal } from "react-dom";
 import { Typography } from "@heroui/react";
 
-import { SourceIcon } from "./source-icon";
-import { sourceDisplayLabel } from "./sources";
-
+import { SourceIcon } from "@/components/source-icon";
+import { sourceDisplayLabel } from "@/lib/sources";
 import { useFormat } from "@/lib/format/format";
 
 export function HeatmapTooltip({

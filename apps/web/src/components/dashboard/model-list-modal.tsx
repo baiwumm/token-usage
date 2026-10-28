@@ -9,8 +9,7 @@ import type { DashboardCopy } from "@/lib/copy/dashboard";
 
 import { Modal, Table, Typography } from "@heroui/react";
 
-import { SourceIcon } from "./source-icon";
-
+import { SourceIcon } from "@/components/source-icon";
 import { useFormat } from "@/lib/format/format";
 
 export interface ModelListRow {

@@ -10,12 +10,10 @@
 // export), stat-cards.tsx, monthly-card.tsx, sources-card.tsx and
 // models-table.tsx render the blocks; wrapped-skeleton.tsx is the first load.
 
-import type { TrendPoint } from "../dashboard/charts";
+import type { TrendPoint } from "@/components/charts";
 
 import { Button, Card, Typography } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import { sourceDisplayLabel } from "../dashboard/sources";
 
 import { ModelsTable } from "./models-table";
 import { MonthlyCard } from "./monthly-card";
@@ -26,6 +24,7 @@ import { StatCards } from "./stat-cards";
 import { WrappedHeader } from "./wrapped-header";
 import { WrappedSkeleton } from "./wrapped-skeleton";
 
+import { sourceDisplayLabel } from "@/lib/sources";
 import {
   ALL_RANGE_START,
   browserTimezone,

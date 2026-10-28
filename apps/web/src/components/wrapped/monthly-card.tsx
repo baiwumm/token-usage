@@ -7,7 +7,7 @@ import type { WrappedCopy } from "@/lib/copy/wrapped";
 
 import { Card } from "@heroui/react";
 
-import { TrendChart, type TrendPoint } from "../dashboard/charts";
+import { TrendChart, type TrendPoint } from "@/components/charts";
 
 export function MonthlyCard({
   copy,

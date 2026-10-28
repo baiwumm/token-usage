@@ -8,9 +8,8 @@ import type { DashboardCopy } from "@/lib/copy/dashboard";
 import { ChevronDown } from "@gravity-ui/icons";
 import { Button, Dropdown, Header, Label, Popover } from "@heroui/react";
 
-import { SourceIcon } from "./source-icon";
-import { sourceDisplayLabel } from "./sources";
-
+import { SourceIcon } from "@/components/source-icon";
+import { sourceDisplayLabel } from "@/lib/sources";
 import { formatMessage } from "@/lib/copy/message";
 
 export function HeatmapFilter({

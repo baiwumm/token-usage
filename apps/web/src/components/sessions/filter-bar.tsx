@@ -31,8 +31,8 @@ import {
 } from "./filters";
 
 import { DeviceFilterSelect } from "@/components/device-filter-select";
-import { SourceIcon } from "@/components/dashboard/source-icon";
-import { sourceDisplayLabel } from "@/components/dashboard/sources";
+import { SourceIcon } from "@/components/source-icon";
+import { sourceDisplayLabel } from "@/lib/sources";
 import { RangePresetButtons } from "@/components/range-preset-buttons";
 import { formatMessage } from "@/lib/copy/message";
 import {
