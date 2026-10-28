@@ -1,7 +1,7 @@
 # 需求文档（v1 真源）
 
-> 2026-10-25 范围修订（操作者指令）：在 v1 基础上补「官方 Dashboard 核心」与
-> Sessions，设置新增外观偏好。官方 TokenTracker 的 Limits / Skills / Leaderboard /
+> 2026-10-25 范围修订（操作者指令）：在 v1 基础上补「上游 Dashboard 核心」与
+> Sessions，设置新增外观偏好。上游 TokenTracker 的 Limits / Skills / Leaderboard /
 > Achievements / Pet / Widgets / Cloud / IP check 仍不在范围内（见「边界」）。
 
 需求的唯一真源：范围、边界、角色、验收都在本文维护；会话中的需求变更一律回写本文。
@@ -16,7 +16,7 @@
 
 | 面 | 路由 | 内容 |
 |---|---|---|
-| 仪表盘 | `/` | 官方核心对齐：汇总与 rolling 7d/30d/日均、趋势图、活跃热力图、模型/来源/设备下钻、日/时/月明细表、成本分析、时间范围与时区切换、分享卡片 |
+| 仪表盘 | `/` | 上游核心对齐：汇总与 rolling 7d/30d/日均、趋势图、活跃热力图、模型/来源/设备下钻、日/时/月明细表、成本分析、时间范围与时区切换、分享卡片 |
 | Sessions | `/sessions` | 会话列表与详情：按时间/设备/来源/项目筛选，展示时长、token、成本、模型拆分；仅设备级来源 |
 | 设置 | `/settings` | 账户资料、外观偏好（主题/语言/货币/Token 显示/单位/分组）、设备列表与吊销；退出登录在应用壳用户菜单 |
 | wrapped | `/wrapped` | 年度回顾（功能对齐旧版，视觉简化） |
@@ -41,7 +41,7 @@
 数据导入导出工具、端点限流与防滥用（与旧系统行为保持一致，进 backlog）、桌面端托盘应用
 （v1 后视情况，backlog，候选 Tauri）。
 
-官方 TokenTracker 的 **Limits**（provider 配额）、**Skills**（本地技能市场）、**Cloud /
+上游 TokenTracker 的 **Limits**（provider 配额）、**Skills**（本地技能市场）、**Cloud /
 Leaderboard / Achievements / Pet / Widgets / IP check** 不移植：它们依赖云端、桌面端或
 本地 CLI 文件，自托管 Web 没有独立数据源。
 

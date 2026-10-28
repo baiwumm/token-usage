@@ -37,8 +37,8 @@
 </p>
 
 > [!NOTE]
-> 本项目是 [TokenTracker](https://github.com/xiufengsun/TokenTracker)（MIT）的社区重写版：
-> Next.js + HeroUI + Supabase 全栈单应用，与上游无隶属关系。
+> 独立社区项目，与任何上游项目无隶属关系；代码来源与第三方许可见
+> [`LICENSE`](./LICENSE) 与 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。
 
 ## ✨ 简介
 
@@ -62,7 +62,8 @@ token-usage/
 ├── docs/           # 需求真源 / API 契约 / 计划 / UI 规范 / 发布手册
 ├── .agents/        # 项目级 Agent Skills（heroui-react、vercel-react-best-practices）
 ├── AGENTS.md       # 开发规范（含 AI Agent 硬性约束）
-└── LICENSE         # MIT（含上游衍生声明）
+├── THIRD_PARTY_NOTICES.md  # 第三方资产与许可登记
+└── LICENSE         # MIT
 ```
 
 ## 🚀 快速开始
@@ -93,13 +94,15 @@ M-CLI 采集端（`tokenusage-cli`）→ M6 数据迁移与切换。详见 [`doc
 | [`docs/rewrite-plan.md`](docs/rewrite-plan.md) | 计划：表结构、里程碑、数据迁移与切换闸门 |
 | [`docs/deploy-guide.md`](docs/deploy-guide.md) | 部署指南：Supabase + Vercel 从零跑通 |
 | [`docs/launch-runbook.md`](docs/launch-runbook.md) | 发布手册：部署顺序、冒烟清单、回滚 |
+| [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 第三方资产与许可登记（品牌图标、字体、定价快照、代码来源） |
 
 ## 🌍 English
 
-**Token Usage** is a community rewrite of [TokenTracker](https://github.com/xiufengsun/TokenTracker) (MIT):
-a self-hosted AI token usage tracker — one account, many collector devices, CLI-based
-reporting, aggregated usage & cost dashboards. All data lives in **your own Supabase**
-project; nothing is shared across instances.
+**Token Usage** is a self-hosted AI token usage tracker — one account, many collector
+devices, CLI-based reporting, aggregated usage & cost dashboards. All data lives in
+**your own Supabase** project; nothing is shared across instances. It is an independent
+community project; code provenance and third-party licenses live in [`LICENSE`](./LICENSE)
+and [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
 
 - **Stack**: Next.js 16 (App Router) · React 19 · HeroUI 3 · Tailwind CSS 4 · Supabase (Auth + Postgres, RLS denies all client roles) · pnpm workspace
 - **Deploy**: Supabase (free tier) + Vercel (Hobby) is enough — see the [English-friendly deploy guide](docs/deploy-guide.md) (Chinese, step by step) or use the Deploy button above
@@ -108,5 +111,8 @@ project; nothing is shared across instances.
 
 ## ⚖️ License
 
-[MIT](./LICENSE) —— 包含衍生自 [TokenTracker](https://github.com/xiufengsun/TokenTracker)
-by xiufengsun (MIT) 的代码，声明见 `LICENSE`。
+[MIT](./LICENSE)。CLI 采集端的会话解析器与部分代码衍生自
+[TokenTracker](https://github.com/xiufengsun/TokenTracker)（MIT，Copyright (c) xiufengsun）；
+本项目为独立社区维护版，与上游无隶属或背书关系。品牌图标、字体、定价快照等第三方资产的
+来源登记在 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)，CLI 包另有
+[`packages/cli/THIRD_PARTY_NOTICES.md`](./packages/cli/THIRD_PARTY_NOTICES.md)。

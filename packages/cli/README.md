@@ -1,6 +1,6 @@
 # tokenusage-cli
 
-自托管 AI 编码 token 用量采集器，为 [token-usage](https://github.com/baiwumm/token-usage)（自托管仪表盘）上报数据。fork 自 [TokenTracker](https://github.com/xiufengsun/TokenTracker)（MIT，见 `LICENSE` 与 `THIRD_PARTY_NOTICES.md`），指向 token-usage 契约（`docs/cli-contract.md`）。
+自托管 AI 编码 token 用量采集器，为 [token-usage](https://github.com/baiwumm/token-usage)（自托管仪表盘）上报数据，指向其契约（`docs/cli-contract.md`）。代码来源与许可见 `LICENSE` 与 `THIRD_PARTY_NOTICES.md`。
 
 > 运行要求：Node ≥ 22.19（由上传依赖 undici 8 的引擎下限决定）。
 

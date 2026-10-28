@@ -68,6 +68,10 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
    见 `docs/rewrite-plan.md` §3，语义跨版本保持不变。
 9. 内部命名统一 `token-usage` / `TOKEN_USAGE_*` / Token Usage；`tokentracker` 前缀仅允许
    出现在旧路径别名（`next.config.mjs` rewrites）与 `docs/cli-contract.md` §1.5。
+10. 上游署名只出现在根 `LICENSE`、根 `THIRD_PARTY_NOTICES.md` 与 `packages/cli/` 的
+   `LICENSE` / `THIRD_PARTY_NOTICES.md`；README、docs 与 UI 文案不重复罗列上游名，只指向
+   上述文件。旧系统历史记录（`tokentracker.baiwumm.com`、`~/.tokentracker`、`tokentracker_*`
+   表名与旧计划任务名）照旧保留，属迁移事实而非品牌。
 
 ## 里程碑与闸门
 

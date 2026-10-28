@@ -28,6 +28,9 @@
 - 修正 `sync --watch --interval <ms>` 的非法值处理：README 承诺低于 1 分钟回退
   15 分钟，但此前参数会漏进 cmdSync，导致每轮以 `Unknown option: --interval`
   失败；现在该参数始终被剥离，并有单测覆盖。
+- 署名与包元数据收敛：`description` 去掉 fork 字样；`THIRD_PARTY_NOTICES.md`
+  只保留上游 TokenTracker 一节（其余条目是 Web 端资产，本仓库已不存在也不随包）；
+  README 的来源说明收为一句，指向 `LICENSE` / `THIRD_PARTY_NOTICES.md`。
 
 ## 0.2.2
 
