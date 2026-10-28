@@ -104,10 +104,18 @@ const WHITE_LOGOS = new Set<string>([]);
  */
 const DARK_LOGO_FILES = new Set<string>([
   "acode.png",
-  "zed.svg",
-  "zcode.svg",
+  "anythingllm.svg",
   "codex.svg",
+  "copilot.svg",
+  "cursor.svg",
+  "devin.svg",
+  "grok.svg",
+  "hermes.svg",
+  "kiro.svg",
   "mimo.svg",
+  "qoder.svg",
+  "zcode.svg",
+  "zed.svg",
 ]);
 
 /** Dark-theme twin for a registered logo file, if any. */
