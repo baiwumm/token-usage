@@ -107,6 +107,16 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 下版本候选（0.1.1 / 0.2.0，不阻塞已发版本）
 
+> **0.2.1 热修（2026-10-28）**：0.2.0 的运行上报在 `src/commands/sync.js` 用了
+> 错误深度的 `require("../package.json")`（应为 `../../`），每轮 sync 启动即崩、
+> 采集全断——懒加载路径未被任何测试执行，0.2.0 发布前未做本地包实测所以漏网。
+> 修复 + 深度守卫测试（`collection-controls.test.js`）+ **先本地包实测通过再发
+> 0.2.1**（操作者裁定的发版纪律：本地实测 → 才发包）。验收实测：本地源码 sync
+> 全通、运行记录落库（manual/ok/非空跑）、pause/resume 含任务联动全过。
+> **init 接管未在公司机执行**：init 会无开关地安装各工具 hooks/notify（本机
+> 2026-10-26 拍板"无 hook、纯定时批扫"）——补产品待办：init 集成选择开关。
+> 现有手动注册任务与 0.2.x 兼容（shim 已指向新版），不跑 init 不影响任何功能。
+
 > **0.2.0 实施进度（2026-10-28，P1–P4 全部完成，待操作者打 tag 发版）**：
 > P1 服务端（`token_sync_runs` 迁移、`token-usage-sync-report`、第 8 个 series
 > `account-sync-runs` + golden + §2.11/§2.12 转正式）`731f6f5`；P2 CLI 侧（采集
@@ -203,6 +213,13 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 - [x] OpenCode 负 delta 链路（DB 路径应用签名 delta 后 `clampTotalsNonNegative`）；
 - [x] `runtime-config` 的 `INSFORGE_*` env 名（新增 `TOKENUSAGE_BASE_URL` /
   `TOKENUSAGE_ANON_KEY` 优先，旧名保留为兼容回退）。
+
+新增待办（2026-10-28 公司机验收发现的真实缺口）：
+
+- init 集成选择开关：init 目前无条件安装全部检测到的 hooks/notify，机器若拍板
+  "纯定时批扫"就无法只接管计划任务。加 `--no-integrations`（或交互式逐工具
+  选择），让"只要任务注册、不要 hook"的机器能安全重跑 init。顺带修 init 输出里
+  写死的 `http://localhost:7680` 死常量（同类残留，展示用，不影响配置）。
 
 另案处理：apps/web 的 10 条依赖审计通告（1 low / 5 moderate / 2 high /
 2 critical），属仪表盘侧。
