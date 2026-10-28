@@ -37,6 +37,9 @@ function vbsPathFor(binDir) {
  * pitfall (paths with spaces) never applies.
  */
 function buildHiddenRunnerVbs({ nodeExe, cliJs }) {
+  // --from-scheduled: the run reports trigger=scheduled, self-logs via autoLog
+  // and uploads without consulting the cloud-sync preference — the registered
+  // task is the default collection path, not an opt-in flavor.
   return [
     "' Token Usage — hidden sync runner.",
     "' The scheduled task launches this script (GUI subsystem: no conhost",
@@ -45,7 +48,7 @@ function buildHiddenRunnerVbs({ nodeExe, cliJs }) {
     "' own rolling logs/sync.log — no shell redirect involved.",
     "Dim shell",
     "Set shell = CreateObject(\"WScript.Shell\")",
-    `WScript.Quit shell.Run("""${nodeExe}"" ""${cliJs}"" sync", 0, True)`,
+    `WScript.Quit shell.Run("""${nodeExe}"" ""${cliJs}"" sync --from-scheduled", 0, True)`,
     "",
   ].join("\n");
 }

@@ -593,7 +593,7 @@ async function cmdSync(argv, context = {}) {
   // log line, no run record. A manual sync is the user's explicit request
   // and runs regardless of the flag.
   const autoishSync = opts.auto || opts.background || opts.fromRetry || opts.fromNotify ||
-    opts.fromOpenclaw || context.trigger === "watch";
+    opts.fromOpenclaw || opts.fromScheduled || context.trigger === "watch";
   if (autoishSync && isCollectionPaused(trackerDir)) return;
   // Auto-flavored runs self-log to the rolling file so neither the scheduled
   // task nor a TTY-less hook run loses its trail.
@@ -3965,6 +3965,7 @@ function parseArgs(argv) {
     else if (a === "--from-notify") out.fromNotify = true;
     else if (a === "--from-retry") out.fromRetry = true;
     else if (a === "--from-openclaw") out.fromOpenclaw = true;
+    else if (a === "--from-scheduled") out.fromScheduled = true;
     else if (a === "--source") {
       out.source = normalizeSyncSource(argv[i + 1]);
       i += 1;

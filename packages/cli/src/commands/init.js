@@ -82,7 +82,7 @@ const {
   resolveMuseHome,
   resolveTraeStoragePath,
 } = require("../lib/rollout");
-const { resolveRuntimeConfig, DEFAULT_BASE_URL, normalizeInstanceBaseUrl, assertInsforgeRuntime,
+const { resolveRuntimeConfig, DEFAULT_BASE_URL, DEFAULT_DASHBOARD_URL, normalizeInstanceBaseUrl, assertInsforgeRuntime,
   clearDeviceIdentity, resetInstanceState } = require("../lib/runtime-config");
 const { registerWindowsScheduledTask, TASK_NAME } = require("../lib/scheduled-task");
 const {
@@ -193,7 +193,7 @@ async function cmdInit(argv, options = {}) {
   const appDir = path.join(trackerDir, "app");
   const trackerBinPath = path.join(appDir, "bin", "tracker.js");
 
-  renderWelcome();
+  renderWelcome(runtime.dashboardUrl || DEFAULT_DASHBOARD_URL);
 
   if (opts.dryRun) {
     process.stdout.write(`${color("Dry run: preview only (no changes applied).", DIM)}\n\n`);
@@ -273,11 +273,11 @@ async function cmdInit(argv, options = {}) {
     ahaSpinner.stop();
   }
 
-  renderLocalSuccess({ firstSync });
+  renderLocalSuccess({ firstSync, dashboardUrl: runtime.dashboardUrl || DEFAULT_DASHBOARD_URL });
   await maybeShowStarCta({ trackerDir });
 }
 
-function renderWelcome() {
+function renderWelcome(dashboardUrl = DEFAULT_DASHBOARD_URL) {
   const providerCount = SUPPORTED_PROVIDERS.length;
   // Show first 5 by name for grounding, then "+N more" so the line stays one row.
   const previewNames = SUPPORTED_PROVIDERS.slice(0, 5).join(", ");
@@ -296,13 +296,13 @@ function renderWelcome() {
       DIVIDER,
       "",
       `  Tracks: ${providerLine}`,
-      `  Dashboard: http://localhost:7680`,
+      `  Dashboard: ${dashboardUrl}`,
       "",
     ].join("\n"),
   );
 }
 
-function renderLocalSuccess({ firstSync } = {}) {
+function renderLocalSuccess({ firstSync, dashboardUrl = DEFAULT_DASHBOARD_URL } = {}) {
   const lines = ["", `${BOLD}Setup complete!${RESET}`, ""];
 
   if (firstSync && firstSync.totalTokens > 0) {
@@ -320,7 +320,7 @@ function renderLocalSuccess({ firstSync } = {}) {
 
   lines.push(
     "",
-    `  Dashboard: ${CYAN}http://localhost:7680${RESET}`,
+    `  Dashboard: ${CYAN}${dashboardUrl}${RESET}`,
     "",
   );
   process.stdout.write(lines.join("\n"));
@@ -351,6 +351,17 @@ function shouldUseBrowserAuth({ deviceToken, opts }) {
 async function buildDryRunSummary({ opts, home, trackerDir, notifyPath, runtime }) {
   const deviceToken = runtime?.deviceToken || null;
   const pendingBrowserAuth = shouldUseBrowserAuth({ deviceToken, opts });
+  if (opts.noIntegrations) {
+    return {
+      summary: [{
+        label: "Integrations",
+        status: "skipped",
+        detail: "Skipped (--no-integrations); tool configs stay untouched",
+      }],
+      pendingBrowserAuth,
+      deviceToken,
+    };
+  }
   const context = buildIntegrationTargets({ home, trackerDir, notifyPath });
   const summary = await previewIntegrations({ context });
   return { summary, pendingBrowserAuth, deviceToken };
@@ -415,13 +426,22 @@ async function runSetup({
 
   await writeNotifyHandler({ trackerDir, notifyPath });
 
-  const summary = await applyIntegrationSetup({
-    home,
-    trackerDir,
-    notifyPath,
-    notifyOriginalPath,
-    dryRun: Boolean(opts.dryRun),
-  });
+  // --no-integrations (0.2.2): machines that only want scheduled scanning can
+  // take over the task without the CLI touching any tool's config — hooks,
+  // notify entries and the opencode plugin all stay exactly as they are.
+  const summary = opts.noIntegrations
+    ? [{
+        label: "Integrations",
+        status: "skipped",
+        detail: "Skipped (--no-integrations); tool configs stay untouched",
+      }]
+    : await applyIntegrationSetup({
+        home,
+        trackerDir,
+        notifyPath,
+        notifyOriginalPath,
+        dryRun: Boolean(opts.dryRun),
+      });
 
   // Windows scheduled task takeover (0.2.0): hourly auto sync behind a hidden
   // VBS runner — no conhost flash, no shell redirect (sync self-logs to the
@@ -1453,6 +1473,7 @@ function parseArgs(argv) {
     dryRun: false,
     runReport: null,
     noTask: false,
+    noIntegrations: false,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -1468,6 +1489,7 @@ function parseArgs(argv) {
     else if (a === "--run-report") out.runReport = normalizeRunReportFlag(argv[++i]);
     else if (a.startsWith("--run-report=")) out.runReport = normalizeRunReportFlag(a.slice("--run-report=".length));
     else if (a === "--no-task") out.noTask = true;
+    else if (a === "--no-integrations") out.noIntegrations = true;
     else if (a === "--no-auth") out.noAuth = true;
     else if (a === "--no-open") out.noOpen = true;
     else if (a === "--yes") out.yes = true;
@@ -2329,7 +2351,7 @@ async function installLocalTrackerApp({ appDir }) {
   // Copy the current package's runtime (bin + src) into ~/.tokenusage so notify can run sync without npx.
   const packageRoot = path.resolve(__dirname, "../..");
   const srcFrom = path.join(packageRoot, "src");
-  const binFrom = path.join(packageRoot, "bin", "tracker.js");
+  const binFrom = path.join(packageRoot, "bin", "tokenusage.js");
   const packageJsonFrom = path.join(packageRoot, "package.json");
   const nodeModulesFrom = path.join(packageRoot, "node_modules");
   const dashboardDistFrom = path.join(packageRoot, "dashboard", "dist");

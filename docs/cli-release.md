@@ -115,6 +115,15 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 下版本候选（0.1.1 / 0.2.0，不阻塞已发版本）
 
+> **0.2.2（2026-10-28）**：三小项 + 新机初始化严重缺陷修复。验收发现的
+> `bin/tracker.js` 缺失（fork 改名 bin 后安装器未跟改，0.1.0 起 npm 全新安装
+> 的 init 必崩、单测因跳过运行时拷贝漏网）已修 + 行为级回归测试（真实执行
+> 运行时拷贝）；`init --no-integrations`（纯定时机器可安全重跑 init）、
+> `--from-scheduled`（任务运行口径记 scheduled + autoLog trail + 不受 cloud
+> 偏好门控）、`localhost:7680` 死常量清除，全部落地并经全新机器模拟（temp
+> HOME）与 npm pack 产物实测。发版后公司机重跑 `init --yes --no-integrations`
+> 完成 VBS 停泊方案 → 官方接管切换；家里机升级后同样可跑。
+
 > **0.2.1 热修（2026-10-28）**：0.2.0 的运行上报在 `src/commands/sync.js` 用了
 > 错误深度的 `require("../package.json")`（应为 `../../`），每轮 sync 启动即崩、
 > 采集全断——懒加载路径未被任何测试执行，0.2.0 发布前未做本地包实测所以漏网。

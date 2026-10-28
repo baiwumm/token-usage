@@ -11,6 +11,7 @@
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
 
@@ -18,6 +19,9 @@ const {
   zcodeRowTotals,
   buildZcodeRestorationRow,
 } = require("../src/commands/sync");
+const {
+  installLocalTrackerApp,
+} = require("../src/commands/init");
 const {
   parseBucketKey,
   bucketKey,
@@ -197,4 +201,31 @@ test("fix 5: TOKENUSAGE_BASE_URL/TOKENUSAGE_ANON_KEY win; INSFORGE_* remain lega
     },
   });
   assert.equal(both.baseUrl, "https://new.example");
+});
+
+test("no stale dashboard constants in init output", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "commands", "init.js"),
+    "utf8",
+  );
+  // The welcome/success banners print the configured dashboard URL; the old
+  // hardcoded TokenTracker default must not reappear in either renderer.
+  assert.ok(!source.includes("localhost:7680"), "stale localhost dashboard must not reappear in init.js");
+});
+
+test("init's runtime copy works from the published layout (bin/tokenusage.js)", async () => {
+  // 0.1.0–0.2.1 shipped without bin/tracker.js (the fork renamed the bin to
+  // tokenusage.js but the installer kept the old name), so `tokenusage init`
+  // crashed with ENOENT on every fresh npm install. The unit suite never ran
+  // this path: init tests set TOKENUSAGE_SKIP_LOCAL_RUNTIME_COPY=1.
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "tu-init-copy-"));
+  const appDir = path.join(home, "tracker", "app");
+  try {
+    await installLocalTrackerApp({ appDir });
+    assert.ok(fs.existsSync(path.join(appDir, "bin", "tracker.js")), "app/bin/tracker.js copied");
+    assert.ok(fs.existsSync(path.join(appDir, "src", "cli.js")), "app/src copied");
+    assert.ok(fs.existsSync(path.join(appDir, "package.json")), "app/package.json copied");
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
 });

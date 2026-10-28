@@ -173,11 +173,19 @@ test("hidden-runner VBS quotes paths individually and propagates the exit code",
     cliJs: "C:\\Users\\me\\AppData\\tokenusage-cli\\src\\cli.js",
   });
   assert.match(vbs, /WScript\.Quit shell\.Run/);
-  assert.match(vbs, /""C:\\Program Files\\nodejs\\node\.exe"" ""C:\\Users\\me\\AppData\\tokenusage-cli\\src\\cli\.js"" sync/);
+  assert.match(vbs, /""C:\\Program Files\\nodejs\\node\.exe"" ""C:\\Users\\me\\AppData\\tokenusage-cli\\src\\cli\.js"" sync --from-scheduled/);
   // Hidden window (0) + wait for completion (True).
   assert.match(vbs, /, 0, True\)/);
   // The task name stays stable — pause/resume and uninstall toggle by name.
   assert.equal(TASK_NAME, "TokenUsageSync");
+});
+
+test("--from-scheduled reports as scheduled, unlike a plain manual run", () => {
+  assert.equal(resolveSyncTrigger({ fromScheduled: true }), "scheduled");
+  // The scheduled task must upload on default installs, so --from-scheduled
+  // deliberately does NOT map onto the cloud-sync-gated auto/background flags.
+  assert.equal(resolveSyncTrigger({ auto: true }), "scheduled");
+  assert.equal(resolveSyncTrigger({}), "manual");
 });
 
 // Runtime-require depth guard: a `require("../package.json")` inside src/commands

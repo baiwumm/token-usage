@@ -23,10 +23,13 @@ function buildRunId(startedAtMs = Date.now(), randomBytes = 2) {
 // background flavors (retry, publish, openclaw signal) fold into the four
 // allowed values: hook/signal spawns are notify, everything scheduled or
 // retrying is scheduled, the --watch loop is watch, a plain CLI run is manual.
+// --from-scheduled marks the init-registered scheduled task's run: unlike
+// --auto it bypasses the cloud-sync preference gate (the task must upload on
+// default installs), which is why it needs its own flag.
 function resolveSyncTrigger(opts = {}, context = {}) {
   if (context?.trigger === "watch") return "watch";
   if (opts?.fromNotify || opts?.fromOpenclaw) return "notify";
-  if (opts?.auto || opts?.background || opts?.fromRetry) return "scheduled";
+  if (opts?.fromScheduled || opts?.auto || opts?.background || opts?.fromRetry) return "scheduled";
   return "manual";
 }
 

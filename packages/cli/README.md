@@ -30,7 +30,7 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 
 | 命令 | 说明 |
 |---|---|
-| `tokenusage init` | 本地初始化：扫描根配置、各工具 hook 安装、注册每小时计划任务（Windows 隐藏窗口；`--no-task` 跳过任务；`--run-report=off` 关闭运行记录上报）。不含配对 |
+| `tokenusage init` | 本地初始化：扫描根配置、各工具 hook 安装、注册每小时计划任务（Windows 隐藏窗口；`--no-task` 跳过任务；`--run-report=off` 关闭运行记录上报；`--no-integrations` 不装任何 hook/notify/插件，只做纯定时采集）。不含配对 |
 | `tokenusage device-login` | 设备流配对：输出 `user_code`，在站点 `/device` 页批准后本机拿到设备令牌 |
 | `tokenusage sync` | 解析本地 AI 工具日志 → 上报小时桶 + 会话元数据 |
 | `tokenusage sync --watch` | 常驻模式，默认每 15 分钟增量一轮（`--interval <ms>` 可调，≥60000） |
@@ -69,6 +69,7 @@ tokenusage status           # 查看当前采集状态
   退出（不报错、不上报、不留运行记录）；**手动 `tokenusage sync` 永远可用**。
 - Windows 上 init 会注册每小时计划任务 `TokenUsageSync`（隐藏窗口，无黑框），
   pause/resume 顺势 disable/enable 它；`uninstall` 一并删除任务与脚本。
+  任务以 `--from-scheduled` 运行：运行记录标记为"定时"并写入滚动日志。
 - 自动采集的日志落在 `~/.tokenusage/tracker/logs/sync.log`（1 MiB 滚动一代），
   不依赖终端重定向。
 
