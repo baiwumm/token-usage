@@ -815,6 +815,7 @@ export function DashboardClient() {
           allLabel={copy.allDevices}
           devices={activeDevices}
           label={copy.deviceLabel}
+          loading={dashboardState.status === "loading"}
           value={filters.deviceId}
           onChange={(deviceId) => applyFilters({ deviceId })}
         />

@@ -5,7 +5,7 @@
 // leading icons and the all-devices entry — lives here to keep them in sync.
 
 import { Display, Layers } from "@gravity-ui/icons";
-import { ListBox, Popover, Select, Typography } from "@heroui/react";
+import { ListBox, Popover, Select, Spinner, Typography } from "@heroui/react";
 
 export interface DeviceFilterOption {
   device_id: string;
@@ -17,12 +17,15 @@ export function DeviceFilterSelect({
   allLabel,
   devices,
   value,
+  loading = false,
   onChange,
 }: {
   label: string;
   allLabel: string;
   devices: DeviceFilterOption[];
   value: string;
+  /** Options not landed yet (first load) — indicator renders as a spinner. */
+  loading?: boolean;
   onChange: (deviceId: string) => void;
 }) {
   const TriggerIcon = value ? Display : Layers;
@@ -55,7 +58,13 @@ export function DeviceFilterSelect({
               </span>
             )}
           </Select.Value>
-          <Select.Indicator />
+          {loading ? (
+            <Select.Indicator>
+              <Spinner size="sm" />
+            </Select.Indicator>
+          ) : (
+            <Select.Indicator />
+          )}
         </Select.Trigger>
         <Select.Popover>
           <Popover.Arrow />

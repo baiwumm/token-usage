@@ -599,6 +599,7 @@ export function SyncRunsClient() {
           allLabel={copy.allDevices}
           devices={deviceOptions}
           label={copy.deviceLabel}
+          loading={state.status === "loading"}
           value={filters.deviceId}
           onChange={(deviceId) => applyFilters({ deviceId })}
         />

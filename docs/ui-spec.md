@@ -25,6 +25,11 @@
   （2026-10-24 操作者指令）。
 - 表格分页统一 `components/table-pagination.tsx`：左侧范围摘要、中间页码、右侧每页条数
   （最小尺寸 Select）；默认页大小由调用页传入（明细 10/页、Sessions 20/页）。
+- 下拉框选项异步加载时，加载态放在触发器里：`Select.Indicator` 内渲染 `Spinner`
+  （`<Select.Indicator><Spinner size="sm" /></Select.Indicator>`），加载完回落默认箭头；
+  不另加触发器外的 Spinner。选项随页面数据一起到达的筛选下拉，只在首载（选项尚空）时
+  进入加载态；选项按本控件重新拉取的下拉（如 `/wrapped` 年份）在每次拉取期间显示
+  （2026-10-28 操作者指令）。
 - 浮层（Modal / Drawer / Popover / Tooltip / Toast）使用 HeroUI 内置组件及其触发器组件，
   受控用法遵循各组件文档，不自建浮层机制。
 - 图标：`@gravity-ui/icons`（与 HeroUI v3 官方示例一致），尺寸对齐 HeroUI 插槽惯例。

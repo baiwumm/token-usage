@@ -798,6 +798,7 @@ export function SessionsClient() {
           allLabel={copy.allDevices}
           devices={deviceOptions}
           label={copy.deviceLabel}
+          loading={state.status === "loading"}
           value={filters.deviceId}
           onChange={(deviceId) => applyFilters({ deviceId })}
         />
@@ -833,7 +834,13 @@ export function SessionsClient() {
                   </span>
                 )}
               </Select.Value>
-              <Select.Indicator />
+              {state.status === "loading" ? (
+                <Select.Indicator>
+                  <Spinner size="sm" />
+                </Select.Indicator>
+              ) : (
+                <Select.Indicator />
+              )}
             </Select.Trigger>
             <Select.Popover>
               <Popover.Arrow />
