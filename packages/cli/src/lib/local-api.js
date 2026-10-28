@@ -1424,7 +1424,7 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
           // 必须和 dashboard/src/lib/cloud-sync.ts 使用同一个设备身份。
           // 旧云端设备按 (platform, device_name) 认领；如果这里发明
           // local-sync 身份，会多出一个 active device，账户视图会把历史求和两次。
-          device_name: getSystemDeviceName() || `Token Tracker (dashboard) #${machineId.slice(0, 8)}`,
+          device_name: getSystemDeviceName() || `Token Usage (dashboard) #${machineId.slice(0, 8)}`,
           platform: dashboardPlatform,
           machine_id: machineId,
         }),

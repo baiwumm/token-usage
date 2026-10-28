@@ -16,6 +16,9 @@
   retry / watch）统一追加到滚动日志 `~/.tokenusage/tracker/logs/sync.log`。
 - 已注册过任务的机器：升级后重跑一次
   `tokenusage init --yes --no-integrations --no-open` 即可修正任务入口。
+- 品牌残留：init 启动横幅的 ASCII 与大标题仍是上游的 TOKEN TRACKER，
+  local-api 的兜底设备名也写 Token Tracker；按 AGENTS 命名约束统一为
+  Token Usage，并加回归测试防回潮。
 
 ## 0.2.2
 
