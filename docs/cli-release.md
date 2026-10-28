@@ -103,6 +103,14 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
   （`curl https://registry.npmmirror.com/sync/tokenusage-cli` 可手动触发），
   急用可对 npmjs 显式 `--registry` 强装。
   旧账迁移按 `docs/launch-runbook.md` 与桌面 replay 材料（约 13.6B 待迁）。
+  **2026-10-28 公司机已升 0.2.1 并验收**（sync/任务触发/运行报告全过）。
+  弹窗停泊方案：init 接管未执行前，计划任务动作已手工换成隐藏窗口 VBS
+  （`C:\Users\Administrator\.tokenusage\run-sync-hidden.vbs`，内部仍是
+  `cmd /c node <包内 tokenusage.js> sync >> ~/.tokenusage/logs/sync.log`，
+  保留日志 trail），每小时弹窗消失；init `--no-integrations` 落地后跑一次
+  init 即可换成官方接管。注意 `schtasks /TR` 会毁坏带引号参数（实测把
+  `"C:\...vbs"` 存成 `" C:\...vbs\` 导致 wscript 挂死）——改任务动作一律用
+  PowerShell `Set-ScheduledTask`（参数原样存储），路径无空格时不加引号。
 - [ ] **观察首日**：仪表盘数据、sync.log、GitHub Release 页面三处对账。
 
 ## 四、CLI 下版本候选（0.1.1 / 0.2.0，不阻塞已发版本）
