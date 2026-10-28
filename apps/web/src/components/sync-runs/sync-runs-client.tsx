@@ -24,7 +24,7 @@ import {
   Popover,
   RangeCalendar,
   Select,
-  Spinner,
+  Skeleton,
   Tooltip,
   Typography,
 } from "@heroui/react";
@@ -62,7 +62,6 @@ import {
   rangeForSelection,
 } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";
-import { SectionSkeleton } from "@/components/section-states";
 import {
   DataTableCard,
   type DataTableColumn,
@@ -271,6 +270,50 @@ function SummaryCards({
                 {card.sub}
               </Typography>
             ) : null}
+          </Card.Content>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// First-load placeholder for the summary row: the card shells (label + icon)
+// are real, only the two text lines inside are skeletons — the two cards must
+// not flash as one grey block before the payload lands (same rule as
+// /sessions). Both lines are placeholder-ed even though the real caption is
+// conditional (empty-run hint / relative time), so the row keeps its height
+// instead of growing once the payload arrives.
+function SummaryCardsSkeleton({ copy }: { copy: SyncRunsCopy }) {
+  const cards = [
+    {
+      key: "today",
+      label: copy.cards.todayRuns,
+      icon: ClockArrowRotateLeft,
+      value: "w-20",
+      caption: "w-20",
+    },
+    {
+      key: "last",
+      label: copy.cards.lastRun,
+      icon: Clock,
+      value: "w-40",
+      caption: "w-16",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {cards.map((card) => (
+        <Card key={card.key} className="gap-1 p-4">
+          <Card.Header className="flex-row items-center justify-between gap-2">
+            <Card.Title className="text-muted text-xs font-normal">
+              {card.label}
+            </Card.Title>
+            <card.icon aria-hidden="true" className="text-accent/70 size-4" />
+          </Card.Header>
+          <Card.Content className="gap-2">
+            <Skeleton className={`h-7 ${card.value} rounded-full`} />
+            <Skeleton className={`h-3 ${card.caption} rounded-full`} />
           </Card.Content>
         </Card>
       ))}
@@ -850,22 +893,9 @@ export function SyncRunsClient() {
         </div>
       </div>
 
-      <div className="relative flex flex-col gap-5">
-        {refreshing && payload ? (
-          <div
-            aria-hidden="true"
-            className="bg-surface/60 absolute inset-0 z-10 flex items-start justify-center pt-24 backdrop-blur-[2px]"
-          >
-            <Spinner size="sm" />
-          </div>
-        ) : null}
-
+      <div className="flex flex-col gap-5">
         {state.status === "loading" && !payload ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {Array.from({ length: 2 }, (_, index) => (
-              <SectionSkeleton key={index} className="h-28 w-full" />
-            ))}
-          </div>
+          <SummaryCardsSkeleton copy={copy} />
         ) : null}
 
         {todayState.data ? (
@@ -907,6 +937,7 @@ export function SyncRunsClient() {
                 }
               : undefined
           }
+          refreshing={refreshing}
           renderMobileRow={renderMobileRun}
           rowKey={rowKey}
           rows={payload?.runs ?? []}
