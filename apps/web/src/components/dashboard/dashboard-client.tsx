@@ -838,16 +838,22 @@ export function DashboardClient() {
         ) : null}
 
         <div className="ml-auto flex items-center gap-1.5">
-          <Button
-            isIconOnly
-            aria-label={copy.share}
-            isDisabled={!shareInput}
-            size="sm"
-            variant="tertiary"
-            onPress={() => setShareOpen(true)}
-          >
-            <NodesRight aria-hidden="true" className="size-4" />
-          </Button>
+          <Tooltip delay={0}>
+            <Button
+              isIconOnly
+              aria-label={copy.share}
+              isDisabled={!shareInput}
+              size="sm"
+              variant="tertiary"
+              onPress={() => setShareOpen(true)}
+            >
+              <NodesRight aria-hidden="true" className="size-4" />
+            </Button>
+            <Tooltip.Content showArrow placement="bottom">
+              <Tooltip.Arrow />
+              <Typography type="body-xs">{copy.share}</Typography>
+            </Tooltip.Content>
+          </Tooltip>
           <Tooltip delay={0}>
             <Button
               isIconOnly

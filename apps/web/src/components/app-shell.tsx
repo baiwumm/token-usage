@@ -43,7 +43,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { ThemeModeToggle, TopActions } from "@/components/top-actions";
+import { TopActions } from "@/components/top-actions";
 import { useProfile, type Profile } from "@/lib/auth/profile";
 import { authBrowserClient } from "@/lib/auth/browser";
 import { NAV_COPY, NAV_ITEMS, type NavCopy } from "@/lib/copy/nav";
@@ -479,12 +479,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile drawer (<lg) — same profile-first anatomy as the sidebar.
           Rendered without the Drawer root: it wraps children in react-aria's
           DialogTrigger, which warns when the overlay is controlled externally
-          without a trigger child. Backdrop carries the state here. */}
+          without a trigger child. Backdrop carries the state here. The panel
+          uses the page background (not surface) so the active nav item's
+          surface pill stays visible, matching the desktop sidebar. */}
       <Drawer.Backdrop isOpen={menuOpen} onOpenChange={setMenuOpen}>
         <Drawer.Content placement="left">
           <Drawer.Dialog
             aria-label="Token Usage"
-            className="bg-surface w-72 max-w-[86vw] p-0"
+            className="bg-background w-72 max-w-[86vw] p-0"
           >
             <Drawer.Header className="flex h-16 flex-row items-center gap-1 pr-12">
               <div className="min-w-0 flex-1">
@@ -499,9 +501,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               />
             </Drawer.Body>
             <Drawer.Footer className="mt-0 flex flex-col gap-2 px-3 py-3">
-              <div className="flex items-center justify-end">
-                <ThemeModeToggle alwaysVisible />
-              </div>
               <SidebarProfile
                 collapsed={false}
                 profile={profile}

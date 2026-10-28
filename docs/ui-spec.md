@@ -260,13 +260,17 @@
     位于仪表盘之后，使用 `ListUl` 图标。
   - 顶栏持有页面标题（仪表盘为按时段的问候语，其余页面取菜单名），页面正文不再重复
     标题；顶栏无下边框，底色与页面一致；右侧固定为 GitHub / 语言 / 主题色 / 明暗切换 /
-    配对设备主操作。明暗切换用 HeroUI `Tabs` 实现（浅 / 深 / 系统，系统用 `Display`
-    图标），整控件 32px 对齐图标按钮；语言为
-    `Globe` 图标 ghost 按钮 + 单选下拉；主题色为 `Popover` + `ColorSwatchPicker` 色板
-    （含随机切换），色板变量见 `apps/web/src/styles/theme-palettes.css`。
-  - `lg` 以下侧边栏换为抽屉：导航在上，底部仅保留明暗切换与用户块（2026-10-26
-    操作者裁定：GitHub / 语言 / 主题色 / 配对设备在移动端顶栏照常显示、与桌面一致；
-    明暗切换顶栏仅在 ≥lg 显示，<lg 由抽屉提供，抽屉不再重复语言与主题色）。
+    配对设备主操作。四个图标控件均带 `Tooltip`（底部、带箭头）：GitHub 用 `Button`
+    打开新标签（RAC `Link` 不消费 TooltipTrigger 的焦点上下文，挂不上 Tooltip），语言为
+    图标按钮 + 单选下拉，主题色为 `Popover` + `ColorSwatchPicker` 色板（含随机切换），
+    色板变量见 `apps/web/src/styles/theme-palettes.css`；仪表盘分享按钮同样带 `Tooltip`。
+  - 明暗切换为单个按钮，循环 跟随系统 → 浅色 → 深色（2026-10-28 操作者裁定，参照桌面端
+    `apps/desktop` 的 `ThemeToggle`）：图标与 Tooltip（「主题：{当前模式}」）始终显示
+    当前模式；仪表盘以外保持 32px 图标按钮尺寸。
+  - `lg` 以下侧边栏换为抽屉：导航在上，底部仅保留用户块；GitHub / 语言 / 主题色 /
+    明暗切换 / 配对设备在移动端顶栏照常显示、与桌面一致（2026-10-28 修订 2026-10-26
+    裁定：明暗切换常驻顶栏，抽屉不再提供）。抽屉面板底色取页面底色 `bg-background`，
+    使选中导航项 `bg-surface` 胶囊与桌面侧边栏一样可见。
   - 语言偏好写 `token-usage.locale` cookie（`system | zh | en`，缺省 `system`）；根布局
     据此解析并设置 `<html lang>` 与首帧字典，切换即时生效、刷新不闪烁。
 - 审查：UI 代码提交前用 web-design-guidelines Skill 对照最新 Web Interface Guidelines，
