@@ -548,3 +548,88 @@ export function grantDeviceFlow(
     body: { user_code: params.userCode },
   });
 }
+
+// Sync runs (docs/cli-contract.md §2.12) — the dashboard's own data path:
+// /api/app/sync-runs authenticates via the browser session cookies and calls
+// the same service-role payload builder as the contract series. No
+// Authorization header — the cookies ride along on same-origin requests.
+
+export interface SyncRunItem {
+  device_id: string;
+  device_name: string;
+  run_id: string;
+  started_at: string;
+  ended_at: string;
+  duration_ms: number;
+  trigger: string;
+  result: string;
+  error_code: string | null;
+  empty: boolean;
+  parsed_files: number;
+  buckets_uploaded: number;
+  tokens_ingested: number;
+  sessions_uploaded: number;
+  sessions_skipped: number;
+  queue_bytes: number | null;
+  cli_version: string;
+  os: string | null;
+}
+
+export interface SyncRunsPayload {
+  from: string;
+  to: string;
+  total: number;
+  limit: number;
+  offset: number;
+  totals: {
+    runs: number;
+    empty_runs: number;
+    tokens_ingested: number;
+    sessions_uploaded: number;
+    duration_ms: number;
+  };
+  runs: SyncRunItem[];
+}
+
+async function callApp<T>(query: string): Promise<T> {
+  const response = await fetch(`/api/app/sync-runs${query}`);
+
+  if (response.status === 401) {
+    throw new DashboardApiError("unauthorized", 401);
+  }
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: string;
+    };
+
+    throw new DashboardApiError(
+      payload.error || `HTTP ${response.status}`,
+      response.status,
+    );
+  }
+
+  return (await response.json()) as T;
+}
+
+export function fetchSyncRuns(params: {
+  fromIso: string;
+  toIso: string;
+  deviceId?: string | null;
+  trigger?: string | null;
+  result?: string | null;
+  limit?: number;
+  offset?: number;
+}): Promise<SyncRunsPayload> {
+  const query = new URLSearchParams({
+    from: params.fromIso,
+    to: params.toIso,
+  });
+
+  if (params.deviceId) query.set("device_id", params.deviceId);
+  if (params.trigger) query.set("trigger", params.trigger);
+  if (params.result) query.set("result", params.result);
+  if (params.limit != null) query.set("limit", String(params.limit));
+  if (params.offset != null) query.set("offset", String(params.offset));
+
+  return callApp<SyncRunsPayload>(`?${query}`);
+}

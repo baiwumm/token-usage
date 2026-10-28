@@ -1,7 +1,7 @@
 // Golden contract tests for account-summary and the six account series
 // (docs/cli-contract.md §2.6–2.7; §3 invariants 6 and 7).
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET as summaryGet } from "@/app/api/functions/token-usage-account-summary/route";
 
@@ -27,9 +27,15 @@ const fake = new FakeSupabase();
 
 beforeAll(async () => {
   initContractEnv(await fake.listen());
+  // The fixture sits on fixed dates (2026-10-21) while account-summary's
+  // rolling windows end at real "today" — an unpinned clock made last_7d
+  // silently drift out of the fixture once the calendar outran it (seen live
+  // 2026-10-28). Fake Date only: fetch, timers and the fake Supabase stay real.
+  vi.useFakeTimers({ now: new Date("2026-10-21T12:00:00.000Z"), toFake: ["Date"] });
 });
 
 afterAll(async () => {
+  vi.useRealTimers();
   await fake.close();
 });
 

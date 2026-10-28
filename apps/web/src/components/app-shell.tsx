@@ -12,6 +12,7 @@ import {
   Bars,
   Calendar,
   ChevronsExpandVertical,
+  ClockArrowRotateLeft,
   Display,
   Gear,
   LayoutSideContent,
@@ -51,6 +52,7 @@ import { useLocale } from "@/lib/copy/locale";
 const NAV_ICONS = {
   dashboard: Display,
   sessions: ListUl,
+  syncRuns: ClockArrowRotateLeft,
   wrapped: Calendar,
   status: Tachometer,
   settings: Gear,
@@ -91,6 +93,7 @@ function useLocalHour(): number | null {
 
 function titleForPath(pathname: string, copy: NavCopy): string {
   if (pathname.startsWith("/sessions")) return copy.sessions;
+  if (pathname.startsWith("/sync-runs")) return copy.syncRuns;
   if (pathname.startsWith("/wrapped")) return copy.wrapped;
   if (pathname.startsWith("/service-status")) return copy.status;
   if (pathname.startsWith("/settings")) return copy.settings;

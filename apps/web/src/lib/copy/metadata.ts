@@ -11,6 +11,7 @@ export type PageSeoKey =
   | "login"
   | "settings"
   | "sessions"
+  | "sync-runs"
   | "service-status"
   | "device"
   | "wrapped";
@@ -82,6 +83,10 @@ export const PAGE_SEO_COPY: Record<Locale, Record<PageSeoKey, PageSeoCopy>> = {
       title: NAV_COPY.zh.sessions,
       description: "浏览 AI 编码会话的 token 用量、模型与项目明细。",
     },
+    "sync-runs": {
+      title: NAV_COPY.zh.syncRuns,
+      description: "查看采集器每轮运行的记录：触发方式、结果、耗时与上报量。",
+    },
     "service-status": {
       title: NAV_COPY.zh.status,
       description: "检查 TokenUsage 仪表盘与 CLI 采集链路的服务状态。",
@@ -115,6 +120,11 @@ export const PAGE_SEO_COPY: Record<Locale, Record<PageSeoKey, PageSeoCopy>> = {
       title: NAV_COPY.en.sessions,
       description:
         "Browse token usage, models and projects for your AI coding sessions.",
+    },
+    "sync-runs": {
+      title: NAV_COPY.en.syncRuns,
+      description:
+        "Inspect per-sync collector runs: trigger, result, duration and ingested volume.",
     },
     "service-status": {
       title: NAV_COPY.en.status,
