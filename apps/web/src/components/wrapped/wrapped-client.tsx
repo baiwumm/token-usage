@@ -30,6 +30,8 @@ import { seriesColor } from "../dashboard/mini-charts";
 import { SourceIcon } from "../dashboard/source-icon";
 import { sourceDisplayLabel } from "../dashboard/sources";
 
+import { WrappedSkeleton } from "./wrapped-skeleton";
+
 import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { WRAPPED_COPY } from "@/lib/copy/wrapped";
 import { useLocale } from "@/lib/copy/locale";
@@ -488,6 +490,7 @@ export function WrappedClient() {
           </Select.Popover>
         </Select>
         <Button
+          isDisabled={!hasData}
           isPending={exporting}
           size="sm"
           variant="secondary"
@@ -506,14 +509,7 @@ export function WrappedClient() {
         </Button>
       </header>
 
-      {status === "loading" ? (
-        <Card className="items-center gap-2 p-10">
-          <Spinner />
-          <Typography color="muted" type="body-sm">
-            {copy.loading}
-          </Typography>
-        </Card>
-      ) : null}
+      {status === "loading" ? <WrappedSkeleton /> : null}
 
       {status === "error" ? (
         <Card className="flex-col gap-3 p-6">

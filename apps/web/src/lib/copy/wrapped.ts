@@ -34,7 +34,6 @@ export interface WrappedCopy {
   };
   emptyTitle: string;
   emptyBody: string;
-  loading: string;
   loadError: string;
   retry: string;
   share: {
@@ -79,7 +78,6 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
     },
     emptyTitle: "这一年还没有数据",
     emptyBody: "完成配对并同步用量后，年度回顾会在这里生成。",
-    loading: "正在生成年度回顾…",
     loadError: "年度回顾加载失败。",
     retry: "重试",
     share: {
@@ -122,7 +120,6 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
     },
     emptyTitle: "No data for this year yet",
     emptyBody: "Pair a collector and sync — your wrapped will show up here.",
-    loading: "Generating your wrapped…",
     loadError: "Failed to load your wrapped.",
     retry: "Retry",
     share: {
