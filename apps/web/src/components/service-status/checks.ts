@@ -2,7 +2,7 @@
 // so the page module only owns state and composition.
 
 import type { ComponentType, SVGProps } from "react";
-import type { StatusCheckName } from "@/lib/copy/status";
+import type { StatusCheckName } from "@/lib/copy/service-status";
 
 import { ChartLine, Display, Globe, ShieldCheck } from "@gravity-ui/icons";
 

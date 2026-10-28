@@ -3,7 +3,7 @@
 // Probe results table at /service-status: one row per check with the target,
 // status chip and latency.
 
-import type { StatusCopy } from "@/lib/copy/status";
+import type { StatusCopy } from "@/lib/copy/service-status";
 
 import { Chip, Table } from "@heroui/react";
 

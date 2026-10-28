@@ -12,6 +12,12 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 页面客户端代码一律放 `apps/web/src/components/<路由名>/`（如 `components/dashboard/`、
 `components/service-status/`，文件名与目录对齐），跨页共享件在 `components/` 根。
 
+组件文件命名（2026-10-28 裁定）：`<页名>-client.tsx` / `<页名>-body.tsx` 为编排与主体，
+`<页名>-skeleton.tsx` 为骨架；页面内卡片用 `<内容>-card.tsx`，栅格/浮层包装用同前缀
+`<内容>-section.tsx`，侧栏用 `<内容>-panel.tsx`，表格 `-table.tsx`，弹窗 `-dialog.tsx` /
+`-dialogs.tsx`，纯计算 `-helpers.ts` / `-filters.ts`，钩子 `use-*.ts`。单个组件拆成多文件时
+放进同名目录并以 `index.tsx` 收口（如 `charts/`）；单文件组件直接放在所属目录，不建页面级桶文件。
+
 ## 优先级链（冲突裁决）
 
 用户当前明确指令 > docs/requirements.md > AGENTS.md > 项目现有代码与架构 > 框架官方最佳实践。

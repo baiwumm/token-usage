@@ -19,9 +19,6 @@ import { AppearanceThemeSection } from "./appearance-theme-section";
 import { APPEARANCE_COPY } from "@/lib/copy/appearance";
 import { useLocalePreference } from "@/lib/copy/locale";
 
-export { DataRefreshCard } from "./data-refresh-card";
-export { PreferencesFooter } from "./preferences-footer";
-
 export function AppearancePanel() {
   const { locale } = useLocalePreference();
   const copy = APPEARANCE_COPY[locale];

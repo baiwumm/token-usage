@@ -6,7 +6,7 @@ import type {
 } from "@/lib/dashboard/api";
 
 import { PanelOverlay } from "./panel-overlay";
-import { TotalTokensHero } from "./total-tokens-hero";
+import { TotalTokensHero } from "./hero-card";
 
 /** Hero card slot: the range total, wrapped in the refresh overlay. */
 export function HeroSection({

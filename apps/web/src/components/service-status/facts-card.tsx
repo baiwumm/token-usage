@@ -4,7 +4,7 @@
 // URL and the session status, each as a label/value row.
 
 import type { CheckStatus } from "./checks";
-import type { StatusCopy } from "@/lib/copy/status";
+import type { StatusCopy } from "@/lib/copy/service-status";
 
 import { Database, Link, ShieldCheck } from "@gravity-ui/icons";
 import { Card, Typography } from "@heroui/react";

@@ -17,11 +17,9 @@ import { Display, Palette, Person } from "@gravity-ui/icons";
 import { Tabs, toast } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  AppearancePanel,
-  DataRefreshCard,
-  PreferencesFooter,
-} from "./appearance-panel";
+import { AppearancePanel } from "./appearance-panel";
+import { DataRefreshCard } from "./data-refresh-card";
+import { PreferencesFooter } from "./preferences-footer";
 import { AvatarCard } from "./avatar-card";
 import { BudgetCard } from "./budget-card";
 import {

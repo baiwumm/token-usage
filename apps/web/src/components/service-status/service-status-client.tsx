@@ -19,7 +19,7 @@ import {
 } from "./checks";
 
 import { authBrowserClient } from "@/lib/auth/browser";
-import { STATUS_COPY, type StatusCheckName } from "@/lib/copy/status";
+import { STATUS_COPY, type StatusCheckName } from "@/lib/copy/service-status";
 import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
 import { browserTimezone } from "@/lib/dashboard/ranges";
