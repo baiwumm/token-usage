@@ -220,6 +220,12 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
   "纯定时批扫"就无法只接管计划任务。加 `--no-integrations`（或交互式逐工具
   选择），让"只要任务注册、不要 hook"的机器能安全重跑 init。顺带修 init 输出里
   写死的 `http://localhost:7680` 死常量（同类残留，展示用，不影响配置）。
+- 计划任务运行的触发口径与日志 trail：init 注册的 VBS 跑裸 `sync`（无
+  `--auto`），因此计划任务运行被记成 `trigger: manual`（应为 scheduled），
+  且裸 sync 不走 autoLog、隐藏窗口下 stdout 无去处（trail 丢失）。不能简单改
+  传 `--auto`——那会引入 cloudSyncEnabled 门控，未设偏好时静默停上传。需要
+  专门的 `--from-scheduled` 语义：触发口径记 scheduled、绕过 cloud 偏好门控、
+  启用 autoLog。
 
 另案处理：apps/web 的 10 条依赖审计通告（1 low / 5 moderate / 2 high /
 2 critical），属仪表盘侧。
