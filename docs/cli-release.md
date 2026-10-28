@@ -134,6 +134,14 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > 触发采集并看到 `tracker/logs/sync.log` 追加；删掉标记再触发，日志仍追加
 > （走回退链），即"副本坏了不会静默停采"。CHANGELOG 见
 > `packages/cli/CHANGELOG.md`。
+> **2026-10-28 已发 npm 0.2.4 并本机验收**：`npm i -g tokenusage-cli@0.2.4
+> --prefer-online` → 重跑 init（副本 67.1 MB、8 个顶层依赖目录、写 `.runtime-ready`
+> v0.2.4，首跑 4,984,409,815 tokens / 9 providers）→ 副本从 `C:\` 直接
+> `--version` 得 v0.2.4（自包含）→ `doctor` 的 `runtime.copy` 转 OK →
+> `Start-ScheduledTask` 后 `LastTaskResult=0`、日志追加（parsed 15015、上传 2 buckets、
+> tokens 4,759,340、sessions 1、10.1s）→ `token_sync_runs` 两条 `cli=0.2.4` →
+> 手动跑一次 `notify.cjs --source claude` 得 `trigger=notify` 运行（118ms，走的正是
+> 带标记副本），`token_usage_hourly` 当日 9 行 / 46,503,582 tokens 无重复回补。
 
 > **0.2.3（2026-10-28 家里机按 0.2.2 升级清单实测发现）**：0.2.x 的 init 把隐藏
 > VBS 注册到 `src/cli.js`（只导出 `run()` 的库文件，没有入口）——Windows 计划
