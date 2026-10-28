@@ -79,22 +79,29 @@ async function run(argv) {
   }
 }
 
+// Split `--interval <ms>` off the sync args. Values below the 1-minute floor
+// (or a missing value) fall back to 15 min, but the flag must ALWAYS be
+// removed: leaving it behind made cmdSync reject every pass with
+// "Unknown option: --interval" instead of the documented fallback.
+function resolveWatchInterval(rest) {
+  const args = rest.filter((arg) => arg !== "--watch");
+  const intervalIndex = args.indexOf("--interval");
+  let intervalMs = 15 * 60_000;
+  if (intervalIndex >= 0) {
+    const value = Number(args[intervalIndex + 1]);
+    if (Number.isFinite(value) && value >= 60_000) intervalMs = value;
+    args.splice(intervalIndex, 2);
+  }
+  return { args, intervalMs };
+}
+
 // --watch: keep the process alive and re-run sync on an interval. Each pass
 // reuses the session-analytics sidecar cache and the upload watermarks, so a
 // pass with nothing new is cheap (a directory signature stat + a no-op).
 // The trigger tag rides context into cmdSync so run telemetry can report
 // `watch` runs distinctly from scheduled/manual/notify ones (§2.11).
 async function watchSync(rest) {
-  const args = rest.filter((arg) => arg !== "--watch");
-  const intervalIndex = args.indexOf("--interval");
-  let intervalMs = 15 * 60_000;
-  if (intervalIndex >= 0) {
-    const value = Number(args[intervalIndex + 1]);
-    if (Number.isFinite(value) && value >= 60_000) {
-      intervalMs = value;
-      args.splice(intervalIndex, 2);
-    }
-  }
+  const { args, intervalMs } = resolveWatchInterval(rest);
 
   process.stdout.write(`tokenusage sync --watch: every ${Math.round(intervalMs / 60_000)} min (Ctrl+C to stop)\n`);
   for (;;) {
@@ -118,7 +125,8 @@ function printHelp() {
       "Usage:",
       "  tokenusage -v, --version                                 Show version info",
       "  tokenusage [--debug] init [--yes] [--dry-run] [--no-open] [--link-code <code>] [--run-report=on|off]",
-      "  tokenusage [--debug] sync [--auto] [--drain] [--no-sessions] [--watch]",
+      "      [--no-integrations] [--no-task]",
+      "  tokenusage [--debug] sync [--auto] [--drain] [--no-sessions] [--watch] [--interval <ms>]",
       "  tokenusage [--debug] status [--probe-keychain] [--probe-keychain-details]",
       "  tokenusage [--debug] pause | resume",
       "  tokenusage [--debug] diagnostics [--out diagnostics.json]",
@@ -143,4 +151,4 @@ function printHelp() {
   );
 }
 
-module.exports = { run };
+module.exports = { run, resolveWatchInterval };

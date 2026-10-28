@@ -1,7 +1,7 @@
 /**
  * Passive-mode detection.
  *
- * Token Tracker normally collects token usage by installing SessionEnd hooks
+ * Token Usage normally collects token usage by installing SessionEnd hooks
  * into supported CLIs (Claude Code, Codex CLI, Gemini CLI, …). The hook
  * fires `notify.cjs` after each turn → sync runs immediately → data is
  * fresh within seconds.

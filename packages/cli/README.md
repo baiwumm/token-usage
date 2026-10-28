@@ -103,6 +103,8 @@ CLI 未配对也能正常用，只是**降级为“只采集、不上报”**：
 
 **永不上传**：prompt / 助手正文 / 工具参数 / 命令输出 / diff / 会话标题 / 本地绝对路径 / resume 命令。测试（`test/session-upload.test.js`）用字段白名单锁定该边界。
 
+CLI 也不发送匿名安装心跳：上游的 `tokenusage-telemetry` 端点在自托管后端从未实现，0.2.3 起已移除。可选的 Sentry 错误上报必须显式配置 DSN，并受 `TOKENUSAGE_NO_TELEMETRY` / `DO_NOT_TRACK` 约束。
+
 ## 数据目录
 
 `~/.tokenusage/`（`0700` 目录 + `0600` 文件）：`tracker/config.json`（配对与运行配置）、上传队列（`queue.jsonl` + offset）、会话分析 sidecar、`session-upload-watermarks.json`（增量水位）、`tracker/logs/sync.log`（自动采集滚动日志）、暂停标志。与旧版 tokentracker CLI 的 `~/.tokentracker/` 互不干扰，迁移期两套 CLI 可在同一台机器共存。

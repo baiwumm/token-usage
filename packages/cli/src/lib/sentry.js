@@ -3,9 +3,9 @@
 /**
  * Optional Sentry error reporting for the Node CLI / EmbeddedServer runtime.
  *
- * Privacy contract (keep in sync with docs/PRIVACY.md and dashboard/src/lib/sentry.js):
+ * Privacy contract (keep in sync with README "隐私边界"):
  * - Off unless TOKENUSAGE_SENTRY_DSN (or SENTRY_DSN) is set.
- * - Honors the same telemetry opt-out as the daily heartbeat
+ * - Honors the shared telemetry opt-out
  *   (TOKENUSAGE_NO_TELEMETRY / DO_NOT_TRACK / config.json `"telemetry": false`).
  * - Fail-closed in the node test runner.
  * - Never intended to carry prompts, code, or provider secrets; beforeSend
@@ -15,7 +15,7 @@
 const path = require("node:path");
 const pkg = require("../../package.json");
 const { readJson } = require("./fs");
-const { isTelemetryDisabled } = require("./telemetry");
+const { isTelemetryDisabled } = require("./telemetry-pref");
 
 const SECRET_PATTERN =
   /(?:api[_-]?key|access[_-]?token|refresh[_-]?token|cookie|secret|password|dsn)[=:\s]+["']?[^\s"'\\]{8,}/gi;

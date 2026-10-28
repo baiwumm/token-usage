@@ -19,6 +19,15 @@
 - 品牌残留：init 启动横幅的 ASCII 与大标题仍是上游的 TOKEN TRACKER，
   local-api 的兜底设备名也写 Token Tracker；按 AGENTS 命名约束统一为
   Token Usage，并加回归测试防回潮。
+- 移除上游遗留的匿名安装心跳（`POST /api/functions/tokenusage-telemetry`）：
+  本仓库契约与 Web 端都没有该路由，每次 sync 只会拿到 404 并进退避，还与启动屏
+  "只有 token 计数离开本机"的口径冲突。要统计安装量，先补服务端路由再恢复。
+- 修正 local-api 遗留的本地服务 spawn 路径（`bin/tracker.js` 自 fork 起就不
+  存在），并新增发包自检测试：bin 入口存在、spawn 路径可解析、无孤儿端点。
+- `--help` 补齐 `init --no-integrations/--no-task` 与 `sync --interval`。
+- 修正 `sync --watch --interval <ms>` 的非法值处理：README 承诺低于 1 分钟回退
+  15 分钟，但此前参数会漏进 cmdSync，导致每轮以 `Unknown option: --interval`
+  失败；现在该参数始终被剥离，并有单测覆盖。
 
 ## 0.2.2
 

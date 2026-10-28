@@ -26,7 +26,7 @@ const SYNC_TIMEOUT_MS = 120_000;
 // request still falls back normally; subsequent fan-out requests reuse that
 // decision for a short cooldown and return local data immediately.
 const ACCOUNT_VIEW_FAILURE_BACKOFF_MS = 2 * 60_000;
-const TRACKER_BIN = path.resolve(__dirname, "../../bin/tracker.js");
+const TRACKER_BIN = path.resolve(__dirname, "../../bin/tokenusage.js");
 const MAX_DEVICE_NAME_LENGTH = 128;
 
 function getSystemDeviceName() {
@@ -3155,23 +3155,6 @@ function createLocalApiHandler({ queuePath, serverVersion = null, trackerDataDir
         timeoutMs: 5000,
       });
       json(res, result);
-      return true;
-    }
-
-    // --- telemetry preference (anonymous analytics opt-out mirror) ---
-    // The dashboard's analytics init on localhost / native-app surfaces asks
-    // this before sending anything, so TOKENUSAGE_NO_TELEMETRY /
-    // DO_NOT_TRACK / config.json `"telemetry": false` turn off dashboard
-    // analytics together with the daily heartbeat (src/lib/telemetry.js).
-    if (p === "/api/functions/tokenusage-telemetry-pref") {
-      const { isTelemetryDisabled } = require("./telemetry");
-      let config = {};
-      try {
-        config = JSON.parse(fs.readFileSync(path.join(path.dirname(qp), "config.json"), "utf8")) || {};
-      } catch {
-        config = {};
-      }
-      json(res, { disabled: isTelemetryDisabled({ env: process.env, config }) });
       return true;
     }
 

@@ -174,7 +174,6 @@ const AUTO_UPLOAD_CONFIG = {
   maxBatchesLarge: 100,
 };
 const UPLOAD_BUDGET_MS = 90_000;
-const { maybeSendHeartbeat } = require("../lib/telemetry");
 const {
   isCursorInstalled,
   extractCursorSessionToken,
@@ -3909,13 +3908,6 @@ async function cmdSync(argv, context = {}) {
             : "upload skipped (no device token)"),
       );
     }
-
-    // Anonymous daily heartbeat (shared 24h throttle with serve — see
-    // src/lib/telemetry.js). Awaited because hook-spawned sync processes exit
-    // right after this function returns, which would kill an in-flight
-    // request; the throttle makes it a network no-op on all but the first
-    // sync of the day, and maybeSendHeartbeat never throws.
-    await maybeSendHeartbeat({ trackerDir });
 
     // §2.11 run record (empty runs included) — the last thing a run does,
     // strictly best-effort: failures only reach the local log, never the

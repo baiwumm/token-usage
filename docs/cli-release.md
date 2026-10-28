@@ -122,7 +122,10 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > 回归测试。家里机已用 patch 包实测（任务 7 秒完成、滚动日志追加、
 > `token_sync_runs` 记 `trigger=scheduled`）；升级 0.2.3 的机器重跑一次
 > `init --yes --no-integrations --no-open` 修正任务入口。发版按 §二：提交 +
-> push main → 操作者打 `cli-v0.2.3`。
+> push main → 操作者打 `cli-v0.2.3`。同日发包自检另清理了上游遗留的匿名安装
+> 心跳（`tokenusage-telemetry` 端点不存在，每次 404）、local-api 的失效 bin
+> 路径与 `--watch --interval` 非法值漏传，并加 `test/packaging.test.js` /
+> `test/branding.test.js` 守卫（详情见 `packages/cli/CHANGELOG.md` 0.2.3）。
 
 > **0.2.2（2026-10-28）**：三小项 + 新机初始化严重缺陷修复。验收发现的
 > `bin/tracker.js` 缺失（fork 改名 bin 后安装器未跟改，0.1.0 起 npm 全新安装
