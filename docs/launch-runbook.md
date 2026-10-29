@@ -19,7 +19,8 @@
 3. 【G1 闸门——操作者放行】采集机逐台把 base URL 改为
    `https://token-usage.baiwumm.com/api`。
 4. 旧域名 `tokentracker.baiwumm.com` 与旧 Vercel 项目原样保留、继续运行旧系统，与新系统
-   互不冲突。
+   互不冲突（**2026-10-29 已整体退役**：旧 Supabase 项目、旧 Vercel 项目、域名 DNS 与旧
+   GitHub 仓库全部删除，G2/G3 关闭）。
 
 ### 首个管理员账户
 
@@ -50,10 +51,9 @@
    无标题/绝对路径等敏感字段；
 5. 对账一致后撤旧计划任务/停旧 tokentracker CLI（该机 G1 完成）。
 
-回滚：停新 CLI；旧计划任务定义与旧数据目录已归档在
-`%USERPROFILE%\Backups\tokentracker-retired-20261029.zip`（`retired-tasks/` + `tracker/`），
-需要时用 `Register-ScheduledTask -Xml` 恢复。新旧数据目录互不干扰，旧 CLI 的队列与偏移
-原样保留在归档中。
+回滚：旧系统（Vercel + Supabase + 域名）已于 2026-10-29 整体删除，恢复旧计划任务已无意义。
+旧任务定义与旧数据目录仅作本地留档：
+`%USERPROFILE%\Backups\tokentracker-retired-20261029.zip`（`retired-tasks/` + `tracker/`）。
 
 ### 第二台机器（公司机）迁移 + 历史补齐（已完成 2026-10-26，G1 全部完成）
 
@@ -74,21 +74,22 @@
   计划任务 `TokenTracker Selfhost Sync` / `Drift Check` / `Backup` 已 Disable；
   2026-10-29 清理本机残留时连同 `~/.tokentracker` 与旧运行时数据一并移入归档并删除。
 
-旧库（tokentracker.baiwumm.com + Supabase）自此零增量；观察期与 G2 / G3 闸门见 §7，
-退役前保持只读。
+旧库（`tokentracker.baiwumm.com` + 旧 Supabase 项目）**已于 2026-10-29 整体删除**：旧 Vercel
+项目、域名 DNS、旧 GitHub 仓库与旧 Supabase 项目均无残留，G2/G3 关闭。
 
 
 ## 回滚
 
-任何一台采集机迁移后异常：把该机 base URL 改回 `https://tokentracker.baiwumm.com/api`
-即回到旧系统，本地队列自动补传断连窗口的数据。旧系统在退役闸门（G2）前始终在线，
-回滚按台执行、互不影响。
+旧系统已于 2026-10-29 整体退役（旧 Supabase 项目、旧 Vercel 项目、域名 DNS 与旧 GitHub
+仓库全部删除，G2/G3 关闭），改回旧 base URL 的回滚路径不再存在。采集机异常只能在现行系统
+侧处理：本地队列与水位保证不丢数据，修复后 `tokenusage sync --drain` 补传断连窗口。
 
 ## 退役
 
-按 `docs/rewrite-plan.md` §6 第 4 步与 §7 的 G2 / G3 闸门执行：全部采集机迁移完成 →
-旧系统只读冻结 → 旧项目整库备份落盘 → 对账连续一致 → 旧 Supabase 项目退役（G2，
-整项目暂停/删除——新旧项目独立，无删表动作）→ 旧仓库删除（G3，2026-10-29 操作者执行；原 Archive 方案作废）。
+**已于 2026-10-29 完成**（操作者执行，未保留备份）：全部采集机迁移完成 → 旧定时任务停用
+→ 旧 Supabase 项目删除（G2；新旧项目独立，无删表动作）→ 旧 Vercel 项目、
+`tokentracker.baiwumm.com` 的域名 DNS 与旧 GitHub 仓库一并删除（G3，原 Archive 方案作废）。
+旧系统自此无任何残留。
 
 ## 自动发版
 
