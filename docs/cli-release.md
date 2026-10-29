@@ -97,7 +97,8 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
   TokenUsageSync` 后 `LastTaskResult=0`、日志正常追加。
 - [x] **公司机换装正式包**（2026-10-27 实查：公司机已装开发期 0.1.0（Volta
   全局），且已配对在传——`tokenusage status` 显示 device token set、queue 0，
-  `init` / `device-login` 不必重做；2026-10-28 升 0.2.1、2026-10-29 升 0.2.4 并复验）：
+  `init` / `device-login` 不必重做；2026-10-28 升 0.2.1、2026-10-29 升 0.2.4 / 0.2.6
+  并复验）：
   发布后 `volta install tokenusage-cli@0.1.0`
   换成 npm 正式产物（同版本号下直接 `npm i -g tokenusage-cli` 会被 "up to
   date" 跳过，等价命令 `npm i -g tokenusage-cli@0.1.0 --force`），装完
@@ -108,7 +109,10 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
   旧账迁移按 `docs/launch-runbook.md` 与桌面 replay 材料（约 13.6B 待迁）。
   **2026-10-28 公司机已升 0.2.1 并验收**（sync/任务触发/运行报告全过）；
   **2026-10-29 已升 0.2.4 并复验**（init 命名、副本自检、定时任务零弹窗、
-  `token_sync_runs` 与小时桶对账全过，见 §四）。
+  `token_sync_runs` 与小时桶对账全过，见 §四）；
+  **同日再升 0.2.6 并复验**（Volta 全局包与 `~/.tokenusage/tracker/app` 副本均为
+  v0.2.6，`status` 显示 device token set / queue 0 / 运行上报开，`TokenUsageSync`
+  当日 15:20 那轮 `LastTaskResult=0`，见 §四）。
   弹窗停泊方案：init 接管未执行前，计划任务动作已手工换成隐藏窗口 VBS
   （`C:\Users\Administrator\.tokenusage\run-sync-hidden.vbs`，内部仍是
   `cmd /c node <包内 tokenusage.js> sync >> ~/.tokenusage/logs/sync.log`，
