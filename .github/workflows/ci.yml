@@ -23,3 +23,36 @@ jobs:
 
       - name: Verify (lint + typecheck + build)
         run: pnpm verify
+
+  verify-windows-cli:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: CLI tests (Windows)
+        run: pnpm --filter tokenusage-cli test
+
+      - name: CLI init dry-run smoke (Windows)
+        shell: pwsh
+        run: |
+          $smokeHome = Join-Path $env:RUNNER_TEMP "tokenusage-smoke-home"
+          New-Item -ItemType Directory -Force -Path $smokeHome | Out-Null
+          $env:USERPROFILE = $smokeHome
+          $env:HOME = $smokeHome
+          $output = node packages/cli/bin/tokenusage.js init --yes --dry-run --no-auth --no-integrations --no-open --base-url https://example.invalid --anon-key anon_0123456789abcdef0123456789abcdef01234567 2>&1 | Out-String
+          $code = $LASTEXITCODE
+          Write-Host $output
+          if ($code -ne 0) { throw "init --dry-run exited $code" }
+          if ($output -match "Skipped - Skipped") { throw "init output still contains duplicate skipped label" }
+          if ([regex]::Matches($output, "Dry run complete").Count -ne 1) { throw "init output does not have exactly one Dry run complete line" }
