@@ -124,6 +124,24 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 后续版本候选与实测记录（不阻塞已发版本）
 
+> **本机升级复核（2026-10-29 晚，0.2.4 → 0.2.6 重装）**：复核发现本机全局
+> `tokenusage` 与 `~/.tokenusage/tracker/app` 副本实际停在 0.2.4（计划任务运行
+> 记录 `cli=0.2.4`），与本节 0.2.6 验收记录不符。处理：`npm i -g
+> tokenusage-cli@latest --prefer-online`（registry `dist-tags.latest=0.2.6`，全局
+> 包依赖 `@journeyapps/wa-sqlite 2.0.7` / `smol-toml 1.9.1` / `undici 8.12.2` /
+> `yauzl 3.4.0`）→ `tokenusage init --yes --no-integrations --no-open` 重建副本
+> （`.runtime-ready` v0.2.6、462 文件、23,964,924 B、顶层依赖
+> `@journeyapps`/`pend`/`smol-toml`/`undici`/`yauzl`，副本 `bin/tracker.js
+> --version` 为 v0.2.6）。
+> 采集复核：init 首跑与后续手动 `sync` 均解析 15,091 文件、0 新增桶、0 上传，
+> 首跑输出 4,998,501,932 tokens / 9 providers，与本机 queue last-wins 基线
+> （563 桶、malformed 0）逐位一致；`doctor` 14 项全 ok（`runtime.copy` = v0.2.6）；
+> 手动触发计划任务 `TokenUsageSync` 后 `LastTaskResult=0`、`sync.log` 追加一条
+> 0 新增桶记录，`token_sync_runs` 新增 `trigger=scheduled` / `cli=0.2.6` /
+> `result=ok` / `parsed_files=15091`。服务端设备总量未变动：zcode 2.43B 与
+> cursor 1.7M 的既有差异保持不变（前者为 2026-10-25 G1 种子历史，后者为账户级
+> 来源，均非本次升级引入）。
+>
 > **0.2.6（2026-10-29 已发 npm 并完成本机验收）**：按依赖预算评审整体删除
 > 从未接线的错误上报 SDK（`@sentry/node`、`src/lib/sentry.js`、
 > `src/lib/telemetry-pref.js`），并清掉 `bin/tokenusage.js` 未捕获异常兜底里那段
