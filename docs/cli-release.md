@@ -120,7 +120,7 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 后续版本候选与实测记录（不阻塞已发版本）
 
-> **0.2.6（2026-10-29 本地验收通过，待发 npm）**：按依赖预算评审整体删除
+> **0.2.6（2026-10-29 已发 npm 并完成本机验收）**：按依赖预算评审整体删除
 > 从未接线的错误上报 SDK（`@sentry/node`、`src/lib/sentry.js`、
 > `src/lib/telemetry-pref.js`），并清掉 `bin/tokenusage.js` 未捕获异常兜底里那段
 > 包在 try/catch 中、删模块后永不生效的 `require('../src/lib/sentry')`；守卫
@@ -135,7 +135,26 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > 22.9 MB / 462 文件、`.runtime-ready` 为 v0.2.6、顶层依赖只剩
 > `@journeyapps`（wa-sqlite）、`pend`、`smol-toml`、`undici`、`yauzl`，副本
 > 自身 `bin/tracker.js --version` 输出 v0.2.6（自包含）。
-> 待操作者放行后按 §二 发版（tag `cli-v0.2.6`）；升级到 0.2.6 的机器重跑一次
+> 发版（2026-10-29）：tag `cli-v0.2.6`（`c6292c7`）→ release run 40827992421
+> 全绿（12 个步骤全 success），`npm publish --provenance` 成功（136 files、
+> `gitHead=c6292c7`、SLSA attestation 已生成），GitHub Release 正文取 CHANGELOG
+> 的 0.2.6 段；registry 直查 `dist-tags.latest` 已为 0.2.6（`npm view` 读本地
+> 缓存会滞后一版，核对发版结果要用 registry 直查或 `--prefer-online`）。
+> 本机验收（2026-10-29）：`volta install tokenusage-cli@0.2.6` 后 `--version`
+> 为 v0.2.6；`device-login` 重新配对成功（设备令牌写入
+> `~/.tokenusage/tracker/config.json`）；`init --yes --no-integrations --no-open`
+> 重建运行时副本（`.runtime-ready` v0.2.6、22.9 MB / 462 文件、顶层依赖 5 项），
+> 首跑 2,525,218,906 tokens / 6 providers；`doctor` 14 项全 ok；计划任务
+> `TokenUsageSync` 为 wscript + `run-sync-hidden.vbs`（`shell.Run(cmd, 0, True)`
+> 隐藏窗口），`Start-ScheduledTask` 后 `LastTaskResult=0`、19.8 s 完成、可见窗口数
+> 前后不变（12 → 12、无新增标题）、`logs/sync.log` 追加（parsed 195 /
+> uploaded 362 / queue drained）；`token_sync_runs` 新增两条 `cli=0.2.6` /
+> `trigger=scheduled` / `result=ok`，其 `tokens_ingested=2,525,218,906` 与 init
+> 首跑的本机 queue last-wins 总数逐位一致；`token_usage_hourly` 该设备行数
+> 1,475 → 1,477（全库 2,099 → 2,101），无重复回补。
+> 注意：该机当日发生过一次误删用户目录的事故，本地可重建的 AI 日志因此减少，
+> 首跑总量从 0.2.5 的 10.18B 降到 2.53B（服务端历史数据未受影响）。
+> 升级到 0.2.6 的机器重跑一次
 > `tokenusage init --yes --no-integrations --no-open` 即可把 67 MB 的旧副本
 > 换成 ~23 MB 的新副本。
 
