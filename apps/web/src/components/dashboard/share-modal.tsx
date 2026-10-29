@@ -3,7 +3,7 @@
 // Dashboard share modal: two-column dialog (live preview on the left, controls
 // on the right) over the shared canvas share-card engine. The display name is
 // a dialog-local override — never persisted — seeded from the signed-in user
-// each time it opens; the style switcher redraws the preview in place. The
+// each time it opens; the style switcher crossfades the preview in place. The
 // preview is the exported PNG itself. Privacy: only aggregated numbers leave
 // the page — no row-level data.
 
@@ -48,6 +48,9 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
   const { formatDate } = useFormat();
   const [busy, setBusy] = useState(false);
   const [variant, setVariant] = useState<ShareCardVariant>("broadsheet");
+  // Frame that was on screen when the style changed: kept on top for one
+  // crossfade so the swap never flashes the empty stage.
+  const [outgoing, setOutgoing] = useState<string | null>(null);
   const [name, setName] = useState("");
   // Deferring the name keeps typing responsive while the 2x canvas redraws.
   const deferredName = useDeferredValue(name);
@@ -72,6 +75,16 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
     [cardData, variant],
   );
 
+  // Drop the outgoing frame shortly after its fade-out ends. A timer (rather
+  // than `onAnimationEnd`) also covers reduced-motion users, whose layer is
+  // hidden instead of animated.
+  useEffect(() => {
+    if (!outgoing) return;
+    const timer = setTimeout(() => setOutgoing(null), 320);
+
+    return () => clearTimeout(timer);
+  }, [outgoing]);
+
   return (
     <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
       <Modal.Container>
@@ -81,18 +94,38 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
           <Modal.CloseTrigger aria-label={copy.shareCard.close} />
           <Modal.Body className="mx-0 p-0">
             <div className="flex flex-col lg:h-[80vh] lg:flex-row">
-              {/* Preview column — the exported PNG itself, scaled to fit */}
-              <div className="bg-default flex items-center justify-center p-4 sm:p-6 lg:min-w-0 lg:flex-1">
-                {dataUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    alt={copy.shareCard.title}
-                    className="max-h-[42vh] w-auto max-w-full rounded-2xl shadow-lg ring-1 ring-black/5 lg:max-h-full"
-                    src={dataUrl}
-                  />
-                ) : (
-                  <Spinner />
-                )}
+              {/* Preview column — the exported PNG itself, scaled to fit. The
+                  stage keeps a definite height (the old `max-h-[42vh]` plus the
+                  padding) so the crossfade layers can stack absolutely without
+                  reflowing the dialog mid-swap. */}
+              <div className="bg-default h-[calc(42vh+2rem)] p-4 sm:h-[calc(42vh+3rem)] sm:p-6 lg:h-auto lg:min-w-0 lg:flex-1">
+                <div className="relative h-full w-full">
+                  {dataUrl ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        key={`in-${variant}`}
+                        alt={copy.shareCard.title}
+                        className="animate-in fade-in-0 zoom-in-98 duration-300 ease-out motion-reduce:animate-none absolute inset-0 m-auto max-h-full max-w-full rounded-2xl shadow-lg ring-1 ring-black/5"
+                        src={dataUrl}
+                      />
+                      {outgoing ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={`out-${outgoing}`}
+                          aria-hidden
+                          alt=""
+                          className="animate-out fade-out-0 zoom-out-102 fill-mode-forwards duration-300 ease-out motion-reduce:hidden pointer-events-none absolute inset-0 m-auto max-h-full max-w-full rounded-2xl shadow-lg ring-1 ring-black/5"
+                          src={outgoing}
+                        />
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <Spinner />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Controls column */}
@@ -127,7 +160,11 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
                     onSelectionChange={(keys) => {
                       const next = [...keys][0];
 
-                      if (next) setVariant(next as ShareCardVariant);
+                      if (!next || next === variant) return;
+                      // Crossfade: keep the frame that is on screen as the
+                      // outgoing layer under the freshly drawn one.
+                      if (dataUrl) setOutgoing(dataUrl);
+                      setVariant(next as ShareCardVariant);
                     }}
                   >
                     {SHARE_VARIANTS.map(({ id }) => (
