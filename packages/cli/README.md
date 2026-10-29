@@ -30,7 +30,7 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 
 | 命令 | 说明 |
 |---|---|
-| `tokenusage init` | 本地初始化：扫描根配置、各工具 hook 安装、注册每小时计划任务（Windows 隐藏窗口；`--no-task` 跳过任务；`--run-report=off` 关闭运行记录上报；`--no-integrations` 不装任何 hook/notify/插件，只做纯定时采集）。不含配对 |
+| `tokenusage init` | 本地初始化：扫描根配置、各工具 hook 安装、注册每小时计划任务（Windows 隐藏窗口）。`--no-task` 跳过任务；`--run-report=off` 关闭运行记录上报；`--no-integrations` 不装任何 hook/notify/插件，只做纯定时采集；`--yes` 非交互；`--dry-run` 只预览不落盘；`--no-open` 不打开浏览器；`--link-code <code>` 用已有配对码。不含配对 |
 | `tokenusage device-login` | 设备流配对：输出 `user_code`，在站点 `/device` 页批准后本机拿到设备令牌 |
 | `tokenusage sync` | 解析本地 AI 工具日志 → 上报小时桶 + 会话元数据 |
 | `tokenusage sync --watch` | 常驻模式，默认每 15 分钟增量一轮（`--interval <ms>` 可调，≥60000） |
@@ -107,7 +107,21 @@ CLI 也不发送匿名安装心跳：上游的 `tokenusage-telemetry` 端点在�
 
 ## 数据目录
 
-`~/.tokenusage/`（`0700` 目录 + `0600` 文件）：`tracker/config.json`（配对与运行配置）、上传队列（`queue.jsonl` + offset）、会话分析 sidecar、`session-upload-watermarks.json`（增量水位）、`tracker/logs/sync.log`（自动采集滚动日志）、暂停标志。与旧版 tokentracker CLI 的 `~/.tokentracker/` 互不干扰，迁移期两套 CLI 可在同一台机器共存。
+`~/.tokenusage/`（`0700` 目录 + `0600` 文件）：`tracker/config.json`（配对与运行配置）、`tracker/app/`（自包含运行时副本，`.runtime-ready` 记录版本）、上传队列（`queue.jsonl` + offset）、会话分析 sidecar、`session-upload-watermarks.json`（增量水位）、`tracker/logs/sync.log`（自动采集滚动日志）、暂停标志。与旧版 tokentracker CLI 的 `~/.tokentracker/` 互不干扰，迁移期两套 CLI 可在同一台机器共存。
+
+## 自包含运行时副本（0.2.4+）
+
+init 会把当前 CLI 及其依赖闭包复制到 `~/.tokenusage/tracker/app`，并写入
+`.runtime-ready`（版本 + 安装时间）。计划任务 / notify / hook 优先启动已安装包；
+包路径失效时（典型是 nvm-windows 切换 Node 版本后全局前缀变化）自动回落到副本，
+小时任务不再 `file not found`。副本先复制到 `app.new` 暂存，`require` 全部直接
+依赖且 `--version` 实跑通过后才替换并写标记；没有标记的副本不会被任何自动采集
+入口使用。
+
+升级 CLI 或切换 Node 版本后重跑一次
+`tokenusage init --yes --no-integrations --no-open` 刷新副本；`tokenusage doctor`
+的 `runtime.copy` 检查会报告副本缺失、缺标记或版本落后，`uninstall --purge`
+连同数据目录一并清理。
 
 ## provider 支持面
 

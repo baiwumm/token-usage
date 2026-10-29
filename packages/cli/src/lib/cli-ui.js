@@ -155,7 +155,13 @@ function createSpinner({ text, intervalMs = 80 }) {
 function formatSummaryLine({ label, status, detail }) {
   const isSuccess = status === "updated" || status === "set" || status === "installed";
   const bullet = isSuccess ? color("*", GREEN) : "o";
-  const statusLabel = isSuccess ? detail || status : detail ? `Skipped - ${detail}` : "Skipped";
+  const statusLabel = isSuccess
+    ? detail || status
+    : !detail
+      ? "Skipped"
+      : /^Skipped\b/i.test(detail)
+        ? detail
+        : `Skipped - ${detail}`;
   const line = `  ${bullet} ${label.padEnd(22)} [${statusLabel}]`;
   return isSuccess ? line : color(line, DIM);
 }

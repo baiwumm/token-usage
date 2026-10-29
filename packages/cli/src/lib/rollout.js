@@ -190,8 +190,8 @@ function isRolloutFileName(name) {
 // Compressed rollout archives cannot be tailed by byte offset: the cursor
 // stores compressed bytes while the parser consumes decompressed text. Treat
 // them as content-addressed snapshots — one parse per (inode, size) version —
-// reusing the DSH session's zstd machinery (built-in zlib first,
-// `@mongodb-js/zstd` fallback) including its multi-frame handling. Returns
+// reusing the DSH session's built-in zlib zstd machinery, including its
+// multi-frame handling. Returns
 // null for a missing/non-file path; an empty archive yields no lines (the
 // same outcome as an empty uncompressed rollout).
 const CODEX_ROLLOUT_COMPRESSED_PATTERN = /^rollout-.*\.jsonl\.zstd?$/;
@@ -13174,10 +13174,18 @@ function resolveZedDbPath(env = process.env) {
   return path.join(xdg, "zed", "threads", "threads.db");
 }
 
+function decompressBuiltinZstd(data) {
+  const zlib = require("node:zlib");
+  if (typeof zlib.zstdDecompressSync !== "function") {
+    throw new Error("built-in zstd is unavailable; Node.js >= 22.19 is required");
+  }
+  return Buffer.from(zlib.zstdDecompressSync(data));
+}
+
 // Decode a row's BLOB payload into UTF-8 JSON text. Zed marks zstd-compressed
 // blobs with data_type="zstd"; older / smaller threads use data_type="json"
-// and store the bytes verbatim. Node 24+ has native zstd; Node 20 needs the
-// @mongodb-js/zstd fallback. Cap decoded size to mirror tokscale's safety net.
+// and store the bytes verbatim. Node >=22.19 already ships zstd; the package
+// engine floor guarantees it. Cap decoded size to mirror tokscale's safety net.
 async function decodeZedThreadBlob({ dataType, data }) {
   const type = (dataType || "").trim().toLowerCase();
   if (type === "json") {
@@ -13187,11 +13195,7 @@ async function decodeZedThreadBlob({ dataType, data }) {
     return data.toString("utf8");
   }
   if (type === "zstd") {
-    const zlib = require("node:zlib");
-    const out =
-      typeof zlib.zstdDecompressSync === "function"
-        ? zlib.zstdDecompressSync(data)
-        : Buffer.from(await require("@mongodb-js/zstd").decompress(data));
+    const out = decompressBuiltinZstd(data);
     if (out.length > MAX_ZED_THREAD_JSON_BYTES) {
       throw new Error(`decoded zstd blob exceeds ${MAX_ZED_THREAD_JSON_BYTES} bytes`);
     }
@@ -23870,8 +23874,8 @@ async function parseTraeCnApiIncremental({
 // Zstd artifacts are a concatenated-frame container: a single decompress call
 // decodes only the first frame (silently dropping every event line), so we
 // identify the frame boundaries and decode each frame independently —
-// built-in zlib zstd first, `@mongodb-js/zstd` as the Node 20 fallback —
-// enforcing a cumulative plaintext bound as we go.
+// with the built-in Node zlib zstd decoder, enforcing a cumulative plaintext
+// bound as we go.
 // Dedup is a per-file `lastSeq` watermark — seq
 // is monotonic within an append-only session log, so a grow re-reads the file
 // and skips everything at or below the watermark. Torn tails never advance the
@@ -24119,18 +24123,11 @@ function inspectDshZstdFrames(data, maxOutputBytes = DSH_SESSION_TEXT_MAX_BYTES)
   };
 }
 
-// Decode one already-isolated frame. Prefer Node's built-in zstd (22.15+):
-// the desktop bundles install dependencies with --ignore-scripts, so
-// @mongodb-js/zstd ships without its native binding there and the require()
-// would throw — silently skipping every compressed session (issue #465). The
-// MongoDB binding stays as the fallback for Node 20 CLI installs, where npm
-// runs install scripts normally.
+// Decode one already-isolated frame with Node's built-in zstd. The previous
+// @mongodb-js/zstd fallback was only reachable on Node 20; the package engine
+// floor is now >=22.19, so a missing built-in decoder is a hard error.
 async function decodeDshZstdFrame(frameBytes) {
-  const zlib = require("node:zlib");
-  if (typeof zlib.zstdDecompressSync === "function") {
-    return zlib.zstdDecompressSync(frameBytes);
-  }
-  return Buffer.from(await require("@mongodb-js/zstd").decompress(frameBytes));
+  return decompressBuiltinZstd(frameBytes);
 }
 
 // Decode one independent Harness append frame at a time; per-frame decoding

@@ -3,6 +3,22 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## 0.2.5
+
+0.2.4 验收后的小修：去掉安装警告、修正初始化重复文案，并补 Windows CI。
+
+- 移除 `@mongodb-js/zstd` 与两处 Node 20 zstd 回落分支：包 `engines` 已是
+  `>=22.19`，`node:zlib` 自带 zstd。`npm i -g` 不再出现 `prebuild-install`
+  弃用警告，运行时副本也少一个 native 依赖。
+- 修 `init` 跳过行重复文案：detail 已以 `Skipped` 开头时不再叠加
+  `Skipped - ` 前缀（此前显示 `Skipped - Skipped (--no-integrations)`）。
+- 顺手去掉 `--dry-run` 收尾的重复 `Dry run complete` 行，只保留
+  `Run init without --dry-run to apply changes.`。
+- README 补齐 `init` 的 `--yes` / `--dry-run` / `--no-open` / `--link-code`
+  参数说明。
+- CI 新增 `windows-latest` job：跑 CLI 测试 + `init --dry-run` 烟测并断言
+  输出不含 `Skipped - Skipped`，避免 VBS / 入口类回归只靠发版前人工验收。
+
 ## 0.2.4
 
 计划任务抗 Node 版本切换 + 自检一次性收口的采集可靠性修复（发 0.2.3 后立即补；

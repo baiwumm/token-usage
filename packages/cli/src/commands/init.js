@@ -332,7 +332,7 @@ function renderAccountNotLinked({ context } = {}) {
     process.stdout.write(
       [
         "",
-        "Dry run complete. Run init without --dry-run to apply changes.",
+        "Run init without --dry-run to apply changes.",
         "",
       ].join("\n"),
     );

@@ -9,4 +9,3 @@ packages:
   - packages/*
 allowBuilds:
   '@journeyapps/wa-sqlite': true
-  '@mongodb-js/zstd': true

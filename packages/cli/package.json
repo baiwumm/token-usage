@@ -1,6 +1,6 @@
 {
   "name": "tokenusage-cli",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Self-hosted AI coding token usage collector for the Token Usage dashboard.",
   "keywords": [
     "token-usage",
@@ -43,7 +43,6 @@
   },
   "dependencies": {
     "@journeyapps/wa-sqlite": "2.0.7",
-    "@mongodb-js/zstd": "^2.0.1",
     "@sentry/node": "^11.8.0",
     "smol-toml": "^1.9.0",
     "undici": "8.12.2",
@@ -51,7 +50,6 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@mongodb-js/zstd",
       "@journeyapps/wa-sqlite",
       "esbuild"
     ]
