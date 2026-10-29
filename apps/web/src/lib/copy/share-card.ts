@@ -26,10 +26,14 @@ export interface ShareCardCopy {
     estSpend: string;
     activeDays: string;
     yearInPrint: string;
-    sources: string;
     models: string;
     issue: string;
-    brandLine: string;
+    rosterSubtitle: string;
+    daysOnRecord: string;
+    empty: string;
+    streak: string;
+    daysCount: string;
+    trackYours: string;
   };
   receipt: {
     title: string;
@@ -91,10 +95,14 @@ export const SHARE_CARD_COPY: Record<"zh" | "en", ShareCardCopy> = {
       estSpend: "预估费用",
       activeDays: "活跃天数",
       yearInPrint: "全年用量",
-      sources: "来源",
       models: "模型",
       issue: "特刊",
-      brandLine: "自托管 Token 用量追踪",
+      rosterSubtitle: "按用量排名",
+      daysOnRecord: "{active} / {total} 天有记录",
+      empty: "暂无模型数据",
+      streak: "最长连续",
+      daysCount: "{days} 天",
+      trackYours: "追踪你自己的",
     },
     receipt: {
       title: "年度用量账单",
@@ -154,10 +162,14 @@ export const SHARE_CARD_COPY: Record<"zh" | "en", ShareCardCopy> = {
       estSpend: "EST. SPEND",
       activeDays: "ACTIVE DAYS",
       yearInPrint: "THE YEAR IN PRINT",
-      sources: "SOURCES",
       models: "MODELS",
       issue: "SPECIAL EDITION",
-      brandLine: "Self-hosted token tracking",
+      rosterSubtitle: "RANKED BY USAGE",
+      daysOnRecord: "{active} / {total} DAYS ON RECORD",
+      empty: "No model data yet",
+      streak: "LONGEST STREAK",
+      daysCount: "{days} DAYS",
+      trackYours: "TRACK YOURS",
     },
     receipt: {
       title: "USAGE STATEMENT",

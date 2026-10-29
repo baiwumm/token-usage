@@ -74,6 +74,7 @@ export function buildShareInput({
       year: Number.isFinite(year) ? year : null,
     }),
     heroTokens: formatTokens(totalTokens),
+    heroTokensFull: formatNumber(totalTokens),
     costLabel: formatCost(summary.totals.total_cost_usd),
     activeDaysLabel: formatNumber(summary.days),
     sessionsLabel:
@@ -84,11 +85,13 @@ export function buildShareInput({
     sources: sortedSources.map((source) => ({
       name: source.source,
       tokens: formatTokens(source.totals.total_tokens),
+      tokensFull: formatNumber(source.totals.total_tokens),
       share: shareOf(source.totals.total_tokens),
     })),
     models: sortedModels.map((model) => ({
       name: model.model,
       tokens: formatTokens(model.totals.total_tokens),
+      tokensFull: formatNumber(model.totals.total_tokens),
       share: shareOf(model.totals.total_tokens),
     })),
     topModelName: topModel?.model ?? null,

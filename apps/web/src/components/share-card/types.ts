@@ -7,7 +7,10 @@ export type ShareCardVariant = "broadsheet" | "receipt" | "neon" | "vinyl";
 
 export interface ShareCardListRow {
   name: string;
+  /** Preference-formatted count (compact by default) for the compact variants. */
   tokens: string;
+  /** Full grouped count with separators — the broadsheet roster prints these. */
+  tokensFull: string;
   /** Pre-formatted share, e.g. "44.2%". */
   share: string;
 }
@@ -26,6 +29,8 @@ export interface ShareCardData {
   /** Quotable one-liner derived from the data; null hides the hook. */
   hook: string | null;
   heroTokens: string;
+  /** Full grouped count with separators — the broadsheet hero prints this. */
+  heroTokensFull: string;
   costLabel: string;
   activeDaysLabel: string;
   sessionsLabel: string | null;
