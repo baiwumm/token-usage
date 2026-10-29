@@ -137,6 +137,8 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > 警告、`node_modules` 下无任何 `*zstd*` 目录、`--version` 为 `v0.2.5`；
 > 打包后 `init --yes --dry-run --no-auth --no-integrations --no-open` 退出 0、
 > 输出无 `Skipped - Skipped`、`Dry run complete` 恰好 1 条、临时 HOME 零文件落盘。
+> CI（run 40801871121，`81470df`）两个 job 均绿：Ubuntu `verify` + 新增
+> `verify-windows-cli`（Windows 跑 CLI 72 测试与 `init --dry-run` 烟测）。
 
 > **2026-10-29 0.2.4 验收发现（0.2.5 已修）**：`tokenusage init
 > --no-integrations` 的集成行会打成 `Skipped - Skipped (--no-integrations);
