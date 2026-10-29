@@ -120,7 +120,7 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 后续版本候选与实测记录（不阻塞已发版本）
 
-> **0.2.5（2026-10-29 已本地打包实测，待操作者 tag / 发版）**：`npm i -g
+> **0.2.5（2026-10-29 已发 npm 并完成本机验收）**：`npm i -g
 > tokenusage-cli` 安装时的 `prebuild-install@7.1.3: No longer maintained` 警告
 > 已随删除 `@mongodb-js/zstd` 消除。该包只在 `zlib.zstdDecompressSync` 不存在时
 > 回落，而 `engines.node >= 22.19` 已保证内置 zstd；`rollout.js` 的两处回落分支
@@ -139,6 +139,22 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > 输出无 `Skipped - Skipped`、`Dry run complete` 恰好 1 条、临时 HOME 零文件落盘。
 > CI（run 40801871121，`81470df`）两个 job 均绿：Ubuntu `verify` + 新增
 > `verify-windows-cli`（Windows 跑 CLI 72 测试与 `init --dry-run` 烟测）。
+> 发版（2026-10-29）：tag `cli-v0.2.5`（`fb1a849`）→ release run 40802493313 全绿，
+> `npm publish --provenance` 成功（852.9 kB / 138 files，sigstore logIndex
+> 3555122628），GitHub Release 正文取 CHANGELOG 的 0.2.5 段；npmjs 与 npmmirror
+> 均已可解析 0.2.5。
+> 本机验收（同样 2026-10-29）：`volta install tokenusage-cli@0.2.5`（0.2.4 → 0.2.5）
+> 后 `--version` 为 v0.2.5；重跑 `init --yes --no-integrations --no-open` 刷新副本
+> （`.runtime-ready` v0.2.5、67.5 MB、7 个顶层依赖，zstd 目录已消失），首次 sync
+> 得 10,177,056,345 tokens / 14 providers，集成行只显示
+> `Skipped (--no-integrations)`（不再有重复前缀）；从 `C:\` 直跑副本 `--version`
+> 自包含通过，`doctor` 14 项全 ok（`runtime.copy` ready v0.2.5）。
+> `Start-ScheduledTask` 返回 0、日志追加、运行期间 0 个可见窗口、queue drained；
+> `token_sync_runs` 新增两条 `cli=0.2.5` / `trigger=scheduled` / `result=ok`
+> （25,359 parsed、0 桶），`token_usage_hourly` 总行数仍 2,099（无重复回补）；
+> 本机设备累计 13,672,295,855（迁移重放）+ 528,501,289（切换后增量），最新小时桶
+> 停在 2026-10-28T09:30Z（当天尚无新用量，属正常）。
+> 本地 queue last-wins 合计 10,177,056,345 与 init 扫描总量逐位一致（本机自洽）。
 
 > **2026-10-29 0.2.4 验收发现（0.2.5 已修）**：`tokenusage init
 > --no-integrations` 的集成行会打成 `Skipped - Skipped (--no-integrations);
