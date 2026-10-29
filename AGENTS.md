@@ -1,7 +1,8 @@
 # Agent Instructions
 
 Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwind 4 + Supabase，pnpm workspace）。
-从 TokenTrackerSelfhost 重写而来，开源、可自部署；旧仓库仅作参照，代码不回搬。
+从 TokenTrackerSelfhost 重写而来，开源、可自部署；旧仓库仅作参照（已删除，需要参考时用上游
+`xiufengsun/TokenTracker`），代码不回搬。
 
 仓库布局：`apps/web`（Next.js：仪表盘 + CLI 契约层，src 目录结构）；预留 `apps/desktop`
 （桌面端）与 `packages/*`（共享代码 / CLI 包）。
@@ -76,8 +77,8 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 ## 里程碑与闸门
 
 - 按 `docs/rewrite-plan.md` §5 顺序推进；验收线全绿 + 操作者验收 = 里程碑完成。
-- G1 采集机切到新域名 / G2 旧 Supabase 项目退役（整项目暂停→删除，新旧项目独立无删表动作）/
-  G3 旧仓库处置（§7）必须操作者明确放行，Agent 代行即违规。
+- G2 旧 Supabase 项目退役（整项目暂停→删除，新旧项目独立无删表动作）必须操作者明确放行，
+  Agent 代行即违规；G1 已完成（2026-10-26），G3 已由操作者执行（2026-10-29，旧仓库删除）。
 - 分支策略：单人维护，直推 main；推送前本地 `pnpm verify`，CI 兜底，出问题 `git revert`。
 
 ## Commit Attribution
