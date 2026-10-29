@@ -142,8 +142,9 @@ CNY/JPY/HKD，`as_of` 2026-10-25，USD 基准；具体数值为实现常量）+ 
 
 CLI 依赖集单独维护在 `packages/cli/package.json`：2026-10-29 删除
 `@mongodb-js/zstd`（`engines.node >= 22.19` 已内置 zstd，`prebuild-install`
-弃用警告随之消失）；当前运行时依赖为 `@journeyapps/wa-sqlite`、`@sentry/node`、
-`smol-toml`、`undici`、`yauzl`。
+弃用警告随之消失）；同日评审删除从未接线的 `@sentry/node`（运行期只 init、
+`captureException` 无调用点，却是运行时副本 44 MB、全局安装约 59 MB 的主体），
+当前运行时依赖为 `@journeyapps/wa-sqlite`、`smol-toml`、`undici`、`yauzl`。
 
 ## 5. 里程碑（契约层先行）
 

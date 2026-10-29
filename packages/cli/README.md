@@ -103,7 +103,7 @@ CLI 未配对也能正常用，只是**降级为“只采集、不上报”**：
 
 **永不上传**：prompt / 助手正文 / 工具参数 / 命令输出 / diff / 会话标题 / 本地绝对路径 / resume 命令。测试（`test/session-upload.test.js`）用字段白名单锁定该边界。
 
-CLI 也不发送匿名安装心跳：上游的 `tokenusage-telemetry` 端点在自托管后端从未实现，0.2.3 起已移除。可选的 Sentry 错误上报必须显式配置 DSN，并受 `TOKENUSAGE_NO_TELEMETRY` / `DO_NOT_TRACK` 约束。
+CLI 不发送匿名安装心跳，也不做任何第三方错误上报：上游的 `tokenusage-telemetry` 端点在自托管后端从未实现（0.2.3 移除）；从未接线的 Sentry SDK 也已在 0.2.6 删除。除你自己配对的实例外，CLI 不向任何第三方发送数据。
 
 ## 数据目录
 

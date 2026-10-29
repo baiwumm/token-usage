@@ -234,8 +234,8 @@ test("init's runtime copy works from the published layout (bin/tokenusage.js)", 
       "declared dependency copied as a real directory",
     );
     assert.ok(
-      fs.existsSync(path.join(appDir, "node_modules", "@sentry", "core")),
-      "transitive dependency of @sentry/node copied too (flattened closure)",
+      fs.existsSync(path.join(appDir, "node_modules", "pend")),
+      "transitive dependency of yauzl copied too (flattened closure)",
     );
     // The marker is what every spawn point probes: without it hooks fall back
     // to the installed CLI instead of spawning a half copy.

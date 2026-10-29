@@ -3,6 +3,26 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## 0.2.6
+
+移除从未接线的错误上报 SDK，安装体积与运行时副本明显变小；采集行为不变。
+
+- 删除 `@sentry/node` 与 `src/lib/sentry.js`、`src/lib/telemetry-pref.js`：
+  CLI 只在启动时 init 了 Sentry，`captureException` 没有任何调用点，实际从不上报；
+  但它在运行时副本里占 44 MB（67.5 MB 的约 65%），全局安装还带入
+  `@sentry/bundler-plugins` 的构建期依赖链（安装总量 93.1 MB 中约 59 MB）。
+  移除后运行时副本 22.9 MB（实测 462 个文件）、干净 prefix 安装 23 MB
+  （此前 93.1 MB），且不再有第三方上报入口。
+- `bin/tokenusage.js` 未捕获异常的兜底里还留着一个 `require('../src/lib/sentry')`
+  （包在 try/catch 里，删模块后永不生效的残留）；一并删除，守卫测试改为同时扫描
+  `src/` 与 `bin/`。
+- README 隐私边界同步：CLI 不做匿名心跳、也不做任何第三方错误上报。
+- `THIRD_PARTY_NOTICES.md` 的运行时依赖示例去掉 `@sentry/node`。
+- 新增 `test/packaging.test.js` 守卫：`@sentry/*` 不得重新出现在依赖或源码中；
+  运行时副本回归测试改用 `yauzl` 的传递依赖 `pend` 验证扁平闭包复制。
+- 未随本版改动：macOS/Linux 原生调度、`init` 逐工具集成选择（见
+  `docs/cli-release.md` §四，等真机验证/形态确认后再做）。
+
 ## 0.2.5
 
 0.2.4 验收后的小修：去掉安装警告、修正初始化重复文案，并补 Windows CI。

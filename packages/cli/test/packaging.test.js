@@ -10,6 +10,7 @@ const { test } = require("node:test");
 
 const PACKAGE_ROOT = path.join(__dirname, "..");
 const SRC = path.join(PACKAGE_ROOT, "src");
+const BIN = path.join(PACKAGE_ROOT, "bin");
 
 function readSource(...segments) {
   return fs.readFileSync(path.join(PACKAGE_ROOT, ...segments), "utf8");
@@ -35,12 +36,35 @@ test("local-api spawns the package bin entry, not the missing bin/tracker.js", (
   );
 });
 
-test("telemetry opt-out flags still gate the optional Sentry reporting", () => {
-  const { isTelemetryDisabled } = require("../src/lib/telemetry-pref");
-  assert.equal(isTelemetryDisabled({ env: {}, config: {} }), false);
-  assert.equal(isTelemetryDisabled({ env: { TOKENUSAGE_NO_TELEMETRY: "1" }, config: {} }), true);
-  assert.equal(isTelemetryDisabled({ env: { DO_NOT_TRACK: "true" }, config: {} }), true);
-  assert.equal(isTelemetryDisabled({ env: {}, config: { telemetry: false } }), true);
+test("the unused Sentry error-reporting SDK stays out of the package", () => {
+  // 0.2.6 removed @sentry/node: it was only initialized (captureException had no
+  // call sites) and shipped 44 MB into the runtime copy plus a build-time
+  // bundler-plugin chain into every npm install. Keep it out unless the
+  // reporting path is actually wired and budgeted again.
+  const pkg = JSON.parse(readSource("package.json"));
+  const declared = { ...(pkg.dependencies || {}), ...(pkg.optionalDependencies || {}) };
+  assert.ok(
+    !Object.keys(declared).some((name) => name === "@sentry/node" || name.startsWith("@sentry/")),
+    "@sentry/* must not be a declared dependency",
+  );
+  assert.ok(
+    !fs.existsSync(path.join(SRC, "lib", "sentry.js")),
+    "the inert sentry bootstrap must stay deleted",
+  );
+  assert.ok(
+    !fs.existsSync(path.join(SRC, "lib", "telemetry-pref.js")),
+    "the opt-out helper only existed to gate Sentry",
+  );
+  const roots = [SRC, BIN];
+  for (const root of roots) {
+    const sourceFiles = fs
+      .readdirSync(root, { recursive: true })
+      .filter((rel) => String(rel).endsWith(".js"));
+    for (const rel of sourceFiles) {
+      const source = fs.readFileSync(path.join(root, String(rel)), "utf8");
+      assert.ok(!source.includes("@sentry/"), `${rel} must not require the removed SDK`);
+    }
+  }
 });
 
 test("the unported install heartbeat stays removed", () => {

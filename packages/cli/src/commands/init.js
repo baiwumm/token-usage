@@ -2474,8 +2474,6 @@ function probeRuntimeCopy(appDir) {
     "if (missing.length > 0) { console.error(missing.join(',')); process.exit(3); }",
   ].join("\n");
   const env = { ...process.env };
-  // The probe must not trigger telemetry or hook spawning.
-  env.TOKENUSAGE_NO_TELEMETRY = "1";
   try {
     const probe = cp.spawnSync(process.execPath, ["-e", script], {
       cwd: appDir,

@@ -120,6 +120,25 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 后续版本候选与实测记录（不阻塞已发版本）
 
+> **0.2.6（2026-10-29 本地验收通过，待发 npm）**：按依赖预算评审整体删除
+> 从未接线的错误上报 SDK（`@sentry/node`、`src/lib/sentry.js`、
+> `src/lib/telemetry-pref.js`），并清掉 `bin/tokenusage.js` 未捕获异常兜底里那段
+> 包在 try/catch 中、删模块后永不生效的 `require('../src/lib/sentry')`；守卫
+> 测试改为同时扫描 `src/` 与 `bin/`，`THIRD_PARTY_NOTICES.md` 的示例运行时依赖
+> 去掉 `@sentry/node`。
+> 本地实测（2026-10-29）：`pnpm verify` 全绿（web 325 tests / 22 files、
+> eslint 0 error 4 warning、tsc、build 成功；CLI 72 tests 全过）；`npm pack`
+> 产物 854,353 B / 136 files；临时 prefix 装 6 个包、`node_modules` 8 个条目
+> （含 `.bin` 与 lock），无任何 `@sentry`，安装总量 23 MB，`--version` 为
+> `v0.2.6`；临时 HOME 跑
+> `init --yes --no-task --no-auth --no-integrations --no-open`，运行时副本
+> 22.9 MB / 462 文件、`.runtime-ready` 为 v0.2.6、顶层依赖只剩
+> `@journeyapps`（wa-sqlite）、`pend`、`smol-toml`、`undici`、`yauzl`，副本
+> 自身 `bin/tracker.js --version` 输出 v0.2.6（自包含）。
+> 待操作者放行后按 §二 发版（tag `cli-v0.2.6`）；升级到 0.2.6 的机器重跑一次
+> `tokenusage init --yes --no-integrations --no-open` 即可把 67 MB 的旧副本
+> 换成 ~23 MB 的新副本。
+
 > **0.2.5（2026-10-29 已发 npm 并完成本机验收）**：`npm i -g
 > tokenusage-cli` 安装时的 `prebuild-install@7.1.3: No longer maintained` 警告
 > 已随删除 `@mongodb-js/zstd` 消除。该包只在 `zlib.zstdDecompressSync` 不存在时
@@ -128,9 +147,9 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > Harness 多帧 zstd（`test/zstd-native.test.js`）；`docs/rewrite-plan.md` §4 已
 > 同步记录 CLI 依赖集变化。
 > 运行时副本体积分布（0.2.4 本机 67.1 MB）：`@sentry` 43.1 MB、
-> `@journeyapps/wa-sqlite` 17.2 MB、`@mongodb-js/zstd` 0.6 MB。zstd 删除后
-> 少 0.6 MB；Sentry 在无 DSN 时不会上报却仍被整包复制，若改成动态可选加载，
-> 副本能缩到 ~20 MB——这属于依赖预算调整，仍需操作者先点头再动。
+> `@journeyapps/wa-sqlite` 17.2 MB、`@mongodb-js/zstd` 0.6 MB。zstd 于 0.2.5
+> 删除（少 0.6 MB）；Sentry 只在启动时 init、从未上报，0.2.6 经操作者批准整包
+> 移除，副本降到 22.9 MB（见本节开头 0.2.6 记录）。
 > 本地实测（2026-10-29）：`pnpm verify` 全绿（web 325 tests / 22 files、
 > eslint 0 error 4 warning、tsc、build 成功；CLI 72 tests 全过）；`npm pack`
 > 产物 856,688 B / 138 files；临时 prefix 装 30 个包、无 `prebuild-install`

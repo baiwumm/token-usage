@@ -9,16 +9,6 @@ const { cmdSessions } = require("./commands/sessions");
 const { cmdPause, cmdResume } = require("./commands/pause");
 
 async function run(argv) {
-  // Best-effort Sentry init (no-op without DSN / when telemetry opted out).
-  try {
-    const { initSentry } = require("./lib/sentry");
-    const { resolveTrackerPaths } = require("./lib/tracker-paths");
-    const { trackerDir } = await resolveTrackerPaths().catch(() => ({ trackerDir: null }));
-    await initSentry({ trackerDir });
-  } catch {
-    /* never block CLI startup on telemetry */
-  }
-
   const [command, ...rest] = argv;
 
   // No args → short help (the upstream local dashboard was removed in this
