@@ -78,7 +78,10 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 三、发版后事项（0.1.0 发布后逐项勾掉）
 
-- [x] **清理 npm 残留版本**（2026-10-27 已删，npm 现仅 0.1.0）：首发时误发的
+> 本节是 0.1.0 首发时的收尾存档（2026-10-27），未勾项反映当时机器状态，已不作为
+> 当前待办；后续版本的升级与实测记录见 §四。
+
+- [x] **清理 npm 残留版本**（2026-10-27 已删，当时 npm 仅 0.1.0）：首发时误发的
   `0.0.0-stage`，`npm unpublish` 72h 窗口内删除。
 - [x] **登记 Trusted Publisher**（2026-10-27 已配）：§一第二步的网页操作，
   0.1.1 起 CI 自动发包的前提。
@@ -86,16 +89,16 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
   → `volta install tokenusage-cli@0.1.0`（镜像可见后 Volta 可直装，未需
   --force 回退）；装后 `status` 配对信息完好，`sync` 增量 25,387 文件、
   2 会话 + 2 桶上传成功。开发期安装的 init / device-login 无需重做。
-- [ ] **本机更新采集器**：`npm i -g tokenusage-cli@latest`。本机全局安装
-  （`E:\nodejs\node_modules\tokenusage-cli`）目前是旧版——更新后 94bb8e9 的
-  auto 进度输出与 875dd54 的日志降噪才生效；计划任务无需改动（VBS 包装指向
-  的 node/CLI 路径不变）。
-- [ ] **本机计划任务复验**：`Start-ScheduledTask TokenUsageSync` 后确认
-  `LastTaskResult=0`、日志 `C:\Users\i\.tokenusage\logs\sync.log` 正常追加且
-  不再出现 SQLite ExperimentalWarning。
-- [ ] **公司机换装正式包**（2026-10-27 实查：公司机已装开发期 0.1.0（Volta
+- [x] **本机更新采集器**：`npm i -g tokenusage-cli@latest`（2026-10-28 随 0.2.4 更新，
+  见 §四）。本机全局安装（`E:\nodejs\node_modules\tokenusage-cli`）更新后
+  94bb8e9 的 auto 进度输出与 875dd54 的日志降噪生效；计划任务无需改动（VBS
+  包装指向的 node/CLI 路径不变）。
+- [x] **本机计划任务复验**（2026-10-28 随 0.2.4 复验，见 §四）：`Start-ScheduledTask
+  TokenUsageSync` 后 `LastTaskResult=0`、日志正常追加。
+- [x] **公司机换装正式包**（2026-10-27 实查：公司机已装开发期 0.1.0（Volta
   全局），且已配对在传——`tokenusage status` 显示 device token set、queue 0，
-  `init` / `device-login` 不必重做）：发布后 `volta install tokenusage-cli@0.1.0`
+  `init` / `device-login` 不必重做；2026-10-28 升 0.2.1、2026-10-29 升 0.2.4 并复验）：
+  发布后 `volta install tokenusage-cli@0.1.0`
   换成 npm 正式产物（同版本号下直接 `npm i -g tokenusage-cli` 会被 "up to
   date" 跳过，等价命令 `npm i -g tokenusage-cli@0.1.0 --force`），装完
   `tokenusage status` 确认 device token 仍在，跑一次 `tokenusage sync` 收尾。
@@ -103,7 +106,9 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
   （`curl https://registry.npmmirror.com/sync/tokenusage-cli` 可手动触发），
   急用可对 npmjs 显式 `--registry` 强装。
   旧账迁移按 `docs/launch-runbook.md` 与桌面 replay 材料（约 13.6B 待迁）。
-  **2026-10-28 公司机已升 0.2.1 并验收**（sync/任务触发/运行报告全过）。
+  **2026-10-28 公司机已升 0.2.1 并验收**（sync/任务触发/运行报告全过）；
+  **2026-10-29 已升 0.2.4 并复验**（init 命名、副本自检、定时任务零弹窗、
+  `token_sync_runs` 与小时桶对账全过，见 §四）。
   弹窗停泊方案：init 接管未执行前，计划任务动作已手工换成隐藏窗口 VBS
   （`C:\Users\Administrator\.tokenusage\run-sync-hidden.vbs`，内部仍是
   `cmd /c node <包内 tokenusage.js> sync >> ~/.tokenusage/logs/sync.log`，
@@ -113,21 +118,34 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
   PowerShell `Set-ScheduledTask`（参数原样存储），路径无空格时不加引号。
 - [ ] **观察首日**：仪表盘数据、sync.log、GitHub Release 页面三处对账。
 
-## 四、CLI 下版本候选（0.1.1 / 0.2.0，不阻塞已发版本）
+## 四、CLI 后续版本候选与实测记录（不阻塞已发版本）
 
-> **待办（非阻塞，随下个 CLI 版本一起改）**：`npm i -g tokenusage-cli` 安装时会
-> 打印一条弃用警告 `prebuild-install@7.1.3: No longer maintained`，它来自
-> `@mongodb-js/zstd` 的传递依赖。不影响安装、初始化与采集（0.2.4 本机验收全程
-> 正常），但可以直接消除：`rollout.js` 仅在 `zlib.zstdDecompressSync` 不存在时才
-> 回落到该包，而包声明 `engines.node >= 22.19`（zlib 自带 zstd），这条回落是
-> Node 20 时代遗留、在当前支持范围内走不到。计划：下个版本删掉
-> `@mongodb-js/zstd` 依赖与两处回落分支，同步修订 `docs/rewrite-plan.md` §4 依赖
-> 预算；回归方式是 `tokenusage sync --source zcode`（zstd 归档读取路径）与现有
-> 采集测试。
-> 顺带记录运行时副本的体积分布（本机 67.1 MB）：`@sentry` 43.1 MB、
-> `@journeyapps/wa-sqlite` 17.2 MB、`@mongodb-js/zstd` 0.6 MB。Sentry 在无 DSN 时
-> 不会上报，却仍被整包复制；若下版本把 Sentry 改成动态可选加载，副本能缩到
-> ~20 MB，init 复制也更快——这属于依赖预算调整，需操作者先点头再动。
+> **0.2.5（2026-10-29 已本地打包实测，待操作者 tag / 发版）**：`npm i -g
+> tokenusage-cli` 安装时的 `prebuild-install@7.1.3: No longer maintained` 警告
+> 已随删除 `@mongodb-js/zstd` 消除。该包只在 `zlib.zstdDecompressSync` 不存在时
+> 回落，而 `engines.node >= 22.19` 已保证内置 zstd；`rollout.js` 的两处回落分支
+> 已删，缺失内置解码器改为硬错误。回归测试覆盖 Zed thread blob 与 DeepSeek
+> Harness 多帧 zstd（`test/zstd-native.test.js`）；`docs/rewrite-plan.md` §4 已
+> 同步记录 CLI 依赖集变化。
+> 运行时副本体积分布（0.2.4 本机 67.1 MB）：`@sentry` 43.1 MB、
+> `@journeyapps/wa-sqlite` 17.2 MB、`@mongodb-js/zstd` 0.6 MB。zstd 删除后
+> 少 0.6 MB；Sentry 在无 DSN 时不会上报却仍被整包复制，若改成动态可选加载，
+> 副本能缩到 ~20 MB——这属于依赖预算调整，仍需操作者先点头再动。
+> 本地实测（2026-10-29）：`pnpm verify` 全绿（web 325 tests / 22 files、
+> eslint 0 error 4 warning、tsc、build 成功；CLI 72 tests 全过）；`npm pack`
+> 产物 856,688 B / 138 files；临时 prefix 装 30 个包、无 `prebuild-install`
+> 警告、`node_modules` 下无任何 `*zstd*` 目录、`--version` 为 `v0.2.5`；
+> 打包后 `init --yes --dry-run --no-auth --no-integrations --no-open` 退出 0、
+> 输出无 `Skipped - Skipped`、`Dry run complete` 恰好 1 条、临时 HOME 零文件落盘。
+
+> **2026-10-29 0.2.4 验收发现（0.2.5 已修）**：`tokenusage init
+> --no-integrations` 的集成行会打成 `Skipped - Skipped (--no-integrations);
+> tool configs stay untouched`。原因是 `init.js` 的 detail 已以 `Skipped` 开头
+> （如 `Skipped (--no-integrations); …`），`cli-ui.js` 的 `statusLabel` 又统一
+> 补了 `Skipped - ` 前缀。0.2.5 改为 `statusLabel` 检测到 detail 已以
+> `Skipped` 开头时不再重复；`test/cli-ui.test.js` 断言输出不含
+> `Skipped - Skipped`，Windows CI 的 `init --dry-run` 烟测再兜一层。
+> 同轮去掉 `--dry-run` 收尾的重复 `Dry run complete` 行。
 
 > **0.2.4（2026-10-28 发 0.2.3 后立即补）**：0.2.3 的 VBS 把 npm 全局前缀里的包
 > 路径写死，而 nvm-windows 的全局前缀按 Node 版本分目录（家里机是
@@ -156,6 +174,12 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > tokens 4,759,340、sessions 1、10.1s）→ `token_sync_runs` 两条 `cli=0.2.4` →
 > 手动跑一次 `notify.cjs --source claude` 得 `trigger=notify` 运行（118ms，走的正是
 > 带标记副本），`token_usage_hourly` 当日 9 行 / 46,503,582 tokens 无重复回补。
+> **2026-10-29 另一台 Volta 安装机复验**：`volta install tokenusage-cli@0.2.4`
+> （0.2.2 → 0.2.4）后重跑 `init --yes --no-integrations --no-open`，副本
+> `.runtime-ready` v0.2.4 / 68.1 MB / 8 个顶层依赖，从 `C:\` 直跑 `--version`
+> 自包含通过；`doctor` 14 项全 ok。`Start-ScheduledTask` 返回 0、日志追加、
+> 运行期间 0 个可见窗口；`token_sync_runs` 记 `trigger=scheduled` /
+> `cli=0.2.4` / 8 桶 / 69,589,523 tokens，与小时桶 8 行合计完全一致。
 
 > **0.2.3（2026-10-28 家里机按 0.2.2 升级清单实测发现）**：0.2.x 的 init 把隐藏
 > VBS 注册到 `src/cli.js`（只导出 `run()` 的库文件，没有入口）——Windows 计划
@@ -287,18 +311,13 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 - [x] `runtime-config` 的 `INSFORGE_*` env 名（新增 `TOKENUSAGE_BASE_URL` /
   `TOKENUSAGE_ANON_KEY` 优先，旧名保留为兼容回退）。
 
-新增待办（2026-10-28 公司机验收发现的真实缺口）：
+新增待办（2026-10-28 公司机验收发现的真实缺口）——均已由 0.2.2 落地：
 
-- init 集成选择开关：init 目前无条件安装全部检测到的 hooks/notify，机器若拍板
-  "纯定时批扫"就无法只接管计划任务。加 `--no-integrations`（或交互式逐工具
-  选择），让"只要任务注册、不要 hook"的机器能安全重跑 init。顺带修 init 输出里
-  写死的 `http://localhost:7680` 死常量（同类残留，展示用，不影响配置）。
-- 计划任务运行的触发口径与日志 trail：init 注册的 VBS 跑裸 `sync`（无
-  `--auto`），因此计划任务运行被记成 `trigger: manual`（应为 scheduled），
-  且裸 sync 不走 autoLog、隐藏窗口下 stdout 无去处（trail 丢失）。不能简单改
-  传 `--auto`——那会引入 cloudSyncEnabled 门控，未设偏好时静默停上传。需要
-  专门的 `--from-scheduled` 语义：触发口径记 scheduled、绕过 cloud 偏好门控、
-  启用 autoLog。
+- [x] init 集成选择开关：`--no-integrations` 已实现（全有/全无；暂未做逐工具
+  交互式选择），"只要任务注册、不要 hook"的机器可安全重跑 init。同轮修掉
+  init 输出里写死的 `http://localhost:7680` 死常量。
+- [x] 计划任务运行的触发口径与日志 trail：`--from-scheduled` 已实现（触发口径
+  scheduled、绕过 cloud 偏好门控、启用 autoLog），计划任务不再被误记为 manual。
 
 另案处理：apps/web 的 10 条依赖审计通告（1 low / 5 moderate / 2 high /
 2 critical），属仪表盘侧。

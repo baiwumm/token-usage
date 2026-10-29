@@ -43,14 +43,17 @@
 
 逐台迁移（每台完成后进下一台；属于 G1 闸门，操作者放行）：
 
-1. `npm i -g tokenusage-cli`（发布后）或从仓库 `packages/cli` 安装；
+1. `npm i -g tokenusage-cli`（已发布，当前 0.2.4）或从仓库 `packages/cli` 安装；
 2. `tokenusage device-login` → 浏览器登录新站点 → `/device` 批准 `user_code`；
 3. `tokenusage sync --drain` → 仪表盘/Sessions 出现该设备数据；
 4. 对账：`tokenusage sessions --format json` 汇总与 /sessions 页一致（token、会话数），
    无标题/绝对路径等敏感字段；
 5. 对账一致后撤旧计划任务/停旧 tokentracker CLI（该机 G1 完成）。
 
-回滚：停新 CLI、恢复旧计划任务即可——两套数据目录互不干扰，旧 CLI 的队列与偏移原样保留。
+回滚：停新 CLI；旧计划任务定义与旧数据目录已归档在
+`%USERPROFILE%\Backups\tokentracker-retired-20261029.zip`（`retired-tasks/` + `tracker/`），
+需要时用 `Register-ScheduledTask -Xml` 恢复。新旧数据目录互不干扰，旧 CLI 的队列与偏移
+原样保留在归档中。
 
 ### 第二台机器（公司机）迁移 + 历史补齐（已完成 2026-10-26，G1 全部完成）
 
@@ -64,9 +67,12 @@
   7.267B，本机含迁移后继续采集的增量），达成 ≈20.86B 预期。
 - 公司机每小时任务 `TokenUsageSync`（/sc hourly）。注意：公司机为 Volta 管理的 node，
   全局包真实路径在 `%LOCALAPPDATA%\Volta\tools\image\packages\tokenusage-cli\...`，
-  `npm prefix -g` 给出的路径不可用。
+  `npm prefix -g` 给出的路径不可用。0.2.4 起 init 会维护 `~/.tokenusage/tracker/app`
+  自包含副本；Volta / NVM 切换 Node 版本后重跑 `init --yes --no-integrations --no-open`
+  即可刷新，计划任务不再依赖原包路径。
 - 旧 CLI 停用四处：Claude settings hooks 两处（备份 `settings.json.bak-tokentracker`）、
-  计划任务 `TokenTracker Selfhost Sync` / `Drift Check` / `Backup` 全部 Disable。
+  计划任务 `TokenTracker Selfhost Sync` / `Drift Check` / `Backup` 已 Disable；
+  2026-10-29 清理本机残留时连同 `~/.tokentracker` 与旧运行时数据一并移入归档并删除。
 
 旧库（tokentracker.baiwumm.com + Supabase）自此零增量；观察期与 G2 / G3 闸门见 §7，
 退役前保持只读。
