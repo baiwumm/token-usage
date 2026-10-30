@@ -1,6 +1,6 @@
 # 成就系统实施计划（Achievements Plan）
 
-> 状态：**P0 进行中（P0.1–P0.4 / P0.6 完成；P0.5 校准脚本就绪，待操作者运行）**
+> 状态：**P0 完成（2026-10-30 按真实实例校准定稿；等待 P1 放行）**
 > 创建 / 最后更新：2026-10-30
 > 决策来源：2026-10-30 方案讨论，操作者已确认方向与 §1 全部决策
 > 执行方式：按 §4 阶段顺序推进；**每阶段 `pnpm verify` 全绿后才打钩**，并同步更新 §0 与 §8，再进入下一阶段
@@ -13,13 +13,13 @@
 |---|---|---|
 | 计划 | 方案与决策定稿 | ✅ 2026-10-30 |
 | 文档回写 | requirements / rewrite-plan / ui-spec / AGENTS 已更新 | ✅ 2026-10-30 |
-| P0 | 领域层：catalog + compute + 单测 + 校准 | 🟡 2026-10-30：代码完成，P0.5 待校准 |
+| P0 | 领域层：catalog + compute + 单测 + 校准 | ✅ 2026-10-30（阈值已按真实实例校准） |
 | P1 | 数据面：`/api/app/achievements` + 鉴权 + 测试 | ⬜ 未开始 |
 | P2 | 界面：成就页 + 侧栏 + wrapped + 文案 | ⬜ 未开始 |
 | Backlog | 见 §4 P3 | — |
 
-- 当前阶段：**P0 领域层代码完成（catalog / compute / 守卫测试 / 校准脚本），阈值仍为初版**
-- 下一步：操作者运行 `node scripts/admin/achievements-calibrate.mjs --env-file apps/web/.env.local --tz Asia/Shanghai`，按输出定稿 §2 阈值并回填 `catalog.ts` → `pnpm verify` → P0 收尾；P1 未放行
+- 当前阶段：**P0 完成**（领域层 + 真实实例校准，阈值定稿；`pnpm verify` 全绿）
+- 下一步：**P1 数据面**（`/api/app/achievements` + 客户端封装 + 路由测试），待操作者放行
 - 换机器恢复：`pnpm install` → `pnpm verify` 确认基线 → 读本节与 §8 → 从 §4 第一个未勾选条目继续
 - 执行规则：
   1. 开始某阶段时，把 §0 对应行改为「进行中」并注明日期；
@@ -68,25 +68,25 @@
 - **校准目标**：一年重度使用 ≈ 金/钻；王者 2 年+；任何情况下不允许「首月全钻」
 - **文案基调**：个人编年史，不鼓励烧 token、不鼓励熬夜；健康相关成就文案带调侃
 
-### 2.2 18 条成就（初版阈值：上游对齐值，P0 校准后定稿）
+### 2.2 18 条成就（2026-10-30 校准定稿）
 
 | 分类 | id / 名称 | 指标口径 | 铜 | 银 | 金 | 钻 | 王者 | 数据源 |
 |---|---|---|---|---|---|---|---|---|
 | 里程碑 | `token_titan` Token 巨擘 | 累计 `total_tokens` | 100M | 1B | 10B | 100B | 1T | 小时行 |
-| 里程碑 | `wordsmith` 妙笔生花 | 累计 `output_tokens` | 5M | 25M | 100M | 300M | 1B | 小时行 |
+| 里程碑 | `wordsmith` 妙笔生花 | 累计 `output_tokens` | 5M | 25M | 50M | 100M | 300M | 小时行 |
 | 里程碑 | `cachekeeper` 缓存藏家 | 累计 `cached_input_tokens` | 10M | 100M | 1B | 10B | 100B | 小时行 |
 | 里程碑 | `veteran` 老兵 | 距首条记录所在本地日的天数 | 30d | 90d | 180d | 365d | 730d | 小时行 |
 | 高峰 | `big_day` 高光之日 | 单日本地日最大 `total_tokens` | 10M | 100M | 500M | 3B | 10B | 日桶 |
-| 高峰 | `cache_alchemy` 缓存炼金 | 单日最高缓存命中率（当日 `total_tokens ≥ 1M`） | 50% | 70% | 85% | 95% | 98% | 日桶 |
-| 高峰 | `marathon_session` 马拉松会话 | 最长单会话时长 | 1h | 3h | 6h | 12h | 18h | sessions |
+| 高峰 | `cache_alchemy` 缓存炼金 | 单日最高缓存命中率（当日 `total_tokens ≥ 1M`） | 70% | 85% | 93% | 98% | 99.8% | 日桶 |
+| 高峰 | `marathon_session` 马拉松会话 | 最长单会话时长（线程存活跨度） | 2h | 6h | 24h | 3d | 14d | sessions |
 | 高峰 | `model_symphony` 模型交响 | 单日出现过的不同模型数 | 2 | 3 | 5 | 8 | 12 | 日桶 models |
 | 节奏 | `streak` 火焰 | 最长连续活跃天数 | 3d | 7d | 30d | 100d | 365d | 日桶 |
 | 节奏 | `marathoner` 长跑者 | 累计活跃天数 | 7d | 30d | 100d | 365d | 730d | 日桶 |
 | 节奏 | `weekend_warrior` 周末战士 | 本地周六/周日的活跃天数 | 5 | 20 | 50 | 100 | 200 | 日桶 |
 | 节奏 | `night_owl` 夜猫子 | 本地 00:00–05:59 有活跃小时桶的**不同日期数** | 3 | 10 | 30 | 60 | 120 | 小时行 |
 | 探索 | `polyglot` 模型通 | 不同模型数 | 5 | 15 | 30 | 60 | 100 | 小时行 |
-| 探索 | `multitool` 多面手 | 不同 `source` 数 | 2 | 4 | 6 | 9 | 12 | 小时行 |
-| 探索 | `project_hopper` 项目游侠 | 不同 `project_key` 数（非空） | 3 | 5 | 10 | 20 | 40 | sessions |
+| 探索 | `multitool` 多面手 | 不同 `source` 数 | 2 | 4 | 6 | 12 | 20 | 小时行 |
+| 探索 | `project_hopper` 项目游侠 | 不同 `project_key` 数（非空） | 3 | 5 | 12 | 25 | 60 | sessions |
 | 探索 | `project_devotion` 专情项目 | 单项目累计 `total_tokens` 最大值 | 1M | 10M | 100M | 1B | 10B | sessions |
 | 探索 | `fleet` 多设备舰队 | 曾出现过的不同 `device_id` 数（含已吊销） | 2 | 3 | 4 | 5 | 7 | 设备/小时行 |
 | 探索 | `sync_diligence` 采集纪律 | 连续有成功 sync 的本地日数（`result ∈ {ok, partial}`） | 7d | 30d | 90d | 180d | 365d | sync_runs |
@@ -98,7 +98,8 @@
 - **模型数**：按小时桶 `model` 字段去重（不做别名归一，校准后如噪声大可加归一规则）
 - **单项目 token**：按 `project_key` 聚合 `token_sessions.total_tokens` 后取最大
 - **采集纪律**：同一本地日至少一条成功 run 即算；断档即归零，取历史最长
-- **多面手王者上限**：P0 校准时核对 CLI 真实支持的 source 数；王者阈值不得超过真实可达上限（初版暂定 12）
+- **多面手王者上限**：王者阈值不得超过 CLI 真实可达 source 数（`AUTO_SYNC_SOURCES`，当前 46）；2026-10-30 校准定为 20
+- **校准基线（2026-10-30）**：真实实例 15 个月 / 21.66B tokens / 94 活跃日 / 636 会话 / 16 个 source。校准后最高仅 7 条钻石、0 条王者，符合「王者需 2 年以上」；`wordsmith` 金/钻下调到 50M/100M，`cache_alchemy` 上移到 70/85/93/98/99.8%（该实例前 5 个达标日 99.08–99.55%），`marathon_session` 按线程存活跨度改为 2h/6h/24h/3d/14d（实例最长 288.75h，≥24h 会话 21 个），`multitool` 王者 20、`project_hopper` 王者 60
 
 数据覆盖说明（必须进 UI 文案）：
 
@@ -108,6 +109,7 @@
 ### 2.3 候选第 19 条（P0 校准后决定）
 
 - **`deep_thinker` 深度思考**：累计 `reasoning_output_tokens`，初版阈值 1M / 10M / 100M / 1B / 10B。前提：校准实例中 reasoning 字段覆盖率足够（多数在用模型有上报）；覆盖不足则放弃
+- **2026-10-30 校准结论：暂不上线**。实例 reasoning 覆盖率 36.5% 行（16.8M tokens），低于 50% 门槛；阈值草案保留在本节，覆盖率提升后复议（不上线也不影响 18 条成就）
 - 备选：`conversationalist` 对话家（累计 `conversations`，100 / 500 / 2K / 10K / 50K），区分度较低，除非操作者偏好
 
 ---
@@ -230,9 +232,9 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P0.2** `lib/achievements/compute.ts`：纯函数 `computeAchievements({ hourly, sessionStates, sessions, syncRuns, devices, tzContext, now })`；内部自建 canonical 集（含吊销设备）；实现 §3.4 五类扫描与 `achieved_at` 回推
 - [x] **P0.3** `tests/unit/achievements-compute.test.ts`：每档边界、时区日界（跨午夜/跨年）、streak 断档、周末/夜间、去重计数、**吊销设备不清零**、achieved_at 正确、`now` 注入、单调性不变量
 - [x] **P0.4** `tests/unit/achievements-catalog.test.ts`：id 唯一、阈值严格递增且长度 5、kind 在单调白名单、每条有 zh/en 文案 key、图标 key 存在
-- [ ] **P0.5（脚本就绪，待校准）** `scripts/admin/achievements-calibrate.mjs`：只读脚本，加载真实实例全历史，输出每条指标当前值、五档命中情况与分布建议；核对 CLI 真实 source 数、reasoning 覆盖率；据此定稿 §2 阈值（含第 19 条取舍）并回填 catalog 与 §2 表格
+- [x] **P0.5**（2026-10-30 校准完成） `scripts/admin/achievements-calibrate.mjs`：只读脚本，加载真实实例全历史，输出每条指标当前值、五档命中情况与分布建议；核对 CLI 真实 source 数、reasoning 覆盖率；据此定稿 §2 阈值（含第 19 条取舍）并回填 catalog 与 §2 表格
 - [x] **P0.6** `pnpm verify` 全绿；更新 §0 / §8
-- [ ] **阶段完成**
+- [x] **阶段完成**（2026-10-30，P0）
 
 ### P1 数据面
 
@@ -307,7 +309,8 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 |---|---|---|---|---|
 | 2026-10-30 | 计划 | ✅ | — | 计划定稿，等待操作者放行 P0 |
 | 2026-10-30 | 文档回写 | ✅ | — | requirements / rewrite-plan / ui-spec / AGENTS 已回写；覆盖原「成就系统不做」的边界结论并注明原因与实施计划入口 |
-| 2026-10-30 | P0 | 🟡 | 本次提交 | catalog（18 条 × 5 档、阈值唯一真源）+ compute（五类扫描、本地日 `achieved_at`、含吊销设备）+ 34 条守卫测试 + 只读校准脚本；阈值未改，待 P0.5 输出定稿 |
+| 2026-10-30 | P0 | ✅ | 本次提交 | catalog（18 条 × 5 档、阈值唯一真源）+ compute（五类扫描、本地日 `achieved_at`、含吊销设备）+ 34 条守卫测试 + 只读校准脚本 |
+| 2026-10-30 | P0.5 校准 | ✅ | 本次提交 | 真实实例校准：0 王者 / 7 钻（15 个月、21.66B tokens、94 活跃日）；改 `wordsmith` 50M/100M、`cache_alchemy` 70/85/93/98/99.8%、`marathon_session` 2h/6h/24h/3d/14d、`multitool` 王者 20、`project_hopper` 王者 60；reasoning 覆盖 36.5%，第 19 条不上线 |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 

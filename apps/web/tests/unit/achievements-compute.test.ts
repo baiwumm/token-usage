@@ -431,11 +431,15 @@ describe("computeAchievements — ratios and sync runs", () => {
         }),
       ],
     });
+    // A rate midway between bronze and silver lands on bronze whatever the
+    // calibrated thresholds are.
+    const [bronze, silver] = thresholdsOf("cache_alchemy");
+    const rate = bronze + (silver - bronze) / 2;
     const big = compute({
       hourly: [
         row({
-          input_tokens: gate * 0.4,
-          cached_input_tokens: gate * 0.6,
+          input_tokens: gate * (1 - rate),
+          cached_input_tokens: gate * rate,
           cache_creation_input_tokens: 0,
           output_tokens: 0,
           total_tokens: gate,
@@ -444,7 +448,7 @@ describe("computeAchievements — ratios and sync runs", () => {
     });
 
     expect(progress(tiny, "cache_alchemy").tier).toBe(0);
-    expect(progress(big, "cache_alchemy").value).toBeCloseTo(0.6, 10);
+    expect(progress(big, "cache_alchemy").value).toBeCloseTo(rate, 10);
     expect(progress(big, "cache_alchemy").tier).toBe(1);
     expect(progress(big, "cache_alchemy").achieved_at.bronze).toBe(
       "2026-10-01",

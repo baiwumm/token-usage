@@ -340,6 +340,7 @@ function buildMetrics(dataset, zoned) {
   }
 
   const dayList = Array.from(days.values()).sort((a, b) => a.day.localeCompare(b.day));
+  const dailyCacheRates = [];
   let totalTokens = 0;
   let outputTokens = 0;
   let cachedTokens = 0;
@@ -358,7 +359,11 @@ function buildMetrics(dataset, zoned) {
     bestModelCount = Math.max(bestModelCount, day.models.size);
     if (day.total >= CACHE_ALCHEMY_MIN_DAY_TOKENS) {
       const denominator = day.input + day.cached + day.cacheCreation;
-      if (denominator > 0) bestCacheRate = Math.max(bestCacheRate, day.cached / denominator);
+      if (denominator > 0) {
+        const rate = day.cached / denominator;
+        bestCacheRate = Math.max(bestCacheRate, rate);
+        dailyCacheRates.push({ day: day.day, rate, total: day.total });
+      }
     }
     if (day.total > 0) {
       activeDays += 1;
@@ -387,10 +392,12 @@ function buildMetrics(dataset, zoned) {
   sessions.sort((a, b) => a.at - b.at);
 
   let longestSessionMs = 0;
+  const sessionDurations = [];
   const projects = new Set();
   const projectTokens = new Map();
   for (const fact of sessions) {
     longestSessionMs = Math.max(longestSessionMs, fact.durationMs);
+    sessionDurations.push(fact.durationMs);
     if (!fact.project) continue;
     projects.add(fact.project);
     projectTokens.set(fact.project, (projectTokens.get(fact.project) || 0) + fact.tokens);
@@ -426,6 +433,8 @@ function buildMetrics(dataset, zoned) {
     lastDay,
     today,
     activeDays,
+    sessionDurations,
+    dailyCacheRates: dailyCacheRates.sort((a, b) => b.rate - a.rate),
     values: {
       total_tokens: totalTokens,
       output_tokens: outputTokens,
@@ -563,6 +572,21 @@ async function main() {
   console.log(
     `diamond+ reached: ${diamondPlus.length ? diamondPlus.map((entry) => `${entry.achievement.id}(${TIERS[entry.tier - 1].key})`).join(", ") : "none"}`,
   );
+
+  const hour = 3_600_000;
+  const ladder = [1, 3, 6, 12, 18, 24]
+    .map(
+      (hours) =>
+        `≥${hours}h ${metrics.sessionDurations.filter((ms) => ms >= hours * hour).length}`,
+    )
+    .join(" · ");
+  console.log("");
+  console.log("— distribution hints —");
+  console.log(`session durations: ${ladder} (max ${(metrics.values.longest_session_duration / hour).toFixed(2)}h)`);
+  console.log(`daily cache rate (top 5 of ${metrics.dailyCacheRates.length} gated days):`);
+  for (const entry of metrics.dailyCacheRates.slice(0, 5)) {
+    console.log(`  ${entry.day}  ${(entry.rate * 100).toFixed(2)}%  on ${entry.total.toLocaleString("en-US")} tokens`);
+  }
 
   const multitool = results.find((entry) => entry.achievement.id === "multitool");
   const cliSources = cliSourceCount();

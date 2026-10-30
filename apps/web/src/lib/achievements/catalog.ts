@@ -164,9 +164,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     icon: "feather",
     copyKey: "achievements.wordsmith.name",
     descriptionKey: "achievements.wordsmith.description",
-    thresholds: [
-      5_000_000, 25_000_000, 100_000_000, 300_000_000, 1_000_000_000,
-    ],
+    thresholds: [5_000_000, 25_000_000, 50_000_000, 100_000_000, 300_000_000],
   },
   {
     id: "cachekeeper",
@@ -214,7 +212,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     icon: "flask",
     copyKey: "achievements.cache_alchemy.name",
     descriptionKey: "achievements.cache_alchemy.description",
-    thresholds: [0.5, 0.7, 0.85, 0.95, 0.98],
+    thresholds: [0.7, 0.85, 0.93, 0.98, 0.998],
   },
   {
     id: "marathon_session",
@@ -226,8 +224,9 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     copyKey: "achievements.marathon_session.name",
     descriptionKey: "achievements.marathon_session.description",
     coverageKey: ACHIEVEMENT_COVERAGE.sessions,
-    // 1h / 3h / 6h / 12h / 18h, stored in milliseconds.
-    thresholds: [3_600_000, 10_800_000, 21_600_000, 43_200_000, 64_800_000],
+    // 2h / 6h / 24h / 72h (3d) / 336h (14d) of thread lifetime, in ms:
+    // sessions here are long-lived agent threads, not single turns.
+    thresholds: [7_200_000, 21_600_000, 86_400_000, 259_200_000, 1_209_600_000],
   },
   {
     id: "model_symphony",
@@ -304,7 +303,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     icon: "tools",
     copyKey: "achievements.multitool.name",
     descriptionKey: "achievements.multitool.description",
-    thresholds: [2, 4, 6, 9, 12],
+    thresholds: [2, 4, 6, 12, 20],
   },
   {
     id: "project_hopper",
@@ -316,7 +315,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     copyKey: "achievements.project_hopper.name",
     descriptionKey: "achievements.project_hopper.description",
     coverageKey: ACHIEVEMENT_COVERAGE.sessions,
-    thresholds: [3, 5, 10, 20, 40],
+    thresholds: [3, 5, 12, 25, 60],
   },
   {
     id: "project_devotion",
