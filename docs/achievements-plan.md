@@ -1,6 +1,6 @@
 # 成就系统实施计划（Achievements Plan）
 
-> 状态：**待开工（P0 未开始；需求 / 计划 / UI 文档已回写）**
+> 状态：**P0 进行中（P0.1–P0.4 / P0.6 完成；P0.5 校准脚本就绪，待操作者运行）**
 > 创建 / 最后更新：2026-10-30
 > 决策来源：2026-10-30 方案讨论，操作者已确认方向与 §1 全部决策
 > 执行方式：按 §4 阶段顺序推进；**每阶段 `pnpm verify` 全绿后才打钩**，并同步更新 §0 与 §8，再进入下一阶段
@@ -13,13 +13,13 @@
 |---|---|---|
 | 计划 | 方案与决策定稿 | ✅ 2026-10-30 |
 | 文档回写 | requirements / rewrite-plan / ui-spec / AGENTS 已更新 | ✅ 2026-10-30 |
-| P0 | 领域层：catalog + compute + 单测 + 校准 | ⬜ 未开始 |
+| P0 | 领域层：catalog + compute + 单测 + 校准 | 🟡 2026-10-30：代码完成，P0.5 待校准 |
 | P1 | 数据面：`/api/app/achievements` + 鉴权 + 测试 | ⬜ 未开始 |
 | P2 | 界面：成就页 + 侧栏 + wrapped + 文案 | ⬜ 未开始 |
 | Backlog | 见 §4 P3 | — |
 
-- 当前阶段：**计划与文档回写完成，等待操作者放行 P0**
-- 下一步：`P0.1`
+- 当前阶段：**P0 领域层代码完成（catalog / compute / 守卫测试 / 校准脚本），阈值仍为初版**
+- 下一步：操作者运行 `node scripts/admin/achievements-calibrate.mjs --env-file apps/web/.env.local --tz Asia/Shanghai`，按输出定稿 §2 阈值并回填 `catalog.ts` → `pnpm verify` → P0 收尾；P1 未放行
 - 换机器恢复：`pnpm install` → `pnpm verify` 确认基线 → 读本节与 §8 → 从 §4 第一个未勾选条目继续
 - 执行规则：
   1. 开始某阶段时，把 §0 对应行改为「进行中」并注明日期；
@@ -226,12 +226,12 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 
 ### P0 领域层（无网络、无 UI）
 
-- [ ] **P0.1** `lib/achievements/catalog.ts`：18 条定义、5 档阈值、分类、指标 kind、单位、图标 key、文案 key；导出 `TIERS`、`ACHIEVEMENTS`、查询辅助
-- [ ] **P0.2** `lib/achievements/compute.ts`：纯函数 `computeAchievements({ hourly, sessionStates, sessions, syncRuns, devices, tzContext, now })`；内部自建 canonical 集（含吊销设备）；实现 §3.4 五类扫描与 `achieved_at` 回推
-- [ ] **P0.3** `tests/unit/achievements-compute.test.ts`：每档边界、时区日界（跨午夜/跨年）、streak 断档、周末/夜间、去重计数、**吊销设备不清零**、achieved_at 正确、`now` 注入、单调性不变量
-- [ ] **P0.4** `tests/unit/achievements-catalog.test.ts`：id 唯一、阈值严格递增且长度 5、kind 在单调白名单、每条有 zh/en 文案 key、图标 key 存在
-- [ ] **P0.5** `scripts/admin/achievements-calibrate.mjs`：只读脚本，加载真实实例全历史，输出每条指标当前值、五档命中情况与分布建议；核对 CLI 真实 source 数、reasoning 覆盖率；据此定稿 §2 阈值（含第 19 条取舍）并回填 catalog 与 §2 表格
-- [ ] **P0.6** `pnpm verify` 全绿；更新 §0 / §8
+- [x] **P0.1** `lib/achievements/catalog.ts`：18 条定义、5 档阈值、分类、指标 kind、单位、图标 key、文案 key；导出 `TIERS`、`ACHIEVEMENTS`、查询辅助
+- [x] **P0.2** `lib/achievements/compute.ts`：纯函数 `computeAchievements({ hourly, sessionStates, sessions, syncRuns, devices, tzContext, now })`；内部自建 canonical 集（含吊销设备）；实现 §3.4 五类扫描与 `achieved_at` 回推
+- [x] **P0.3** `tests/unit/achievements-compute.test.ts`：每档边界、时区日界（跨午夜/跨年）、streak 断档、周末/夜间、去重计数、**吊销设备不清零**、achieved_at 正确、`now` 注入、单调性不变量
+- [x] **P0.4** `tests/unit/achievements-catalog.test.ts`：id 唯一、阈值严格递增且长度 5、kind 在单调白名单、每条有 zh/en 文案 key、图标 key 存在
+- [ ] **P0.5（脚本就绪，待校准）** `scripts/admin/achievements-calibrate.mjs`：只读脚本，加载真实实例全历史，输出每条指标当前值、五档命中情况与分布建议；核对 CLI 真实 source 数、reasoning 覆盖率；据此定稿 §2 阈值（含第 19 条取舍）并回填 catalog 与 §2 表格
+- [x] **P0.6** `pnpm verify` 全绿；更新 §0 / §8
 - [ ] **阶段完成**
 
 ### P1 数据面
@@ -307,6 +307,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 |---|---|---|---|---|
 | 2026-10-30 | 计划 | ✅ | — | 计划定稿，等待操作者放行 P0 |
 | 2026-10-30 | 文档回写 | ✅ | — | requirements / rewrite-plan / ui-spec / AGENTS 已回写；覆盖原「成就系统不做」的边界结论并注明原因与实施计划入口 |
+| 2026-10-30 | P0 | 🟡 | 本次提交 | catalog（18 条 × 5 档、阈值唯一真源）+ compute（五类扫描、本地日 `achieved_at`、含吊销设备）+ 34 条守卫测试 + 只读校准脚本；阈值未改，待 P0.5 输出定稿 |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 
