@@ -93,33 +93,46 @@ export function drawVinyl(
   ctx.beginPath();
   ctx.arc(cx, cy, 104, 0, Math.PI * 2);
   ctx.fill();
+
+  // Spindle hole — the physical one sits at the exact disc center, so the
+  // label type is laid out above and below it instead of running through it.
+  const HOLE_R = 10;
+
+  ctx.fillStyle = "#0d0b09";
+  ctx.beginPath();
+  ctx.arc(cx, cy, HOLE_R, 0, Math.PI * 2);
+  ctx.fill();
+  // Paper edge catching light inside the hole — reads as punched, not printed.
+  ctx.strokeStyle = "rgba(34,30,24,0.4)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, HOLE_R - 0.75, Math.PI * 0.1, Math.PI * 0.9);
+  ctx.stroke();
+
   ctx.fillStyle = INK_SOFT;
   ctx.font = `600 10px ${FONT_MONO}`;
   const brandWidth = letters(ctx, "TOKEN USAGE", 4);
 
-  drawTracked(ctx, "TOKEN USAGE", cx - brandWidth / 2, cy - 52, 4);
+  drawTracked(ctx, "TOKEN USAGE", cx - brandWidth / 2, cy - 58, 4);
   ctx.fillStyle = VERMILLION;
   ctx.font = `600 9px ${FONT_MONO}`;
   const sideWidth = letters(ctx, "SIDE A", 3);
 
-  drawTracked(ctx, "SIDE A", cx - sideWidth / 2, cy - 28, 3);
+  drawTracked(ctx, "SIDE A", cx - sideWidth / 2, cy - 36, 3);
   const year = data.periodLabel.match(/\d{4}/)?.[0] ?? "";
 
+  // Year baseline clears the hole: cap height of the 44px serif ≈ 31px.
   ctx.fillStyle = INK;
   ctx.font = `400 44px ${FONT_SERIF}`;
-  ctx.fillText(year, cx - ctx.measureText(year).width / 2, cy + 18);
+  ctx.fillText(year, cx - ctx.measureText(year).width / 2, cy + HOLE_R + 36);
   if (data.topModelName) {
     ctx.fillStyle = INK_SOFT;
     ctx.font = `400 11px ${FONT_MONO}`;
     const artist = truncateToWidth(ctx, data.topModelName, 160);
     const artistWidth = ctx.measureText(artist).width;
 
-    ctx.fillText(artist, cx - artistWidth / 2, cy + 48);
+    ctx.fillText(artist, cx - artistWidth / 2, cy + HOLE_R + 64);
   }
-  ctx.fillStyle = BG;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 13, 0, Math.PI * 2);
-  ctx.fill();
 
   // Back cover — title / artist / runtime on the left, tracks on the right
   const textY = 790;
