@@ -3,6 +3,9 @@
 // metric is on the monotone whitelist, and every card/icon/copy key resolves.
 // These tests intentionally read the catalog instead of a copy of the tiers.
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -146,6 +149,30 @@ describe("copy and icons", () => {
   it("resolves every icon key from the shared vocabulary", () => {
     for (const achievement of ACHIEVEMENTS) {
       expect(ACHIEVEMENT_ICONS).toContain(achievement.icon);
+    }
+  });
+});
+
+describe("artwork", () => {
+  it("points every achievement at its own bitmap under /achievements", () => {
+    for (const achievement of ACHIEVEMENTS) {
+      expect(achievement.art).toBe(`/achievements/${achievement.id}.png`);
+    }
+  });
+
+  it("ships one PNG per achievement id", () => {
+    const artworkDir = join(
+      import.meta.dirname,
+      "..",
+      "..",
+      "public",
+      "achievements",
+    );
+
+    for (const achievement of ACHIEVEMENTS) {
+      const file = join(artworkDir, `${achievement.id}.png`);
+
+      expect(existsSync(file), file).toBe(true);
     }
   });
 });

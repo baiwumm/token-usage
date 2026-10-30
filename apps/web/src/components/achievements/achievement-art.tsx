@@ -1,13 +1,12 @@
 "use client";
 
-// Generated badge artwork for one achievement: a metal ring, a glowing face
-// tinted per achievement and the catalog glyph in the middle. Each achievement
-// gets its own hue so a grid of badges reads as a collection, and the tier
-// decides the metal (bronze → silver → gold → diamond → king); locked badges
-// lose the glow and turn grey with a small lock.
+// Fallback badge artwork for one achievement: a metal ring, a glowing face
+// tinted per achievement and the catalog glyph in the middle.
 //
-// Everything is inline SVG + Tailwind — no bitmap assets, no runtime images,
-// so the art stays crisp at any density and costs one request less.
+// This is the parametric SVG badge. Since P4 it is only rendered when the
+// bitmap artwork fails to load (see `achievement-medallion.tsx`) — the page
+// must never show an empty badge slot. Everything is inline SVG + Tailwind, so
+// the fallback costs no request and stays crisp at any density.
 
 import {
   Archive,
@@ -30,11 +29,9 @@ import {
 } from "@gravity-ui/icons";
 import { useId, type ComponentType, type SVGProps } from "react";
 
-import {
-  TIERS,
-  type AchievementIcon,
-  type TierKey,
-} from "@/lib/achievements/catalog";
+import { achievementHue, tierMetal } from "./achievement-tiers";
+
+import { type AchievementIcon } from "@/lib/achievements/catalog";
 
 const GLYPHS: Record<
   AchievementIcon,
@@ -60,83 +57,6 @@ const GLYPHS: Record<
   refresh: ArrowsRotateRight,
 };
 
-/** Per-achievement hue pair: the face glow and a complementary accent. */
-const HUES: Record<string, { hue: number; accent: number }> = {
-  token_titan: { hue: 42, accent: 18 },
-  wordsmith: { hue: 330, accent: 285 },
-  cachekeeper: { hue: 168, accent: 200 },
-  veteran: { hue: 24, accent: 0 },
-  big_day: { hue: 46, accent: 8 },
-  cache_alchemy: { hue: 275, accent: 315 },
-  marathon_session: { hue: 205, accent: 245 },
-  model_symphony: { hue: 292, accent: 330 },
-  streak: { hue: 14, accent: 38 },
-  marathoner: { hue: 120, accent: 172 },
-  weekend_warrior: { hue: 348, accent: 20 },
-  night_owl: { hue: 248, accent: 210 },
-  polyglot: { hue: 190, accent: 225 },
-  multitool: { hue: 88, accent: 142 },
-  project_hopper: { hue: 310, accent: 258 },
-  project_devotion: { hue: 356, accent: 320 },
-  fleet: { hue: 216, accent: 186 },
-  sync_diligence: { hue: 142, accent: 96 },
-};
-
-const FALLBACK_HUE = { hue: 220, accent: 260 };
-
-const METALS: Record<TierKey, { light: string; mid: string; deep: string }> = {
-  bronze: { light: "#ffd9a8", mid: "#c4762f", deep: "#6d3a12" },
-  silver: { light: "#ffffff", mid: "#b8c1cd", deep: "#646d7b" },
-  gold: { light: "#fff3bd", mid: "#e5ad38", deep: "#8a5a10" },
-  diamond: { light: "#e9fbff", mid: "#63c6ea", deep: "#25698d" },
-  king: { light: "#ffe7a6", mid: "#df67c6", deep: "#5731c4" },
-};
-
-const LOCKED_METAL = { light: "#dfe3ea", mid: "#a7aeb9", deep: "#6e7480" };
-
-export function achievementHue(id: string): { hue: number; accent: number } {
-  return HUES[id] ?? FALLBACK_HUE;
-}
-
-/** Metal chip classes for the tier label on cards and in the dialog. */
-export function tierChipClass(tier: number): string {
-  const base =
-    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium";
-
-  if (tier < 1) return `${base} border-border bg-default/50 text-muted`;
-
-  const key = TIERS[tier - 1].key;
-
-  switch (key) {
-    case "bronze":
-      return `${base} border-amber-600/30 bg-amber-500/10 text-amber-700 dark:text-amber-300`;
-    case "silver":
-      return `${base} border-slate-400/35 bg-slate-400/10 text-slate-600 dark:text-slate-300`;
-    case "gold":
-      return `${base} border-yellow-500/35 bg-yellow-400/10 text-yellow-700 dark:text-yellow-300`;
-    case "diamond":
-      return `${base} border-sky-400/35 bg-sky-400/10 text-sky-700 dark:text-sky-300`;
-    case "king":
-      return `${base} border-fuchsia-400/40 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300`;
-  }
-}
-
-/** Track segment classes, one per tier (the king segment is iridescent). */
-export function tierBarClass(tier: TierKey): string {
-  switch (tier) {
-    case "bronze":
-      return "bg-linear-to-r from-amber-600 to-orange-300";
-    case "silver":
-      return "bg-linear-to-r from-slate-500 to-slate-200";
-    case "gold":
-      return "bg-linear-to-r from-amber-500 to-yellow-200";
-    case "diamond":
-      return "bg-linear-to-r from-sky-500 to-cyan-200";
-    case "king":
-      return "bg-linear-to-r from-fuchsia-500 via-amber-300 to-violet-500";
-  }
-}
-
 /** Four-point sparkle, drawn at the origin; positioned with a transform. */
 const SPARKLE = "M0-7 1.8-1.8 7 0 1.8 1.8 0 7-1.8 1.8-7 0-1.8-1.8Z";
 
@@ -155,7 +75,7 @@ export function AchievementArt({
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const { hue, accent } = achievementHue(id);
   const unlocked = tier >= 1;
-  const metal = unlocked ? METALS[TIERS[tier - 1].key] : LOCKED_METAL;
+  const metal = tierMetal(tier);
   const Glyph = GLYPHS[icon];
   const face = unlocked
     ? {

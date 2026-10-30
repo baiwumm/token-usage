@@ -76,9 +76,9 @@ export type AchievementUnit =
   "tokens" | "days" | "count" | "duration_ms" | "ratio";
 
 /**
- * Icon keys. P2 maps these onto `@gravity-ui/icons` in the card/medallion
- * components; the catalog only fixes the vocabulary so the guard test can
- * reject typos before any UI exists.
+ * Icon keys. The bitmap artwork carries the achievement's identity; these
+ * glyphs only back the parametric SVG fallback badge, so the catalog keeps
+ * the vocabulary and the guard test can reject typos before any UI exists.
  */
 export const ACHIEVEMENT_ICONS = [
   "tokens",
@@ -114,6 +114,11 @@ export type Achievement = {
   kind: MetricKind;
   unit: AchievementUnit;
   icon: AchievementIcon;
+  /**
+   * Bitmap artwork under `public/` (one PNG per achievement, tier-agnostic).
+   * The parametric SVG badge is the fallback when the image fails to load.
+   */
+  art: string;
   /** Copy key resolved by both zh and en catalogs (lib/copy/achievements.ts). */
   copyKey: string;
   descriptionKey: string;
@@ -148,6 +153,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "cumulative_sum",
     unit: "tokens",
     icon: "tokens",
+    art: "/achievements/token_titan.png",
     copyKey: "achievements.token_titan.name",
     descriptionKey: "achievements.token_titan.description",
     thresholds: [
@@ -162,6 +168,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "cumulative_sum",
     unit: "tokens",
     icon: "feather",
+    art: "/achievements/wordsmith.png",
     copyKey: "achievements.wordsmith.name",
     descriptionKey: "achievements.wordsmith.description",
     thresholds: [5_000_000, 25_000_000, 50_000_000, 100_000_000, 300_000_000],
@@ -173,6 +180,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "cumulative_sum",
     unit: "tokens",
     icon: "archive",
+    art: "/achievements/cachekeeper.png",
     copyKey: "achievements.cachekeeper.name",
     descriptionKey: "achievements.cachekeeper.description",
     thresholds: [
@@ -186,6 +194,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "days_since_first",
     unit: "days",
     icon: "calendar",
+    art: "/achievements/veteran.png",
     copyKey: "achievements.veteran.name",
     descriptionKey: "achievements.veteran.description",
     thresholds: [30, 90, 180, 365, 730],
@@ -197,6 +206,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "historical_max",
     unit: "tokens",
     icon: "sparkle",
+    art: "/achievements/big_day.png",
     copyKey: "achievements.big_day.name",
     descriptionKey: "achievements.big_day.description",
     thresholds: [
@@ -210,6 +220,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "historical_max",
     unit: "ratio",
     icon: "flask",
+    art: "/achievements/cache_alchemy.png",
     copyKey: "achievements.cache_alchemy.name",
     descriptionKey: "achievements.cache_alchemy.description",
     thresholds: [0.7, 0.85, 0.93, 0.98, 0.998],
@@ -221,6 +232,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "historical_max",
     unit: "duration_ms",
     icon: "timer",
+    art: "/achievements/marathon_session.png",
     copyKey: "achievements.marathon_session.name",
     descriptionKey: "achievements.marathon_session.description",
     coverageKey: ACHIEVEMENT_COVERAGE.sessions,
@@ -235,6 +247,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "historical_max",
     unit: "count",
     icon: "layers",
+    art: "/achievements/model_symphony.png",
     copyKey: "achievements.model_symphony.name",
     descriptionKey: "achievements.model_symphony.description",
     thresholds: [2, 3, 5, 8, 12],
@@ -246,6 +259,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "longest_streak",
     unit: "days",
     icon: "flame",
+    art: "/achievements/streak.png",
     copyKey: "achievements.streak.name",
     descriptionKey: "achievements.streak.description",
     thresholds: [3, 7, 30, 100, 365],
@@ -257,6 +271,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "cumulative_sum",
     unit: "days",
     icon: "route",
+    art: "/achievements/marathoner.png",
     copyKey: "achievements.marathoner.name",
     descriptionKey: "achievements.marathoner.description",
     thresholds: [7, 30, 100, 365, 730],
@@ -268,6 +283,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "cumulative_sum",
     unit: "days",
     icon: "weekend",
+    art: "/achievements/weekend_warrior.png",
     copyKey: "achievements.weekend_warrior.name",
     descriptionKey: "achievements.weekend_warrior.description",
     thresholds: [5, 20, 50, 100, 200],
@@ -279,6 +295,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "distinct_count",
     unit: "days",
     icon: "moon",
+    art: "/achievements/night_owl.png",
     copyKey: "achievements.night_owl.name",
     descriptionKey: "achievements.night_owl.description",
     thresholds: [3, 10, 30, 60, 120],
@@ -290,6 +307,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "distinct_count",
     unit: "count",
     icon: "globe",
+    art: "/achievements/polyglot.png",
     copyKey: "achievements.polyglot.name",
     descriptionKey: "achievements.polyglot.description",
     thresholds: [5, 15, 30, 60, 100],
@@ -301,6 +319,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "distinct_count",
     unit: "count",
     icon: "tools",
+    art: "/achievements/multitool.png",
     copyKey: "achievements.multitool.name",
     descriptionKey: "achievements.multitool.description",
     thresholds: [2, 4, 6, 12, 20],
@@ -312,6 +331,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "distinct_count",
     unit: "count",
     icon: "compass",
+    art: "/achievements/project_hopper.png",
     copyKey: "achievements.project_hopper.name",
     descriptionKey: "achievements.project_hopper.description",
     coverageKey: ACHIEVEMENT_COVERAGE.sessions,
@@ -324,6 +344,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "historical_max",
     unit: "tokens",
     icon: "heart",
+    art: "/achievements/project_devotion.png",
     copyKey: "achievements.project_devotion.name",
     descriptionKey: "achievements.project_devotion.description",
     coverageKey: ACHIEVEMENT_COVERAGE.sessions,
@@ -338,6 +359,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "distinct_count",
     unit: "count",
     icon: "devices",
+    art: "/achievements/fleet.png",
     copyKey: "achievements.fleet.name",
     descriptionKey: "achievements.fleet.description",
     thresholds: [2, 3, 4, 5, 7],
@@ -349,6 +371,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     kind: "longest_streak",
     unit: "days",
     icon: "refresh",
+    art: "/achievements/sync_diligence.png",
     copyKey: "achievements.sync_diligence.name",
     descriptionKey: "achievements.sync_diligence.description",
     coverageKey: ACHIEVEMENT_COVERAGE.sync,

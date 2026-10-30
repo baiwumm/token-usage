@@ -28,6 +28,9 @@ fleet.png       sync_diligence.png
 - 徽章是**装饰性插画**，不承载唯一信息：段位同时以文字显示（`achievements.tier.*`），
   锁定态灰化 + 锁标，颜色不是唯一信息通道。
 - 加载失败时必须回退到 `apps/web/src/components/achievements/achievement-art.tsx`
-  的参数化 SVG 徽章（`<img onError>` 切换），页面不得出现空徽章位。
+  的参数化 SVG 徽章（`<img onError>` 切换 + 挂载后检查 `naturalWidth`，覆盖 SSR 首屏就
+  404 的情况），页面不得出现空徽章位。
+- 段位由 UI 叠加的金属外环表达（`achievement-medallion.tsx`，外环占直径 6 %）；插画是满幅
+  圆盘，展示时在圆框内放大 1.0526 倍（裁 5 % 直径），避免自带最外圈与外环叠成「双环」。
 - 建议 `<img loading="lazy" decoding="async">`；不要给徽章加 `width/height` 之外的
   布局依赖，避免 CLS。

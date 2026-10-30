@@ -1,18 +1,20 @@
 "use client";
 
-// Summary band for /achievements: the unlocked count as a large number, one
-// tier tally per metal and a distribution bar that shows how the collection
-// is stacked across the five tiers.
+// Summary for /achievements: the title and subtitle on the left, the
+// unlocked count with a thin progress bar on the right and one small line
+// with the five tier tallies. It replaced the old hero band — the wall below
+// carries the badges, so the summary stays a header, not a panel.
 
 import type { AchievementProgress } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
 
 import { Typography } from "@heroui/react";
 
-import { tierBarClass } from "./achievement-art";
+import { tierBarClass } from "./achievement-tiers";
 
 import { TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
+import { formatMessage } from "@/lib/copy/message";
 
 export function AchievementsSummary({
   achievements,
@@ -22,80 +24,67 @@ export function AchievementsSummary({
   locale: Locale;
 }) {
   const unlocked = achievements.filter((entry) => entry.tier >= 1).length;
-  const locked = achievements.length - unlocked;
+  const total = achievements.length;
+  const percent = total > 0 ? Math.round((unlocked / total) * 100) : 0;
 
   return (
-    <section className="border-border/60 bg-surface relative overflow-hidden rounded-3xl border p-5 md:p-6">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(70% 120% at 12% 0%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 62%)",
-        }}
-      />
-
-      <div className="relative flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
         <div className="flex flex-col gap-1">
-          <Typography color="muted" type="body-xs">
+          <Typography type="h2" weight="semibold">
             {achievementCopy(locale, "achievements.ui.summaryLabel")}
           </Typography>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-4xl font-semibold tabular-nums">
-              {unlocked}
-            </span>
-            <span className="text-muted text-lg tabular-nums">
-              / {achievements.length}
-            </span>
-          </div>
+          <Typography color="muted" type="body-xs">
+            {achievementCopy(locale, "achievements.ui.subtitle")}
+          </Typography>
         </div>
 
-        <div className="flex flex-wrap items-end gap-5">
-          {TIERS.map((tier) => {
-            const count = achievements.filter(
-              (entry) => entry.tier === tier.tier,
-            ).length;
-
-            return (
-              <div key={tier.key} className="flex flex-col items-start gap-1">
-                <span className="flex items-center gap-1.5">
-                  <span
-                    aria-hidden="true"
-                    className={`size-2 rounded-full ${tierBarClass(tier.key)}`}
-                  />
-                  <span className="text-muted text-[11px]">
-                    {achievementCopy(locale, tier.copyKey)}
-                  </span>
-                </span>
-                <span className="text-xl leading-none font-semibold tabular-nums">
-                  {count}
-                </span>
-              </div>
-            );
-          })}
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-4xl leading-none font-semibold tabular-nums">
+              {unlocked}
+            </span>
+            <span className="text-muted text-lg tabular-nums">/ {total}</span>
+          </div>
+          <div
+            aria-label={formatMessage(
+              achievementCopy(locale, "achievements.ui.summaryUnlocked"),
+              locale,
+              { unlocked, total },
+            )}
+            aria-valuemax={100}
+            aria-valuemin={0}
+            aria-valuenow={percent}
+            className="bg-default h-1.5 w-40 overflow-hidden rounded-full"
+            role="progressbar"
+          >
+            <span
+              className="bg-accent block h-full rounded-full"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="relative mt-5 flex h-2 items-center gap-1">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
         {TIERS.map((tier) => {
           const count = achievements.filter(
             (entry) => entry.tier === tier.tier,
           ).length;
 
-          return count > 0 ? (
-            <span
-              key={tier.key}
-              className={`h-full rounded-full ${tierBarClass(tier.key)}`}
-              style={{ flexGrow: count }}
-            />
-          ) : null;
+          return (
+            <span key={tier.key} className="flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className={`size-2 rounded-full ${tierBarClass(tier.key)}`}
+              />
+              <span className="text-muted">
+                {achievementCopy(locale, tier.copyKey)}
+              </span>
+              <span className="font-medium tabular-nums">{count}</span>
+            </span>
+          );
         })}
-        {locked > 0 ? (
-          <span
-            className="bg-default h-full rounded-full"
-            style={{ flexGrow: locked }}
-          />
-        ) : null}
       </div>
     </section>
   );

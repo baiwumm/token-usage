@@ -105,10 +105,7 @@ export function AchievementsClient() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <Typography color="muted" type="body-sm">
-          {achievementCopy(locale, "achievements.ui.subtitle")}
-        </Typography>
+      <header className="flex flex-wrap items-center justify-end gap-3">
         <Tooltip delay={0}>
           <Button
             isIconOnly

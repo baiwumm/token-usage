@@ -1,8 +1,8 @@
 "use client";
 
 // One category block of /achievements: heading with the unlocked ratio, then
-// the card grid (single column on phones, two at md, three at lg). Unlocked
-// cards come first — the body sorts each list before it gets here.
+// the badge wall (three columns on phones, four at md, five at lg, six at xl).
+// Unlocked badges come first — the body sorts each list before it gets here.
 
 import type { AchievementProgress } from "@/lib/achievements/types";
 import type { AchievementCategory } from "@/lib/achievements/catalog";
@@ -48,7 +48,7 @@ export function AchievementsSection({
           )}
         </span>
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {achievements.map((progress) => (
           <AchievementCard
             key={progress.id}

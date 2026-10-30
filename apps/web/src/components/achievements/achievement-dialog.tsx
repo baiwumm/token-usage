@@ -11,11 +11,8 @@ import type { Locale } from "@/lib/copy/locale-config";
 import { Lock } from "@gravity-ui/icons";
 import { Modal, Typography } from "@heroui/react";
 
-import {
-  AchievementArt,
-  achievementHue,
-  tierChipClass,
-} from "./achievement-art";
+import { AchievementMedallion } from "./achievement-medallion";
+import { achievementHue, tierChipClass } from "./achievement-tiers";
 import { useAchievementFormat } from "./use-achievements-format";
 
 import { achievementById, TIERS } from "@/lib/achievements/catalog";
@@ -77,10 +74,11 @@ export function AchievementDialog({
                   }}
                 />
                 <div className="relative">
-                  <AchievementArt
+                  <AchievementMedallion
+                    art={catalogEntry?.art}
                     icon={catalogEntry?.icon ?? "tokens"}
                     id={progress.id}
-                    size={124}
+                    size={176}
                     tier={progress.tier}
                   />
                 </div>

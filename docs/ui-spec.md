@@ -228,36 +228,40 @@
   函数预算不足则页面改 Server Component 直出，响应形状不变，见 `docs/achievements-plan.md`
   P1.4）。无筛选条；页头右侧放与 Sessions 同款的刷新图标按钮（`ArrowsRotateRight`，
   刷新中 `animate-spin`，`Tooltip` 显示上次更新时间）。时区取浏览器时区，不写 URL。
-- 摘要（页头，`achievements-summary.tsx`）：不再用「英雄带」大面板——标题 + 副标题
-  （「五档进阶，全部在读取时计算。」），右侧大号已解锁数 x/18（等宽数字）+ 一条细进度条
-  （宽度按比例，`accent` 色）；五档段位计数（铜 / 银 / 金 / 钻 / 王者）压成一行小字行
-  （每档一个金属色圆点 + 数量）。数字走统一 format provider，文案进
-  `lib/copy/achievements.ts`（zh / en）。
+- 摘要（页头，`achievements-summary.tsx`）：不再用「英雄带」大面板——标题（「已解锁成就」，
+  `h2`）+ 副标题（「五档进阶，全部在读取时计算。」），右侧大号已解锁数 x/18（等宽数字）+
+  一条细进度条（宽度按比例，`accent` 色）；五档段位计数（铜 / 银 / 金 / 钻 / 王者）压成一行
+  小字行（每档一个金属色圆点 + 段位名 + 数量）。数字走统一 format provider，文案进
+  `lib/copy/achievements.ts`（zh / en）。窄屏时计数与进度条换行到标题下方。
 - 分区栅格：仍按「里程碑 / 高峰 / 节奏 / 探索」四个分区渲染（`achievements-section.tsx`）：
-  区块标题带色条与「已解锁 n/m」计数；栅格改为徽章墙——每列最小 96–112px
-  （`repeat(auto-fill, minmax(…))`），≥lg 五至六列、md 四列、375px 三列；同分区内按
-  `tier` 降序（已解锁在前，同档保持 catalog 顺序）。
-- 墙格（`achievement-card.tsx`）：无卡片边框、无阴影的独立单元——徽章（96–100px 圆盘）
+  区块标题带色条与「已解锁 n/m」计数；栅格为徽章墙——375px 三列、md 四列、lg 五列、
+  xl 六列（`grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6`，间距 `gap-2`）；
+  同分区内按 `tier` 降序（已解锁在前，同档保持 catalog 顺序）。
+- 墙格（`achievement-card.tsx`）：无卡片边框、无阴影的独立单元——徽章（96px 圆盘）
   + 名称（单行截断）+ 段位文字（已解锁，段位金属色）/ 细进度条（未解锁）。悬停时徽章轻微
   抬升 + 光晕。整格是一个按钮（单一 tab 停靠点，格内不再嵌交互元素）；描述、当前值、
-  下一档差额、达成日期一律下沉到弹窗，不在墙上占位。
+  下一档差额、达成日期一律下沉到弹窗，不在墙上占位。「新」角标贴在徽章右上角。
 - 徽章视觉（`achievement-medallion.tsx`）：位图插画 `public/achievements/<id>.png`
   （256×256 透明 PNG，自有生成资产；风格模板与生成脚本见
   `scripts/admin/achievement-assets/`）。插画本身与段位无关：段位由徽章外的金属外环表达
-  （铜 / 银 / 金 / 钻 / 王者五色），同一张图复用五档；未解锁态灰化 + 右下角锁标；
-  图片加载失败时回退 `achievement-art.tsx` 的参数化 SVG 徽章，页面不得出现空徽章位。
-  颜色不是唯一信息，段位同时以文字显示。`prefers-reduced-motion` 下无动效。
-- 详情：点击墙格打开 `Modal`（`achievement-dialog.tsx`）：大号徽章（160–200px）+ 一句话
+  （铜 / 银 / 金 / 钻 / 王者五色，外环占徽章直径 6 %），同一张图复用五档；插画是满幅圆盘，
+  在圆框内按 1.0526 倍放大裁掉自带最外圈（裁 5 % 直径），避免与外环叠成「双环」；
+  未解锁态灰化 + 右下角锁标；图片加载失败时回退 `achievement-art.tsx` 的参数化 SVG 徽章
+  （`<img onError>` + 挂载后检查 `naturalWidth`，覆盖「SSR 首屏就已 404、onError 收不到
+  事件」的情况），页面不得出现空徽章位。颜色不是唯一信息，段位同时以文字显示。
+  `prefers-reduced-motion` 下无动效。段位金属、芯片色与色相集中在
+  `achievement-tiers.ts`（`achievement-art.tsx` 与徽章组件共用一份）。
+- 详情：点击墙格打开 `Modal`（`achievement-dialog.tsx`）：大号徽章（176px）+ 一句话
   描述 + 当前值与下一档差额 + 五档时间线（已达成显示日期，未达成显示阈值 + 锁）+ 数据覆盖说明
   （Sessions 类与 sync 类成就注明「自 … 起统计」）；分享按钮复用 `ShareCardButton` 体系
   （分享卡实装为 P3 backlog，未实装前不显示按钮）。
 - 新解锁：localStorage 按 userId 记录上次查看时间，与 `achieved_at` 比较；晚于上次查看的
   墙格显示「新」角标；浏览后更新记录。不做全局 toast。
-- 状态：首载骨架按页头摘要 + 四个分区的圆形徽章占位（`achievements-skeleton.tsx`），与
-  真实徽章同尺寸，不画跳高；无任何用量数据时显示锁定栅格 + 配对设备引导；错误态在页面内
-  重试（401 跳登录）。
+- 状态：首载骨架按页头摘要 + 四个分区的圆形徽章占位（`achievements-skeleton.tsx`，占位圆
+  与真实徽章同尺寸 96px），不画跳高；无任何用量数据时显示锁定栅格 + 配对设备引导；错误态
+  在页面内重试（401 跳登录）。
 - 可访问性：进度条带 `aria-label` 与百分比文本；墙格可键盘聚焦（`aria-label` 含名称与
-  段位），弹窗焦点管理走 HeroUI；达成日期用本地化日期格式。
+  段位，锁定时追加进度百分比），弹窗焦点管理走 HeroUI；达成日期用本地化日期格式。
 - 响应式：375px 三列、无页面级横向滚动；弹窗在 `<lg` 走 HeroUI 全屏尺寸。
 - wrapped：年度回顾统计区追加「今年解锁 N 枚」（按 `achieved_at` 落在所选年份），无解锁时
   显示 0；按成就枚数计，同一成就年内连升多档只算 1 枚（任一段位日期落在该年即计入）；
