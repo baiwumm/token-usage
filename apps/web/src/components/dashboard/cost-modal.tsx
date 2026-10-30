@@ -162,7 +162,11 @@ export function CostAnalysisModal({
                       >
                         <span className="flex min-w-0 flex-col">
                           <span className="flex min-w-0 items-center gap-1.5">
-                            <SourceIcon label={entry.model} size={14} />
+                            <SourceIcon
+                              label={entry.model}
+                              size={14}
+                              source={entry.sources[0]}
+                            />
                             <span className="truncate font-medium">
                               {entry.model}
                             </span>

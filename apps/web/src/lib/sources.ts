@@ -142,6 +142,7 @@ const MODEL_PREFIX_LOGOS: Array<[prefix: string, file: string]> = [
   ["zai", "zcode.svg"],
   ["deepseek", "deepseek.svg"],
   ["kimi", "kimi.svg"],
+  ["k3", "kimi.svg"], // Kimi Code emits the bare alias "k3" / "k3-256k".
   ["gemini", "gemini.svg"],
   ["grok", "grok.svg"],
   ["mimo", "mimo.svg"],
@@ -150,6 +151,17 @@ const MODEL_PREFIX_LOGOS: Array<[prefix: string, file: string]> = [
   ["claude", "claude-code.svg"],
   ["step", "stepfun.png"],
   ["minimax", "minimax.svg"],
+  ["hy", "hunyuan.svg"], // Tencent Hunyuan: hy3, hy4-preview.
+  ["nemotron", "nvidia.svg"],
+  // Cline's own gateway routes carry the "cline-free/" prefix.
+  ["cline-free/", "cline.png"],
+  // OpenCode Zen stealth SKUs have no vendor of their own.
+  ["big-pickle", "opencode.svg"],
+  ["union-alpha", "opencode.svg"],
+  ["x-preview", "opencode.svg"],
+  // dsh route behind a renamed MiniMax M3.1 Flash.
+  ["space-bunny", "minimax.svg"],
+  ["doubao", "volcano-ark.svg"],
 ];
 
 export function canonicalSource(source: string): string {

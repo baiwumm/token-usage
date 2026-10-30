@@ -123,7 +123,9 @@ export function SessionsTable({
       {
         id: "models",
         header: copy.list.models,
-        cell: (session) => <ModelChips models={session.models} />,
+        cell: (session) => (
+          <ModelChips models={session.models} source={session.source} />
+        ),
       },
       {
         id: "detail",
@@ -178,7 +180,7 @@ export function SessionsTable({
           </span>
         </div>
         <div className="flex items-end justify-between gap-2">
-          <ModelChips models={session.models} />
+          <ModelChips models={session.models} source={session.source} />
           <Button
             size="sm"
             variant="tertiary"

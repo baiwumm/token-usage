@@ -175,7 +175,11 @@ export function SessionDetailModal({
                                     className="flex min-w-0 items-center gap-1.5"
                                     title={model.model}
                                   >
-                                    <SourceIcon label={model.model} size={14} />
+                                    <SourceIcon
+                                      label={model.model}
+                                      size={14}
+                                      source={session.source}
+                                    />
                                     <span className="truncate font-medium">
                                       {model.model}
                                     </span>

@@ -38,16 +38,21 @@ function colorFor(label: string): string {
 export function SourceIcon({
   label,
   size = 16,
+  source,
 }: {
   label: string;
   size?: number;
+  /** Owning source id — used when the label is a model with no vendor mark
+   *  ("auto", "lite", "custom_model"), so the row falls back to the source
+   *  logo instead of the letter tile. */
+  source?: string;
 }) {
   // Models try vendor prefixes first (deepseek-v4-flash → DeepSeek), sources
   // resolve through the canonical map; both fall back to the tile. A
   // registered dark twin swaps in via .dark stacking both images.
   const logo = useMemo(
-    () => modelLogoFile(label) ?? sourceLogoFile(label),
-    [label],
+    () => modelLogoFile(label) ?? sourceLogoFile(source ?? label),
+    [label, source],
   );
   const darkLogo = useMemo(() => (logo ? darkLogoFile(logo) : null), [logo]);
   const initial = (label.trim() || "?").charAt(0).toUpperCase();

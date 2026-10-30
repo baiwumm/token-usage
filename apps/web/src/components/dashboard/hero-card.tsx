@@ -65,6 +65,7 @@ export function TotalTokensHero({
         model: row.model,
         tokens: row.totals.total_tokens,
         cost: row.totals.total_cost_usd,
+        source: row.sources[0],
       }));
     }
 
@@ -72,6 +73,7 @@ export function TotalTokensHero({
       model: model.model,
       tokens: model.totals.total_tokens,
       cost: Number(model.totals.total_cost_usd),
+      source: openSource?.id,
     }));
   }, [breakdown, openSource, openSourceId]);
   const modalTitle =

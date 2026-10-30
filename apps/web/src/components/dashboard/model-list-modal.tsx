@@ -18,6 +18,9 @@ export interface ModelListRow {
   /** Per-model cost when the caller has it (sources do, detail buckets
    * don't — the series payload only carries tokens per model). */
   cost?: number | null;
+  /** Owning source id when the caller knows it — lets models without a
+   *  vendor mark ("auto", "lite") fall back to the source logo. */
+  source?: string;
 }
 
 export function ModelListModal({
@@ -90,7 +93,11 @@ export function ModelListModal({
                               className="flex min-w-0 items-center gap-1.5"
                               title={row.model}
                             >
-                              <SourceIcon label={row.model} size={14} />
+                              <SourceIcon
+                                label={row.model}
+                                size={14}
+                                source={row.source}
+                              />
                               <span className="truncate font-medium">
                                 {row.model}
                               </span>

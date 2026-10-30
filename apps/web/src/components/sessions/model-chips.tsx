@@ -19,7 +19,15 @@ export function sortedModels(models: SessionModel[]): SessionModel[] {
 
 // Session models as chips, biggest first; the first three are named and the
 // rest collapse into a "+N" chip (docs/ui-spec.md Sessions).
-export function ModelChips({ models }: { models: SessionModel[] }) {
+export function ModelChips({
+  models,
+  source,
+}: {
+  models: SessionModel[];
+  /** Owning session source — lets models without a vendor mark fall back to
+   *  the source logo instead of a letter tile. */
+  source?: string;
+}) {
   const [locale] = useLocale();
   const copy = SESSIONS_COPY[locale];
 
@@ -36,7 +44,7 @@ export function ModelChips({ models }: { models: SessionModel[] }) {
     <div className="flex flex-wrap gap-1">
       {ordered.slice(0, 3).map((model) => (
         <Chip key={model.model} className="max-w-40" size="sm" variant="soft">
-          <SourceIcon label={model.model} size={12} />
+          <SourceIcon label={model.model} size={12} source={source} />
           <span className="truncate">{model.model}</span>
         </Chip>
       ))}

@@ -17,12 +17,15 @@ CLI 采集端 [`packages/cli/`](./packages/cli/) 由 [TokenTracker](https://gith
 
 `apps/web/public/brand-logos/` 下的图标用于标识用量来源对应的 AI 编码工具（Anthropic Claude
 Code、OpenAI Codex/ChatGPT、Cursor、GitHub Copilot、Google Gemini、DeepSeek、Moonshot Kimi、
-xAI Grok、TRAE、Zed、Qoder、Kiro 等）。名称与图形是各厂商的商标，此处仅作来源指示
-（nominative use），不代表任何隶属或背书关系。
+xAI Grok、TRAE、Zed、Qoder、Kiro、MiniMax、腾讯混元、NVIDIA Nemotron 等）。名称与图形是各厂商
+的商标，此处仅作来源指示（nominative use），不代表任何隶属或背书关系。
 
 其中多数图标沿用上游 TokenTracker（MIT）随包的品牌资产，补充图标（如 `workbuddy.svg`）
 取自 juejin-usage（MIT）；暗色变体（`*-dark.*`）沿用同一套资产并重着色为 `currentColor`
 以便跟随主题。新增或替换图标时，请在此登记来源。
+
+后补的厂商标（`minimax.svg`、`hunyuan.svg`、`nvidia.svg`）由操作者从公开图标库
+（iconfont 导出，文件内保留 `p-id` 图标库元数据）取得，仅作来源指示使用。
 
 ## Maple Mono CN 字体
 

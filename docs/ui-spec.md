@@ -106,10 +106,12 @@
 5. **双栏**：Top 模型（`SourceIcon`、名称、Token、占比 `Meter`、成本，前 8 条 +
    「成本分析」按钮打开成本分析 Modal）；来源卡（`SourceIcon`、占比 + 成本，随设备筛选，
    取 `model-breakdown`）。
-   来源/模型图标走 `components/dashboard/source-icon.tsx`：`public/brand-logos/`（品牌商标，
+   来源/模型图标走 `components/source-icon.tsx`：`public/brand-logos/`（品牌商标，
    来源与许可登记在根 `THIRD_PARTY_NOTICES.md`）优先，source 全称映射 + 模型名
-   前缀映射（deepseek/kimi/gemini/grok/mimo/gpt/composer/claude），无映射回退确定性
-   色块；新增品牌 = 放 logo 文件 + 在 `SOURCE_LOGOS` 登记。暗色变体：深色主题下
+   前缀映射（deepseek/kimi/k3/gemini/grok/mimo/gpt/composer/claude/step/minimax/
+   hy/nemotron/cline-free/opencode 隐身别名等），仍无映射时回落到该行的来源标
+   （模型行传 `source` 属性；两者都无才退确定性色块）；新增品牌 = 放 logo 文件 +
+   在 `SOURCE_LOGOS` / `MODEL_PREFIX_LOGOS` 登记。暗色变体：深色主题下
    看不清的深色标（如黑底 ChatGPT 形状的 codex 新标），放同扩展名的
    `<name>-dark.<ext>`（如 `codex-dark.svg`）并把浅色文件名加进 `sources.ts` 的
    `DARK_LOGO_FILES`，渲染层自动叠双图按 `.dark` 切换；未登记的 `-dark` 文件不生效。
