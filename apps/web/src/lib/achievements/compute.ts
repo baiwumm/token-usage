@@ -10,6 +10,8 @@
 // the calibration run. Day boundaries, weekends and nights follow the caller's
 // timezone via lib/account/series, matching the heatmap and sessions pages.
 
+import type { AchievementProgress, AchievementsPayload } from "./types";
+
 import {
   ACHIEVEMENTS,
   CACHE_ALCHEMY_MIN_DAY_TOKENS,
@@ -17,11 +19,11 @@ import {
   nextThreshold,
   tierForValue,
   type Achievement,
-  type AchievementCategory,
-  type AchievementUnit,
   type Thresholds,
   type TierKey,
 } from "./catalog";
+
+export type { AchievementProgress, AchievementsPayload } from "./types";
 
 import {
   numberOr0,
@@ -41,22 +43,6 @@ const SYNC_SUCCESS_RESULTS = new Set(["ok", "partial"]);
 export type DayPoint = {
   day: string;
   value: number;
-};
-
-export type AchievementProgress = {
-  id: string;
-  category: AchievementCategory;
-  unit: AchievementUnit;
-  tier: number;
-  value: number;
-  thresholds: Thresholds;
-  next_threshold: number | null;
-  achieved_at: Record<TierKey, string | null>;
-};
-
-export type AchievementsPayload = {
-  generated_at: string;
-  achievements: AchievementProgress[];
 };
 
 export type AchievementsInput = {
