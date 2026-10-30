@@ -228,18 +228,25 @@
   函数预算不足则页面改 Server Component 直出，响应形状不变，见 `docs/achievements-plan.md`
   P1.4）。无筛选条；页头右侧放与 Sessions 同款的刷新图标按钮（`ArrowsRotateRight`，
   刷新中 `animate-spin`，`Tooltip` 显示上次更新时间）。时区取浏览器时区，不写 URL。
-- 摘要：页头一行统计——已解锁 x/18、各段位数量（铜 / 银 / 金 / 钻 / 王者），数字走统一
-  format provider；文案进 `lib/copy/achievements.ts`（zh / en）。
-- 分区栅格：按「里程碑 / 高峰 / 节奏 / 探索」四个分区渲染 `Card` 栅格（≥lg 三列、md
-  两列、移动端单列），已解锁在前、未解锁在后并显示当前值与下一档进度。每张卡为
-  `achievement-card.tsx`：medallion（图标 + 段位渐变环 + 五段刻度点）、名称、一句话描述、
-  进度条（HeroUI `Progress`）、已解锁时的达成日期；未解锁卡降低饱和度但不隐藏阈值。
-- 段位视觉：铜 / 银 / 金 / 钻沿用金属渐变语义，王者用黑金 / 紫金镭射渐变 + 轻量 CSS
-  流光；`prefers-reduced-motion` 下静态。颜色不是唯一信息，卡片与弹窗同时显示段位文字。
-- 详情：点击卡片打开 `Modal`（`achievement-dialog.tsx`）：大道具 medallion、五档时间线
-  （每档达成日期，未达成显示阈值）、当前值与下一档差额、数据覆盖说明（Sessions 类与
-  sync 类成就注明「自 … 起统计」）；分享按钮复用 `ShareCardButton` 体系（分享卡实装为
-  P3 backlog，未实装前不显示按钮）。
+- 摘要：页头下方的「英雄带」面板（`achievements-summary.tsx`）——左侧大号已解锁数 x/18，
+  右侧五档段位计数（铜 / 银 / 金 / 钻 / 王者），底部一条按段位着色的分布条（未解锁段用
+  default 色，`flexGrow` 按数量分配）；数字走统一 format provider，文案进
+  `lib/copy/achievements.ts`（zh / en）。
+- 分区栅格：按「里程碑 / 高峰 / 节奏 / 探索」四个分区渲染（`achievements-section.tsx`）：
+  区块标题带色条与「已解锁 n/m」计数，栅格 ≥lg 三列、md 两列、移动端单列；同分区内按
+  `tier` 降序（已解锁在前，同档保持 catalog 顺序）。
+- 卡片（`achievement-card.tsx`）：徽章画廊式居中布局——生成式 SVG 徽章、名称、段位 chip 与
+  达成日期、两行描述、五段进度轨（每档一段，已达成段填满，下一档按区间比例填充）与
+  当前值 / 下一档差额。未解锁卡保留全部数字与阈值，只把徽章灰化并加锁标，不降饱和度、
+  不隐藏阈值。整卡是一个透明 overlay 按钮（单一 tab 停靠点，卡片内不再嵌交互元素）。
+- 徽章视觉（`achievement-art.tsx`）：参数化 SVG，无位图资产——段位决定金属环（铜 / 银 /
+  金 / 钻 / 王者），每条成就自带色相驱动面部辉光与外圈晕染，未解锁态灰化 + 右下角锁标，
+  钻 / 王者另有星辉射线；`prefers-reduced-motion` 下无动效。颜色不是唯一信息，卡片与
+  弹窗同时显示段位文字。
+- 详情：点击卡片打开 `Modal`（`achievement-dialog.tsx`）：大号徽章 + 顶部色相晕染、当前值
+  与下一档差额、五档时间线（已达成显示日期，未达成显示阈值 + 锁）、数据覆盖说明
+  （Sessions 类与 sync 类成就注明「自 … 起统计」）；分享按钮复用 `ShareCardButton` 体系
+  （分享卡实装为 P3 backlog，未实装前不显示按钮）。
 - 新解锁：localStorage 按 userId 记录上次查看时间，与 `achieved_at` 比较；晚于上次查看的
   卡片显示「新」`Chip`；浏览后更新记录。不做全局 toast。
 - 状态：首载骨架按摘要 + 四个分区占位；无任何用量数据时显示锁定栅格 + 配对设备引导；
@@ -248,7 +255,8 @@
   达成日期用本地化日期格式。
 - 响应式：375px 单列、无页面级横向滚动；弹窗在 `<lg` 走 HeroUI 全屏尺寸。
 - wrapped：年度回顾统计区追加「今年解锁 N 枚」（按 `achieved_at` 落在所选年份），无解锁时
-  显示 0；不新增分享卡风格。
+  显示 0；按成就枚数计，同一成就年内连升多档只算 1 枚（任一段位日期落在该年即计入）；
+  不新增分享卡风格。
 
 ### 服务状态（`/service-status`）
 

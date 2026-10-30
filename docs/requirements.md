@@ -117,4 +117,9 @@ upsert 键与 last-wins 语义跨版本保持不变（对账基线）。
 - Sessions 类成就明确标注「自 Sessions 数据可用起统计」，无会话数据不影响其余成就；
 - 页面 Loading / Empty / Error 三态齐全，中英文案完整，375px 无横向滚动；
 - 阈值经真实实例校准后定稿；守卫测试（阈值严格递增、指标单调白名单、文案完整性）全绿；
+- 阈值唯一真源 `apps/web/src/lib/achievements/catalog.ts`（前端只读 payload 下发的值）；2026-10-30
+  按真实实例校准定稿（15 个月 / 21.66B tokens / 94 活跃日 / 636 会话 / 16 个 source → 7 条钻石、
+  0 条王者），改阈值必须同步 `catalog.ts`、守卫测试与 `docs/achievements-plan.md` §2 表格；
+- 第 19 条候选 `deep_thinker`（累计 reasoning tokens）未上线：校准实例 reasoning 覆盖率 36.5%，
+  低于 50% 门槛；阈值草案保留在 `docs/achievements-plan.md` §2.3，覆盖率提升后复议；
 - `pnpm verify` 全绿；数据通路函数预算已核对（超限时改 Server Component 直出）。
