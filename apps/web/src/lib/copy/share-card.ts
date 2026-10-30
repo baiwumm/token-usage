@@ -71,6 +71,19 @@ export interface ShareCardCopy {
     label: string;
     brand: string;
   };
+  /** Achievement medallion card (/achievements → 分享成就). */
+  achievement: {
+    title: string;
+    subtitle: string;
+    /** Entry button on the achievement detail dialog. */
+    share: string;
+    currentValue: string;
+    unlockedOn: string;
+    handleFallback: string;
+    note: string;
+    renderFailed: string;
+    brand: string;
+  };
 }
 
 export const SHARE_CARD_COPY: Record<"zh" | "en", ShareCardCopy> = {
@@ -145,6 +158,17 @@ export const SHARE_CARD_COPY: Record<"zh" | "en", ShareCardCopy> = {
       label: "厂牌",
       brand: "自托管 Token 用量追踪",
     },
+    achievement: {
+      title: "分享成就",
+      subtitle: "把这张徽章卡片分享出去。",
+      share: "分享成就",
+      currentValue: "当前值",
+      unlockedOn: "{date} 解锁",
+      handleFallback: "一位开发者",
+      note: "卡片只包含成就的聚合数据，不含用量明细。",
+      renderFailed: "卡片渲染失败，请重新打开。",
+      brand: "自托管用量追踪 · token-usage.cc",
+    },
   },
   en: {
     variants: {
@@ -216,6 +240,17 @@ export const SHARE_CARD_COPY: Record<"zh" | "en", ShareCardCopy> = {
       runtime: "TOTAL RUNTIME",
       label: "LABEL",
       brand: "Self-hosted token tracking",
+    },
+    achievement: {
+      title: "Share achievement",
+      subtitle: "Put this badge card out into the world.",
+      share: "Share achievement",
+      currentValue: "CURRENT VALUE",
+      unlockedOn: "Unlocked {date}",
+      handleFallback: "A developer",
+      note: "The card carries aggregate achievement data only — no usage details.",
+      renderFailed: "Could not render the card. Try reopening it.",
+      brand: "SELF-HOSTED TRACKING · token-usage.cc",
     },
   },
 };

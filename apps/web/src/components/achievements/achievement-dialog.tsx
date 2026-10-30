@@ -12,9 +12,10 @@
 import type { AchievementProgress } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
 
-import { Modal, Tooltip, Typography } from "@heroui/react";
+import { ArrowRightFromSquare } from "@gravity-ui/icons";
+import { Button, Modal, Tooltip, Typography } from "@heroui/react";
 
-import { AchievementMedallion } from "./achievement-medallion";
+import { AchievementCoin } from "./achievement-coin";
 import { TierBadge } from "./achievement-tier-badge";
 import { achievementHue, tierGradient } from "./achievement-tiers";
 import { useAchievementFormat } from "./use-achievements-format";
@@ -26,18 +27,22 @@ import {
 } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { formatMessage } from "@/lib/copy/message";
+import { SHARE_CARD_COPY } from "@/lib/copy/share-card";
 
 export function AchievementDialog({
   progress,
   open,
   locale,
   onOpenChange,
+  onShare,
 }: {
   /** Last selection, kept mounted while the close animation runs. */
   progress: AchievementProgress | null;
   open: boolean;
   locale: Locale;
   onOpenChange: (open: boolean) => void;
+  /** Close this dialog and open the share card for the same achievement. */
+  onShare: () => void;
 }) {
   const format = useAchievementFormat();
   const catalogEntry = progress ? achievementById(progress.id) : undefined;
@@ -100,12 +105,10 @@ export function AchievementDialog({
                   }}
                 />
                 <div className="relative">
-                  <AchievementMedallion
-                    art={catalogEntry?.art}
-                    className="w-44"
-                    icon={catalogEntry?.icon ?? "tokens"}
-                    id={progress.id}
-                    tier={progress.tier}
+                  <AchievementCoin
+                    locale={locale}
+                    open={open && progress != null}
+                    progress={progress}
                   />
                 </div>
                 <Modal.Heading className="relative">{name}</Modal.Heading>
@@ -337,6 +340,18 @@ export function AchievementDialog({
                       {coverage}
                     </Typography>
                   </div>
+                ) : null}
+
+                {progress.tier >= 1 ? (
+                  <Button
+                    fullWidth
+                    className="mt-4"
+                    variant="secondary"
+                    onPress={onShare}
+                  >
+                    <ArrowRightFromSquare className="size-4" />
+                    {SHARE_CARD_COPY[locale].achievement.share}
+                  </Button>
                 ) : null}
               </Modal.Body>
             </>

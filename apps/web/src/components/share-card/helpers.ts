@@ -134,6 +134,34 @@ export function seedFrom(text: string): number {
   return hash >>> 0;
 }
 
+// One request per source: the achievement card is redrawn on every dialog
+// open, and the badge bitmaps never change within a session.
+const shareImages = new Map<string, Promise<HTMLImageElement | null>>();
+
+/**
+ * Load a same-origin image for the canvas (the badge artwork). Resolves null
+ * when it cannot load — the caller draws its own placeholder, so a missing
+ * asset never breaks the export.
+ */
+export function loadShareImage(src: string): Promise<HTMLImageElement | null> {
+  const cached = shareImages.get(src);
+
+  if (cached) return cached;
+
+  const request = new Promise<HTMLImageElement | null>((resolve) => {
+    const image = new Image();
+
+    image.decoding = "async";
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+
+  shareImages.set(src, request);
+
+  return request;
+}
+
 export interface MonthGrid {
   month: number;
   /** 7-column (Sunday-start) rows; null pads leading/trailing days. */
