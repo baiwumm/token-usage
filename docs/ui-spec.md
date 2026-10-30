@@ -238,10 +238,10 @@
   区块标题带色条与「已解锁 n/m」计数；栅格为徽章墙——375px 三列、md 四列、lg 五列、
   xl 六列（`grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6`，间距 `gap-2`）；
   同分区内按 `tier` 降序（已解锁在前，同档保持 catalog 顺序）。
-- 墙格（`achievement-card.tsx`）：无卡片边框、无阴影的独立单元——徽章（96px 圆盘）
-  + 名称（单行截断）+ 段位徽章（已解锁，渐变标签）/ 细进度条（未解锁）。悬停时徽章轻微
-  抬升 + 光晕。整格是一个按钮（单一 tab 停靠点，格内不再嵌交互元素）；描述、当前值、
-  下一档差额、达成日期一律下沉到弹窗，不在墙上占位。「新」角标贴在徽章右上角。
+- 墙格（`achievement-card.tsx`）：无卡片边框、无阴影的独立单元——徽章（96px 圆盘，
+  ≥md 112px）+ 名称（单行截断）+ 段位徽章（已解锁，渐变标签）/ 细进度条（未解锁）。悬停时
+  徽章轻微抬升 + 光晕。整格是一个按钮（单一 tab 停靠点，格内不再嵌交互元素）；描述、
+  当前值、下一档差额、达成日期一律下沉到弹窗，不在墙上占位。「新」角标贴在徽章右上角。
 - 段位标签（`achievement-tier-badge.tsx`）：段位用**金属渐变标签**呈现，段位名写全
   （青铜 / 白银 / 黄金 / 钻石 / 王者，英文 Bronze / Silver / Gold / Diamond / King）；
   渐变坡道（浅 → 中 → 深 + 深色字）定义在 `achievement-tiers.ts` 的 `TIER_RAMPS`，
@@ -250,13 +250,17 @@
 - 徽章视觉（`achievement-medallion.tsx`）：位图插画 `public/achievements/<id>.png`
   （256×256 透明 PNG，自有生成资产；风格模板与生成脚本见
   `scripts/admin/achievement-assets/`）。插画本身与段位无关：段位由徽章外的金属外环表达
-  （青铜 / 白银 / 黄金 / 钻石 / 王者五色，外环占徽章直径 6 %），同一张图复用五档；插画是满幅圆盘，
-  在圆框内按 1.0526 倍放大裁掉自带最外圈（裁 5 % 直径），避免与外环叠成「双环」；
-  未解锁态灰化 + 右下角锁标；图片加载失败时回退 `achievement-art.tsx` 的参数化 SVG 徽章
-  （`<img onError>` + 挂载后检查 `naturalWidth`，覆盖「SSR 首屏就已 404、onError 收不到
-  事件」的情况），页面不得出现空徽章位。颜色不是唯一信息，段位同时以文字显示。
-  `prefers-reduced-motion` 下无动效。段位金属、芯片色与色相集中在
-  `achievement-tiers.ts`（`achievement-art.tsx` 与徽章组件共用一份）。
+  （青铜 / 白银 / 黄金 / 钻石 / 王者五色，外环占徽章直径 6 %），同一张图复用五档；徽章内部
+  几何全部按比例（外环 6 %、裁切 5 %），因此徽章尺寸由 CSS 决定（`w-24 md:w-28`）。
+  **尺寸归一化**：出图 QA 允许硬币占画幅 70–95 %，18 张资产的实际占幅差 22 %，直接展示会
+  出现「有的徽章大、有的徽章小」；`lib/achievements/art-fit.ts` 记录每张图的实测硬币半径
+  （占画幅半宽的比例），徽章按 `(1 + 裁切) ÷ 半径` 缩放，所有硬币在墙上同大、裁切一致。
+  守卫测试 `tests/unit/achievement-art-fit.test.ts` 直接解 PNG 的 alpha 圆盘重测半径，
+  资产重新生成后表对不上就会失败。未解锁态灰化 + 右下角锁标；图片加载失败时回退
+  `achievement-art.tsx` 的参数化 SVG 徽章（`<img onError>` + 挂载后检查 `naturalWidth`，
+  覆盖「SSR 首屏就已 404、onError 收不到事件」的情况），页面不得出现空徽章位。颜色不是
+  唯一信息，段位同时以文字显示。`prefers-reduced-motion` 下无动效。段位金属、渐变坡道与
+  色相集中在 `achievement-tiers.ts`（`achievement-art.tsx` 与徽章组件共用一份）。
 - 详情：点击墙格打开 `Modal`（`achievement-dialog.tsx`）：大号徽章（176px）+ 一句话
   描述 + 数据覆盖说明（Sessions 类与 sync 类成就注明「自 … 起统计」）；分享按钮复用
   `ShareCardButton` 体系（分享卡实装为 P3 backlog，未实装前不显示按钮）。
@@ -272,8 +276,8 @@
 - 新解锁：localStorage 按 userId 记录上次查看时间，与 `achieved_at` 比较；晚于上次查看的
   墙格显示「新」角标；浏览后更新记录。不做全局 toast。
 - 状态：首载骨架按页头摘要 + 四个分区的圆形徽章占位（`achievements-skeleton.tsx`，占位圆
-  与真实徽章同尺寸 96px），不画跳高；无任何用量数据时显示锁定栅格 + 配对设备引导；错误态
-  在页面内重试（401 跳登录）。
+  与真实徽章同尺寸 96px / ≥md 112px），不画跳高；无任何用量数据时显示锁定栅格 + 配对设备
+  引导；错误态在页面内重试（401 跳登录）。
 - 可访问性：进度条带 `aria-label` 与百分比文本；墙格可键盘聚焦（`aria-label` 含名称与
   段位，锁定时追加进度百分比），弹窗焦点管理走 HeroUI；达成日期用本地化日期格式。
 - 响应式：375px 三列、无页面级横向滚动；弹窗在 `<lg` 走 HeroUI 全屏尺寸。

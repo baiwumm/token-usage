@@ -62,9 +62,9 @@ export function AchievementCard({
         <span className="relative inline-flex">
           <AchievementMedallion
             art={catalogEntry?.art}
+            className="w-24 md:w-28"
             icon={catalogEntry?.icon ?? "tokens"}
             id={progress.id}
-            size={96}
             tier={progress.tier}
           />
           {isNew ? (

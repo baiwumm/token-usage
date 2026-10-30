@@ -102,9 +102,9 @@ export function AchievementDialog({
                 <div className="relative">
                   <AchievementMedallion
                     art={catalogEntry?.art}
+                    className="w-44"
                     icon={catalogEntry?.icon ?? "tokens"}
                     id={progress.id}
-                    size={176}
                     tier={progress.tier}
                   />
                 </div>

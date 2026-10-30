@@ -64,13 +64,14 @@ export function AchievementArt({
   id,
   icon,
   tier,
-  size = 96,
+  className,
 }: {
   id: string;
   icon: AchievementIcon;
   /** 0 = locked, 1–5 = current tier. */
   tier: number;
-  size?: number;
+  /** Box size; the badge scales with it. */
+  className?: string;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const { hue, accent } = achievementHue(id);
@@ -86,7 +87,9 @@ export function AchievementArt({
     : { inner: "#5b626e", mid: "#262a31", outer: "#131519" };
 
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div
+      className={`relative aspect-square shrink-0 ${className ?? "size-24"}`}
+    >
       <svg aria-hidden="true" className="size-full" viewBox="0 0 120 120">
         <defs>
           <linearGradient
@@ -221,10 +224,8 @@ export function AchievementArt({
       <span className="absolute inset-0 grid place-items-center">
         <Glyph
           aria-hidden="true"
-          className={unlocked ? "text-white/95" : "text-white/45"}
+          className={`h-[38%] w-[38%] ${unlocked ? "text-white/95" : "text-white/45"}`}
           style={{
-            width: size * 0.38,
-            height: size * 0.38,
             filter: unlocked
               ? `drop-shadow(0 2px 6px hsl(${accent} 90% 45% / 0.55))`
               : "none",
@@ -233,8 +234,8 @@ export function AchievementArt({
       </span>
 
       {unlocked ? null : (
-        <span className="absolute right-0 bottom-0 grid size-6 place-items-center rounded-full bg-default ring-2 ring-surface">
-          <Lock aria-hidden="true" className="size-3 text-muted" />
+        <span className="bg-default absolute right-0 bottom-0 grid h-[25%] w-[25%] place-items-center rounded-full ring-2 ring-surface">
+          <Lock aria-hidden="true" className="h-1/2 w-1/2 text-muted" />
         </span>
       )}
     </div>

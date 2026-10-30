@@ -9,7 +9,7 @@ import { Skeleton } from "@heroui/react";
 function WallCellSkeleton() {
   return (
     <div className="flex flex-col items-center gap-2 p-1">
-      <Skeleton className="size-24 rounded-full" />
+      <Skeleton className="size-24 rounded-full md:size-28" />
       <Skeleton className="h-3.5 w-20 rounded-lg" />
       <Skeleton className="h-3 w-12 rounded-lg" />
     </div>
