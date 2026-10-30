@@ -1,8 +1,9 @@
 "use client";
 
-// One achievement card: medallion + name + description, the tier it reached,
-// progress towards the next threshold and the day the current tier landed.
-// Locked cards dim but keep their numbers on screen (docs/ui-spec.md 成就).
+// One achievement card: generated badge on top, name + tier label, the
+// description, a five-segment track and the numbers behind it. Locked cards
+// keep their numbers on screen while the badge dims and carries a lock
+// (docs/ui-spec.md 成就).
 //
 // The whole card is one press target: an invisible button overlays the card so
 // the grid stays keyboard reachable without nesting interactive elements.
@@ -10,16 +11,21 @@
 import type { AchievementProgress } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
 
-import { Card, Chip, Meter, Typography } from "@heroui/react";
+import { Card } from "@heroui/react";
 
-import { AchievementMedallion } from "./achievements-medallion";
+import {
+  AchievementArt,
+  achievementHue,
+  tierBarClass,
+  tierChipClass,
+} from "./achievement-art";
 import { useAchievementFormat } from "./use-achievements-format";
 
 import { achievementById, TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { formatMessage } from "@/lib/copy/message";
 
-/** Lower bound of the next step: the previous threshold, or zero at bronze. */
+/** Share of the next step already covered (0–1). */
 function progressRatio(
   value: number,
   thresholds: readonly number[],
@@ -48,7 +54,10 @@ export function AchievementCard({
 }) {
   const format = useAchievementFormat();
   const catalogEntry = achievementById(progress.id);
-  const tier = TIERS.find((entry) => entry.tier === progress.tier) ?? null;
+  const currentTier =
+    TIERS.find((entry) => entry.tier === progress.tier) ?? null;
+  const nextTier =
+    TIERS.find((entry) => entry.tier === progress.tier + 1) ?? null;
   const name = achievementCopy(
     locale,
     catalogEntry?.copyKey ?? `achievements.${progress.id}.name`,
@@ -57,105 +66,115 @@ export function AchievementCard({
     locale,
     catalogEntry?.descriptionKey ?? `achievements.${progress.id}.description`,
   );
-  const achievedDay = tier
-    ? progress.achieved_at[tier.key]
-    : progress.achieved_at.bronze;
+  const achievedDay = currentTier
+    ? progress.achieved_at[currentTier.key]
+    : null;
   const ratio = progressRatio(
     progress.value,
     progress.thresholds,
     progress.next_threshold,
   );
   const unitLabel = (value: number) => format(progress.unit, value);
+  const { hue } = achievementHue(progress.id);
 
   return (
-    <Card
-      className={`relative gap-3 p-4 ${progress.tier === 0 ? "opacity-80" : ""}`}
-    >
-      <Card.Header className="flex-row items-start gap-3 p-0">
-        <AchievementMedallion
-          icon={catalogEntry?.icon ?? "tokens"}
-          tier={progress.tier}
-        />
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex items-center gap-1.5">
-            <Card.Title className="truncate text-sm">{name}</Card.Title>
-            {isNew ? (
-              <Chip
-                aria-label={achievementCopy(locale, "achievements.ui.newBadge")}
-                className="h-5 shrink-0 px-1.5 text-[10px]"
-                color="accent"
-                size="sm"
-                variant="soft"
-              >
-                {achievementCopy(locale, "achievements.ui.newBadge")}
-              </Chip>
-            ) : null}
-          </div>
-          <Card.Description className="line-clamp-2 text-xs">
-            {description}
-          </Card.Description>
-        </div>
-        {tier ? (
-          <Chip
-            className="shrink-0"
-            color={progress.tier === TIERS.length ? "accent" : "default"}
-            size="sm"
-            variant="soft"
-          >
-            {achievementCopy(locale, tier.copyKey)}
-          </Chip>
-        ) : null}
-      </Card.Header>
+    <Card className="group relative items-center gap-0 overflow-hidden border border-border/60 p-5 pt-6 text-center transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+      {/* Wash of the achievement's own hue behind the badge. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 -top-20 h-44"
+        style={{
+          background: `radial-gradient(58% 100% at 50% 0%, hsl(${hue} 88% 62% / 0.2), transparent 72%)`,
+        }}
+      />
 
-      <Card.Content className="gap-1.5 p-0">
-        <Meter
-          aria-label={`${name} ${unitLabel(progress.value)}`}
-          value={ratio * 100}
-        >
-          <Meter.Track className="h-1.5">
-            <Meter.Fill
-              className={progress.tier >= 4 ? "bg-accent" : "bg-foreground/45"}
-            />
-          </Meter.Track>
-        </Meter>
-        <div className="flex items-baseline justify-between gap-2 tabular-nums text-xs">
-          <span className="text-foreground/75">
-            {formatMessage(
-              achievementCopy(locale, "achievements.ui.cardCurrent"),
-              locale,
-              { value: unitLabel(progress.value) },
-            )}
-          </span>
-          <span className="text-muted">
-            {progress.next_threshold == null
-              ? achievementCopy(locale, "achievements.ui.cardMaxed")
-              : formatMessage(
-                  achievementCopy(locale, "achievements.ui.cardNext"),
-                  locale,
-                  {
-                    tier: achievementCopy(
-                      locale,
-                      TIERS[Math.min(progress.tier, TIERS.length - 1)].copyKey,
-                    ),
-                    gap: unitLabel(progress.next_threshold - progress.value),
-                  },
-                )}
-          </span>
-        </div>
-        <Typography className="tabular-nums" color="muted" type="body-xs">
+      {isNew ? (
+        <span className="bg-accent text-accent-foreground absolute top-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+          {achievementCopy(locale, "achievements.ui.newBadge")}
+        </span>
+      ) : null}
+
+      <AchievementArt
+        icon={catalogEntry?.icon ?? "tokens"}
+        id={progress.id}
+        size={96}
+        tier={progress.tier}
+      />
+
+      <Card.Title className="mt-4 text-sm">{name}</Card.Title>
+
+      <div className="mt-1.5 flex items-center gap-2">
+        <span className={tierChipClass(progress.tier)}>
+          {currentTier
+            ? achievementCopy(locale, currentTier.copyKey)
+            : achievementCopy(locale, "achievements.ui.cardLocked")}
+        </span>
+        <span className="text-muted text-[11px] tabular-nums">
           {achievedDay
             ? formatMessage(
                 achievementCopy(locale, "achievements.ui.cardAchieved"),
                 locale,
                 { date: achievedDay },
               )
-            : achievementCopy(locale, "achievements.ui.cardLocked")}
-        </Typography>
+            : null}
+        </span>
+      </div>
+
+      <Card.Description className="mt-2 line-clamp-2 min-h-8 text-xs">
+        {description}
+      </Card.Description>
+
+      <Card.Content className="mt-3 w-full gap-0 p-0">
+        <div
+          aria-label={`${name} ${unitLabel(progress.value)}`}
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={Math.round(ratio * 100)}
+          className="flex w-full items-center gap-1"
+          role="progressbar"
+        >
+          {TIERS.map((tier) => {
+            const fill =
+              progress.tier >= tier.tier
+                ? 1
+                : tier.tier === progress.tier + 1
+                  ? ratio
+                  : 0;
+
+            return (
+              <span
+                key={tier.key}
+                className="bg-default h-1.5 flex-1 overflow-hidden rounded-full"
+              >
+                <span
+                  className={`block h-full rounded-full ${tierBarClass(tier.key)}`}
+                  style={{ width: `${fill * 100}%` }}
+                />
+              </span>
+            );
+          })}
+        </div>
+
+        <div className="mt-2 flex w-full items-baseline justify-between gap-2 text-xs tabular-nums">
+          <span className="font-medium">{unitLabel(progress.value)}</span>
+          <span className="text-muted">
+            {nextTier == null
+              ? achievementCopy(locale, "achievements.ui.cardMaxed")
+              : formatMessage(
+                  achievementCopy(locale, "achievements.ui.cardNext"),
+                  locale,
+                  {
+                    tier: achievementCopy(locale, nextTier.copyKey),
+                    gap: unitLabel(progress.next_threshold! - progress.value),
+                  },
+                )}
+          </span>
+        </div>
       </Card.Content>
 
       <button
         aria-label={`${name} — ${achievementCopy(locale, "achievements.ui.viewDetail")}`}
-        className="absolute inset-0 cursor-pointer rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="focus-visible:outline-accent absolute inset-0 cursor-pointer rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2"
         type="button"
         onClick={onOpen}
       />

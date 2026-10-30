@@ -33,17 +33,20 @@ export function AchievementsSection({
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <Typography type="h5" weight="semibold">
-          {achievementCopy(locale, `achievements.ui.category.${category}`)}
-        </Typography>
-        <Typography className="tabular-nums" color="muted" type="body-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span aria-hidden="true" className="bg-accent h-4 w-1 rounded-full" />
+          <Typography type="h5" weight="semibold">
+            {achievementCopy(locale, `achievements.ui.category.${category}`)}
+          </Typography>
+        </div>
+        <span className="border-border/60 bg-surface text-muted rounded-full border px-2 py-0.5 text-[11px] tabular-nums">
           {formatMessage(
             achievementCopy(locale, "achievements.ui.sectionProgress"),
             locale,
             { unlocked, total: achievements.length },
           )}
-        </Typography>
+        </span>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
         {achievements.map((progress) => (

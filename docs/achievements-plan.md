@@ -312,6 +312,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 2026-10-30 | P0 | ✅ | 本次提交 | catalog（18 条 × 5 档、阈值唯一真源）+ compute（五类扫描、本地日 `achieved_at`、含吊销设备）+ 34 条守卫测试 + 只读校准脚本 |
 | 2026-10-30 | P0.5 校准 | ✅ | 本次提交 | 真实实例校准：0 王者 / 7 钻（15 个月、21.66B tokens、94 活跃日）；改 `wordsmith` 50M/100M、`cache_alchemy` 70/85/93/98/99.8%、`marathon_session` 2h/6h/24h/3d/14d、`multitool` 王者 20、`project_hopper` 王者 60；reasoning 覆盖 36.5%，第 19 条不上线 |
 | 2026-10-30 | P1 | ✅ | 本次提交 | `/api/app/achievements`（cookie 鉴权 + `lib/achievements/payload.ts` 组装 + `lib/achievements/api.ts` 客户端封装）与 6 条路由测试；14 个 handler 部署无异常，线上 401 + `no-store` 验证通过 |
+| 2026-10-30 | P2 视觉 | 🟡 | 本次提交 | 徽章改为参数化 SVG 艺术（金属环 + 成就专属色相 + 段位星辉 + 锁定态锁标），卡片改为徽章画廊式布局与五段进度轨，摘要改英雄带 + 段位分布条，弹窗改大徽章 + 时间线；无位图资产、无新增依赖 |
 | 2026-10-30 | P2 | 🟡 | 本次提交 | 成就页（page / client / body / summary / section / card / dialog / medallion / skeleton / hook / 格式化）+ zh/en 文案（含守卫测试）+ 侧栏入口 + 按 user 的 localStorage 新解锁 + wrapped「今年解锁 N 枚」；卡片整块为单一可聚焦按钮，锁定态仍显示当前值与下一档差值；待 P2.6 浏览器人工验收 |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。

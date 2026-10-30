@@ -1,16 +1,21 @@
 "use client";
 
-// Achievement detail dialog: the large medallion, the five-tier timeline with
-// the day each tier landed (or its threshold while locked), the gap to the next
-// tier and the coverage note for the session/sync-sourced achievements
-// (docs/ui-spec.md 成就 → 详情).
+// Achievement detail dialog: the large generated badge on a hue wash, the
+// current value and gap, the five-tier timeline with the day each tier landed
+// (threshold + lock while unreached) and the coverage note for the
+// session/sync-sourced achievements (docs/ui-spec.md 成就 → 详情).
 
 import type { AchievementProgress } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
 
+import { Lock } from "@gravity-ui/icons";
 import { Modal, Typography } from "@heroui/react";
 
-import { AchievementMedallion } from "./achievements-medallion";
+import {
+  AchievementArt,
+  achievementHue,
+  tierChipClass,
+} from "./achievement-art";
 import { useAchievementFormat } from "./use-achievements-format";
 
 import { achievementById, TIERS } from "@/lib/achievements/catalog";
@@ -49,6 +54,7 @@ export function AchievementDialog({
     : null;
   const unitLabel = (value: number) =>
     progress ? format(progress.unit, value) : "";
+  const { hue } = achievementHue(progress?.id ?? "");
 
   return (
     <Modal.Backdrop
@@ -62,54 +68,78 @@ export function AchievementDialog({
           />
           {progress ? (
             <>
-              <Modal.Header>
-                <AchievementMedallion
-                  icon={catalogEntry?.icon ?? "tokens"}
-                  size="lg"
-                  tier={progress.tier}
+              <Modal.Header className="items-center gap-3 text-center">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-44"
+                  style={{
+                    background: `radial-gradient(55% 100% at 50% 0%, hsl(${hue} 88% 62% / 0.22), transparent 72%)`,
+                  }}
                 />
-                <Modal.Heading>{name}</Modal.Heading>
-                <Typography color="muted" type="body-sm">
+                <div className="relative">
+                  <AchievementArt
+                    icon={catalogEntry?.icon ?? "tokens"}
+                    id={progress.id}
+                    size={124}
+                    tier={progress.tier}
+                  />
+                </div>
+                <Modal.Heading className="relative">{name}</Modal.Heading>
+                <Typography className="relative" color="muted" type="body-sm">
                   {description}
                 </Typography>
               </Modal.Header>
 
-              <Modal.Body className="gap-4">
-                <div className="flex flex-col gap-1">
-                  <Typography color="muted" type="body-xs">
-                    {achievementCopy(locale, "achievements.ui.dialogCurrent")}
-                  </Typography>
-                  <Typography
-                    className="tabular-nums"
-                    type="h5"
-                    weight="semibold"
-                  >
-                    {unitLabel(progress.value)}
-                  </Typography>
-                  <Typography
-                    className="tabular-nums"
-                    color="muted"
-                    type="body-xs"
-                  >
-                    {progress.next_threshold == null
-                      ? achievementCopy(locale, "achievements.ui.dialogMaxed")
-                      : formatMessage(
-                          achievementCopy(locale, "achievements.ui.dialogGap"),
-                          locale,
-                          {
-                            gap: unitLabel(
-                              progress.next_threshold - progress.value,
+              <Modal.Body className="gap-5">
+                <div className="flex items-end justify-between gap-4">
+                  <div className="flex flex-col gap-1">
+                    <Typography color="muted" type="body-xs">
+                      {achievementCopy(locale, "achievements.ui.dialogCurrent")}
+                    </Typography>
+                    <span className="text-3xl leading-none font-semibold tabular-nums">
+                      {unitLabel(progress.value)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <span className={tierChipClass(progress.tier)}>
+                      {TIERS.find((tier) => tier.tier === progress.tier)
+                        ? achievementCopy(
+                            locale,
+                            TIERS[progress.tier - 1].copyKey,
+                          )
+                        : achievementCopy(
+                            locale,
+                            "achievements.ui.dialogLocked",
+                          )}
+                    </span>
+                    <Typography
+                      className="tabular-nums"
+                      color="muted"
+                      type="body-xs"
+                    >
+                      {progress.next_threshold == null
+                        ? achievementCopy(locale, "achievements.ui.dialogMaxed")
+                        : formatMessage(
+                            achievementCopy(
+                              locale,
+                              "achievements.ui.dialogGap",
                             ),
-                          },
-                        )}
-                  </Typography>
+                            locale,
+                            {
+                              gap: unitLabel(
+                                progress.next_threshold - progress.value,
+                              ),
+                            },
+                          )}
+                    </Typography>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <Typography className="font-medium" type="body-sm">
                     {achievementCopy(locale, "achievements.ui.dialogTimeline")}
                   </Typography>
-                  <ul className="flex flex-col gap-1">
+                  <ul className="flex flex-col">
                     {TIERS.map((tier) => {
                       const day = progress.achieved_at[tier.key];
                       const reached = progress.tier >= tier.tier;
@@ -117,24 +147,41 @@ export function AchievementDialog({
                       return (
                         <li
                           key={tier.key}
-                          className={`flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm ${
+                          className={`flex items-center gap-3 rounded-xl px-2 py-2 ${
                             tier.tier === progress.tier
                               ? "bg-surface-secondary"
                               : ""
                           }`}
                         >
-                          <span className="flex items-center gap-2">
-                            <span
-                              aria-hidden="true"
-                              className={`size-1.5 rounded-full ${
-                                reached ? "bg-foreground/70" : "bg-border"
-                              }`}
-                            />
-                            <span className={reached ? "" : "text-muted"}>
-                              {achievementCopy(locale, tier.copyKey)}
-                            </span>
+                          <span
+                            aria-hidden="true"
+                            className={`grid size-6 shrink-0 place-items-center rounded-full border ${
+                              reached
+                                ? "border-transparent"
+                                : "border-border text-muted"
+                            }`}
+                            style={
+                              reached
+                                ? {
+                                    background: `linear-gradient(135deg, hsl(${hue} 80% 62%), hsl(${hue + 35} 70% 44%))`,
+                                  }
+                                : undefined
+                            }
+                          >
+                            {reached ? (
+                              <span className="size-1.5 rounded-full bg-white/90" />
+                            ) : (
+                              <Lock className="size-3" />
+                            )}
                           </span>
-                          <span className="text-muted tabular-nums text-xs">
+                          <span
+                            className={`flex-1 text-sm ${
+                              reached ? "" : "text-muted"
+                            }`}
+                          >
+                            {achievementCopy(locale, tier.copyKey)}
+                          </span>
+                          <span className="text-muted text-xs tabular-nums">
                             {day
                               ? formatMessage(
                                   achievementCopy(
@@ -156,7 +203,7 @@ export function AchievementDialog({
                 </div>
 
                 {coverage ? (
-                  <div className="flex flex-col gap-1 rounded-lg bg-surface-secondary p-3">
+                  <div className="bg-surface-secondary flex flex-col gap-1 rounded-xl p-3">
                     <Typography className="font-medium" type="body-xs">
                       {achievementCopy(
                         locale,
