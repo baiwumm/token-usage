@@ -1,6 +1,6 @@
 # 成就系统实施计划（Achievements Plan）
 
-> 状态：**M7 完成（P0 / P1 / P2 与浏览器人工验收全部通过）；P4 视觉改版已完成（P4.1–P4.7）；P3 backlog 已实现（2026-10-30：仪表盘成就条、服务端已读水位 + 全局 toast、分享卡、CSS 3D 翻面；元成就、赛季、写穿缓存按触发条件明确关闭）；`pnpm verify` 全绿，浏览器人工验收待操作者确认**
+> 状态：**M7 完成（P0 / P1 / P2 与浏览器人工验收全部通过）；P4 视觉改版已完成（P4.1–P4.7）；P3 收尾已完成（2026-10-30：仪表盘成就条、服务端已读水位 + 全局 toast、分享卡、CSS 3D 翻面；元成就、赛季、写穿缓存按触发条件明确关闭）；`pnpm verify` 全绿，操作者浏览器验收通过（2026-10-30）**
 > 创建 / 最后更新：2026-10-30
 > 决策来源：2026-10-30 方案讨论，操作者已确认方向与 §1 全部决策；2026-10-30 视觉改版决策见 §1.3
 > 执行方式：按 §4 阶段顺序推进；**每阶段 `pnpm verify` 全绿后才打钩**，并同步更新 §0 与 §8，再进入下一阶段
@@ -17,10 +17,10 @@
 | P1 | 数据面：`/api/app/achievements` + 鉴权 + 测试 | ✅ 2026-10-30（已上线并线上验证） |
 | P2 | 界面：成就页 + 侧栏 + wrapped + 文案 | ✅ 2026-10-30（代码完成 + 操作者验收通过） |
 | P4 | 视觉改版：插画徽章 + 徽章墙 | ✅ 2026-10-30（P4.1–P4.7 全部完成并验收） |
-| P3 | 收尾：仪表盘成就条 / 已读水位 + 全局 toast / 分享卡 / 3D 翻面 / 代理守卫 | 🟡 2026-10-30（4 项实现 + 守卫修复 + 3 项按触发条件关闭；`pnpm verify` 全绿，浏览器人工验收待操作者） |
+| P3 | 收尾：仪表盘成就条 / 已读水位 + 全局 toast / 分享卡 / 3D 翻面 / 代理守卫 | ✅ 2026-10-30（4 项实现 + 守卫修复 + 3 项按触发条件关闭；`pnpm verify` 全绿，浏览器人工验收通过） |
 
-- 当前阶段：**P3 实现完成、待操作者浏览器验收**（2026-10-30）；验收通过后把本行与 §4 P3.9 改为 ✅
-- 下一步：操作者按 §4 P3.9 清单做浏览器验收（仪表盘条 / 全局 toast / 翻面 / 分享卡 / 未登录跳转）；迁移已于 2026-10-30 执行并核对（表存在、RLS 开启且 0 policy、anon/authenticated 无权限、service_role 可读写）
+- 当前阶段：**M7 全部收尾**（2026-10-30，P3 浏览器验收通过；提交 `772ec68..84f0ef6`）
+- 后续：无待办；元成就 / 赛季 / 写穿缓存按 §4 P3.6–P3.8 的触发条件关闭，需先满足触发条件再开新计划
 - 换机器恢复：`pnpm install` → `pnpm verify` 确认基线 → 读本节与 §8 → 从 §4 第一个未勾选条目继续
 - 执行规则：
   1. 开始某阶段时，把 §0 对应行改为「进行中」并注明日期；
@@ -327,8 +327,8 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P3.6** 元成就（集齐 N 个钻石 → 王者之证）—— **评估后不做**。理由：需要第 19 张专属插画资产（本机无 `mmx` 环境），且与「18 条独立指标」的目录设计相冲突。触发条件：操作者提供资产并明确要求
 - [x] **P3.7** 年度挑战 / 赛季机制 —— **评估后不做**。缺产品定义（窗口 / 重置 / 奖励 / 存储），需要单独的需求文档。触发条件：先有书面产品需求
 - [x] **P3.8** `token_achievements` 写穿缓存 —— **评估后不做**。当前无性能瓶颈，写路径改造只会扩大侵入面。触发条件：全历史快照加载 P95 > 1 s，或 `/api/app/achievements` P95 > 1.5 s，或小时 / 会话行数 > 50 万
-- [ ] **P3.9** `pnpm verify` 全绿（web 30 files / 418 tests + build，CLI 72；lint 0 error / 5 warning，其中 4 条为既有基线、1 条为 `seen.ts` 的降级日志）+ 浏览器人工验收（仪表盘条浅色 / 深色 / 375px、全局 toast 整页一次且成就页不弹、翻面点击与键盘、reduce 无过渡、分享卡预览 / 复制 / 下载 / 断图占位、未登录直跳登录）。已完成的机器核对：未登录 `/achievements` → 307 `/login?next=%2Fachievements`；`GET`/`POST /api/app/achievements` 未登录均 401 + `no-store`；构建产物含 `preserve-3d` / `rotateY(180deg)` / `backface-visibility:hidden` 与 `prefers-reduced-motion:reduce` 规则；迁移已通过 `DATABASE_URL` 执行，`token_achievement_seen` 存在、RLS 开启且 0 policy、anon/authenticated 无权限、service_role 可读写。认证后的视觉验收待操作者完成
-- [ ] **阶段完成**（2026-10-30，P3）
+- [x] **P3.9**（2026-10-30 操作者验收通过）`pnpm verify` 全绿（web 30 files / 418 tests + build，CLI 72；lint 0 error / 5 warning，其中 4 条为既有基线、1 条为 `seen.ts` 的降级日志）+ 浏览器人工验收（仪表盘条浅色 / 深色 / 375px、全局 toast 整页一次且成就页不弹、翻面点击与键盘、reduce 无过渡、分享卡预览 / 复制 / 下载 / 断图占位、未登录直跳登录）。已完成的机器核对：未登录 `/achievements` → 307 `/login?next=%2Fachievements`；`GET`/`POST /api/app/achievements` 未登录均 401 + `no-store`；构建产物含 `preserve-3d` / `rotateY(180deg)` / `backface-visibility:hidden` 与 `prefers-reduced-motion:reduce` 规则；迁移已通过 `DATABASE_URL` 执行，`token_achievement_seen` 存在、RLS 开启且 0 policy、anon/authenticated 无权限、service_role 可读写
+- [x] **阶段完成**（2026-10-30，P3）：P3.1–P3.9 全部收尾，提交 `772ec68..84f0ef6`
 
 ---
 
@@ -402,13 +402,13 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 2026-10-30 | P4 当前值 + 刷新反馈 | ✅ | 本次提交 | 操作者验收反馈两处：① 弹窗正文被 HeroUI 的 `.modal__body` 默认染成 muted，当前值一并变灰；正文改 `text-foreground`（标签仍显式走 muted），与上游「标签灰 / 数值纯黑」的配方一致。② 刷新按钮只有图标旋转，过程与结果都没有提示；改为两段式 Toast——按下即出「正在刷新…」（`timeout: 0`），结束原地切换为成功「成就已刷新」或失败「成就加载失败。(原因)」；刷新中按钮禁用并带 `aria-busy`；`useAchievements.refresh` 返回 `ok / error / unauthorized / skipped`，首载与 401 跳登录不弹。新增 zh/en 文案，`docs/ui-spec.md` 同步 |
 | 2026-10-30 | P4.6 验收 | ✅ | 本次提交 | 操作者浏览器验收通过（浅色 / 深色 / 375px / 加载失败回退 / reduced-motion / 键盘可达）；同日机器核对：headless Chrome + CDP 量得 375px 无页面级横向滚动、断图时徽章回退参数化 SVG、reduce 下 `transition-property: none`、Enter 打开弹窗 / Esc 关闭且焦点回到触发墙格；`pnpm verify` 全绿（web 28 files / 390 tests + build，CLI 72）。P4.7（资产生成脚本 devDependency 批准）仍未勾选 |
 | 2026-10-30 | P4.7 收尾 | ✅ | 本次提交 | 操作者批准后执行：`jpeg-js@0.4.4` + `pngjs@7.0.0` 以精确版本加入**仓库根** `package.json` 的 `devDependencies`（lockfile 同步；不做运行时依赖，不进 `apps/web` 依赖图），`generate.mjs` 的静态 import 从脚本目录可直接解析；修正 `scripts/admin/achievement-assets/README.md` 的安装位置说明（原写 `apps/web/package.json`，实际 Node 从脚本目录向上解析到仓库根）；`sharp` 仍为可选、未安装（量化跳过）。`docs/rewrite-plan.md` §4 增加 2026-10-30 增量记录。P4 阶段收尾 |
-| 2026-10-30 | P3 决策 | ✅ | 待提交 | 操作者拍板：已读水位走、服务端小表 + 全局 toast；元成就关闭；赛季与写穿缓存关闭并写下触发条件。顺带发现 `/achievements` 未进 proxy 守卫，本轮一并修 |
-| 2026-10-30 | P3.5 守卫 | ✅ | 待提交 | `src/proxy.ts` 补 `/achievements`（页面清单 + matcher），契约测试补未登录跳 `/login?next=/achievements` |
-| 2026-10-30 | P3.2 水位 | ✅ | 待提交 | 迁移 `token_achievement_seen`（RLS 零 policy）+ `lib/achievements/seen.ts`（条件更新 / 首写 insert + 409 重试）+ `GET` 下发 `seen_through` + 同 route 新增 `POST`（401/400/503、`no-store`）+ `highlights.ts` 与单测 + fake-supabase 表 |
-| 2026-10-30 | P3.2 toast | ✅ | 待提交 | `achievement-unlock-watcher.tsx` 挂 `AppShell`；成就页「新」标记改服务端水位（移除 localStorage 键与私有 `latestAchievedDay`）；zh/en 文案 |
-| 2026-10-30 | P3.1 仪表盘条 | ✅ | 待提交 | `achievement-strip-section.tsx` + `achievement-strip.tsx`；`dashboard-client.tsx` 第 7 槽复用 `fetchAchievementsShared`；骨架 / 文案 / 空账号隐藏 |
-| 2026-10-30 | P3.3–P3.4 分享卡 + 翻面 | ✅ | 待提交 | Canvas 1080×1350 分享卡（`share-card/achievement.ts` + `lib/achievements/share.ts` + 弹窗，零新依赖，断图回退金属盘）；详情硬币 CSS 3D 翻面（原生 button + `aria-pressed`，reduce 无过渡） |
-| 2026-10-30 | P3 验收 + 文档 | 🟡 | 待提交 | 文档回写完成（本文件 + requirements + rewrite-plan + deploy-guide + ui-spec）；`pnpm verify` 全绿（web 30 files / 418 tests + build，CLI 72；lint 0 error / 5 warning）；机器核对未登录跳转、GET/POST 401 + no-store、3D/reduce CSS 产物；迁移已用 `DATABASE_URL` 执行并核对（RLS 开启、0 policy、anon/authenticated 无权限、service_role 可读写）；认证后的浏览器视觉验收待操作者 |
+| 2026-10-30 | P3 决策 | ✅ | — | 操作者拍板：已读水位走、服务端小表 + 全局 toast；元成就关闭；赛季与写穿缓存关闭并写下触发条件。顺带发现 `/achievements` 未进 proxy 守卫，本轮一并修 |
+| 2026-10-30 | P3.5 守卫 | ✅ | 772ec68 | `src/proxy.ts` 补 `/achievements`（页面清单 + matcher），契约测试补未登录跳 `/login?next=/achievements` |
+| 2026-10-30 | P3.2 水位 | ✅ | 1a70d15 | 迁移 `token_achievement_seen`（RLS 零 policy）+ `lib/achievements/seen.ts`（条件更新 / 首写 insert + 409 重试）+ `GET` 下发 `seen_through` + 同 route 新增 `POST`（401/400/503、`no-store`）+ `highlights.ts` 与单测 + fake-supabase 表 |
+| 2026-10-30 | P3.2 toast | ✅ | e4cb721 | `achievement-unlock-watcher.tsx` 挂 `AppShell`；成就页「新」标记改服务端水位（移除 localStorage 键与私有 `latestAchievedDay`）；zh/en 文案 |
+| 2026-10-30 | P3.1 仪表盘条 | ✅ | 8012a91 | `achievement-strip-section.tsx` + `achievement-strip.tsx`；`dashboard-client.tsx` 第 7 槽复用 `fetchAchievementsShared`；骨架 / 文案 / 空账号隐藏 |
+| 2026-10-30 | P3.3–P3.4 分享卡 + 翻面 | ✅ | 4e2e086 | Canvas 1080×1350 分享卡（`share-card/achievement.ts` + `lib/achievements/share.ts` + 弹窗，零新依赖，断图回退金属盘）；详情硬币 CSS 3D 翻面（原生 button + `aria-pressed`，reduce 无过渡） |
+| 2026-10-30 | P3 验收 + 文档 | ✅ | 84f0ef6 | 文档回写完成（本文件 + requirements + rewrite-plan + deploy-guide + ui-spec）；`pnpm verify` 全绿（web 30 files / 418 tests + build，CLI 72；lint 0 error / 5 warning）；机器核对未登录跳转、GET/POST 401 + no-store、3D/reduce CSS 产物；迁移已用 `DATABASE_URL` 执行并核对（RLS 开启、0 policy、anon/authenticated 无权限、service_role 可读写）；操作者浏览器验收通过（2026-10-30） |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 
