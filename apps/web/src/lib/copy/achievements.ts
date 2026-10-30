@@ -56,6 +56,7 @@ export const ACHIEVEMENTS_COPY: Record<Locale, Record<string, string>> = {
       "自 Sessions 数据可用起统计，不覆盖更早历史。",
     "achievements.coverage.sync": "自采集记录（CLI 0.2.0）起统计。",
     "achievements.ui.subtitle": "五档进阶，全部在读取时计算。",
+    "achievements.ui.summaryLabel": "已解锁成就",
     "achievements.ui.summaryUnlocked": "已解锁 {unlocked}/{total}",
     "achievements.ui.category.milestone": "里程碑",
     "achievements.ui.category.peak": "高峰",
@@ -151,6 +152,7 @@ export const ACHIEVEMENTS_COPY: Record<Locale, Record<string, string>> = {
     "achievements.coverage.sync":
       "Counted from sync-run reporting (CLI 0.2.0) onwards.",
     "achievements.ui.subtitle": "Five tiers each, all computed on read.",
+    "achievements.ui.summaryLabel": "Achievements unlocked",
     "achievements.ui.summaryUnlocked": "{unlocked} of {total} unlocked",
     "achievements.ui.category.milestone": "Milestones",
     "achievements.ui.category.peak": "Peaks",
