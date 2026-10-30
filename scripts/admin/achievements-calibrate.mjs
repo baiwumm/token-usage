@@ -613,7 +613,7 @@ async function main() {
       : "  → hold deep_thinker (19th): coverage below 50% of rows",
   );
   console.log(
-    "  → thresholds stay uncalibrated until the operator backfills catalog.ts + plan §2 from this output",
+    "  → review this output, then backfill catalog.ts + plan §2 with any threshold change (guard tests read the catalog)",
   );
 }
 
