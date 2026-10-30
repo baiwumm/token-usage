@@ -1,23 +1,43 @@
 "use client";
 
-// Achievement detail dialog: the large generated badge on a hue wash, the
-// current value and gap, the five-tier timeline with the day each tier landed
-// (threshold + lock while unreached) and the coverage note for the
-// session/sync-sourced achievements (docs/ui-spec.md 成就 → 详情).
+// Achievement detail dialog: the large medallion on a hue wash, the current
+// value with its tier label, then the upstream-style read-out — progress to
+// the next tier with a metallic bar, the five-segment tier history, and the
+// five-tier timeline with the threshold of every tier. The day a tier landed
+// rides along in tooltips (timeline badge and history segment).
+//
+// Layout follows the upstream TokenTracker dialog (docs/ui-spec.md 成就 → 详情):
+// label on the left, value on the right, one visual language for "tier".
 
 import type { AchievementProgress } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
 
-import { Lock } from "@gravity-ui/icons";
-import { Modal, Typography } from "@heroui/react";
+import { Modal, Tooltip, Typography } from "@heroui/react";
 
 import { AchievementMedallion } from "./achievement-medallion";
-import { achievementHue, tierChipClass } from "./achievement-tiers";
+import { TierBadge } from "./achievement-tier-badge";
+import { achievementHue, tierGradient } from "./achievement-tiers";
 import { useAchievementFormat } from "./use-achievements-format";
 
 import { achievementById, TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { formatMessage } from "@/lib/copy/message";
+
+/** Share of the next step already covered (0–1). */
+function progressRatio(
+  value: number,
+  thresholds: readonly number[],
+  next: number | null,
+): number {
+  if (next == null) return 1;
+  const index = thresholds.indexOf(next);
+  const base = index > 0 ? thresholds[index - 1] : 0;
+  const span = next - base;
+
+  if (span <= 0) return 1;
+
+  return Math.min(1, Math.max(0, (value - base) / span));
+}
 
 export function AchievementDialog({
   progress,
@@ -52,6 +72,28 @@ export function AchievementDialog({
   const unitLabel = (value: number) =>
     progress ? format(progress.unit, value) : "";
   const { hue } = achievementHue(progress?.id ?? "");
+
+  const currentTier =
+    progress != null
+      ? (TIERS.find((tier) => tier.tier === progress.tier) ?? null)
+      : null;
+  const nextTier =
+    progress != null
+      ? (TIERS.find((tier) => tier.tier === progress.tier + 1) ?? null)
+      : null;
+  const tierLabel = currentTier
+    ? achievementCopy(locale, currentTier.copyKey)
+    : achievementCopy(locale, "achievements.ui.cardLocked");
+  const achievedDay = currentTier
+    ? (progress?.achieved_at[currentTier.key] ?? null)
+    : null;
+  const ratio = progress
+    ? progressRatio(
+        progress.value,
+        progress.thresholds,
+        progress.next_threshold,
+      )
+    : 0;
 
   return (
     <Modal.Backdrop
@@ -89,6 +131,7 @@ export function AchievementDialog({
               </Modal.Header>
 
               <Modal.Body className="gap-5">
+                {/* Current value + the tier label as a metallic badge. */}
                 <div className="flex items-end justify-between gap-4">
                   <div className="flex flex-col gap-1">
                     <Typography color="muted" type="body-xs">
@@ -99,40 +142,128 @@ export function AchievementDialog({
                     </span>
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
-                    <span className={tierChipClass(progress.tier)}>
-                      {TIERS.find((tier) => tier.tier === progress.tier)
-                        ? achievementCopy(
+                    <TierBadge
+                      label={tierLabel}
+                      size="md"
+                      tier={progress.tier}
+                    />
+                    {achievedDay ? (
+                      <Typography
+                        className="tabular-nums"
+                        color="muted"
+                        type="body-xs"
+                      >
+                        {formatMessage(
+                          achievementCopy(
                             locale,
-                            TIERS[progress.tier - 1].copyKey,
-                          )
-                        : achievementCopy(
-                            locale,
-                            "achievements.ui.dialogLocked",
-                          )}
-                    </span>
-                    <Typography
-                      className="tabular-nums"
-                      color="muted"
-                      type="body-xs"
-                    >
-                      {progress.next_threshold == null
-                        ? achievementCopy(locale, "achievements.ui.dialogMaxed")
-                        : formatMessage(
-                            achievementCopy(
-                              locale,
-                              "achievements.ui.dialogGap",
-                            ),
-                            locale,
-                            {
-                              gap: unitLabel(
-                                progress.next_threshold - progress.value,
-                              ),
-                            },
-                          )}
-                    </Typography>
+                            "achievements.ui.dialogAchieved",
+                          ),
+                          locale,
+                          { date: achievedDay },
+                        )}
+                      </Typography>
+                    ) : null}
                   </div>
                 </div>
 
+                <dl className="border-border/60 flex flex-col gap-3 border-t pt-4">
+                  {/* Progress to the next tier, painted with the tier ramp. */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-baseline justify-between gap-3 text-xs">
+                      <dt className="text-muted">
+                        {nextTier == null
+                          ? achievementCopy(
+                              locale,
+                              "achievements.ui.dialogMaxed",
+                            )
+                          : formatMessage(
+                              achievementCopy(
+                                locale,
+                                "achievements.ui.dialogProgressTo",
+                              ),
+                              locale,
+                              {
+                                tier: achievementCopy(locale, nextTier.copyKey),
+                              },
+                            )}
+                      </dt>
+                      {nextTier == null ? null : (
+                        <dd className="tabular-nums">
+                          {unitLabel(progress.value)} →{" "}
+                          {unitLabel(progress.next_threshold ?? 0)}
+                        </dd>
+                      )}
+                    </div>
+                    <div className="bg-default h-1.5 w-full overflow-hidden rounded-full">
+                      <span
+                        className="block h-full rounded-full"
+                        style={{
+                          width: `${Math.round(ratio * 100)}%`,
+                          background: tierGradient(progress.tier, 90),
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tier history: one segment per tier, the day in a tooltip. */}
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <dt className="text-muted">
+                      {achievementCopy(
+                        locale,
+                        "achievements.ui.dialogTierHistory",
+                      )}
+                    </dt>
+                    <dd className="flex items-center gap-1">
+                      {TIERS.map((tier) => {
+                        const reached = progress.tier >= tier.tier;
+                        const day = progress.achieved_at[tier.key];
+
+                        return (
+                          <Tooltip key={tier.key} delay={0}>
+                            <span
+                              className="inline-flex h-2 w-8 overflow-hidden rounded-full"
+                              style={
+                                reached
+                                  ? {
+                                      background: tierGradient(tier.tier),
+                                      boxShadow:
+                                        "inset 0 1px 1px rgba(255, 255, 255, 0.4)",
+                                    }
+                                  : undefined
+                              }
+                            >
+                              {reached ? null : (
+                                <span className="bg-default h-full w-full rounded-full" />
+                              )}
+                            </span>
+                            <Tooltip.Content showArrow placement="bottom">
+                              <Tooltip.Arrow />
+                              <Typography type="body-xs">
+                                {achievementCopy(locale, tier.copyKey)}
+                                {" · "}
+                                {day
+                                  ? formatMessage(
+                                      achievementCopy(
+                                        locale,
+                                        "achievements.ui.dialogAchieved",
+                                      ),
+                                      locale,
+                                      { date: day },
+                                    )
+                                  : `${unitLabel(progress.thresholds[tier.tier - 1])} · ${achievementCopy(
+                                      locale,
+                                      "achievements.ui.dialogLocked",
+                                    )}`}
+                              </Typography>
+                            </Tooltip.Content>
+                          </Tooltip>
+                        );
+                      })}
+                    </dd>
+                  </div>
+                </dl>
+
+                {/* Five-tier timeline: every threshold, every landing day. */}
                 <div className="flex flex-col gap-1.5">
                   <Typography className="font-medium" type="body-sm">
                     {achievementCopy(locale, "achievements.ui.dialogTimeline")}
@@ -145,39 +276,46 @@ export function AchievementDialog({
                       return (
                         <li
                           key={tier.key}
-                          className={`flex items-center gap-3 rounded-xl px-2 py-2 ${
+                          className={`flex items-center gap-3 rounded-xl px-2 py-1.5 ${
                             tier.tier === progress.tier
                               ? "bg-surface-secondary"
                               : ""
                           }`}
                         >
+                          <Tooltip delay={0}>
+                            <span className="shrink-0">
+                              <TierBadge
+                                label={achievementCopy(locale, tier.copyKey)}
+                                tier={reached ? tier.tier : 0}
+                              />
+                            </span>
+                            <Tooltip.Content showArrow placement="bottom">
+                              <Tooltip.Arrow />
+                              <Typography type="body-xs">
+                                {achievementCopy(locale, tier.copyKey)}
+                                {" · "}
+                                {day
+                                  ? formatMessage(
+                                      achievementCopy(
+                                        locale,
+                                        "achievements.ui.dialogAchieved",
+                                      ),
+                                      locale,
+                                      { date: day },
+                                    )
+                                  : `${unitLabel(progress.thresholds[tier.tier - 1])} · ${achievementCopy(
+                                      locale,
+                                      "achievements.ui.dialogLocked",
+                                    )}`}
+                              </Typography>
+                            </Tooltip.Content>
+                          </Tooltip>
                           <span
-                            aria-hidden="true"
-                            className={`grid size-6 shrink-0 place-items-center rounded-full border ${
-                              reached
-                                ? "border-transparent"
-                                : "border-border text-muted"
-                            }`}
-                            style={
-                              reached
-                                ? {
-                                    background: `linear-gradient(135deg, hsl(${hue} 80% 62%), hsl(${hue + 35} 70% 44%))`,
-                                  }
-                                : undefined
-                            }
-                          >
-                            {reached ? (
-                              <span className="size-1.5 rounded-full bg-white/90" />
-                            ) : (
-                              <Lock className="size-3" />
-                            )}
-                          </span>
-                          <span
-                            className={`flex-1 text-sm ${
+                            className={`flex-1 text-sm tabular-nums ${
                               reached ? "" : "text-muted"
                             }`}
                           >
-                            {achievementCopy(locale, tier.copyKey)}
+                            {unitLabel(progress.thresholds[tier.tier - 1])}
                           </span>
                           <span className="text-muted text-xs tabular-nums">
                             {day
@@ -189,10 +327,10 @@ export function AchievementDialog({
                                   locale,
                                   { date: day },
                                 )
-                              : `${unitLabel(progress.thresholds[tier.tier - 1])} · ${achievementCopy(
+                              : achievementCopy(
                                   locale,
                                   "achievements.ui.dialogLocked",
-                                )}`}
+                                )}
                           </span>
                         </li>
                       );

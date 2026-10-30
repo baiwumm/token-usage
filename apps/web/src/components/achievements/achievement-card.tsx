@@ -12,7 +12,7 @@ import type { AchievementProgress } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
 
 import { AchievementMedallion } from "./achievement-medallion";
-import { tierTextClass } from "./achievement-tiers";
+import { TierBadge } from "./achievement-tier-badge";
 
 import { achievementById, TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
@@ -93,9 +93,7 @@ export function AchievementCard({
         <span className="w-full truncate text-xs font-medium">{name}</span>
 
         {currentTier ? (
-          <span className={`text-[11px] ${tierTextClass(progress.tier)}`}>
-            {tierLabel}
-          </span>
+          <TierBadge label={tierLabel} tier={progress.tier} />
         ) : (
           <span
             aria-label={formatMessage(

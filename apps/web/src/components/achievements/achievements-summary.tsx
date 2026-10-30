@@ -10,7 +10,7 @@ import type { Locale } from "@/lib/copy/locale-config";
 
 import { Typography } from "@heroui/react";
 
-import { tierBarClass } from "./achievement-tiers";
+import { tierGradient } from "./achievement-tiers";
 
 import { TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
@@ -76,7 +76,8 @@ export function AchievementsSummary({
             <span key={tier.key} className="flex items-center gap-1.5">
               <span
                 aria-hidden="true"
-                className={`size-2 rounded-full ${tierBarClass(tier.key)}`}
+                className="size-2 rounded-full"
+                style={{ background: tierGradient(tier.tier) }}
               />
               <span className="text-muted">
                 {achievementCopy(locale, tier.copyKey)}

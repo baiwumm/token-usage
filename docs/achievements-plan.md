@@ -65,7 +65,7 @@
 | 9 | 徽章资产来源 | **A**：自有 AI 生成（MiniMax `image-01`），统一「浮雕硬币」风格模板；不取上游 PNG、不引用上游代码。生成脚本与 prompt 清单入库 `scripts/admin/achievement-assets/` |
 | 10 | 页面版式 | **B**：改「徽章墙」——分区保留，卡片边框去掉，徽章为主体，名称 + 段位文字 / 未解锁细进度条，数字与描述沉到弹窗 |
 | 11 | 3D 翻面硬币 | 暂不做（需新增 `motion` 依赖，属运行时预算变更，留 P3 再议） |
-| 12 | 资产段位表达 | 插画本身与段位无关：段位由徽章外的金属外环表达（铜 / 银 / 金 / 钻 / 王者），一张图复用五档 |
+| 12 | 资产段位表达 | 插画本身与段位无关：段位由徽章外的金属外环表达（青铜 / 白银 / 黄金 / 钻石 / 王者），一张图复用五档 |
 | 13 | 加载失败回退 | 必须回退到现有参数化 SVG 徽章（`achievement-art.tsx`），页面不得出现空徽章位 |
 
 补充（2026-10-30 实现时定，Operator 交接时的待定项之一）：插画是满幅圆盘，自带最外圈
@@ -80,7 +80,7 @@
 
 ### 2.1 通用规则
 
-- **段位**：`0 = 未解锁`，`1 铜（bronze）`、`2 银（silver）`、`3 金（gold）`、`4 钻（diamond）`、`5 王者（king）`
+- **段位**：`0 = 未解锁`，`1 青铜（bronze）`、`2 白银（silver）`、`3 黄金（gold）`、`4 钻石（diamond）`、`5 王者（king）`
 - **指标单调白名单**（tier 只升不降的前提）：累计和、历史最大值、最长连续、去重计数、距首日天数。**禁止**：平均值、比率（比率类一律改写为「单日最佳 + 量门槛」）、成本（定价快照更新会使历史成本回缩）
 - **时间语义**：日界 / 周末 / 夜间一律按用户本地时区；`achieved_at` 为本地日期 `YYYY-MM-DD`（日粒度，不做小时精度）
 - **数据口径**：账号级、跨设备、跨 source；含 `cursor` / `trae-cn`（经会话状态合并）；含已吊销设备历史。Sessions 类成就天然不含账户级来源（其本无 sessions 行）
@@ -90,7 +90,7 @@
 
 ### 2.2 18 条成就（2026-10-30 校准定稿）
 
-| 分类 | id / 名称 | 指标口径 | 铜 | 银 | 金 | 钻 | 王者 | 数据源 |
+| 分类 | id / 名称 | 指标口径 | 青铜 | 白银 | 黄金 | 钻石 | 王者 | 数据源 |
 |---|---|---|---|---|---|---|---|---|
 | 里程碑 | `token_titan` Token 巨擘 | 累计 `total_tokens` | 100M | 1B | 10B | 100B | 1T | 小时行 |
 | 里程碑 | `wordsmith` 妙笔生花 | 累计 `output_tokens` | 5M | 25M | 50M | 100M | 300M | 小时行 |
@@ -166,7 +166,8 @@ apps/web/src/components/achievements/
   achievement-dialog.tsx                        # 详情弹窗（五档时间线）
   achievement-medallion.tsx                    # 位图徽章（段位外环 + 锁定灰化 + SVG 回退）
   achievement-art.tsx                           # 参数化 SVG 徽章（回退用）
-  achievement-tiers.ts                          # 段位金属 / 芯片色 / 色相（两处徽章共用）
+  achievement-tier-badge.tsx                    # 段位渐变标签（青铜 / 白银 / 黄金 / 钻石 / 王者）
+  achievement-tiers.ts                          # 段位金属 / 渐变坡道 / 色相（两处徽章共用）
   achievements-skeleton.tsx                     # 骨架
   use-achievements.ts                           # 数据 hook
 apps/web/src/lib/copy/achievements.ts           # zh / en 文案
@@ -355,6 +356,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 2026-10-30 | P4 决策 | ✅ | 本次提交 | 操作者确认 §1.3 全部 5 项：资产来源自有 AI 生成、页面改徽章墙、暂不做 3D 翻牌、段位由外环表达、加载失败回退 SVG |
 | 2026-10-30 | P4.1–P4.2 资产 | ✅ | 本次提交 | 18 张徽章插画生成并入库 `apps/web/public/achievements/`（256×256 透明 PNG）；出图 QA（纯黑虚空背景 + 正圆硬币居中占幅 70–95 %）+ 圆形 alpha 裁切；prompt 模板与生成脚本入库 `scripts/admin/achievement-assets/`（脚本依赖 `jpeg-js` + `pngjs` 待批准，未写入 package.json） |
 | 2026-10-30 | P4.3–P4.5 界面 | ✅ | 本次提交 | 徽章墙改造：`achievement-medallion.tsx`（位图 + 段位金属外环 + 裁 5 % 自带外圈 + 锁定灰化 + SVG 回退，含 SSR 首屏 404 的 `naturalWidth` 兜底）、墙格 `achievement-card.tsx`、页头摘要 `achievements-summary.tsx`、圆形骨架、弹窗大徽章 176px；`catalog.ts` 增 `art` 字段 + 资产存在性守卫测试；段位金属与色相抽到 `achievement-tiers.ts`（两个徽章组件共用一份） |
+| 2026-10-30 | P4 段位渐变标签 + 详情排版 | ✅ | 本次提交 | 按操作者要求参考上游 TokenTracker：① 段位改「金属渐变标签」并写全名（青铜 / 白银 / 黄金 / 钻石 / 王者），坡道集中在 `TIER_RAMPS`，同一坡道刷外环、标签、等级历程条、进度条与摘要圆点；② 详情正文改成上游格式（标签左 / 数值右）：当前值 + 段位渐变徽章 → `dl` 分隔线下的「距{tier}进度 + 渐变进度条」与「等级历程五段条」→ 五档时间线（每档一个渐变段位徽章 + 阈值 + 达成日）；③ 达成日期改走 Tooltip（等级历程段与时间线徽章）。文案新增 `dialogTierHistory` / `dialogProgressTo`，删去已无引用的卡片期文案 |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 

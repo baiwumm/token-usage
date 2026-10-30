@@ -1,6 +1,6 @@
 // Shared tier visuals for the achievement surface: the metal palette that
-// paints a badge's outer ring, the classes used by the tier chip and the tier
-// bars, and the per-achievement hue that tints the glow.
+// paints a badge's outer ring, the metallic ramp that paints the tier label
+// and the tier track, and the per-achievement hue that tints the glow.
 //
 // The bitmap artwork is tier-agnostic (one image per achievement, reused for
 // all five tiers), so the tier lives entirely in this palette: the ring metal
@@ -29,6 +29,52 @@ export const LOCKED_METAL: MetalPalette = {
   mid: "#a7aeb9",
   deep: "#6e7480",
 };
+
+/**
+ * Metallic ramp for the tier label and the tier track: light → mid → deep,
+ * with the text colour that stays legible on top of it. The same ramp paints
+ * the tier badge label, the tier history track and the progress bar, so a
+ * tier reads the same everywhere on the page.
+ */
+export type TierRamp = {
+  from: string;
+  mid: string;
+  to: string;
+  /** Text colour on top of the ramp. */
+  ink: string;
+};
+
+export const TIER_RAMPS: Record<TierKey, TierRamp> = {
+  bronze: { from: "#f3d8b8", mid: "#cf8a4c", to: "#8a5324", ink: "#452a12" },
+  silver: { from: "#f7fafc", mid: "#c3ccd6", to: "#7d8794", ink: "#39424b" },
+  gold: { from: "#fff2bd", mid: "#e5ad38", to: "#a0700f", ink: "#5c430e" },
+  diamond: { from: "#e6fbff", mid: "#6ec9ec", to: "#2b7ba3", ink: "#1b4d70" },
+  king: { from: "#f6d9ff", mid: "#cba6f7", to: "#8b5cf6", ink: "#4c1d95" },
+};
+
+/** Neutral ramp for locked badges. */
+export const LOCKED_RAMP: TierRamp = {
+  from: "#e6e8ec",
+  mid: "#b3b9c2",
+  to: "#7b828d",
+  ink: "#3d434c",
+};
+
+/** Ramp for a tier number (0 = locked). */
+export function tierRamp(tier: number): TierRamp {
+  if (tier < 1) return LOCKED_RAMP;
+
+  const key = TIERS[tier - 1].key;
+
+  return TIER_RAMPS[key];
+}
+
+/** The metallic gradient itself, ready for a `background`. */
+export function tierGradient(tier: number, angle = 120): string {
+  const ramp = tierRamp(tier);
+
+  return `linear-gradient(${angle}deg, ${ramp.from} 0%, ${ramp.mid} 55%, ${ramp.to} 100%)`;
+}
 
 /** Per-achievement hue pair: the face glow and a complementary accent. */
 const HUES: Record<string, { hue: number; accent: number }> = {
@@ -65,63 +111,4 @@ export function tierMetal(tier: number): MetalPalette {
   const key = TIERS[tier - 1].key;
 
   return TIER_METALS[key];
-}
-
-/** Metal chip classes for the tier label in the dialog. */
-export function tierChipClass(tier: number): string {
-  const base =
-    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium";
-
-  if (tier < 1) return `${base} border-border bg-default/50 text-muted`;
-
-  const key = TIERS[tier - 1].key;
-
-  switch (key) {
-    case "bronze":
-      return `${base} border-amber-600/30 bg-amber-500/10 text-amber-700 dark:text-amber-300`;
-    case "silver":
-      return `${base} border-slate-400/35 bg-slate-400/10 text-slate-600 dark:text-slate-300`;
-    case "gold":
-      return `${base} border-yellow-500/35 bg-yellow-400/10 text-yellow-700 dark:text-yellow-300`;
-    case "diamond":
-      return `${base} border-sky-400/35 bg-sky-400/10 text-sky-700 dark:text-sky-300`;
-    case "king":
-      return `${base} border-fuchsia-400/40 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300`;
-  }
-}
-
-/** Text colour for a tier label (the wall cell prints the tier in metal). */
-export function tierTextClass(tier: number): string {
-  if (tier < 1) return "text-muted";
-
-  const key = TIERS[tier - 1].key;
-
-  switch (key) {
-    case "bronze":
-      return "text-amber-700 dark:text-amber-300";
-    case "silver":
-      return "text-slate-600 dark:text-slate-300";
-    case "gold":
-      return "text-yellow-700 dark:text-yellow-300";
-    case "diamond":
-      return "text-sky-700 dark:text-sky-300";
-    case "king":
-      return "text-fuchsia-700 dark:text-fuchsia-300";
-  }
-}
-
-/** Track segment classes, one per tier (the king segment is iridescent). */
-export function tierBarClass(tier: TierKey): string {
-  switch (tier) {
-    case "bronze":
-      return "bg-linear-to-r from-amber-600 to-orange-300";
-    case "silver":
-      return "bg-linear-to-r from-slate-500 to-slate-200";
-    case "gold":
-      return "bg-linear-to-r from-amber-500 to-yellow-200";
-    case "diamond":
-      return "bg-linear-to-r from-sky-500 to-cyan-200";
-    case "king":
-      return "bg-linear-to-r from-fuchsia-500 via-amber-300 to-violet-500";
-  }
 }
