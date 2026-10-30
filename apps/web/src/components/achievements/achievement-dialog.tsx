@@ -114,14 +114,17 @@ export function AchievementDialog({
                 </Typography>
               </Modal.Header>
 
-              <Modal.Body className="gap-6">
+              {/* HeroUI paints the modal body muted; the numbers in here are
+                  the point of the dialog, so the body keeps the foreground
+                  colour and only the labels opt into muted. */}
+              <Modal.Body className="gap-6 text-foreground">
                 {/* Current value + the tier label as a metallic badge. */}
                 <div className="flex items-end justify-between gap-4">
                   <div className="flex flex-col gap-1">
                     <Typography color="muted" type="body-xs">
                       {achievementCopy(locale, "achievements.ui.dialogCurrent")}
                     </Typography>
-                    <span className="text-3xl leading-none font-semibold tabular-nums">
+                    <span className="text-3xl leading-none font-semibold text-foreground tabular-nums">
                       {unitLabel(progress.value)}
                     </span>
                   </div>

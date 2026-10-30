@@ -13,13 +13,20 @@ import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { browserTimezone } from "@/lib/dashboard/ranges";
 import { loadable, type Loadable } from "@/lib/loadable";
 
+/** Outcome of one load, so a manual refresh can report success or failure. */
+export type RefreshOutcome =
+  | { status: "ok" }
+  | { status: "error"; message: string | null }
+  | { status: "unauthorized" }
+  | { status: "skipped" };
+
 export function useAchievements(): {
   state: Loadable<AchievementsPayload>;
   error: string | null;
   refreshing: boolean;
   lastUpdatedAt: number | null;
   userId: string | null;
-  refresh: () => void;
+  refresh: () => Promise<RefreshOutcome>;
 } {
   const { accessToken, redirectToLogin, userId } =
     useSessionBootstrap("/achievements");
@@ -35,7 +42,7 @@ export function useAchievements(): {
 
   // Cookie-authenticated (same origin): the access token only gates the call,
   // it is not sent as a header.
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<RefreshOutcome> => {
     const id = requestId.current + 1;
 
     requestId.current = id;
@@ -48,18 +55,24 @@ export function useAchievements(): {
     try {
       const payload = await fetchAchievements({ tz: timezone });
 
-      if (requestId.current !== id) return;
+      if (requestId.current !== id) return { status: "skipped" };
       setState({ status: "ready", data: payload });
       setLastUpdatedAt(Date.now());
+
+      return { status: "ok" };
     } catch (cause) {
-      if (requestId.current !== id) return;
+      if (requestId.current !== id) return { status: "skipped" };
       if (isUnauthorized(cause)) {
         redirectToLogin();
 
-        return;
+        return { status: "unauthorized" };
       }
-      setError(cause instanceof Error ? cause.message : "error");
+      const message = cause instanceof Error ? cause.message : null;
+
+      setError(message ?? "error");
       setState((previous) => ({ status: "error", data: previous.data }));
+
+      return { status: "error", message };
     } finally {
       if (requestId.current === id) setRefreshing(false);
     }
@@ -70,8 +83,10 @@ export function useAchievements(): {
     void load();
   }, [accessToken, load]);
 
-  const refresh = useCallback(() => {
-    if (accessToken) void load();
+  const refresh = useCallback(async (): Promise<RefreshOutcome> => {
+    if (!accessToken) return { status: "skipped" };
+
+    return load();
   }, [accessToken, load]);
 
   return { state, error, refreshing, lastUpdatedAt, userId, refresh };

@@ -227,7 +227,9 @@
 - 数据源：`GET /api/app/achievements?tz=&tz_offset_minutes=`（cookie 会话鉴权；若 Vercel
   函数预算不足则页面改 Server Component 直出，响应形状不变，见 `docs/achievements-plan.md`
   P1.4）。无筛选条；页头右侧放与 Sessions 同款的刷新图标按钮（`ArrowsRotateRight`，
-  刷新中 `animate-spin`，`Tooltip` 显示上次更新时间）。时区取浏览器时区，不写 URL。
+  刷新中 `animate-spin`、按钮禁用并带 `aria-busy`，`Tooltip` 显示上次更新时间）。
+  手动刷新结束给 Toast 反馈：成功「成就已刷新」，失败显示加载失败原因；首次加载与
+  401 跳登录不弹。时区取浏览器时区，不写 URL。
 - 摘要（页头，`achievements-summary.tsx`）：不再用「英雄带」大面板——标题（「已解锁成就」，
   `h2`）+ 副标题（「五档进阶，全部在读取时计算。」），右侧大号已解锁数 x/18（等宽数字）+
   一条细进度条（宽度按比例，`accent` 色）；五档段位计数（青铜 / 白银 / 黄金 / 钻石 / 王者）压成一行

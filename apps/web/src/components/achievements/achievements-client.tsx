@@ -9,7 +9,7 @@
 // day shows 新 until the next visit. Nothing is written back to the server.
 
 import { ArrowsRotateRight } from "@gravity-ui/icons";
-import { Button, Skeleton, Tooltip, Typography } from "@heroui/react";
+import { Button, Skeleton, Tooltip, Typography, toast } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AchievementsBody } from "./achievements-body";
@@ -101,7 +101,40 @@ export function AchievementsClient() {
     }
   }, [payload, seenDay, seenReady, userId]);
 
-  const retry = useCallback(() => refresh(), [refresh]);
+  // Manual reloads report back twice: a loading toast the moment the button is
+  // pressed, then the same toast flips to the result. The spinner alone is easy
+  // to miss on a fast response, and a failed refresh otherwise only leaves a
+  // note below the grid.
+  const retry = useCallback(() => {
+    const toastId = toast(
+      achievementCopy(locale, "achievements.ui.refreshPending"),
+      {
+        isLoading: true,
+        timeout: 0,
+      },
+    );
+
+    void refresh().then((outcome) => {
+      if (outcome.status === "ok") {
+        toast.update(
+          toastId,
+          achievementCopy(locale, "achievements.ui.refreshSuccess"),
+          { isLoading: false, timeout: 3000, variant: "success" },
+        );
+      } else if (outcome.status === "error") {
+        toast.update(
+          toastId,
+          `${achievementCopy(locale, "achievements.ui.loadError")}${
+            outcome.message ? ` (${outcome.message})` : ""
+          }`,
+          { isLoading: false, timeout: 5000, variant: "danger" },
+        );
+      } else {
+        // Unauthorized (redirecting) or no session yet: drop the toast.
+        toast.close(toastId);
+      }
+    });
+  }, [locale, refresh]);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-8">
@@ -109,7 +142,9 @@ export function AchievementsClient() {
         <Tooltip delay={0}>
           <Button
             isIconOnly
+            aria-busy={refreshing}
             aria-label={achievementCopy(locale, "achievements.ui.refresh")}
+            isDisabled={refreshing}
             size="sm"
             variant="tertiary"
             onPress={retry}

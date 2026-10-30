@@ -1,6 +1,6 @@
 # 成就系统实施计划（Achievements Plan）
 
-> 状态：**M7 完成（P0 / P1 / P2 与浏览器人工验收全部通过）；P4 视觉改版进行中（资产与组件改造已入库，界面侧待操作者验收）；P3 其余项为 backlog，需操作者排期**
+> 状态：**M7 完成（P0 / P1 / P2 与浏览器人工验收全部通过）；P4 视觉改版进行中（P4.1–P4.6 已完成并通过操作者验收，仅 P4.7 的 devDependency 待批准）；P3 其余项为 backlog，需操作者排期**
 > 创建 / 最后更新：2026-10-30
 > 决策来源：2026-10-30 方案讨论，操作者已确认方向与 §1 全部决策；2026-10-30 视觉改版决策见 §1.3
 > 执行方式：按 §4 阶段顺序推进；**每阶段 `pnpm verify` 全绿后才打钩**，并同步更新 §0 与 §8，再进入下一阶段
@@ -16,12 +16,12 @@
 | P0 | 领域层：catalog + compute + 单测 + 校准 | ✅ 2026-10-30（阈值已按真实实例校准） |
 | P1 | 数据面：`/api/app/achievements` + 鉴权 + 测试 | ✅ 2026-10-30（已上线并线上验证） |
 | P2 | 界面：成就页 + 侧栏 + wrapped + 文案 | ✅ 2026-10-30（代码完成 + 操作者验收通过） |
-| P4 | 视觉改版：插画徽章 + 徽章墙 | 🟡 进行中 2026-10-30（资产与组件改造已入库；待操作者浏览器验收） |
+| P4 | 视觉改版：插画徽章 + 徽章墙 | 🟡 进行中 2026-10-30（P4.1–P4.6 已完成并验收；P4.7 待 devDependency 批准） |
 | Backlog | 见 §4 P3 | — |
 
-- 当前阶段：**P4 视觉改版**（代码侧完成，待操作者人工验收）
-- 下一步：操作者在浏览器验收 P4.6 清单（浅色 / 深色 / 375px / 加载失败回退 / reduced-motion /
-  键盘可达），通过后打钩 P4.6 与阶段完成，并按 §4 P4.7 处理资产生成脚本的 devDependency 批准
+- 当前阶段：**P4 视觉改版**（P4.1–P4.6 完成并于 2026-10-30 通过操作者验收；剩 P4.7）
+- 下一步：操作者批准 §4 P4.7 的资产生成脚本 devDependency（`jpeg-js` + `pngjs`，可选
+  `sharp`）后打钩，P4 阶段收尾
 - 换机器恢复：`pnpm install` → `pnpm verify` 确认基线 → 读本节与 §8 → 从 §4 第一个未勾选条目继续
 - 执行规则：
   1. 开始某阶段时，把 §0 对应行改为「进行中」并注明日期；
@@ -280,7 +280,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P2.7** `pnpm verify` 全绿（lint 0 error / 4 条基线 warning、`tsc` 无输出、web 380 passed (27 files)、build 成功、CLI 72 passed）；§0 / §8 已更新
 - [x] **阶段完成**（2026-10-30，P2）
 
-### P4 视觉改版：插画徽章 + 徽章墙（2026-10-30 操作者确认；资产已入库，界面侧待指令）
+### P4 视觉改版：插画徽章 + 徽章墙（2026-10-30 实施并验收；P4.7 待依赖批准）
 
 背景与决策见 §1.3。目标：把「参数化 SVG 徽章 + 卡片网格」换成「每条成就一张插画徽章 + 徽章墙」。
 
@@ -289,7 +289,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P4.3** 组件改造：`achievement-art.tsx` → `achievement-medallion.tsx`（位图 + 段位金属外环 + 锁定灰化与锁标 + SVG 回退；回退同时覆盖 `onError` 与挂载后 `naturalWidth` 检查）；`achievement-card.tsx` 改墙格（无边框，徽章 + 名称 + 段位文字 / 细进度条）；`achievements-summary.tsx` 改页头摘要（大号 x/18 + 细进度条 + 段位计数行）；`achievements-skeleton.tsx` 改圆形占位；`achievement-dialog.tsx` 换大徽章（176px）；`achievements-section.tsx` 栅格改 3/4/5/6 列
 - [x] **P4.4** 目录层：`catalog.ts` 增 `art` 字段（`/achievements/<id>.png`），`ACHIEVEMENT_ICONS` 退为回退用；`tests/unit/achievements-catalog.test.ts` 守卫同步（id 与文件名一一对应 + 资产存在）
 - [x] **P4.5** 文档回写：`docs/ui-spec.md` 成就节改徽章墙规范；本文件 §0 / §8 更新
-- [ ] **P4.6** `pnpm verify` 全绿 + 浏览器人工验收（浅色 / 深色 / 375px 窄屏 / 图片加载失败回退 / reduced-motion / 键盘可达）——代码侧已全绿，机器核对（headless Chrome 截图）已覆盖浅色 / 深色 / 375px 三列 / 加载失败回退；**操作者人工验收待做**
+- [x] **P4.6**（2026-10-30 操作者验收通过） `pnpm verify` 全绿 + 浏览器人工验收（浅色 / 深色 / 375px 窄屏 / 图片加载失败回退 / reduced-motion / 键盘可达）；机器核对（headless Chrome + CDP）覆盖深色、375px 无横向滚动、断图回退 SVG、reduce 下 `transition-property: none`、Enter / Esc 开合弹窗并把焦点还给墙格；验收反馈的「当前值不弱化」与「刷新过程/结果 Toast」已修复
 - [ ] **P4.7** 体积收口：**资产侧已量化**（18 张合计 ~420 KB，单张 ≤ 30 KB）；待操作者批准 `jpeg-js` + `pngjs`（+ 可选 `sharp`）devDependency 后，生成脚本才能在仓库内跑通并复现量化结果（当前脚本的量化步骤在缺 `sharp` 时自动跳过）
 
 ### P3 Backlog（不在本轮，确认后再排期）
@@ -361,6 +361,8 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 2026-10-30 | P4 进度口径修正 + 间距/字号 | ✅ | 本次提交 | 操作者验收指出进度不对：原实现按「当前档区间」（上一档 → 下一档）算比例，与上游 `badgeProgress` 不一致，且刚升档时进度条会归零；改为「当前值 ÷ 下一档阈值」并钳在 0–100 %（`catalog.ts` 新增 `progressRatioForNext`，守卫测试覆盖）。同时按反馈：分隔线上方留间距、等级历程 / 五档时间线 / 数据覆盖各留间距、五档时间线标题弱化为与等级历程同款小字、摘要的段位计数行加大一号（`text-xs` + 数字 `text-sm`） |
 | 2026-10-30 | P4 徽章尺寸归一化 + 放大 | ✅ | 本次提交 | 操作者反馈「有的徽章大、有的徽章小、整体偏小」。查明原因：出图 QA 允许硬币占画幅 70–95 %，18 张资产实测占幅 0.697–0.848（差 22 %），徽章框统一但里面的硬币不等大。新增 `lib/achievements/art-fit.ts` 记录每张图的实测硬币半径，徽章按 `(1 + 裁切) ÷ 半径` 缩放，所有硬币同大且裁切一致；徽章内部几何改为全比例（外环 6 %、裁切 5 %、锁标按比例），尺寸改由 CSS 决定：墙格 `w-24 md:w-28`（96 → 112px），弹窗 `w-44`（176px），骨架同步。守卫测试 `tests/unit/achievement-art-fit.test.ts` 直接解 PNG 的 alpha 圆盘重测半径与居中度，资产重新生成后表对不上即失败 |
 | 2026-10-30 | P4 段位金属色对齐上游 | ✅ | 本次提交 | 操作者反馈「上游的渐变比较逼真」。核对上游 `tier-palette.js`：它的金属感来自「中间色 → 窄高光带 → 深色」的配方（外环 135° / 高光 42 %，标签与进度条 120° / 55 %）+ 深色 `glyph` 字色 + 内高光阴影；我们之前是「亮 → 中 → 深」铺开，高光带太宽所以发塑料。改法：段位色值与渐变角度整体对齐上游色板（`TIER_METALS` / `TIER_RAMPS` / 锁定中性灰同步），外环与 SVG 回退徽章的渐变停靠点改成上游顺序（0 % 中间色 / 42 % 高光 / 100 % 深色），标签与进度条/等级历程条共用 `tierGradient`。上游只有四档，`王者` 按同一配方取紫水晶色 |
+| 2026-10-30 | P4 当前值 + 刷新反馈 | ✅ | 本次提交 | 操作者验收反馈两处：① 弹窗正文被 HeroUI 的 `.modal__body` 默认染成 muted，当前值一并变灰；正文改 `text-foreground`（标签仍显式走 muted），与上游「标签灰 / 数值纯黑」的配方一致。② 刷新按钮只有图标旋转，过程与结果都没有提示；改为两段式 Toast——按下即出「正在刷新…」（`timeout: 0`），结束原地切换为成功「成就已刷新」或失败「成就加载失败。(原因)」；刷新中按钮禁用并带 `aria-busy`；`useAchievements.refresh` 返回 `ok / error / unauthorized / skipped`，首载与 401 跳登录不弹。新增 zh/en 文案，`docs/ui-spec.md` 同步 |
+| 2026-10-30 | P4.6 验收 | ✅ | 本次提交 | 操作者浏览器验收通过（浅色 / 深色 / 375px / 加载失败回退 / reduced-motion / 键盘可达）；同日机器核对：headless Chrome + CDP 量得 375px 无页面级横向滚动、断图时徽章回退参数化 SVG、reduce 下 `transition-property: none`、Enter 打开弹窗 / Esc 关闭且焦点回到触发墙格；`pnpm verify` 全绿（web 28 files / 390 tests + build，CLI 72）。P4.7（资产生成脚本 devDependency 批准）仍未勾选 |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 
@@ -374,7 +376,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
   - `docs/ui-spec.md`：新增「成就（`/achievements`，M7）」页面规范
   - `AGENTS.md`：文档地图新增本文件索引
 - **已完成（2026-10-30，P2 收尾）**：用实现结果补全细节，不重复建规范——`docs/ui-spec.md` 成就页改为英雄带摘要 + 段位分布条、参数化 SVG 徽章（`achievement-art.tsx`）、五段进度轨、整卡按钮；`docs/requirements.md` M7 验收补上阈值唯一真源 `apps/web/src/lib/achievements/catalog.ts`、校准结论与第 19 条未上线的原因
-- **进行中（2026-10-30，P4）**：`docs/ui-spec.md` 成就节已按实现回填（徽章墙三/四/五/六列、位图徽章 + 段位外环 + 裁切规则、页头摘要、弹窗 176px 徽章、圆形骨架）；P4.6 的操作者浏览器验收待做
+- **已完成（2026-10-30，P4）**：`docs/ui-spec.md` 成就节已按实现回填（徽章墙三/四/五/六列、位图徽章 + 段位外环 + 裁切规则、页头摘要、弹窗 176px 徽章、弹窗数值走前景色、刷新按钮禁用 + 两段式 Toast、圆形骨架）；P4.6 已验收通过，P4.7 待 devDependency 批准
 - **不触碰** `docs/cli-contract.md`（成就走 `/api/app/*`，不属于 CLI 契约层）
 - **依赖预算**：不新增运行时依赖，`docs/rewrite-plan.md` §4 无需变更（资产生成脚本的 `jpeg-js` + `pngjs` 是离线 devDependency，不进运行时）
 
