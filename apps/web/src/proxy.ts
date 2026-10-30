@@ -33,6 +33,7 @@ const PROTECTED_PAGES = [
   "/sync-runs",
   "/settings",
   "/wrapped",
+  "/achievements",
   "/service-status",
   "/device",
 ];
@@ -125,6 +126,7 @@ export const config = {
     "/sync-runs/:path*",
     "/settings/:path*",
     "/wrapped/:path*",
+    "/achievements/:path*",
     "/service-status/:path*",
     "/device/:path*",
   ],
