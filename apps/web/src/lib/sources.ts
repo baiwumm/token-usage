@@ -19,6 +19,9 @@ const CANONICAL_RULES: Array<[test: string, id: string]> = [
   ["command_code", "command-code"],
   ["command-code", "command-code"],
   ["deepseek", "deepseek"],
+  // MiniMax ships its own coding CLI ("minimax-code"); the prefix rule also
+  // catches future "minimax-*" source ids.
+  ["minimax", "minimax"],
 ];
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -52,6 +55,7 @@ const SOURCE_LABELS: Record<string, string> = {
   anythingllm: "AnythingLLM",
   unsloth: "Unsloth",
   zed: "Zed",
+  minimax: "MiniMax",
 };
 
 /** Logo file under public/brand-logos per canonical id. */
@@ -88,6 +92,7 @@ const SOURCE_LOGOS: Record<string, string> = {
   unsloth: "unsloth.svg",
   zed: "zed.svg",
   stepfun: "stepfun.png",
+  minimax: "minimax.svg",
 };
 
 /** White-on-transparent marks that need a backdrop to read on light cards. */
@@ -144,6 +149,7 @@ const MODEL_PREFIX_LOGOS: Array<[prefix: string, file: string]> = [
   ["composer", "cursor.svg"],
   ["claude", "claude-code.svg"],
   ["step", "stepfun.png"],
+  ["minimax", "minimax.svg"],
 ];
 
 export function canonicalSource(source: string): string {
