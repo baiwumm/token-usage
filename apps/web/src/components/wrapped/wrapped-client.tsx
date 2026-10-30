@@ -17,6 +17,7 @@ import type { AchievementsPayload } from "@/lib/achievements/types";
 import { Button, Card, Typography } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { AchievementsCard } from "./achievements-card";
 import { ModelsTable } from "./models-table";
 import { MonthlyCard } from "./monthly-card";
 import { buildShareInput } from "./share-input";
@@ -80,7 +81,7 @@ export function WrappedClient() {
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [monthly, setMonthly] = useState<MonthlyPoint[]>([]);
   const [heatmap, setHeatmap] = useState<HeatmapPayload | null>(null);
-  // All-time achievements: only the "unlocked this year" card reads them.
+  // All-time achievements: only the standalone achievements card reads them.
   const [achievements, setAchievements] = useState<AchievementsPayload | null>(
     null,
   );
@@ -231,19 +232,6 @@ export function WrappedClient() {
 
   const totalTokens = totals?.total_tokens ?? 0;
 
-  // Achievements cover all history; the card counts the ones whose tier landed
-  // inside the reviewed year (achieved_at is a local YYYY-MM-DD day).
-  const unlockedThisYear = useMemo(() => {
-    if (!achievements) return null;
-    const prefix = `${year}-`;
-
-    return achievements.achievements.filter((entry) =>
-      Object.values(entry.achieved_at).some((day) =>
-        day ? day.startsWith(prefix) : false,
-      ),
-    ).length;
-  }, [achievements, year]);
-
   const shareInput = useMemo(
     () =>
       buildShareInput({
@@ -315,10 +303,12 @@ export function WrappedClient() {
 
       {status === "ready" && hasData && totals ? (
         <>
-          <StatCards
+          <StatCards copy={copy} totals={totals} />
+
+          <AchievementsCard
+            achievements={achievements}
             copy={copy}
-            totals={totals}
-            unlockedAchievements={unlockedThisYear}
+            locale={locale}
           />
 
           <MonthlyCard copy={copy} data={trendData} year={year} />

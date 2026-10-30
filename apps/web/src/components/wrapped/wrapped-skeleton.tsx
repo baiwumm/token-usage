@@ -1,9 +1,9 @@
 "use client";
 
 // First-load skeleton for /wrapped. Mirrors the loaded stack — the four stat
-// cards, the monthly trend, the source mix and the model table — so swapping
-// in real data does not shift the page. The header (year select + share
-// button) renders with the page, not here.
+// cards, the achievements card, the monthly trend, the source mix and the
+// model table — so swapping in real data does not shift the page. The header
+// (year select + share button) renders with the page, not here.
 
 import { Card, Skeleton } from "@heroui/react";
 
@@ -24,6 +24,27 @@ export function WrappedSkeleton() {
           </Card>
         ))}
       </div>
+
+      {/* Achievements card: title row plus the earned-achievement grid. */}
+      <Card className="p-5">
+        <Card.Header className="flex-row items-center justify-between gap-3">
+          <Skeleton className="h-5 w-24 rounded-full" />
+          <Skeleton className="h-3 w-12 rounded-full" />
+        </Card.Header>
+        <Card.Content>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
+              <div key={index} className="flex items-center gap-3">
+                <Skeleton className="size-10 shrink-0 rounded-full" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <Skeleton className="h-4 w-24 rounded-full" />
+                  <Skeleton className="h-3 w-12 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card.Content>
+      </Card>
 
       {/* Monthly trend: card header plus the chart block. */}
       <Card className="p-6">
