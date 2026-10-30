@@ -1,6 +1,6 @@
 # 成就系统实施计划（Achievements Plan）
 
-> 状态：**M7 完成（P0 / P1 / P2 与浏览器人工验收全部通过）；P4 视觉改版进行中（P4.1–P4.6 已完成并通过操作者验收，仅 P4.7 的 devDependency 待批准）；P3 其余项为 backlog，需操作者排期**
+> 状态：**M7 完成（P0 / P1 / P2 与浏览器人工验收全部通过）；P4 视觉改版已完成（P4.1–P4.7 全部完成并通过操作者验收，含资产生成脚本 devDependency 批准）；P3 其余项为 backlog，需操作者排期**
 > 创建 / 最后更新：2026-10-30
 > 决策来源：2026-10-30 方案讨论，操作者已确认方向与 §1 全部决策；2026-10-30 视觉改版决策见 §1.3
 > 执行方式：按 §4 阶段顺序推进；**每阶段 `pnpm verify` 全绿后才打钩**，并同步更新 §0 与 §8，再进入下一阶段
@@ -16,12 +16,11 @@
 | P0 | 领域层：catalog + compute + 单测 + 校准 | ✅ 2026-10-30（阈值已按真实实例校准） |
 | P1 | 数据面：`/api/app/achievements` + 鉴权 + 测试 | ✅ 2026-10-30（已上线并线上验证） |
 | P2 | 界面：成就页 + 侧栏 + wrapped + 文案 | ✅ 2026-10-30（代码完成 + 操作者验收通过） |
-| P4 | 视觉改版：插画徽章 + 徽章墙 | 🟡 进行中 2026-10-30（P4.1–P4.6 已完成并验收；P4.7 待 devDependency 批准） |
+| P4 | 视觉改版：插画徽章 + 徽章墙 | ✅ 2026-10-30（P4.1–P4.7 全部完成并验收） |
 | Backlog | 见 §4 P3 | — |
 
-- 当前阶段：**P4 视觉改版**（P4.1–P4.6 完成并于 2026-10-30 通过操作者验收；剩 P4.7）
-- 下一步：操作者批准 §4 P4.7 的资产生成脚本 devDependency（`jpeg-js` + `pngjs`，可选
-  `sharp`）后打钩，P4 阶段收尾
+- 当前阶段：**P4 已收尾**（2026-10-30）；M7 成就系统的计划内阶段全部完成
+- 下一步：无排期项；P3 backlog（§4）待操作者确认后单独立项
 - 换机器恢复：`pnpm install` → `pnpm verify` 确认基线 → 读本节与 §8 → 从 §4 第一个未勾选条目继续
 - 执行规则：
   1. 开始某阶段时，把 §0 对应行改为「进行中」并注明日期；
@@ -280,7 +279,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P2.7** `pnpm verify` 全绿（lint 0 error / 4 条基线 warning、`tsc` 无输出、web 380 passed (27 files)、build 成功、CLI 72 passed）；§0 / §8 已更新
 - [x] **阶段完成**（2026-10-30，P2）
 
-### P4 视觉改版：插画徽章 + 徽章墙（2026-10-30 实施并验收；P4.7 待依赖批准）
+### P4 视觉改版：插画徽章 + 徽章墙（2026-10-30 完成并验收）
 
 背景与决策见 §1.3。目标：把「参数化 SVG 徽章 + 卡片网格」换成「每条成就一张插画徽章 + 徽章墙」。
 
@@ -290,7 +289,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P4.4** 目录层：`catalog.ts` 增 `art` 字段（`/achievements/<id>.png`），`ACHIEVEMENT_ICONS` 退为回退用；`tests/unit/achievements-catalog.test.ts` 守卫同步（id 与文件名一一对应 + 资产存在）
 - [x] **P4.5** 文档回写：`docs/ui-spec.md` 成就节改徽章墙规范；本文件 §0 / §8 更新
 - [x] **P4.6**（2026-10-30 操作者验收通过） `pnpm verify` 全绿 + 浏览器人工验收（浅色 / 深色 / 375px 窄屏 / 图片加载失败回退 / reduced-motion / 键盘可达）；机器核对（headless Chrome + CDP）覆盖深色、375px 无横向滚动、断图回退 SVG、reduce 下 `transition-property: none`、Enter / Esc 开合弹窗并把焦点还给墙格；验收反馈的「当前值不弱化」与「刷新过程/结果 Toast」已修复
-- [ ] **P4.7** 体积收口：**资产侧已量化**（18 张合计 ~420 KB，单张 ≤ 30 KB）；待操作者批准 `jpeg-js` + `pngjs`（+ 可选 `sharp`）devDependency 后，生成脚本才能在仓库内跑通并复现量化结果（当前脚本的量化步骤在缺 `sharp` 时自动跳过）
+- [x] **P4.7**（2026-10-30 操作者批准并执行）体积收口与脚本可复现：**资产侧已量化**（18 张合计 ~420 KB，单张 17–30 KB）；`jpeg-js@0.4.4` + `pngjs@7.0.0` 加入**仓库根** `package.json` 的 `devDependencies`（不算运行时预算，不改 `apps/web` 依赖图；`docs/rewrite-plan.md` §4 已记录）；生成脚本从脚本目录可直接解析这两个包，`--only` / `--seed` / `--optimize-only` 均可在仓库内跑通。`sharp`（原生二进制的调色板量化）仍为可选、未安装，缺它时量化步骤自动跳过（重新出图的成片约 80–110 KB / 张，用时再补装）
 
 ### P3 Backlog（不在本轮，确认后再排期）
 
@@ -336,8 +335,8 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 历史行数过大导致请求变慢 | 先加 60s 结果缓存；再不行改 SQL 聚合 RPC 或持久化写穿表 |
 | 健康类成就价值观风险 | 阈值保守 + 文案调侃；不做「当前连续」压力机制 |
 | 插画风格漂移（AI 出图不一致） | 统一风格模板 + 硬性 QA（纯黑虚空背景 / 正圆硬币居中占幅 70–95 %）；不合格换 seed 重生成，最多 4 次；生成脚本与 prompt 清单入库可复现 |
-| 资产体积（18 张 PNG 入库） | 已收口：调色板量化后单张 17–30 KB，合计 ~420 KB；脚本的量化步骤需 `sharp`（待批准） |
-| 资产生成脚本的依赖未批准 | `jpeg-js` + `pngjs` 尚未进 devDependencies（AGENTS 硬性约束 2）；脚本仅离线使用、不参与 web 构建，批准前不写入 `package.json` |
+| 资产体积（18 张 PNG 入库） | 已收口：调色板量化后单张 17–30 KB，合计 ~420 KB；量化由可选 `sharp` 完成，未安装时脚本跳过该步（成片偏大但不影响显示） |
+| 资产生成脚本的依赖 | 已批准并落地（2026-10-30）：`jpeg-js@0.4.4` + `pngjs@7.0.0` 为仓库根 `devDependencies`，仅离线脚本使用、不参与 web 构建与运行时拷贝；`sharp` 未安装，需要时再单独申请 |
 | 回滚 | 纯增量功能、零迁移：`git revert` 对应提交即完全回滚（侧栏入口随代码一起消失） |
 
 ---
@@ -363,6 +362,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 2026-10-30 | P4 段位金属色对齐上游 | ✅ | 本次提交 | 操作者反馈「上游的渐变比较逼真」。核对上游 `tier-palette.js`：它的金属感来自「中间色 → 窄高光带 → 深色」的配方（外环 135° / 高光 42 %，标签与进度条 120° / 55 %）+ 深色 `glyph` 字色 + 内高光阴影；我们之前是「亮 → 中 → 深」铺开，高光带太宽所以发塑料。改法：段位色值与渐变角度整体对齐上游色板（`TIER_METALS` / `TIER_RAMPS` / 锁定中性灰同步），外环与 SVG 回退徽章的渐变停靠点改成上游顺序（0 % 中间色 / 42 % 高光 / 100 % 深色），标签与进度条/等级历程条共用 `tierGradient`。上游只有四档，`王者` 按同一配方取紫水晶色 |
 | 2026-10-30 | P4 当前值 + 刷新反馈 | ✅ | 本次提交 | 操作者验收反馈两处：① 弹窗正文被 HeroUI 的 `.modal__body` 默认染成 muted，当前值一并变灰；正文改 `text-foreground`（标签仍显式走 muted），与上游「标签灰 / 数值纯黑」的配方一致。② 刷新按钮只有图标旋转，过程与结果都没有提示；改为两段式 Toast——按下即出「正在刷新…」（`timeout: 0`），结束原地切换为成功「成就已刷新」或失败「成就加载失败。(原因)」；刷新中按钮禁用并带 `aria-busy`；`useAchievements.refresh` 返回 `ok / error / unauthorized / skipped`，首载与 401 跳登录不弹。新增 zh/en 文案，`docs/ui-spec.md` 同步 |
 | 2026-10-30 | P4.6 验收 | ✅ | 本次提交 | 操作者浏览器验收通过（浅色 / 深色 / 375px / 加载失败回退 / reduced-motion / 键盘可达）；同日机器核对：headless Chrome + CDP 量得 375px 无页面级横向滚动、断图时徽章回退参数化 SVG、reduce 下 `transition-property: none`、Enter 打开弹窗 / Esc 关闭且焦点回到触发墙格；`pnpm verify` 全绿（web 28 files / 390 tests + build，CLI 72）。P4.7（资产生成脚本 devDependency 批准）仍未勾选 |
+| 2026-10-30 | P4.7 收尾 | ✅ | 本次提交 | 操作者批准后执行：`jpeg-js@0.4.4` + `pngjs@7.0.0` 以精确版本加入**仓库根** `package.json` 的 `devDependencies`（lockfile 同步；不做运行时依赖，不进 `apps/web` 依赖图），`generate.mjs` 的静态 import 从脚本目录可直接解析；修正 `scripts/admin/achievement-assets/README.md` 的安装位置说明（原写 `apps/web/package.json`，实际 Node 从脚本目录向上解析到仓库根）；`sharp` 仍为可选、未安装（量化跳过）。`docs/rewrite-plan.md` §4 增加 2026-10-30 增量记录。P4 阶段收尾 |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 
@@ -376,9 +376,9 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
   - `docs/ui-spec.md`：新增「成就（`/achievements`，M7）」页面规范
   - `AGENTS.md`：文档地图新增本文件索引
 - **已完成（2026-10-30，P2 收尾）**：用实现结果补全细节，不重复建规范——`docs/ui-spec.md` 成就页改为英雄带摘要 + 段位分布条、参数化 SVG 徽章（`achievement-art.tsx`）、五段进度轨、整卡按钮；`docs/requirements.md` M7 验收补上阈值唯一真源 `apps/web/src/lib/achievements/catalog.ts`、校准结论与第 19 条未上线的原因
-- **已完成（2026-10-30，P4）**：`docs/ui-spec.md` 成就节已按实现回填（徽章墙三/四/五/六列、位图徽章 + 段位外环 + 裁切规则、页头摘要、弹窗 176px 徽章、弹窗数值走前景色、刷新按钮禁用 + 两段式 Toast、圆形骨架）；P4.6 已验收通过，P4.7 待 devDependency 批准
+- **已完成（2026-10-30，P4）**：`docs/ui-spec.md` 成就节已按实现回填（徽章墙三/四/五/六列、位图徽章 + 段位外环 + 裁切规则、页头摘要、弹窗 176px 徽章、弹窗数值走前景色、刷新按钮禁用 + 两段式 Toast、圆形骨架）；P4.6、P4.7 均已通过，P4 阶段收尾
 - **不触碰** `docs/cli-contract.md`（成就走 `/api/app/*`，不属于 CLI 契约层）
-- **依赖预算**：不新增运行时依赖，`docs/rewrite-plan.md` §4 无需变更（资产生成脚本的 `jpeg-js` + `pngjs` 是离线 devDependency，不进运行时）
+- **依赖预算**：不新增运行时依赖。2026-10-30 经操作者批准，仓库根 `devDependencies` 增加 `jpeg-js@0.4.4` + `pngjs@7.0.0`（仅离线资产生成脚本用，不进 `apps/web` 依赖图与构建产物），已在 `docs/rewrite-plan.md` §4 记录；`sharp` 未安装
 
 ---
 

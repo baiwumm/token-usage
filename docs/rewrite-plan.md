@@ -143,6 +143,13 @@ CNY/JPY/HKD，`as_of` 2026-10-25，USD 基准；具体数值为实现常量）+ 
 `apps/web` 直接依赖并 pin 到已解析版本；仅用于日键（`YYYY-MM-DD`）与 `CalendarDate`
 互转，时区运算仍走 `lib/dashboard/ranges` 的 Intl 实现，不引入 date-fns。
 
+2026-10-30 增量（操作者批准，仅离线资产生成脚本用）：仓库**根** `package.json` 的
+`devDependencies` 增加 `jpeg-js@0.4.4` + `pngjs@7.0.0`，供
+`scripts/admin/achievement-assets/generate.mjs` 解码出图 JPEG 与编码 256px 透明 PNG。
+二者不进 `apps/web` 依赖图、不参与 web 构建与 `pnpm verify` 的运行时拷贝，因此不计入
+运行时预算；`sharp`（原生二进制的调色板量化）仍为可选，未安装——18 张已入库徽章在资产
+侧完成量化（单张 17–30 KB），脚本不带 `sharp` 时跳过量化步骤。
+
 CLI 依赖集单独维护在 `packages/cli/package.json`：2026-10-29 删除
 `@mongodb-js/zstd`（`engines.node >= 22.19` 已内置 zstd，`prebuild-install`
 弃用警告随之消失）；同日评审删除从未接线的 `@sentry/node`（运行期只 init、

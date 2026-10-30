@@ -14,12 +14,14 @@
 
 1. **`mmx` CLI**（MiniMax 图像生成，模型 `image-01`）需在 PATH 上并已登录：
    `mmx auth login --api-key sk-xxxxx`（凭据只存在操作者机器的 `~/.mmx/`，不进仓库）。
-2. **`jpeg-js` + `pngjs`**：JPEG 解码与 PNG 编码。二者当前是脚本的**运行期依赖，
-   尚未加入仓库 devDependencies**——按 `AGENTS.md` 硬性约束 2，新增依赖需操作者
-   批准；批准后在 `apps/web/package.json` 的 `devDependencies` 里加这两项即可
-   （不计入运行时预算，不改 `docs/rewrite-plan.md` §4）。
-   > 可选再加 `sharp`：只为把成片量化到 ≤ 30 KB / 张（没有它脚本仍能跑，成片约
-   > 80–110 KB / 张）。`sharp` 是原生二进制，优先用纯 JS 方案。
+2. **`jpeg-js` + `pngjs`**：JPEG 解码与 PNG 编码。2026-10-30 经操作者批准，
+   已以精确版本加入**仓库根 `package.json` 的 `devDependencies`**
+   （`jpeg-js@0.4.4` + `pngjs@7.0.0`）——脚本在仓库根目录下运行，Node 按目录
+   向上解析到根 `node_modules`，不是 `apps/web`。二者是离线脚本依赖，不参与
+   web 构建、不计入运行时预算（`docs/rewrite-plan.md` §4 已记录）。
+   > `sharp` 仍未安装：它只用于把成片量化到 ≤ 30 KB / 张（没有它脚本仍能跑，
+   > 成片约 80–110 KB / 张，`--optimize` 自动跳过）。已入库的 18 张是在量化后
+   > 的版本；sharp 是原生二进制，确实需要重新量化时再单独申请。
 
 ## 用法
 

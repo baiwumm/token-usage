@@ -11,7 +11,7 @@
 //
 // Requirements (NOT runtime dependencies of the app — see README.md):
 //   - the `mmx` CLI on PATH (MiniMax image generation)
-//   - `jpeg-js` + `pngjs` as devDependencies of the repo (pending approval)
+//   - `jpeg-js` + `pngjs` in the repo root devDependencies (approved 2026-10-30)
 //
 // Usage: node scripts/admin/achievement-assets/generate.mjs [--only id,id]
 //        [--seed <base>]   # 改基准 seed（同一 subject 换构图时用）
@@ -44,9 +44,10 @@ const SEED_BASE = seedArg > -1 ? Number(process.argv[seedArg + 1]) : 41000;
 const optimizeOnly = process.argv.includes("--optimize-only");
 
 /**
- * Optional palette quantization (256 colors + alpha). Needs `sharp`, which is
- * a pending devDependency (see README.md) — the pipeline still works without
- * it, the PNGs are just heavier (~80-110 KB instead of ~30 KB).
+ * Optional palette quantization (256 colors + alpha). Needs `sharp`, an
+ * optional devDependency that is not installed (see README.md) — the pipeline
+ * still works without it, the PNGs are just heavier (~80-110 KB instead of
+ * ~30 KB).
  */
 async function optimize(file) {
   try {
