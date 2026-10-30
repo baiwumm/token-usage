@@ -33,7 +33,7 @@ export function TierBadge({
         color: ramp.ink,
         textShadow: "0 1px 0 rgba(255, 255, 255, 0.35)",
         boxShadow:
-          "inset 0 1px 1px rgba(255, 255, 255, 0.45), 0 0 0 1px rgba(10, 15, 12, 0.08)",
+          "inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 0 0 1px rgba(10, 15, 12, 0.06)",
       }}
     >
       {label}

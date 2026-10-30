@@ -5,29 +5,38 @@
 // The bitmap artwork is tier-agnostic (one image per achievement, reused for
 // all five tiers), so the tier lives entirely in this palette: the ring metal
 // plus the label colours.
+//
+// The metals follow the upstream TokenTracker tier palette (fixed hex, not
+// Tailwind classes — the values live in SVG gradient stops and inline
+// backgrounds, so they cannot react to the dark class): every tier is a
+// mid tone → a narrow light band → a deep tone, which is what reads as metal.
+// Upstream has four tiers; `king` is ours and follows the same recipe.
 
 import { TIERS, type TierKey } from "@/lib/achievements/catalog";
 
 export type MetalPalette = {
+  /** The specular band. */
   light: string;
+  /** The mid tone the band sits on. */
   mid: string;
+  /** The shadow side. */
   deep: string;
 };
 
-/** One metal per tier; the king metal is the iridescent one. */
+/** One metal per tier; the king metal is the amethyst one. */
 export const TIER_METALS: Record<TierKey, MetalPalette> = {
-  bronze: { light: "#ffd9a8", mid: "#c4762f", deep: "#6d3a12" },
-  silver: { light: "#ffffff", mid: "#b8c1cd", deep: "#646d7b" },
-  gold: { light: "#fff3bd", mid: "#e5ad38", deep: "#8a5a10" },
-  diamond: { light: "#e9fbff", mid: "#63c6ea", deep: "#25698d" },
-  king: { light: "#ffe7a6", mid: "#df67c6", deep: "#5731c4" },
+  bronze: { light: "#e8c3a0", mid: "#a06a44", deep: "#5c3a22" },
+  silver: { light: "#f2f5f7", mid: "#aab3bb", deep: "#67707b" },
+  gold: { light: "#ffe9a8", mid: "#c9971c", deep: "#8a6508" },
+  diamond: { light: "#eafcff", mid: "#62b1e0", deep: "#7c6fd9" },
+  king: { light: "#f5d0fe", mid: "#a855f7", deep: "#4c1d95" },
 };
 
 /** Locked badges never show a tier metal — they stay neutral grey. */
 export const LOCKED_METAL: MetalPalette = {
-  light: "#dfe3ea",
-  mid: "#a7aeb9",
-  deep: "#6e7480",
+  light: "#dde1de",
+  mid: "#a8ada9",
+  deep: "#7c817d",
 };
 
 /**
@@ -45,19 +54,19 @@ export type TierRamp = {
 };
 
 export const TIER_RAMPS: Record<TierKey, TierRamp> = {
-  bronze: { from: "#f3d8b8", mid: "#cf8a4c", to: "#8a5324", ink: "#452a12" },
-  silver: { from: "#f7fafc", mid: "#c3ccd6", to: "#7d8794", ink: "#39424b" },
-  gold: { from: "#fff2bd", mid: "#e5ad38", to: "#a0700f", ink: "#5c430e" },
-  diamond: { from: "#e6fbff", mid: "#6ec9ec", to: "#2b7ba3", ink: "#1b4d70" },
-  king: { from: "#f6d9ff", mid: "#cba6f7", to: "#8b5cf6", ink: "#4c1d95" },
+  bronze: { from: "#a06a44", mid: "#e8c3a0", to: "#5c3a22", ink: "#3f2817" },
+  silver: { from: "#aab3bb", mid: "#f2f5f7", to: "#67707b", ink: "#39424b" },
+  gold: { from: "#c9971c", mid: "#ffe9a8", to: "#8a6508", ink: "#5c430e" },
+  diamond: { from: "#62b1e0", mid: "#eafcff", to: "#7c6fd9", ink: "#27496d" },
+  king: { from: "#a855f7", mid: "#f5d0fe", to: "#4c1d95", ink: "#3b0764" },
 };
 
 /** Neutral ramp for locked badges. */
 export const LOCKED_RAMP: TierRamp = {
-  from: "#e6e8ec",
-  mid: "#b3b9c2",
-  to: "#7b828d",
-  ink: "#3d434c",
+  from: "#a8ada9",
+  mid: "#dde1de",
+  to: "#7c817d",
+  ink: "#6a706c",
 };
 
 /** Ramp for a tier number (0 = locked). */
@@ -74,6 +83,24 @@ export function tierGradient(tier: number, angle = 120): string {
   const ramp = tierRamp(tier);
 
   return `linear-gradient(${angle}deg, ${ramp.from} 0%, ${ramp.mid} 55%, ${ramp.to} 100%)`;
+}
+
+/**
+ * The ring gradient: the same mid → light → deep recipe as the label, but
+ * rotated and with a narrower specular band (42 %), the way the upstream
+ * badge coin frames its artwork.
+ */
+export function tierRingGradient(tier: number): string {
+  const metal = tierMetal(tier);
+
+  return `linear-gradient(135deg, ${metal.mid} 0%, ${metal.light} 42%, ${metal.deep} 100%)`;
+}
+
+/** The mid → light → deep stops for an SVG gradient, in draw order. */
+export function tierRingStops(tier: number): [string, string, string] {
+  const metal = tierMetal(tier);
+
+  return [metal.mid, metal.light, metal.deep];
 }
 
 /** Per-achievement hue pair: the face glow and a complementary accent. */

@@ -29,7 +29,7 @@ import {
 } from "@gravity-ui/icons";
 import { useId, type ComponentType, type SVGProps } from "react";
 
-import { achievementHue, tierMetal } from "./achievement-tiers";
+import { achievementHue, tierRingStops } from "./achievement-tiers";
 
 import { type AchievementIcon } from "@/lib/achievements/catalog";
 
@@ -76,7 +76,8 @@ export function AchievementArt({
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const { hue, accent } = achievementHue(id);
   const unlocked = tier >= 1;
-  const metal = tierMetal(tier);
+  const [ringMid, ringLight, ringDeep] = tierRingStops(tier);
+  const metal = { light: ringLight, mid: ringMid, deep: ringDeep };
   const Glyph = GLYPHS[icon];
   const face = unlocked
     ? {
@@ -99,9 +100,9 @@ export function AchievementArt({
             y1="0%"
             y2="100%"
           >
-            <stop offset="0%" stopColor={metal.light} />
-            <stop offset="45%" stopColor={metal.mid} />
-            <stop offset="100%" stopColor={metal.deep} />
+            <stop offset="0%" stopColor={ringMid} />
+            <stop offset="42%" stopColor={ringLight} />
+            <stop offset="100%" stopColor={ringDeep} />
           </linearGradient>
           <radialGradient cx="50%" cy="32%" id={`face-${uid}`} r="74%">
             <stop offset="0%" stopColor={face.inner} />

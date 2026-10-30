@@ -211,7 +211,7 @@ export function AchievementDialog({
                                   ? {
                                       background: tierGradient(tier.tier),
                                       boxShadow:
-                                        "inset 0 1px 1px rgba(255, 255, 255, 0.4)",
+                                        "inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 0 0 1px rgba(10, 15, 12, 0.05)",
                                     }
                                   : undefined
                               }

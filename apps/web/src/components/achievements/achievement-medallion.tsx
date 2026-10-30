@@ -21,7 +21,7 @@ import { Lock } from "@gravity-ui/icons";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { AchievementArt } from "./achievement-art";
-import { achievementHue, tierMetal } from "./achievement-tiers";
+import { achievementHue, tierRingStops } from "./achievement-tiers";
 
 import { type AchievementIcon } from "@/lib/achievements/catalog";
 import { artworkScale } from "@/lib/achievements/art-fit";
@@ -50,7 +50,7 @@ export function AchievementMedallion({
   const [failed, setFailed] = useState(false);
   const imageRef = useRef<HTMLImageElement>(null);
   const unlocked = tier >= 1;
-  const metal = tierMetal(tier);
+  const [ringMid, ringLight, ringDeep] = tierRingStops(tier);
   const { hue, accent } = achievementHue(id);
 
   // The <img> is server-rendered, so a missing file can fail before React
@@ -123,9 +123,9 @@ export function AchievementMedallion({
             y1="0%"
             y2="100%"
           >
-            <stop offset="0%" stopColor={metal.light} />
-            <stop offset="45%" stopColor={metal.mid} />
-            <stop offset="100%" stopColor={metal.deep} />
+            <stop offset="0%" stopColor={ringMid} />
+            <stop offset="42%" stopColor={ringLight} />
+            <stop offset="100%" stopColor={ringDeep} />
           </linearGradient>
         </defs>
         <circle
