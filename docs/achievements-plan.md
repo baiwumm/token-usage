@@ -1,6 +1,6 @@
 # 成就系统实施计划（Achievements Plan）
 
-> 状态：**P0 完成（2026-10-30 按真实实例校准定稿；等待 P1 放行）**
+> 状态：**P1 完成（数据面已上线）；等待放行 P2 界面**
 > 创建 / 最后更新：2026-10-30
 > 决策来源：2026-10-30 方案讨论，操作者已确认方向与 §1 全部决策
 > 执行方式：按 §4 阶段顺序推进；**每阶段 `pnpm verify` 全绿后才打钩**，并同步更新 §0 与 §8，再进入下一阶段
@@ -14,12 +14,12 @@
 | 计划 | 方案与决策定稿 | ✅ 2026-10-30 |
 | 文档回写 | requirements / rewrite-plan / ui-spec / AGENTS 已更新 | ✅ 2026-10-30 |
 | P0 | 领域层：catalog + compute + 单测 + 校准 | ✅ 2026-10-30（阈值已按真实实例校准） |
-| P1 | 数据面：`/api/app/achievements` + 鉴权 + 测试 | 🟡 2026-10-30：P1.1–P1.3 / P1.5 完成，P1.4 待控制台核对 |
+| P1 | 数据面：`/api/app/achievements` + 鉴权 + 测试 | ✅ 2026-10-30（已上线并线上验证） |
 | P2 | 界面：成就页 + 侧栏 + wrapped + 文案 | ⬜ 未开始 |
 | Backlog | 见 §4 P3 | — |
 
-- 当前阶段：**P1 数据面代码完成**（route + payload 组装 + 客户端封装 + 测试）；P1.4 函数预算需你在 Vercel 控制台确认
-- 下一步：确认 P1.4（新增后共 14 个 route handler）→ **P2 界面**（成就页 + 侧栏 + wrapped + 文案）
+- 当前阶段：**P1 完成并上线**（线上 `GET /api/app/achievements` 返回 401 + `no-store`，函数已部署；`pnpm verify` 全绿）
+- 下一步：**P2 界面**（成就页 + 侧栏 + wrapped + 文案），待放行
 - 换机器恢复：`pnpm install` → `pnpm verify` 确认基线 → 读本节与 §8 → 从 §4 第一个未勾选条目继续
 - 执行规则：
   1. 开始某阶段时，把 §0 对应行改为「进行中」并注明日期；
@@ -241,9 +241,9 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P1.1** `app/api/app/achievements/route.ts`：cookie 鉴权（照抄 sync-runs 模式）、`tz`/`tz_offset_minutes` 校验（非法参数回退服务端默认或 400，实现时对齐现有 series 处理）、调用 compute、返回 §3.3 形状
 - [x] **P1.2** `lib/achievements/api.ts`：客户端 fetch 封装与响应类型（含 401 语义，复用 `isUnauthorized` 模式）
 - [x] **P1.3** 路由测试：未登录 401、参数校验、响应形状与字段类型
-- [ ] **P1.4（待操作者核对）** 核对 Vercel 函数预算：新增 `/api/app/achievements` 后共 14 个 route handler（13 个已在生产运行，说明当前套餐上限 ≥13，第 14 个需在控制台确认）；若超限，改为 Server Component 直出（`app/achievements/page.tsx` 直接调 `computeAchievements`，响应形状不变）并在本文件记录变更
+- [x] **P1.4** 核对 Vercel 函数预算：新增后共 14 个 route handler；控制台无异常，线上验证 `GET /api/app/achievements` 返回 401 + `Cache-Control: no-store` 且 `X-Matched-Path` 命中该路径（2026-10-30），函数已部署。现行 Vercel 文档（Functions Limits / Hobby 套餐页）已不再列出每次部署的函数数量上限，故不需改 Server Component 直出
 - [x] **P1.5** `pnpm verify` 全绿；更新 §0 / §8
-- [ ] **阶段完成**
+- [x] **阶段完成**（2026-10-30，P1）
 
 ### P2 界面
 
@@ -311,7 +311,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 2026-10-30 | 文档回写 | ✅ | — | requirements / rewrite-plan / ui-spec / AGENTS 已回写；覆盖原「成就系统不做」的边界结论并注明原因与实施计划入口 |
 | 2026-10-30 | P0 | ✅ | 本次提交 | catalog（18 条 × 5 档、阈值唯一真源）+ compute（五类扫描、本地日 `achieved_at`、含吊销设备）+ 34 条守卫测试 + 只读校准脚本 |
 | 2026-10-30 | P0.5 校准 | ✅ | 本次提交 | 真实实例校准：0 王者 / 7 钻（15 个月、21.66B tokens、94 活跃日）；改 `wordsmith` 50M/100M、`cache_alchemy` 70/85/93/98/99.8%、`marathon_session` 2h/6h/24h/3d/14d、`multitool` 王者 20、`project_hopper` 王者 60；reasoning 覆盖 36.5%，第 19 条不上线 |
-| 2026-10-30 | P1 | 🟡 | 本次提交 | `/api/app/achievements`（cookie 鉴权 + `lib/achievements/payload.ts` 组装 + `lib/achievements/api.ts` 客户端封装）与 6 条路由测试；新增第 14 个 route handler，P1.4 待控制台核对 |
+| 2026-10-30 | P1 | ✅ | 本次提交 | `/api/app/achievements`（cookie 鉴权 + `lib/achievements/payload.ts` 组装 + `lib/achievements/api.ts` 客户端封装）与 6 条路由测试；14 个 handler 部署无异常，线上 401 + `no-store` 验证通过 |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 
