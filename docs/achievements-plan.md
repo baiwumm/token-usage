@@ -1,8 +1,8 @@
 # 成就系统实施计划（Achievements Plan）
 
-> 状态：**M7 完成（P0 / P1 / P2 与浏览器人工验收全部通过）；P3 为 backlog，需操作者排期**
+> 状态：**M7 完成（P0 / P1 / P2 与浏览器人工验收全部通过）；P4 视觉改版进行中（资产已入库，组件改造待操作者指令）；P3 其余项为 backlog，需操作者排期**
 > 创建 / 最后更新：2026-10-30
-> 决策来源：2026-10-30 方案讨论，操作者已确认方向与 §1 全部决策
+> 决策来源：2026-10-30 方案讨论，操作者已确认方向与 §1 全部决策；2026-10-30 视觉改版决策见 §1.3
 > 执行方式：按 §4 阶段顺序推进；**每阶段 `pnpm verify` 全绿后才打钩**，并同步更新 §0 与 §8，再进入下一阶段
 
 ---
@@ -16,10 +16,11 @@
 | P0 | 领域层：catalog + compute + 单测 + 校准 | ✅ 2026-10-30（阈值已按真实实例校准） |
 | P1 | 数据面：`/api/app/achievements` + 鉴权 + 测试 | ✅ 2026-10-30（已上线并线上验证） |
 | P2 | 界面：成就页 + 侧栏 + wrapped + 文案 | ✅ 2026-10-30（代码完成 + 操作者验收通过） |
+| P4 | 视觉改版：插画徽章 + 徽章墙 | 🟡 进行中 2026-10-30（资产已入库；组件改造待操作者指令） |
 | Backlog | 见 §4 P3 | — |
 
-- 当前阶段：**M7 完成**（P0 领域层 + P1 数据面 + P2 界面均已验收；`/achievements` 页面 + 侧栏入口 + wrapped「今年解锁」+ zh/en 文案）
-- 下一步：无（P3 backlog 见 §4，需操作者排期；再动成就相关代码时按本节执行规则推进并回写本文件）
+- 当前阶段：**P4 视觉改版**（资产侧完成，界面侧待指令）
+- 下一步：按 §4 P4.3–P4.6 改造成就页组件（徽章墙 + 位图徽章 + 骨架 + 弹窗），`pnpm verify` 全绿后由操作者做浏览器验收
 - 换机器恢复：`pnpm install` → `pnpm verify` 确认基线 → 读本节与 §8 → 从 §4 第一个未勾选条目继续
 - 执行规则：
   1. 开始某阶段时，把 §0 对应行改为「进行中」并注明日期；
@@ -53,6 +54,20 @@
 - **页内附带「当前连续天数」统计**：仅展示，不参与成就判定
 - **文档联动**：P2 完成时更新 `docs/requirements.md`、`docs/ui-spec.md`；不触碰 `docs/cli-contract.md`
 - **不新增运行时依赖**：图标用 `@gravity-ui/icons`，动效纯 CSS
+
+### 1.3 视觉改版决策（2026-10-30，操作者已确认）
+
+背景：P2 的徽章是参数化 SVG（同心圆 + 渐变面 + 通用图标），18 条成就共用一套模具、只靠色相区分，网格观感偏平；上游 TokenTracker 的「插画式浮雕徽章 + 徽章墙」观感明显更好。上游仓库仅作参照（MIT），**不取其素材、不搬其代码**。
+
+| # | 决策 | 结论 |
+|---|---|---|
+| 9 | 徽章资产来源 | **A**：自有 AI 生成（MiniMax `image-01`），统一「浮雕硬币」风格模板；不取上游 PNG、不引用上游代码。生成脚本与 prompt 清单入库 `scripts/admin/achievement-assets/` |
+| 10 | 页面版式 | **B**：改「徽章墙」——分区保留，卡片边框去掉，徽章为主体，名称 + 段位文字 / 未解锁细进度条，数字与描述沉到弹窗 |
+| 11 | 3D 翻面硬币 | 暂不做（需新增 `motion` 依赖，属运行时预算变更，留 P3 再议） |
+| 12 | 资产段位表达 | 插画本身与段位无关：段位由徽章外的金属外环表达（铜 / 银 / 金 / 钻 / 王者），一张图复用五档 |
+| 13 | 加载失败回退 | 必须回退到现有参数化 SVG 徽章（`achievement-art.tsx`），页面不得出现空徽章位 |
+
+> 资产落地：18 张 256×256 透明 PNG 已在 `apps/web/public/achievements/`；QA 规则（纯黑虚空背景 + 正圆硬币居中占幅 70–95 %）与生成脚本见 §4 P4.2。
 
 ---
 
@@ -256,12 +271,24 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P2.7** `pnpm verify` 全绿（lint 0 error / 4 条基线 warning、`tsc` 无输出、web 380 passed (27 files)、build 成功、CLI 72 passed）；§0 / §8 已更新
 - [x] **阶段完成**（2026-10-30，P2）
 
+### P4 视觉改版：插画徽章 + 徽章墙（2026-10-30 操作者确认；资产已入库，界面侧待指令）
+
+背景与决策见 §1.3。目标：把「参数化 SVG 徽章 + 卡片网格」换成「每条成就一张插画徽章 + 徽章墙」。
+
+- [x] **P4.1** 风格样张：2 张（`token_titan` / `night_owl`）出图 + 圆形 alpha 裁切验证，**操作者确认风格通过**
+- [x] **P4.2** 18 张徽章资产生成并入库：`apps/web/public/achievements/*.png`（256×256 透明 PNG，文件名 = 成就 id，调色板量化后 17–30 KB / 张，合计 ~420 KB）；prompt 模板 + 生成脚本入库 `scripts/admin/achievement-assets/`（`prompts.json` + `generate.mjs` + README）；资产来源与使用约定写进 `apps/web/public/achievements/README.md`
+- [ ] **P4.3** 组件改造：`achievement-art.tsx` → `achievement-medallion.tsx`（位图 + 段位金属环 + 锁定灰化与锁标 + SVG 回退）；`achievement-card.tsx` 改墙格（无边框，徽章 + 名称 + 段位文字 / 细进度条）；`achievements-summary.tsx` 改页头摘要（大号 x/18 + 细进度条 + 段位计数行）；`achievements-skeleton.tsx` 改圆形占位；`achievement-dialog.tsx` 换大徽章
+- [ ] **P4.4** 目录层：`catalog.ts` 增 `art` 字段（`/achievements/<id>.png`），`ACHIEVEMENT_ICONS` 退为回退用；`tests/unit/achievements-catalog.test.ts` 守卫同步（id 与文件名一一对应）
+- [ ] **P4.5** 文档回写：`docs/ui-spec.md` 成就节改徽章墙规范；本文件 §0 / §8 更新
+- [ ] **P4.6** `pnpm verify` 全绿 + 浏览器人工验收（浅色 / 深色 / 375px 窄屏 / 图片加载失败回退 / reduced-motion / 键盘可达）
+- [ ] **P4.7** 体积收口：**资产侧已量化**（18 张合计 ~420 KB，单张 ≤ 30 KB）；待操作者批准 `jpeg-js` + `pngjs`（+ 可选 `sharp`）devDependency 后，生成脚本才能在仓库内跑通并复现量化结果（当前脚本的量化步骤在缺 `sharp` 时自动跳过）
+
 ### P3 Backlog（不在本轮，确认后再排期）
 
 - 仪表盘成就条（最近解锁 / 最接近解锁 top 3）
 - 全局解锁 toast / 跨设备已读状态（需持久化表）
 - 成就分享卡实装
-- 每条成就专属插画（可选位图资产），用于替换生成式 SVG 徽章
+- 徽章 3D 翻面硬币（需 `motion` 运行时依赖）
 - 持久化 `token_achievements` 写穿缓存（仅当快照加载成为瓶颈或需跨设备状态时）
 - 元成就（集齐 N 个钻石 → 王者之证）
 - 年度挑战 / 赛季机制
@@ -299,6 +326,9 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 数据被人工删改导致掉级 | 自部署场景接受；正常采集路径 append-only，不会触发 |
 | 历史行数过大导致请求变慢 | 先加 60s 结果缓存；再不行改 SQL 聚合 RPC 或持久化写穿表 |
 | 健康类成就价值观风险 | 阈值保守 + 文案调侃；不做「当前连续」压力机制 |
+| 插画风格漂移（AI 出图不一致） | 统一风格模板 + 硬性 QA（纯黑虚空背景 / 正圆硬币居中占幅 70–95 %）；不合格换 seed 重生成，最多 4 次；生成脚本与 prompt 清单入库可复现 |
+| 资产体积（18 张 PNG 入库） | 已收口：调色板量化后单张 17–30 KB，合计 ~420 KB；脚本的量化步骤需 `sharp`（待批准） |
+| 资产生成脚本的依赖未批准 | `jpeg-js` + `pngjs` 尚未进 devDependencies（AGENTS 硬性约束 2）；脚本仅离线使用、不参与 web 构建，批准前不写入 `package.json` |
 | 回滚 | 纯增量功能、零迁移：`git revert` 对应提交即完全回滚（侧栏入口随代码一起消失） |
 
 ---
@@ -315,6 +345,8 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 2026-10-30 | P2 视觉 | ✅ | cf77e37 | 徽章改为参数化 SVG 艺术（金属环 + 成就专属色相 + 段位星辉 + 锁定态锁标），卡片改为徽章画廊式布局与五段进度轨，摘要改英雄带 + 段位分布条，弹窗改大徽章 + 时间线；无位图资产、无新增依赖 |
 | 2026-10-30 | P2 | ✅ | 0e5f0f9 + a67bbaf | 成就页（page / client / body / summary / section / card / dialog / art / skeleton / hook / 格式化）+ zh/en 文案（含守卫测试）+ 侧栏入口 + 按 user 的 localStorage 新解锁 + wrapped「今年解锁 N 枚」；卡片整块为单一可聚焦按钮，锁定态仍显示当前值与下一档差值 |
 | 2026-10-30 | P2.6 验收 + 文档回填 | ✅ | 本次提交 | 操作者确认浏览器验收通过（P2.6），P2 阶段完成；修正文档中的徽章组件旧名（`achievement-medallion.tsx` → `achievement-art.tsx`），并按实现回填 ui-spec（英雄带摘要 + 段位分布条、SVG 徽章、五段进度轨、整卡按钮）与 requirements 的校准结论 |
+| 2026-10-30 | P4 决策 | ✅ | 本次提交 | 操作者确认 §1.3 全部 5 项：资产来源自有 AI 生成、页面改徽章墙、暂不做 3D 翻牌、段位由外环表达、加载失败回退 SVG |
+| 2026-10-30 | P4.1–P4.2 资产 | ✅ | 本次提交 | 18 张徽章插画生成并入库 `apps/web/public/achievements/`（256×256 透明 PNG）；出图 QA（纯黑虚空背景 + 正圆硬币居中占幅 70–95 %）+ 圆形 alpha 裁切；prompt 模板与生成脚本入库 `scripts/admin/achievement-assets/`（脚本依赖 `jpeg-js` + `pngjs` 待批准，未写入 package.json） |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 
@@ -328,8 +360,9 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
   - `docs/ui-spec.md`：新增「成就（`/achievements`，M7）」页面规范
   - `AGENTS.md`：文档地图新增本文件索引
 - **已完成（2026-10-30，P2 收尾）**：用实现结果补全细节，不重复建规范——`docs/ui-spec.md` 成就页改为英雄带摘要 + 段位分布条、参数化 SVG 徽章（`achievement-art.tsx`）、五段进度轨、整卡按钮；`docs/requirements.md` M7 验收补上阈值唯一真源 `apps/web/src/lib/achievements/catalog.ts`、校准结论与第 19 条未上线的原因
+- **进行中（2026-10-30，P4）**：`docs/ui-spec.md` 成就节改写为徽章墙目标规范（位图插画徽章 + 段位外环 + 页头摘要 + 弹窗承载数字信息），实现待 P4.3–P4.6
 - **不触碰** `docs/cli-contract.md`（成就走 `/api/app/*`，不属于 CLI 契约层）
-- **依赖预算**：不新增运行时依赖，`docs/rewrite-plan.md` §4 无需变更
+- **依赖预算**：不新增运行时依赖，`docs/rewrite-plan.md` §4 无需变更（资产生成脚本的 `jpeg-js` + `pngjs` 是离线 devDependency，不进运行时）
 
 ---
 
@@ -343,6 +376,10 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - 当前代码锚点：
   - `apps/web/src/lib/api/account-data.ts:139`（全历史快照 + 10s TTL）
   - `apps/web/src/lib/account/usage.ts:121`（`canonicalizeUsage`，吊销设备语义）
+- 成就徽章资产（2026-10-30 新增）：
+  - `apps/web/public/achievements/*.png`（18 张插画徽章）
+  - `scripts/admin/achievement-assets/prompts.json`（风格模板 + 逐条主体描述）
+  - `scripts/admin/achievement-assets/generate.mjs`（出图 + QA + 圆形裁切）
   - `apps/web/src/lib/account/series.ts`（`parseTzContext` / `zonedDayKey` / 时区工具）
   - `apps/web/src/app/api/app/sync-runs/route.ts`（cookie 鉴权范式）
   - `apps/web/src/lib/copy/`（zh/en 文案模块模式）
