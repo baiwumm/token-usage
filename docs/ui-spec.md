@@ -96,6 +96,19 @@
    `totals.conversation_count`，活跃天数 = `days`，日均（30 天）=
    `rolling.last_30d.avg_per_active_day`（计费 Token ÷ 活跃天）。大数一律走统一 format
    provider，卡片内不自算格式。
+   **成就条**（2026-10-30 P3，`components/dashboard/achievement-strip-section.tsx` +
+   `achievement-strip.tsx`）：独占一行，放在**热力图之后、趋势之前**（2026-10-30 操作者
+   裁定：从 Hero 与热力图之间下移）；Card 头部为标题「成就」+ 说明 + 右侧 `tertiary`「查看全部」
+   （唯一的 `/achievements` 入口）。内容**上下两组、纵向排列**（2026-10-30 操作者裁定：
+   取代原左右两栏）：「最近解锁」（最晚达成日降序）与「最接近解锁」（未满王者、有下一档、
+   当前值 > 0，按当前值 ÷ 下一档阈值降序），各 ≤5 条。每组采用**成就页徽章墙的卡片形式**：
+   居中徽章（80px，`md` 起 96px）+ 名称（单行截断）+ 段位渐变标签（已解锁）或细进度条
+   （未解锁）；窄屏三列、`sm` 起五列一行（2026-10-30 操作者裁定：尺寸加大、间距收紧、每行
+   5 个）。格子本身是**只读展示**，不跳转（2026-10-30
+   操作者裁定：只保留「查看全部」一个入口）。全部条目当前值为 0（空账号）时整条不渲染；
+   数据失败走 Card 内 `SectionError` + 重试，加载中用同构的墙格骨架占位。该条与全局解锁
+   watcher 共用 `fetchAchievementsShared` 的在途请求（同一时区参数下只算一次；仪表盘选了
+   自定义时区时两者口径不同，各取一次）。
 3. **活跃热力图**（独占一行，紧跟总 Tokens 头卡，`components/dashboard/heatmap-card.tsx`）：
    近 52 周 Mon-start 满宽网格（窄屏裁周、宽屏撑满格子，`ResizeObserver` 自适应）；
    月份标尺在上、周几单字标尺（一~日 / M~S）在左；右上「全部平台」多选筛选
@@ -141,10 +154,14 @@
    （所见即所得）；卡片数据由 `dashboard/share-input.ts` 从当前 payload 投影，文案统一走
    `lib/copy/share-card.ts`。特刊的大数与模型榜固定使用完整千分位数字（`formatNumber`，
    跟随分组设置），与仪表盘的紧凑显示偏好解耦；其余风格沿用偏好格式。
+   **成就分享卡**（2026-10-30 P3，`components/share-card/achievement.ts`）不属于上述四种风格：
+   它是成就详情弹窗的独立分享入口，固定 **1080×1350** 深色卡（段位光晕 + 徽章 + 段位标签 +
+   当前值 + 达成日），复用同一套 Canvas helpers（`roundRectPath` / `drawTracked` /
+   `fitFontSize` / `truncateToWidth` / `loadShareImage`）与 `TIER_RAMPS` 色值，不新增依赖。
 
 状态与可访问性：
 
-- 首屏 `Skeleton` 按当前卡片栈逐块占位（Hero → 热力图 → 趋势 → 模型/来源双栏 →
+- 首屏 `Skeleton` 按当前卡片栈逐块占位（Hero → 热力图 → 成就条 → 趋势 → 模型/来源双栏 →
   设备 → 明细），保持卡片/图表尺寸，避免布局跳动；无数据时给配对与 CLI 上报引导；
   筛选无结果时给“清除筛选”。
 - 图表容器带 `aria-label` 与文本摘要；颜色不是唯一信息（模型占比同时显示数字）。
@@ -205,7 +222,14 @@
   `account-heatmap`（52 周、窗口=所选年份，拉取失败静默降级，不阻塞页面）；「最常用来源」
   用 `sourceDisplayLabel`；分享卡输入在当年无数据（`hasData` 为假）时为 `null`，按钮禁用。
 - 四张统计卡：全年 Tokens / 成本 / 会话 / 活跃天数，右上角 `text-accent/70` 图标
-  （`Hashtag` / `Wallet` / `Comments` / `Calendar`）。
+  （`Hashtag` / `Wallet` / `Comments` / `Calendar`）。顶部只保留这四张（2026-10-30
+  操作者裁定：加上成就计数后五卡过挤）。
+- 成就卡（`components/wrapped/achievements-card.tsx`，独占一行、紧随四张统计卡）：标题
+  「已解锁成就」+ 右侧「共 N 枚」；内容为**当前已获得的全部成就**（`tier ≥ 1`，不按所选
+  年份过滤），按段位从高到低排列，同段位保持目录顺序；每条 = 小徽章（40px）+ 名称（单行
+  截断）+ 段位渐变标签。窄屏 2 列、`md` 起每行 4 列，纯展示、不可点击，详情与分享在
+  `/achievements`。成就请求是可选的第 4 个并行请求：失败或未返回时整卡隐藏（不误报
+  「还没有解锁」）；请求成功但一枚未解锁时显示空态文案。
 - 月度趋势：复用仪表盘 `TrendChart`，输入 / 缓存 / 输出三色堆叠（缓存 = 读 + 写）；
   按月补零到整年（当年截至当月），月份标签走 `formatMonth`（本地化）。数据来自
   `account-monthly` 的全历史月桶（`from=2000-01-01` 到 tz 今天，一次拉取后按年过滤，
@@ -217,19 +241,22 @@
   名）、Tokens、成本、占比（`Meter` + 百分比）；切换年份保留旧行并罩刷新浮层，这一年没有
   模型明细时给「无模型明细」空态。
 - 首载骨架：没有旧内容时整页画骨架（`components/wrapped/wrapped-skeleton.tsx`），按加载后的
-  卡片栈逐块对齐——四张统计卡（保留卡壳与图标位）、月度趋势、来源用量、模型表；灰条高度按
-  真实排版取（`h4` 数字位 `h-7`、大数位 `h-8`），出数不跳高。页头随页面渲染，不画骨架。
+  卡片栈逐块对齐——四张统计卡（保留卡壳与图标位）、成就卡（标题 + 六枚徽章行）、月度趋势、
+  来源用量、模型表；灰条高度按真实排版取（`h4` 数字位 `h-7`、大数位 `h-8`），出数不跳高。
+  页头随页面渲染，不画骨架。
 
 ### 成就（`/achievements`，M7；版式与徽章资产见 P4）
 
 - 导航：侧边栏与抽屉在 wrapped 后新增「成就」（`Medal` 图标），页面标题取菜单名；
-  受登录保护，401 跳登录并回跳 `/achievements`。
+  受登录保护（`src/proxy.ts` 的受保护页面与 matcher 均包含 `/achievements`，未登录直接跳
+  `/login?next=/achievements`；接口 401 也跳登录并回跳）。
 - 数据源：`GET /api/app/achievements?tz=&tz_offset_minutes=`（cookie 会话鉴权；若 Vercel
   函数预算不足则页面改 Server Component 直出，响应形状不变，见 `docs/achievements-plan.md`
-  P1.4）。无筛选条；页头右侧放与 Sessions 同款的刷新图标按钮（`ArrowsRotateRight`，
-  刷新中 `animate-spin`、按钮禁用并带 `aria-busy`，`Tooltip` 显示上次更新时间）。
-  手动刷新结束给 Toast 反馈：成功「成就已刷新」，失败显示加载失败原因；首次加载与
-  401 跳登录不弹。时区取浏览器时区，不写 URL。
+  P1.4）。**已读水位**由同一个 route 的 `POST`（body `{ seen_through: "YYYY-MM-DD" }`）
+  推进，写失败静默，不影响页面。无筛选条；页头右侧放与 Sessions 同款的刷新图标按钮
+  （`ArrowsRotateRight`，刷新中 `animate-spin`、按钮禁用并带 `aria-busy`，`Tooltip`
+  显示上次更新时间）。手动刷新结束给 Toast 反馈：成功「成就已刷新」，失败显示加载失败
+  原因；首次加载与 401 跳登录不弹。时区取浏览器时区，不写 URL。
 - 摘要（页头，`achievements-summary.tsx`）：不再用「英雄带」大面板——标题（「已解锁成就」，
   `h2`）+ 副标题（「五档进阶，全部在读取时计算。」），右侧大号已解锁数 x/18（等宽数字）+
   一条细进度条（宽度按比例，`accent` 色）；五档段位计数（青铜 / 白银 / 黄金 / 钻石 / 王者）压成一行
@@ -267,9 +294,14 @@
   覆盖「SSR 首屏就已 404、onError 收不到事件」的情况），页面不得出现空徽章位。颜色不是
   唯一信息，段位同时以文字显示。`prefers-reduced-motion` 下无动效。段位金属、渐变坡道与
   色相集中在 `achievement-tiers.ts`（`achievement-art.tsx` 与徽章组件共用一份）。
-- 详情：点击墙格打开 `Modal`（`achievement-dialog.tsx`）：大号徽章（176px）+ 一句话
-  描述 + 数据覆盖说明（Sessions 类与 sync 类成就注明「自 … 起统计」）；分享按钮复用
-  `ShareCardButton` 体系（分享卡实装为 P3 backlog，未实装前不显示按钮）。
+- 详情：点击墙格打开 `Modal`（`achievement-dialog.tsx`）：头部为**可翻面的 3D 硬币**
+  （`achievement-coin.tsx`，176px；正面 = 位图徽章，背面 = 段位金属盘 + 段位名 +
+  达成日，未解锁显示「尚未解锁」+ 下一档阈值）。整枚硬币是原生 `button`，带 `aria-pressed`
+  与「翻面 / 翻回」`Tooltip`，点击与 Enter / Space 均可翻；弹窗关闭或切换成就时复位正面；
+  纯 CSS `perspective` + `rotateY`（不装 `motion`），`prefers-reduced-motion` 下无过渡。
+  硬币下方为一句话描述 + 数据覆盖说明（Sessions 类与 sync 类成就注明「自 … 起统计」）；
+  已解锁时在**弹窗正文最底部**显示 `fullWidth` 的「分享成就」按钮（先关详情再开分享弹窗，
+  避免嵌套 Modal；2026-10-30 操作者裁定：从数值区上方移到底部并通栏），未解锁不显示。
   弹窗正文排版参考上游 TokenTracker 的徽章详情（左侧标签、右侧数值）：
   1. 当前值（大号等宽数字）+ 右上角**段位渐变徽章** + 达成日期；
   2. `dl` 分隔线下：①「距{tier}进度」+ 当前值 → 下一档阈值 + 段位渐变进度条；
@@ -279,17 +311,33 @@
   3. 五档时间线：每档一个段位渐变徽章（已达=金属渐变，未达=中性灰）+ 该档阈值 + 达成日
      （徽章上的 Tooltip 给出「段位 · 达成日 / 阈值 · 未达成」）。五档时间线与数据覆盖块
      各自留出间距，标题与「等级历程」同为弱化的小字。
-- 新解锁：localStorage 按 userId 记录上次查看时间，与 `achieved_at` 比较；晚于上次查看的
-  墙格显示「新」角标；浏览后更新记录。不做全局 toast。
+- 分享卡弹窗（`achievement-share-dialog.tsx`，2026-10-30 P3）：左右两栏（`<lg` 上下堆叠），
+  左侧预览导出的同一张 PNG（所见即所得），右侧「复制图片 / 下载 PNG」与隐私说明；
+  渲染中显示 `Spinner`，失败给「卡片渲染失败，请重新打开」并可重试。卡片由 Canvas 2D
+  引擎 `components/share-card/achievement.ts` 绘制，尺寸 **1080×1350**：深色底 + 段位
+  径向光晕、右上角显示名称、居中徽章（同源 `/achievements/<id>.png`，加载失败画金属盘 +
+  首字母占位，导出不中断）、段位渐变标签、名称与描述、当前值、达成日、底部落款；
+  等待 `document.fonts.ready` 后再画；只含聚合数据（名称 / 描述 / 段位 / 当前值 / 达成日 /
+  handle），不含行级信息；文件名 `token-usage-<id>-<tier>.png`。
+- 新解锁（2026-10-30 P3 改服务端水位）：水位来自 `GET` 的 `seen_through`（账号级，
+  跨设备一致），`unlocksSince(rows, seenThrough)` 得出晚于水位的墙格并显示「新」角标；
+  「新」在本次访问内保持可见，渲染后再把水位推进到最近一次达成日（`POST`）。
+  `seen_through === null` 视为首次基线：静默写入「最近一次达成日 ?? 本地今天」，
+  **不标任何「新」**（老账号升级后不会被历史成就刷屏）。
+- 全局解锁 toast（`achievement-unlock-watcher.tsx`，挂在 `AppShell`，无 UI）：每次整页
+  加载只检查一次（SPA 内导航不重复，刷新才重置），延迟约 1.2 s，`/achievements` 页与
+  隐藏标签页直接跳过。发现晚于水位的新解锁时弹一条 `success` 聚合 toast（6 s，最多列
+  2 个「名称 · 段位」，其余写「等 N 枚」），随后推进水位；无新解锁不写、不弹。
 - 状态：首载骨架按页头摘要 + 四个分区的圆形徽章占位（`achievements-skeleton.tsx`，占位圆
   与真实徽章同尺寸 96px / ≥md 112px），不画跳高；无任何用量数据时显示锁定栅格 + 配对设备
   引导；错误态在页面内重试（401 跳登录）。
 - 可访问性：进度条带 `aria-label` 与百分比文本；墙格可键盘聚焦（`aria-label` 含名称与
   段位，锁定时追加进度百分比），弹窗焦点管理走 HeroUI；达成日期用本地化日期格式。
 - 响应式：375px 三列、无页面级横向滚动；弹窗在 `<lg` 走 HeroUI 全屏尺寸。
-- wrapped：年度回顾统计区追加「今年解锁 N 枚」（按 `achieved_at` 落在所选年份），无解锁时
-  显示 0；按成就枚数计，同一成就年内连升多档只算 1 枚（任一段位日期落在该年即计入）；
-  不新增分享卡风格。
+- wrapped：年度回顾顶部保持四张统计卡，成就单独做成占一行的卡片（`achievements-card.tsx`），
+  列出**当前已获得的全部成就**并带段位标签（段位降序，同段位保持目录顺序）；不按年份过滤，
+  不新增分享卡风格。请求失败时整卡隐藏，成功但零解锁时显示空态（2026-10-30 操作者裁定：
+  取代原「今年解锁 N 枚」第五卡）。
 
 ### 服务状态（`/service-status`）
 

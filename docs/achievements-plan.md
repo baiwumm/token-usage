@@ -1,6 +1,6 @@
 # 成就系统实施计划（Achievements Plan）
 
-> 状态：**M7 完成（P0 / P1 / P2 与浏览器人工验收全部通过）；P4 视觉改版已完成（P4.1–P4.7 全部完成并通过操作者验收，含资产生成脚本 devDependency 批准）；P3 其余项为 backlog，需操作者排期**
+> 状态：**M7 完成（P0 / P1 / P2 与浏览器人工验收全部通过）；P4 视觉改版已完成（P4.1–P4.7）；P3 backlog 已实现（2026-10-30：仪表盘成就条、服务端已读水位 + 全局 toast、分享卡、CSS 3D 翻面；元成就、赛季、写穿缓存按触发条件明确关闭）；`pnpm verify` 全绿，浏览器人工验收待操作者确认**
 > 创建 / 最后更新：2026-10-30
 > 决策来源：2026-10-30 方案讨论，操作者已确认方向与 §1 全部决策；2026-10-30 视觉改版决策见 §1.3
 > 执行方式：按 §4 阶段顺序推进；**每阶段 `pnpm verify` 全绿后才打钩**，并同步更新 §0 与 §8，再进入下一阶段
@@ -17,10 +17,10 @@
 | P1 | 数据面：`/api/app/achievements` + 鉴权 + 测试 | ✅ 2026-10-30（已上线并线上验证） |
 | P2 | 界面：成就页 + 侧栏 + wrapped + 文案 | ✅ 2026-10-30（代码完成 + 操作者验收通过） |
 | P4 | 视觉改版：插画徽章 + 徽章墙 | ✅ 2026-10-30（P4.1–P4.7 全部完成并验收） |
-| Backlog | 见 §4 P3 | — |
+| P3 | 收尾：仪表盘成就条 / 已读水位 + 全局 toast / 分享卡 / 3D 翻面 / 代理守卫 | 🟡 2026-10-30（4 项实现 + 守卫修复 + 3 项按触发条件关闭；`pnpm verify` 全绿，浏览器人工验收待操作者） |
 
-- 当前阶段：**P4 已收尾**（2026-10-30）；M7 成就系统的计划内阶段全部完成
-- 下一步：无排期项；P3 backlog（§4）待操作者确认后单独立项
+- 当前阶段：**P3 实现完成、待操作者浏览器验收**（2026-10-30）；验收通过后把本行与 §4 P3.9 改为 ✅
+- 下一步：操作者按 §4 P3.9 清单做浏览器验收（仪表盘条 / 全局 toast / 翻面 / 分享卡 / 未登录跳转）；迁移已于 2026-10-30 执行并核对（表存在、RLS 开启且 0 policy、anon/authenticated 无权限、service_role 可读写）
 - 换机器恢复：`pnpm install` → `pnpm verify` 确认基线 → 读本节与 §8 → 从 §4 第一个未勾选条目继续
 - 执行规则：
   1. 开始某阶段时，把 §0 对应行改为「进行中」并注明日期；
@@ -37,7 +37,7 @@
 
 | # | 决策 | 结论 |
 |---|---|---|
-| 1 | v1 界面范围 | **A**：成就页 + 侧栏入口 + wrapped 年度回顾；页内用 localStorage 标记「新解锁」。仪表盘成就条、全局 toast 进 backlog |
+| 1 | v1 界面范围 | **A**：成就页 + 侧栏入口 + wrapped 年度回顾；页内用 localStorage 标记「新解锁」。仪表盘成就条、全局 toast 进 backlog（2026-10-30 P3 已实现，见 §4 P3） |
 | 2 | 王者稀有度 | **A**：一年重度使用止步金/钻；王者需要 2 年以上，个别成就终身稀有 |
 | 3 | Sessions 类成就 | **A**：v1 上线 3 条（`marathon_session` / `project_hopper` / `project_devotion`），UI 标注「自 Sessions 数据可用起统计」 |
 | 4 | 第 19 条成就 | 先留位置；P0 校准时看 reasoning 覆盖率再定（见 §2.3） |
@@ -63,7 +63,7 @@
 |---|---|---|
 | 9 | 徽章资产来源 | **A**：自有 AI 生成（MiniMax `image-01`），统一「浮雕硬币」风格模板；不取上游 PNG、不引用上游代码。生成脚本与 prompt 清单入库 `scripts/admin/achievement-assets/` |
 | 10 | 页面版式 | **B**：改「徽章墙」——分区保留，卡片边框去掉，徽章为主体，名称 + 段位文字 / 未解锁细进度条，数字与描述沉到弹窗 |
-| 11 | 3D 翻面硬币 | 暂不做（需新增 `motion` 依赖，属运行时预算变更，留 P3 再议） |
+| 11 | 3D 翻面硬币 | 暂不做（需新增 `motion` 依赖，属运行时预算变更，留 P3 再议）。**2026-10-30 P3 实现**：纯 CSS（`transform-style: preserve-3d` + `rotateY(180deg)` + `backface-visibility`，`motion-reduce:transition-none`），不新增 `motion` |
 | 12 | 资产段位表达 | 插画本身与段位无关：段位由徽章外的金属外环表达（青铜 / 白银 / 黄金 / 钻石 / 王者），一张图复用五档 |
 | 13 | 加载失败回退 | 必须回退到现有参数化 SVG 徽章（`achievement-art.tsx`），页面不得出现空徽章位 |
 
@@ -130,6 +130,7 @@
 - **`deep_thinker` 深度思考**：累计 `reasoning_output_tokens`，初版阈值 1M / 10M / 100M / 1B / 10B。前提：校准实例中 reasoning 字段覆盖率足够（多数在用模型有上报）；覆盖不足则放弃
 - **2026-10-30 校准结论：暂不上线**。实例 reasoning 覆盖率 36.5% 行（16.8M tokens），低于 50% 门槛；阈值草案保留在本节，覆盖率提升后复议（不上线也不影响 18 条成就）
 - 备选：`conversationalist` 对话家（累计 `conversations`，100 / 500 / 2K / 10K / 50K），区分度较低，除非操作者偏好
+- **元成就「王者之证」（集齐 N 个钻石 → 专属徽章）：已关闭**（2026-10-30 P3）。它需要第 19 张专属插画资产（本机无 `mmx` 环境，无法生成），且与「18 条独立指标」的目录设计冲突；操作者提供资产并明确要求时再复议
 
 ---
 
@@ -137,7 +138,7 @@
 
 ### 3.1 数据通路
 
-- **接口**：`GET /api/app/achievements?tz=<IANA>&tz_offset_minutes=<n>`
+- **接口**：`GET /api/app/achievements?tz=<IANA>&tz_offset_minutes=<n>`；`POST /api/app/achievements`（body `{"seen_through":"YYYY-MM-DD"}`，P3 新增，复用同一个 route、零新增函数）
 - **鉴权**：浏览器会话 cookie，复用 `apps/web/src/app/api/app/sync-runs/route.ts` 的 `@supabase/ssr` 模式；响应 `Cache-Control: no-store`
 - **数据加载**
   - 小时行 / 账户级会话状态：复用 `loadAccountUsage(userId)`（10s TTL 快照；见 `apps/web/src/lib/api/account-data.ts:139`）
@@ -145,7 +146,8 @@
   - 会话：`loadSessionRows(userId, fromIso, toIso)`，`fromIso` 取最早记录日或固定 `2000-01-01T00:00:00Z`，`toIso` 取当日 UTC 次日零点（避免缓存键随分钟变化）
   - 同步记录：`loadSyncRunRows(userId, fromIso, toIso)`，窗口同上
   - 设备行：`usage.deviceRows`（含已吊销与从未产生用量的已配对设备，供 `fleet` 判定）
-- **计算**：`lib/achievements/compute.ts` 纯函数；不建表、不 cron、不写库
+- **计算**：`lib/achievements/compute.ts` 纯函数；不建快照表、不 cron、不写库
+- **已读水位（P3）**：`token_achievement_seen` 每用户单行 `seen_through`（本地日，只前进）；`GET` 在 payload 里下发 `seen_through`，`POST` 推进水位（`400` 非法日期 / `503` 写失败，迁移缺失时 GET 自动退化为 `null`）。成就本身仍是读时计算，这张表只存「看到哪一天」
 - **缓存**：v1 不加额外结果缓存；若实测单次 >300ms，再加按 `user + tz` 的 60s 内存缓存
 - **函数预算**：仓库现有 13 个 route handler（`docs/rewrite-plan.md` §2 记载 Hobby 上限 12，文档已过时或套餐已变）。P1.4 在 Vercel 控制台核对；若超限，改为 `app/achievements/page.tsx` Server Component 直出，零新增函数
 
@@ -155,6 +157,9 @@
 apps/web/src/lib/achievements/catalog.ts        # 唯一阈值真源、分类、指标 kind、文案 key
 apps/web/src/lib/achievements/compute.ts        # 纯函数：输入数据 → 成就进度
 apps/web/src/lib/achievements/art-fit.ts             # 徽章尺寸归一化表（实测硬币半径）
+apps/web/src/lib/achievements/highlights.ts     # 新解锁 / 最近解锁 / 最接近解锁（客户端纯函数）
+apps/web/src/lib/achievements/seen.ts           # token_achievement_seen 读写（服务端）
+apps/web/src/lib/achievements/share.ts          # 成就分享卡投影 + 文件名
 apps/web/src/lib/achievements/api.ts            # 客户端 fetch 封装 + 响应类型
 apps/web/src/app/api/app/achievements/route.ts  # cookie 鉴权 + 参数校验
 apps/web/src/app/achievements/page.tsx          # metadata + AppShell + client
@@ -163,16 +168,26 @@ apps/web/src/components/achievements/
   achievements-body.tsx                         # 主体：摘要 + 分区栅格
   achievements-summary.tsx                      # 已解锁统计
   achievement-card.tsx                          # 单条墙格
+  achievement-coin.tsx                          # 详情里的 3D 翻面硬币（CSS）
   achievement-dialog.tsx                        # 详情弹窗（五档时间线）
+  achievement-share-dialog.tsx                  # 成就分享卡弹窗
   achievement-medallion.tsx                    # 位图徽章（段位外环 + 锁定灰化 + SVG 回退）
   achievement-art.tsx                           # 参数化 SVG 徽章（回退用）
   achievement-tier-badge.tsx                    # 段位渐变标签（青铜 / 白银 / 黄金 / 钻石 / 王者）
   achievement-tiers.ts                          # 段位金属 / 渐变坡道 / 色相（两处徽章共用）
   achievements-skeleton.tsx                     # 骨架
+  achievement-unlock-watcher.tsx                # 全局解锁 toast（挂在 AppShell）
   use-achievements.ts                           # 数据 hook
+apps/web/src/components/dashboard/
+  achievement-strip-section.tsx                 # 仪表盘成就条（槽位 + 状态）
+  achievement-strip.tsx                         # 最近解锁 / 最接近解锁两组
+apps/web/src/components/share-card/
+  achievement.ts                                # 成就分享卡 Canvas（1080×1350）
 apps/web/src/lib/copy/achievements.ts           # zh / en 文案
 apps/web/tests/unit/achievements-compute.test.ts
 apps/web/tests/unit/achievements-catalog.test.ts
+apps/web/tests/unit/achievements-highlights.test.ts
+apps/web/tests/unit/achievement-share.test.ts
 scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 ```
 
@@ -183,6 +198,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 ```json
 {
   "generated_at": "2026-10-30T08:00:00.000Z",
+  "seen_through": "2026-10-29",
   "achievements": [
     {
       "id": "token_titan",
@@ -207,6 +223,8 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - `unit ∈ {tokens, days, count, duration_ms, percent, ratio}`；`cache_alchemy` 的 value / thresholds 用 0–1 小数（UI 格式化为 %）
 - `achieved_at` 键固定五档，未达成 `null`；日期为用户本地日
 - 前端按 `value` 与 `thresholds` 自行计算进度条比例；阈值只来自 payload
+- `seen_through` 为账号级已读水位（本地日）；`null` = 从未记录（新账号，或迁移未落地时的降级态）
+- `POST` 只回 `{ "seen_through": "<生效值>" }`；已读水位只前进，旧值不会覆盖新值
 
 ### 3.4 计算规则（`achieved_at` 回推）
 
@@ -231,17 +249,25 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - **墙格**：位图插画徽章（96px）+ 名称（单行截断）+ 段位文字（已解锁）/ 细进度条（未解锁）；整格是单一可聚焦按钮，数字与描述下沉到弹窗（P4 版式，见 §1.3）
 - **徽章**：段位金属外环叠在位图之外（外环占直径 6 %），未解锁灰化 + 锁标，位图加载失败回退参数化 SVG 徽章
 - **段位视觉**：铜/银/金/钻用现有金属渐变语义；王者用黑金/紫金镭射渐变 + CSS 微光，`prefers-reduced-motion` 下降级为静态
-- **新解锁标记**：localStorage 按 `userId` 记录上次查看时间，与 `achieved_at` 比较；页内展示「新」标记，不做全局 toast
-- **入口**：`components/app-shell/nav-items.tsx` 增加「成就」（`@gravity-ui/icons` 的 `Medal` 图标）
-- **wrapped**：年度回顾增加「今年解锁 N 枚」（按 `achieved_at` 落在当年判定）
-- **空数据**：未配对设备/无用量时展示锁定栅格 + 引导文案
+- **新解锁标记（P3 改服务端水位）**：游标是账号级的 `seen_through`（跨设备一致），不再是 localStorage；成就页用 `unlocksSince(rows, seen_through)` 得出本次「新」标记，「新」角标在本次访问内保持可见，渲染后再把水位推进到 `maxAchievedDay` 写回服务端。`seen_through === null` 视为首次基线：静默把水位写成「最近一次达成日 ?? 本地今天」，**不标任何「新」**，老账号升级后不会被历史成就刷屏
+- **全局解锁 toast（P3）**：`achievement-unlock-watcher.tsx` 挂在 `AppShell`，无 UI、只弹 toast；每次整页加载跑一次（SPA 内导航不重复，刷新才重置），延迟约 1.2 s 启动，`/achievements` 页与隐藏标签页直接跳过。命中 `unlocksSince` 后用一条聚合 toast（`success`，6 s）列出最多 2 个「名称 · 段位」，其余写「等 N 枚」，随后推进水位；上一页刚解锁、下一轮登录在仪表盘看到的就是这条提示
+- **仪表盘成就条（P3）**：位于 **Heatmap 之后、趋势之前**（2026-10-30 操作者裁定下移），两组**上下纵向排列**、各 ≤5 条（2026-10-30 操作者裁定：取代左右两栏，由 3 条调为 5 条，徽章加大、间距收紧）——「最近解锁」（最晚达成日降序）与「最接近解锁」（`progressRatioForNext` 降序，跳过 0 进度与满王者）；每组采用成就页徽章墙的卡片形式（居中徽章 + 名称 + 段位标签 / 细进度），**只读不跳转**（Header 的「查看全部」是唯一入口）；全部无数据时整条隐藏。数据走 `fetchAchievementsShared`，与全局 watcher 同屏且时区参数一致时共用在途请求（无 TTL，settle 即清）
+- **分享卡（P3）**：已解锁的详情弹窗在正文最底部出现 `fullWidth` 的「分享成就」，先关详情再开分享弹窗（避免嵌套 Modal）；左侧预览、右侧「复制图片 / 下载 PNG」。卡片由 Canvas 2D 画出（1080×1350，`components/share-card/achievement.ts`），背景、段位色与金属外环取 `achievement-tiers.ts` 的原始色值；徽章位图走同源 `/achievements/<id>.png`（不污染 canvas），加载失败画金属盘 + 首字母占位，仍可导出。文件名 `token-usage-<id>-<tier>.png`；只含聚合数据（名称 / 描述 / 段位 / 当前值 / 达成日 / handle），不含行级信息
+- **3D 翻面硬币（P3）**：详情弹窗头部换成可翻面硬币（`achievement-coin.tsx`），纯 CSS `perspective` + `rotateY`（不装 `motion`）；原生 `button` + `aria-pressed`，Enter / Space 可翻，`Tooltip` 提示；背面为段位金属盘 + 段位名 + 达成日（未解锁显示「尚未解锁」与下一档阈值）；弹窗关闭或切换成就时复位正面，`prefers-reduced-motion` 下无过渡
+- **入口**：`components/app-shell/nav-items.tsx` 增加「成就」（`@gravity-ui/icons` 的 `Medal` 图标）；`src/proxy.ts` 把 `/achievements` 纳入受保护页面（未登录跳 `/login?next=/achievements`）
+- **wrapped**：年度回顾顶部保持四张统计卡；成就单独做成占一行的卡（`components/wrapped/achievements-card.tsx`），列出当前已获得的全部成就（`tier ≥ 1`，段位降序）并带段位标签；请求失败整卡隐藏，零解锁显示空态（2026-10-30 操作者裁定，取代原「今年解锁 N 枚」第五卡）
+- **空数据**：未配对设备/无用量时展示锁定栅格 + 引导文案；仪表盘成就条整条隐藏、全局 toast 不弹
 
 ### 3.6 性能与安全
 
 - 快照加载复用 10s TTL 缓存；成就只增加 CPU 遍历，不增加小时行查询
 - 全历史 sessions 扫描是唯一新增 I/O；如会话量级过大，先限制窗口（如 3 年）并在文案说明，或后续改为 SQL 聚合 RPC
-- 数据访问仅服务端 service-role；浏览器零 Supabase 直连；`anon`/`authenticated` 对 `token_*` 表保持零 policy（本方案不新增表）
-- 接口不缓存（no-store），避免跨用户串数据
+- **客户端并发**：成就页、仪表盘条与全局 watcher 都走 `fetchAchievementsShared`，按 `tz|offset` 在途去重（settle 即清、无 TTL），同一时区参数下同屏最多一次全历史计算；仪表盘选了自定义时区时与 watcher 的浏览器时区不同，会各算一次（达成日口径不同，属预期）
+- 数据访问仅服务端 service-role；浏览器零 Supabase 直连；`anon` / `authenticated` 对所有 `token_*` 表保持零 policy
+- **新增表 `token_achievement_seen`**（P3，迁移 `20261030000000_token_achievement_seen.sql`）：每用户单行 `seen_through`（`date`，`>= 2000-01-01` 约束），RLS 开启且零 policy，`revoke all from public, anon, authenticated` + `grant all to service_role`；只存已读水位，**成就本身仍是读时计算**，不建快照 / 不写 `token_achievements`
+- **写路径**：`advanceAchievementSeen` 用「条件更新 + 首写 insert（主键冲突 → 409 重读重试，最多 3 次）」保证只前进；写失败回 `503`，读失败只记日志并降级为 `seen_through: null`（已读是装饰性状态，不能拖垮页面）
+- 接口不缓存（`GET` / `POST` 全部 `no-store`），避免跨用户串数据
+- 分享卡在浏览器内绘制，不进服务端；读取的徽章图是同源静态 PNG（`canvas` 不被跨域污染，`toDataURL` 稳定）
 
 ---
 
@@ -274,7 +300,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P2.2** `components/achievements/*`：`achievements-client.tsx`（刷新 / 骨架 / 错误 / 新解锁）/ `achievements-body.tsx`（摘要 + 四分区 + 空态引导 + 弹窗编排）/ `achievements-summary.tsx` / `achievements-section.tsx` / `achievement-card.tsx` / `achievement-dialog.tsx` / `achievement-art.tsx`（参数化 SVG 徽章） / `achievements-skeleton.tsx` / `use-achievements.ts` / `use-achievements-format.ts`
 - [x] **P2.3** `lib/copy/achievements.ts`（zh + en，扁平键对齐 catalog 的 copyKey / descriptionKey / coverageKey）+ 侧栏 `nav-items.tsx` 入口（Medal 图标，`/wrapped` 之后）+ 页面标题映射 + metadata 文案
 - [x] **P2.4** localStorage「新解锁」标记：键 `token-usage.achievements.seen.<userId>`（`useSessionBootstrap` 新增 `userId`），访问后把 marker 推进到最近一次 `achieved_at`，本次访问仍显示「新」
-- [x] **P2.5** `/wrapped` 集成「今年解锁 N 枚」：与既有三个请求并行拉取成就、按 `achieved_at` 年度前缀计数；请求失败只隐藏该卡
+- [x] **P2.5** `/wrapped` 集成「今年解锁 N 枚」：与既有三个请求并行拉取成就、按 `achieved_at` 年度前缀计数；请求失败只隐藏该卡（2026-10-30 改为独立成就卡，见 §3.5）
 - [x] **P2.6** 浏览器人工验收（2026-10-30 操作者确认通过）：正常数据 / 空数据 / 锁定进度 / 时区切换 / 窄屏 / 深色模式 / reduced-motion；Sessions 类成就的覆盖说明可见
 - [x] **P2.7** `pnpm verify` 全绿（lint 0 error / 4 条基线 warning、`tsc` 无输出、web 380 passed (27 files)、build 成功、CLI 72 passed）；§0 / §8 已更新
 - [x] **阶段完成**（2026-10-30，P2）
@@ -291,15 +317,18 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P4.6**（2026-10-30 操作者验收通过） `pnpm verify` 全绿 + 浏览器人工验收（浅色 / 深色 / 375px 窄屏 / 图片加载失败回退 / reduced-motion / 键盘可达）；机器核对（headless Chrome + CDP）覆盖深色、375px 无横向滚动、断图回退 SVG、reduce 下 `transition-property: none`、Enter / Esc 开合弹窗并把焦点还给墙格；验收反馈的「当前值不弱化」与「刷新过程/结果 Toast」已修复
 - [x] **P4.7**（2026-10-30 操作者批准并执行）体积收口与脚本可复现：**资产侧已量化**（18 张合计 ~420 KB，单张 17–30 KB）；`jpeg-js@0.4.4` + `pngjs@7.0.0` 加入**仓库根** `package.json` 的 `devDependencies`（不算运行时预算，不改 `apps/web` 依赖图；`docs/rewrite-plan.md` §4 已记录）；生成脚本从脚本目录可直接解析这两个包，`--only` / `--seed` / `--optimize-only` 均可在仓库内跑通。`sharp`（原生二进制的调色板量化）仍为可选、未安装，缺它时量化步骤自动跳过（重新出图的成片约 80–110 KB / 张，用时再补装）
 
-### P3 Backlog（不在本轮，确认后再排期）
+### P3 收尾（2026-10-30：4 项实现 / 1 项顺带修复 / 3 项按触发条件关闭）
 
-- 仪表盘成就条（最近解锁 / 最接近解锁 top 3）
-- 全局解锁 toast / 跨设备已读状态（需持久化表）
-- 成就分享卡实装
-- 徽章 3D 翻面硬币（需 `motion` 运行时依赖）
-- 持久化 `token_achievements` 写穿缓存（仅当快照加载成为瓶颈或需跨设备状态时）
-- 元成就（集齐 N 个钻石 → 王者之证）
-- 年度挑战 / 赛季机制
+- [x] **P3.1** 仪表盘成就条：`components/dashboard/achievement-strip-section.tsx`（Card + 标题 + 「查看全部」+ `SectionSkeleton` / `SectionError`）+ `achievement-strip.tsx`（最近解锁 / 最接近解锁**上下两组、各 ≤5 条**，采用成就页徽章墙卡片形式，**只读不跳转**），插在 Heatmap 之后、趋势之前（2026-10-30 操作者调整）；`dashboard-client.tsx` 第 7 个加载槽走 `fetchAchievementsShared`（与全局 watcher 共用在途请求），空账号整条隐藏；骨架与 zh/en 文案同步
+- [x] **P3.2** 已读水位 + 全局解锁 toast：迁移 `20261030000000_token_achievement_seen.sql`（每用户单行 `seen_through`、RLS 零 policy）；`lib/achievements/seen.ts`（条件更新 + 首写 insert、主键冲突 409 重试；读失败降级 `null`）；`GET` 下发 `seen_through`、同一 route 新增 `POST`（401 / 400 非法或未来日 / 503 写失败，全部 `no-store`，零新增函数）；`lib/achievements/highlights.ts` + 单测；`achievement-unlock-watcher.tsx` 挂 `AppShell`（整页一次、1.2 s 延迟、跳过 `/achievements` 与隐藏页、聚合 toast 后推进水位）；成就页「新」标记改由服务端水位推导，旧 localStorage 键不再使用
+- [x] **P3.3** 成就分享卡：Canvas 2D 引擎 `components/share-card/achievement.ts`（1080×1350，等字体就绪后绘制，徽章同源 PNG + 金属盘占位回退），纯投影 `lib/achievements/share.ts`（`buildAchievementShareData` / `achievementShareFilename`），弹窗 `achievement-share-dialog.tsx`（预览 + 复制 / 下载 + 失败提示），详情弹窗已解锁时提供入口且先关详情再开分享；零新增依赖，只含聚合数据
+- [x] **P3.4** 3D 翻面硬币：`components/achievements/achievement-coin.tsx` 纯 CSS（`perspective` / `preserve-3d` / `rotateY`，`motion-reduce` 无过渡），原生 button + `aria-pressed` + Tooltip，正面徽章 / 背面段位盘 + 达成日或下一档阈值，切换成就与关闭弹窗复位
+- [x] **P3.5**（顺带修复）`/achievements` 纳入 `src/proxy.ts` 的受保护页面与 matcher，未登录跳 `/login?next=/achievements`；契约测试补齐。`docs/requirements.md` 要求除 `/login`、`/auth/callback` 与 CLI API 外全部需登录，此前漏配
+- [x] **P3.6** 元成就（集齐 N 个钻石 → 王者之证）—— **评估后不做**。理由：需要第 19 张专属插画资产（本机无 `mmx` 环境），且与「18 条独立指标」的目录设计相冲突。触发条件：操作者提供资产并明确要求
+- [x] **P3.7** 年度挑战 / 赛季机制 —— **评估后不做**。缺产品定义（窗口 / 重置 / 奖励 / 存储），需要单独的需求文档。触发条件：先有书面产品需求
+- [x] **P3.8** `token_achievements` 写穿缓存 —— **评估后不做**。当前无性能瓶颈，写路径改造只会扩大侵入面。触发条件：全历史快照加载 P95 > 1 s，或 `/api/app/achievements` P95 > 1.5 s，或小时 / 会话行数 > 50 万
+- [ ] **P3.9** `pnpm verify` 全绿（web 30 files / 418 tests + build，CLI 72；lint 0 error / 5 warning，其中 4 条为既有基线、1 条为 `seen.ts` 的降级日志）+ 浏览器人工验收（仪表盘条浅色 / 深色 / 375px、全局 toast 整页一次且成就页不弹、翻面点击与键盘、reduce 无过渡、分享卡预览 / 复制 / 下载 / 断图占位、未登录直跳登录）。已完成的机器核对：未登录 `/achievements` → 307 `/login?next=%2Fachievements`；`GET`/`POST /api/app/achievements` 未登录均 401 + `no-store`；构建产物含 `preserve-3d` / `rotateY(180deg)` / `backface-visibility:hidden` 与 `prefers-reduced-motion:reduce` 规则；迁移已通过 `DATABASE_URL` 执行，`token_achievement_seen` 存在、RLS 开启且 0 policy、anon/authenticated 无权限、service_role 可读写。认证后的视觉验收待操作者完成
+- [ ] **阶段完成**（2026-10-30，P3）
 
 ---
 
@@ -317,9 +346,14 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 ## 6. 测试与守卫清单
 
 - **compute 单测**：五类指标边界值、时区日界、跨月/跨年 streak、周末/夜间计数、去重计数、吊销设备不清零、`achieved_at` 回推、单调性（追加数据 tier 不降）、固定 `now`
-- **catalog 守卫**：id 唯一；阈值数组长度 = 5 且严格递增；kind ∈ 单调白名单；每条有 zh/en 文案；图标 key 可解析
-- **路由测试**：未登录 401；非法 `tz` 处理；响应字段类型与 `achieved_at` 键集合
-- **人工验收**：§4 P2.6 清单
+- **catalog 守卫**：id 唯一；阈值数组长度 = 5 且严格递增；kind ∈ 单调白名单；每条有 zh/en 文案；图标 key 可解析；`art` 与资产文件一一对应
+- **highlights 单测**（P3）：`recentUnlocks` / `nearestUnlocks` 排序与并列、`unlocksSince` 的 `null`（首访不报新）/ 新旧水位、`countUnlocked`、`isDayKey` 拒绝非法日期（如 `2026-02-30`）
+- **分享卡投影单测**（P3）：字段、zh/en 段位名、空 handle 回退、未解锁 / 未知 id → `null`、文件名
+- **路由测试**：未登录 401；非法 `tz` 处理；响应字段类型与 `achieved_at` 键集合；GET 带 `seen_through`；POST 的 401 / 400（坏 JSON、非法日、未来日）/ 首次插入 / 旧值不回退 / 新值前进 / 503，且全部 `no-store`
+- **代理守卫**：契约测试断言 `/achievements` 未登录跳 `/login?next=/achievements`
+- **文案守卫**：新增 toast / 翻面 / 分享卡 key 在 zh/en 两侧成对（现有 copy 测试覆盖）
+- **人工验收**：§4 P2.6 清单 + P3.9 清单（仪表盘条、全局 toast、翻面、分享卡、守卫）
+- **机器核对**：headless Chrome + CDP（375px 无横向滚动、reduce 下 `transition-property: none`、toast 每次加载只出现一次、下载 PNG 为 1080×1350）
 - **性能**：记录一次全历史请求的耗时（服务端日志），超过 300ms 时启用结果缓存
 
 ---
@@ -337,7 +371,12 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 插画风格漂移（AI 出图不一致） | 统一风格模板 + 硬性 QA（纯黑虚空背景 / 正圆硬币居中占幅 70–95 %）；不合格换 seed 重生成，最多 4 次；生成脚本与 prompt 清单入库可复现 |
 | 资产体积（18 张 PNG 入库） | 已收口：调色板量化后单张 17–30 KB，合计 ~420 KB；量化由可选 `sharp` 完成，未安装时脚本跳过该步（成片偏大但不影响显示） |
 | 资产生成脚本的依赖 | 已批准并落地（2026-10-30）：`jpeg-js@0.4.4` + `pngjs@7.0.0` 为仓库根 `devDependencies`，仅离线脚本使用、不参与 web 构建与运行时拷贝；`sharp` 未安装，需要时再单独申请 |
-| 回滚 | 纯增量功能、零迁移：`git revert` 对应提交即完全回滚（侧栏入口随代码一起消失） |
+| 全局 toast 刷屏 | 每次整页加载只检查一次（模块级标记），跳过 `/achievements`（该页自己管水位）与隐藏页；首次基线静默写入不弹；一次最多一条聚合 toast（最多列 2 个名称） |
+| 未执行迁移 | GET 读 `token_achievement_seen` 失败时降级 `seen_through: null`（只记日志），页面与仪表盘条正常，「新」标记与 toast 自动关闭；`POST` 回 503，客户端静默。补齐迁移后无需改代码 |
+| 已读水位并发 / 回退 | 写入是「只前进」的条件更新；首次写入用 insert（主键冲突返回 409，重读后走条件更新），旧值不会覆盖新值。水位写失败只会让下次多报一次「新」，不会丢数据 |
+| 分享卡字体 / 断图 | 绘制前 `await document.fonts.ready`；徽章图同源、加载失败画金属盘 + 首字母占位，导出不中断；渲染异常显示「卡片渲染失败」并可重开 |
+| Canvas 在测试环境不可用 | 分享卡只在浏览器弹窗内按需绘制，单测只覆盖纯投影（`share.ts`），不依赖 canvas |
+| 回滚 | 代码侧 `git revert` 对应提交即回到 P4 状态；数据库侧新增表是独立且无外键依赖业务数据（仅 `auth.users` 级联），保留不删也无副作用。回滚 P3 前须先回滚依赖 `seen_through` 的前端提交 |
 
 ---
 
@@ -363,6 +402,13 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 2026-10-30 | P4 当前值 + 刷新反馈 | ✅ | 本次提交 | 操作者验收反馈两处：① 弹窗正文被 HeroUI 的 `.modal__body` 默认染成 muted，当前值一并变灰；正文改 `text-foreground`（标签仍显式走 muted），与上游「标签灰 / 数值纯黑」的配方一致。② 刷新按钮只有图标旋转，过程与结果都没有提示；改为两段式 Toast——按下即出「正在刷新…」（`timeout: 0`），结束原地切换为成功「成就已刷新」或失败「成就加载失败。(原因)」；刷新中按钮禁用并带 `aria-busy`；`useAchievements.refresh` 返回 `ok / error / unauthorized / skipped`，首载与 401 跳登录不弹。新增 zh/en 文案，`docs/ui-spec.md` 同步 |
 | 2026-10-30 | P4.6 验收 | ✅ | 本次提交 | 操作者浏览器验收通过（浅色 / 深色 / 375px / 加载失败回退 / reduced-motion / 键盘可达）；同日机器核对：headless Chrome + CDP 量得 375px 无页面级横向滚动、断图时徽章回退参数化 SVG、reduce 下 `transition-property: none`、Enter 打开弹窗 / Esc 关闭且焦点回到触发墙格；`pnpm verify` 全绿（web 28 files / 390 tests + build，CLI 72）。P4.7（资产生成脚本 devDependency 批准）仍未勾选 |
 | 2026-10-30 | P4.7 收尾 | ✅ | 本次提交 | 操作者批准后执行：`jpeg-js@0.4.4` + `pngjs@7.0.0` 以精确版本加入**仓库根** `package.json` 的 `devDependencies`（lockfile 同步；不做运行时依赖，不进 `apps/web` 依赖图），`generate.mjs` 的静态 import 从脚本目录可直接解析；修正 `scripts/admin/achievement-assets/README.md` 的安装位置说明（原写 `apps/web/package.json`，实际 Node 从脚本目录向上解析到仓库根）；`sharp` 仍为可选、未安装（量化跳过）。`docs/rewrite-plan.md` §4 增加 2026-10-30 增量记录。P4 阶段收尾 |
+| 2026-10-30 | P3 决策 | ✅ | 待提交 | 操作者拍板：已读水位走、服务端小表 + 全局 toast；元成就关闭；赛季与写穿缓存关闭并写下触发条件。顺带发现 `/achievements` 未进 proxy 守卫，本轮一并修 |
+| 2026-10-30 | P3.5 守卫 | ✅ | 待提交 | `src/proxy.ts` 补 `/achievements`（页面清单 + matcher），契约测试补未登录跳 `/login?next=/achievements` |
+| 2026-10-30 | P3.2 水位 | ✅ | 待提交 | 迁移 `token_achievement_seen`（RLS 零 policy）+ `lib/achievements/seen.ts`（条件更新 / 首写 insert + 409 重试）+ `GET` 下发 `seen_through` + 同 route 新增 `POST`（401/400/503、`no-store`）+ `highlights.ts` 与单测 + fake-supabase 表 |
+| 2026-10-30 | P3.2 toast | ✅ | 待提交 | `achievement-unlock-watcher.tsx` 挂 `AppShell`；成就页「新」标记改服务端水位（移除 localStorage 键与私有 `latestAchievedDay`）；zh/en 文案 |
+| 2026-10-30 | P3.1 仪表盘条 | ✅ | 待提交 | `achievement-strip-section.tsx` + `achievement-strip.tsx`；`dashboard-client.tsx` 第 7 槽复用 `fetchAchievementsShared`；骨架 / 文案 / 空账号隐藏 |
+| 2026-10-30 | P3.3–P3.4 分享卡 + 翻面 | ✅ | 待提交 | Canvas 1080×1350 分享卡（`share-card/achievement.ts` + `lib/achievements/share.ts` + 弹窗，零新依赖，断图回退金属盘）；详情硬币 CSS 3D 翻面（原生 button + `aria-pressed`，reduce 无过渡） |
+| 2026-10-30 | P3 验收 + 文档 | 🟡 | 待提交 | 文档回写完成（本文件 + requirements + rewrite-plan + deploy-guide + ui-spec）；`pnpm verify` 全绿（web 30 files / 418 tests + build，CLI 72；lint 0 error / 5 warning）；机器核对未登录跳转、GET/POST 401 + no-store、3D/reduce CSS 产物；迁移已用 `DATABASE_URL` 执行并核对（RLS 开启、0 policy、anon/authenticated 无权限、service_role 可读写）；认证后的浏览器视觉验收待操作者 |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 
@@ -377,6 +423,13 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
   - `AGENTS.md`：文档地图新增本文件索引
 - **已完成（2026-10-30，P2 收尾）**：用实现结果补全细节，不重复建规范——`docs/ui-spec.md` 成就页改为英雄带摘要 + 段位分布条、参数化 SVG 徽章（`achievement-art.tsx`）、五段进度轨、整卡按钮；`docs/requirements.md` M7 验收补上阈值唯一真源 `apps/web/src/lib/achievements/catalog.ts`、校准结论与第 19 条未上线的原因
 - **已完成（2026-10-30，P4）**：`docs/ui-spec.md` 成就节已按实现回填（徽章墙三/四/五/六列、位图徽章 + 段位外环 + 裁切规则、页头摘要、弹窗 176px 徽章、弹窗数值走前景色、刷新按钮禁用 + 两段式 Toast、圆形骨架）；P4.6、P4.7 均已通过，P4 阶段收尾
+- **已完成（2026-10-30，P3）**：本文件全量回写（§0 / §1 / §3 / §4 P3 / §6 / §7 / §8 / §9）；
+  `docs/requirements.md` 修正「不新增表」为「成就仍读时计算，仅新增 `token_achievement_seen`
+  存已读水位」；`docs/rewrite-plan.md` 记录 `token_achievement_seen`（§3 表矩阵 + 成就仍读时
+  计算）、`POST` 复用现有 route（§2 函数预算）、P3 零新增运行时依赖（§4）、M7 里程碑收尾；
+  `docs/deploy-guide.md` 迁移清单补齐 6 个文件（含 sessions / sync_runs / achievement_seen 与
+  可选 storage）；`docs/ui-spec.md` 仪表盘加成就条、成就节改写「新解锁」为服务端水位 + 全局
+  toast、补分享按钮 / 分享弹窗 / 3D 翻面、分享卡一节补成就卡（1080×1350）
 - **不触碰** `docs/cli-contract.md`（成就走 `/api/app/*`，不属于 CLI 契约层）
 - **依赖预算**：不新增运行时依赖。2026-10-30 经操作者批准，仓库根 `devDependencies` 增加 `jpeg-js@0.4.4` + `pngjs@7.0.0`（仅离线资产生成脚本用，不进 `apps/web` 依赖图与构建产物），已在 `docs/rewrite-plan.md` §4 记录；`sharp` 未安装
 

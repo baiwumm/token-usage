@@ -24,7 +24,7 @@
 
 ## 2. 建库（token_* 表，RLS 全拒）
 
-两张迁移文件在仓库 `supabase/migrations/`，幂等，可重复执行。二选一：
+迁移文件在仓库 `supabase/migrations/`，幂等，可重复执行。二选一：
 
 **方式 A：Supabase CLI（推荐）**
 
@@ -37,14 +37,19 @@ npx supabase db push
 
 **方式 B：SQL Editor 手动执行**
 
-Supabase Dashboard → SQL Editor → 依次粘贴执行：
+Supabase Dashboard → SQL Editor → 按文件名顺序依次粘贴执行：
 
-1. `supabase/migrations/20261024000000_token_core_tables.sql`（必需：全部 token_* 表）
+1. `supabase/migrations/20261024000000_token_core_tables.sql`（必需：全部 `token_*` 表）
 2. `supabase/migrations/20261024000001_token_allowed_emails_optional.sql`（可选：自助注册白名单）
+3. `supabase/migrations/20261024000002_storage_avatars_optional.sql`（可选：头像 Storage 桶）
+4. `supabase/migrations/20261025000000_token_sessions.sql`（必需：Sessions 页 + 3 条 Sessions 类成就）
+5. `supabase/migrations/20261027000000_token_sync_runs.sql`（必需：采集端运行记录 + `sync_diligence` 成就）
+6. `supabase/migrations/20261030000000_token_achievement_seen.sql`（必需：成就已读水位；缺少时成就页仍可用，只是「新」标记与解锁 toast 不生效）
 
 执行后确认 Table Editor 里出现 `token_devices`、`token_device_tokens`、`token_device_codes`、
-`token_usage_hourly`、`token_account_session_states`。**不要**给这些表添加任何 policy——
-RLS 全拒（客户端零直连）是本项目的安全姿态，数据只经部署应用的服务端读写。
+`token_usage_hourly`、`token_account_session_states`、`token_sessions`、`token_sync_runs`、
+`token_achievement_seen`。**不要**给这些表添加任何 policy——RLS 全拒（客户端零直连）是本项目
+的安全姿态，数据只经部署应用的服务端读写。
 
 ## 3. 配置 Supabase Auth
 

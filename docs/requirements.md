@@ -24,7 +24,7 @@
 | Sessions | `/sessions` | 会话列表与详情：按时间/设备/来源/项目筛选，展示时长、token、成本、模型拆分；仅设备级来源 |
 | 设置 | `/settings` | 账户资料、外观偏好（主题/语言/货币/Token 显示/单位/分组）、设备列表与吊销；退出登录在应用壳用户菜单 |
 | wrapped | `/wrapped` | 年度回顾（功能对齐旧版，视觉简化） |
-| 成就 | `/achievements` | 18 条成就 × 5 档（铜/银/金/钻/王者），账号级、只升不降；分类栅格、进度与达成日期、五档详情时间线、年度回顾「今年解锁 N 枚」；读时计算，不新增表 |
+| 成就 | `/achievements` | 18 条成就 × 5 档（铜/银/金/钻/王者），账号级、只升不降；分类栅格、进度与达成日期、五档详情时间线、年度回顾独立成就卡（当前已获得成就 + 段位）；读时计算；仅 `token_achievement_seen` 存账号级已读水位（跨设备「新」标记与解锁 toast） |
 | 服务状态 | `/service-status` | 端点健康自查页 |
 | 配对 | `/device` | 页面批准 CLI 配对码 |
 | CLI API | `/api/functions/token-usage-*` | 10 个契约端点（`docs/cli-contract.md`） |
@@ -78,9 +78,10 @@ upsert 键与 last-wins 语义跨版本保持不变（对账基线）。
 可选 `sessions` 数组，query 增加 `account-sessions` series。设计见 `docs/rewrite-plan.md`
 §3.1 与 `docs/cli-contract.md` §2.4 / §2.7。
 
-2026-10-30 增量：成就系统（M7）**不新增表、无迁移**——成就与段位由现有
+2026-10-30 增量：成就系统（M7）的**成就与段位仍不建表**——由现有
 `token_usage_hourly` / `token_account_session_states` / `token_sessions` /
-`token_sync_runs` / `token_devices` 读时计算；口径、单调性与阈值规则见
+`token_sync_runs` / `token_devices` 读时计算；P3 仅新增 `token_achievement_seen`
+（每用户单行的已读水位，不参与成就计算）。口径、单调性与阈值规则见
 `docs/achievements-plan.md`。
 
 ## 验收标准
