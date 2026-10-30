@@ -446,3 +446,20 @@ export function nextThreshold(
 
   return null;
 }
+
+/**
+ * Progress toward the next tier as a 0–1 ratio: the current value against the
+ * next threshold — the same measure the upstream TokenTracker badge uses
+ * (`badgeProgress`). The ratio is clamped, so a metric that shrinks after a
+ * tier was earned can never render a bar outside 0–100 %.
+ */
+export function progressRatioForNext(
+  value: number,
+  next: number | null,
+): number {
+  if (next == null) return 1;
+  if (!Number.isFinite(next) || next <= 0) return 0;
+  if (!Number.isFinite(value) || value <= 0) return 0;
+
+  return Math.max(0, Math.min(1, value / next));
+}

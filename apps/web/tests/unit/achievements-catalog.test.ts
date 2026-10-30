@@ -19,6 +19,7 @@ import {
   achievementById,
   achievementsByCategory,
   nextThreshold,
+  progressRatioForNext,
   thresholdForTier,
   tierForValue,
   tierKeyForTier,
@@ -203,5 +204,22 @@ describe("tier helpers", () => {
     expect(tierKeyForTier(1)).toBe("bronze");
     expect(tierKeyForTier(5)).toBe("king");
     expect(tierKeyForTier(0)).toBeNull();
+  });
+});
+
+describe("progress ratio", () => {
+  it("measures the value against the next threshold", () => {
+    expect(progressRatioForNext(300_000_000, 1_000_000_000)).toBeCloseTo(0.3);
+    expect(progressRatioForNext(50, 100)).toBe(0.5);
+  });
+
+  it("clamps a metric that grew past the next threshold", () => {
+    expect(progressRatioForNext(120, 100)).toBe(1);
+    expect(progressRatioForNext(-5, 100)).toBe(0);
+  });
+
+  it("reports a maxed achievement as complete and a broken target as empty", () => {
+    expect(progressRatioForNext(42, null)).toBe(1);
+    expect(progressRatioForNext(42, 0)).toBe(0);
   });
 });

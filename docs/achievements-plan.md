@@ -357,6 +357,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 2026-10-30 | P4.1–P4.2 资产 | ✅ | 本次提交 | 18 张徽章插画生成并入库 `apps/web/public/achievements/`（256×256 透明 PNG）；出图 QA（纯黑虚空背景 + 正圆硬币居中占幅 70–95 %）+ 圆形 alpha 裁切；prompt 模板与生成脚本入库 `scripts/admin/achievement-assets/`（脚本依赖 `jpeg-js` + `pngjs` 待批准，未写入 package.json） |
 | 2026-10-30 | P4.3–P4.5 界面 | ✅ | 本次提交 | 徽章墙改造：`achievement-medallion.tsx`（位图 + 段位金属外环 + 裁 5 % 自带外圈 + 锁定灰化 + SVG 回退，含 SSR 首屏 404 的 `naturalWidth` 兜底）、墙格 `achievement-card.tsx`、页头摘要 `achievements-summary.tsx`、圆形骨架、弹窗大徽章 176px；`catalog.ts` 增 `art` 字段 + 资产存在性守卫测试；段位金属与色相抽到 `achievement-tiers.ts`（两个徽章组件共用一份） |
 | 2026-10-30 | P4 段位渐变标签 + 详情排版 | ✅ | 本次提交 | 按操作者要求参考上游 TokenTracker：① 段位改「金属渐变标签」并写全名（青铜 / 白银 / 黄金 / 钻石 / 王者），坡道集中在 `TIER_RAMPS`，同一坡道刷外环、标签、等级历程条、进度条与摘要圆点；② 详情正文改成上游格式（标签左 / 数值右）：当前值 + 段位渐变徽章 → `dl` 分隔线下的「距{tier}进度 + 渐变进度条」与「等级历程五段条」→ 五档时间线（每档一个渐变段位徽章 + 阈值 + 达成日）；③ 达成日期改走 Tooltip（等级历程段与时间线徽章）。文案新增 `dialogTierHistory` / `dialogProgressTo`，删去已无引用的卡片期文案 |
+| 2026-10-30 | P4 进度口径修正 + 间距/字号 | ✅ | 本次提交 | 操作者验收指出进度不对：原实现按「当前档区间」（上一档 → 下一档）算比例，与上游 `badgeProgress` 不一致，且刚升档时进度条会归零；改为「当前值 ÷ 下一档阈值」并钳在 0–100 %（`catalog.ts` 新增 `progressRatioForNext`，守卫测试覆盖）。同时按反馈：分隔线上方留间距、等级历程 / 五档时间线 / 数据覆盖各留间距、五档时间线标题弱化为与等级历程同款小字、摘要的段位计数行加大一号（`text-xs` + 数字 `text-sm`） |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 

@@ -19,25 +19,13 @@ import { TierBadge } from "./achievement-tier-badge";
 import { achievementHue, tierGradient } from "./achievement-tiers";
 import { useAchievementFormat } from "./use-achievements-format";
 
-import { achievementById, TIERS } from "@/lib/achievements/catalog";
+import {
+  achievementById,
+  progressRatioForNext,
+  TIERS,
+} from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { formatMessage } from "@/lib/copy/message";
-
-/** Share of the next step already covered (0–1). */
-function progressRatio(
-  value: number,
-  thresholds: readonly number[],
-  next: number | null,
-): number {
-  if (next == null) return 1;
-  const index = thresholds.indexOf(next);
-  const base = index > 0 ? thresholds[index - 1] : 0;
-  const span = next - base;
-
-  if (span <= 0) return 1;
-
-  return Math.min(1, Math.max(0, (value - base) / span));
-}
 
 export function AchievementDialog({
   progress,
@@ -88,11 +76,7 @@ export function AchievementDialog({
     ? (progress?.achieved_at[currentTier.key] ?? null)
     : null;
   const ratio = progress
-    ? progressRatio(
-        progress.value,
-        progress.thresholds,
-        progress.next_threshold,
-      )
+    ? progressRatioForNext(progress.value, progress.next_threshold)
     : 0;
 
   return (
@@ -130,7 +114,7 @@ export function AchievementDialog({
                 </Typography>
               </Modal.Header>
 
-              <Modal.Body className="gap-5">
+              <Modal.Body className="gap-6">
                 {/* Current value + the tier label as a metallic badge. */}
                 <div className="flex items-end justify-between gap-4">
                   <div className="flex flex-col gap-1">
@@ -166,7 +150,7 @@ export function AchievementDialog({
                   </div>
                 </div>
 
-                <dl className="border-border/60 flex flex-col gap-3 border-t pt-4">
+                <dl className="border-border/60 mt-2 flex flex-col gap-4 border-t pt-5">
                   {/* Progress to the next tier, painted with the tier ramp. */}
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-baseline justify-between gap-3 text-xs">
@@ -264,8 +248,8 @@ export function AchievementDialog({
                 </dl>
 
                 {/* Five-tier timeline: every threshold, every landing day. */}
-                <div className="flex flex-col gap-1.5">
-                  <Typography className="font-medium" type="body-sm">
+                <div className="mt-2 flex flex-col gap-2">
+                  <Typography color="muted" type="body-xs">
                     {achievementCopy(locale, "achievements.ui.dialogTimeline")}
                   </Typography>
                   <ul className="flex flex-col">
@@ -339,7 +323,7 @@ export function AchievementDialog({
                 </div>
 
                 {coverage ? (
-                  <div className="bg-surface-secondary flex flex-col gap-1 rounded-xl p-3">
+                  <div className="bg-surface-secondary mt-2 flex flex-col gap-1 rounded-xl p-3">
                     <Typography className="font-medium" type="body-xs">
                       {achievementCopy(
                         locale,

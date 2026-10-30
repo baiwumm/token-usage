@@ -14,25 +14,13 @@ import type { Locale } from "@/lib/copy/locale-config";
 import { AchievementMedallion } from "./achievement-medallion";
 import { TierBadge } from "./achievement-tier-badge";
 
-import { achievementById, TIERS } from "@/lib/achievements/catalog";
+import {
+  achievementById,
+  progressRatioForNext,
+  TIERS,
+} from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { formatMessage } from "@/lib/copy/message";
-
-/** Share of the next step already covered (0–1). */
-function progressRatio(
-  value: number,
-  thresholds: readonly number[],
-  next: number | null,
-): number {
-  if (next == null) return 1;
-  const index = thresholds.indexOf(next);
-  const base = index > 0 ? thresholds[index - 1] : 0;
-  const span = next - base;
-
-  if (span <= 0) return 1;
-
-  return Math.min(1, Math.max(0, (value - base) / span));
-}
 
 export function AchievementCard({
   progress,
@@ -52,11 +40,7 @@ export function AchievementCard({
     locale,
     catalogEntry?.copyKey ?? `achievements.${progress.id}.name`,
   );
-  const ratio = progressRatio(
-    progress.value,
-    progress.thresholds,
-    progress.next_threshold,
-  );
+  const ratio = progressRatioForNext(progress.value, progress.next_threshold);
   const percent = Math.round(ratio * 100);
   const tierLabel = currentTier
     ? achievementCopy(locale, currentTier.copyKey)

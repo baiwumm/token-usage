@@ -66,7 +66,7 @@ export function AchievementsSummary({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
         {TIERS.map((tier) => {
           const count = achievements.filter(
             (entry) => entry.tier === tier.tier,
@@ -76,13 +76,13 @@ export function AchievementsSummary({
             <span key={tier.key} className="flex items-center gap-1.5">
               <span
                 aria-hidden="true"
-                className="size-2 rounded-full"
+                className="size-2.5 rounded-full"
                 style={{ background: tierGradient(tier.tier) }}
               />
               <span className="text-muted">
                 {achievementCopy(locale, tier.copyKey)}
               </span>
-              <span className="font-medium tabular-nums">{count}</span>
+              <span className="font-semibold tabular-nums">{count}</span>
             </span>
           );
         })}
