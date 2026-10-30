@@ -4,18 +4,21 @@
 // Everything is derived from the payload; the page adds only the refresh
 // affordance, the loading/error states and the "new" badge bookkeeping.
 //
-// New badges: the last-seen day is stored per account (token-usage.achievements
-// .seen.<userId>) the moment the grid renders, so a tier that landed after that
-// day shows 新 until the next visit. Nothing is written back to the server.
+// New badges: the account's seen watermark lives on the server
+// (token_achievement_seen), so the badges follow the account across devices.
+// The watermark is advanced after the grid renders — writing it earlier would
+// clear the badges of the visit that is currently on screen.
 
 import { ArrowsRotateRight } from "@gravity-ui/icons";
 import { Button, Skeleton, Tooltip, Typography, toast } from "@heroui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { AchievementsBody } from "./achievements-body";
 import { AchievementsSkeleton } from "./achievements-skeleton";
 import { useAchievements } from "./use-achievements";
 
+import { markAchievementsSeen } from "@/lib/achievements/api";
+import { maxAchievedDay, unlocksSince } from "@/lib/achievements/highlights";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
@@ -23,83 +26,37 @@ import { browserTimezone, dayKeyInTz } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";
 import { SectionError } from "@/components/section-states";
 
-const SEEN_KEY_PREFIX = "token-usage.achievements.seen.";
-
-function seenKey(userId: string): string {
-  return `${SEEN_KEY_PREFIX}${userId}`;
-}
-
-/** Latest tier day across the five dates (ISO days sort lexicographically). */
-function latestAchievedDay(
-  achieved: Record<string, string | null>,
-): string | null {
-  let latest: string | null = null;
-
-  for (const day of Object.values(achieved)) {
-    if (day && (latest === null || day > latest)) latest = day;
-  }
-
-  return latest;
-}
-
 export function AchievementsClient() {
   const [locale] = useLocale();
   const { formatDateTime } = useFormat();
-  const { state, error, refreshing, lastUpdatedAt, userId, refresh } =
+  const { state, error, refreshing, lastUpdatedAt, refresh } =
     useAchievements();
-
-  const [seenDay, setSeenDay] = useState<string | null>(null);
-  const [seenReady, setSeenReady] = useState(false);
-
-  useEffect(() => {
-    if (!userId) return;
-
-    try {
-      setSeenDay(window.localStorage.getItem(seenKey(userId)));
-    } catch {
-      // storage unavailable — treat every unlocked tier as new
-    }
-    setSeenReady(true);
-  }, [userId]);
 
   const payload = state.data;
 
-  // Derived from the value read at mount: writing the marker below must not
-  // clear the badges of the visit that is currently on screen.
   const newIds = useMemo(() => {
-    const ids = new Set<string>();
+    if (!payload) return new Set<string>();
 
-    if (!seenReady || !payload) return ids;
+    return new Set(
+      unlocksSince(payload.achievements, payload.seen_through).map(
+        (entry) => entry.id,
+      ),
+    );
+  }, [payload]);
 
-    for (const entry of payload.achievements) {
-      const latest = latestAchievedDay(entry.achieved_at);
-
-      if (latest && (seenDay === null || latest > seenDay)) ids.add(entry.id);
-    }
-
-    return ids;
-  }, [payload, seenDay, seenReady]);
-
+  // First visit (no watermark yet) records a baseline without marking the back
+  // catalogue as new; later visits advance the watermark past what was shown.
   useEffect(() => {
-    if (!userId || !seenReady || !payload) return;
+    if (!payload) return;
 
-    let marker: string | null = null;
+    const marker =
+      maxAchievedDay(payload.achievements) ??
+      dayKeyInTz(new Date(), browserTimezone());
 
-    for (const entry of payload.achievements) {
-      const latest = latestAchievedDay(entry.achieved_at);
+    if (payload.seen_through !== null && marker <= payload.seen_through) return;
 
-      if (latest && (marker === null || latest > marker)) marker = latest;
-    }
-
-    marker ??= dayKeyInTz(new Date(), browserTimezone());
-    if (seenDay !== null && marker <= seenDay) return;
-
-    try {
-      window.localStorage.setItem(seenKey(userId), marker);
-    } catch {
-      // best effort
-    }
-  }, [payload, seenDay, seenReady, userId]);
+    void markAchievementsSeen(marker);
+  }, [payload]);
 
   // Manual reloads report back twice: a loading toast the moment the button is
   // pressed, then the same toast flips to the result. The spinner alone is easy

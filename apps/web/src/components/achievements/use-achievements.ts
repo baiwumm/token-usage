@@ -1,8 +1,8 @@
 "use client";
 
 // Data hook for /achievements: resolves the session, fetches the read-time
-// payload once and on demand, keeps a failed refresh from wiping the grid, and
-// hands the signed-in user id to the page (the new-badge marker is per user).
+// payload once and on demand, and keeps a failed refresh from wiping the grid
+// (the seen watermark travels inside the payload).
 
 import type { AchievementsPayload } from "@/lib/achievements/types";
 
@@ -25,11 +25,9 @@ export function useAchievements(): {
   error: string | null;
   refreshing: boolean;
   lastUpdatedAt: number | null;
-  userId: string | null;
   refresh: () => Promise<RefreshOutcome>;
 } {
-  const { accessToken, redirectToLogin, userId } =
-    useSessionBootstrap("/achievements");
+  const { accessToken, redirectToLogin } = useSessionBootstrap("/achievements");
   const [state, setState] = useState<Loadable<AchievementsPayload>>(loadable);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -89,5 +87,5 @@ export function useAchievements(): {
     return load();
   }, [accessToken, load]);
 
-  return { state, error, refreshing, lastUpdatedAt, userId, refresh };
+  return { state, error, refreshing, lastUpdatedAt, refresh };
 }

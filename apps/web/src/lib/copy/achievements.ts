@@ -89,6 +89,10 @@ export const ACHIEVEMENTS_COPY: Record<Locale, Record<string, string>> = {
     "achievements.ui.refreshSuccess": "成就已刷新",
     "achievements.ui.lastUpdated": "上次更新 {time}",
     "achievements.ui.lastUpdatedNone": "尚未加载数据",
+    "achievements.ui.unlockedToast": "新解锁：{names}",
+    "achievements.ui.unlockedToastMore": "新解锁 {count} 枚：{names} 等",
+    "achievements.ui.coinFlip": "翻面",
+    "achievements.ui.coinFlipBack": "翻回",
   },
   en: {
     "achievements.token_titan.name": "Token Titan",
@@ -186,6 +190,11 @@ export const ACHIEVEMENTS_COPY: Record<Locale, Record<string, string>> = {
     "achievements.ui.refreshSuccess": "Achievements refreshed",
     "achievements.ui.lastUpdated": "Updated {time}",
     "achievements.ui.lastUpdatedNone": "No data loaded yet",
+    "achievements.ui.unlockedToast": "New unlocks: {names}",
+    "achievements.ui.unlockedToastMore":
+      "{count} new unlocks: {names} and more",
+    "achievements.ui.coinFlip": "Flip",
+    "achievements.ui.coinFlipBack": "Flip back",
   },
 };
 
