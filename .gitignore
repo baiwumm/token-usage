@@ -41,3 +41,6 @@ bun.lockb
 
 # box-agent runtime state (session scratch, not project source)
 .box-agent/
+
+# achievement asset pipeline scratch output
+scripts/admin/achievement-assets/.work/

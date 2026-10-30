@@ -1,0 +1,90 @@
+{
+  "note": "成就徽章插画的生成清单（自有资产，不含任何上游素材）。style 模板 + 每条成就的主体描述 + 点睛色，交给 image-01 出图；生成后由 cut 步骤做圆形 alpha 裁切。",
+  "model": "image-01",
+  "aspectRatio": "1:1",
+  "size": 256,
+  "style": [
+    "circular achievement medallion badge, straight front view, perfectly centered symmetrical composition",
+    "engraved bas-relief sculpture carved into a dark graphite coin face",
+    "polished brushed silver outer rim with an even ring of small round rivets and fine machined concentric grooves",
+    "one single subtle accent color glow inside the emblem, everything else monochrome dark metal",
+    "dramatic top-left studio key light, crisp micro-detail, premium 3D game achievement badge",
+    "the coin is a perfect circle that fills about 85 percent of the square frame, centered",
+    "isolated on a solid pure black void background, no backdrop, no floor, no shadow, no scene",
+    "square 1:1, no text, no letters, no numbers, no watermark"
+  ],
+  "badges": {
+    "token_titan": {
+      "subject": "a colossal muscular titan statue lifting a glowing hexagonal crystal cube overhead, heroic relief carving",
+      "accent": "warm amber"
+    },
+    "wordsmith": {
+      "subject": "an ornate carved quill feather crossed with a fountain pen nib, a ribbon of glowing script curling from the nib",
+      "accent": "rose magenta"
+    },
+    "cachekeeper": {
+      "subject": "a carved keeper figure cradling a heavy iron strongbox that is open, glowing crystalline data cubes floating out of it",
+      "accent": "teal green"
+    },
+    "veteran": {
+      "subject": "a battle-worn steel shield bearing an oak laurel wreath and a single campaign ribbon",
+      "accent": "warm orange"
+    },
+    "big_day": {
+      "subject": "a blazing sun bursting upward over a jagged mountain peak, rays radiating in every direction",
+      "accent": "golden yellow"
+    },
+    "cache_alchemy": {
+      "subject": "an alchemist retort pouring a luminous liquid into a round crucible, bubbles rising, engraved herbs and gears around it",
+      "accent": "violet"
+    },
+    "marathon_session": {
+      "subject": "a large ornate chronometer stopwatch with a winged foot sprinting around it, a comet trail of hour sand",
+      "accent": "azure blue"
+    },
+    "model_symphony": {
+      "subject": "a grand piano with an open lid carved in relief, a violin and a trumpet flanking it, simple bold readable shapes",
+      "accent": "purple"
+    },
+    "streak": {
+      "subject": "a single tall flame with a chain of smaller flames trailing behind it like a running streak",
+      "accent": "red orange"
+    },
+    "marathoner": {
+      "subject": "a winged running shoe with a laurel wreath and dust puffs, motion carved into the relief",
+      "accent": "leaf green"
+    },
+    "weekend_warrior": {
+      "subject": "a round shield with crossed blades and a torn calendar page pinned on it, weekend rest gear",
+      "accent": "crimson rose"
+    },
+    "night_owl": {
+      "subject": "a sharp geometric low-poly owl head with intense glowing eyes, angular faceted carving",
+      "accent": "cold indigo blue"
+    },
+    "polyglot": {
+      "subject": "a carved robed figure holding up a fan of plain blank round medallions of different sizes, completely smooth blank surfaces with no writing and no symbols",
+      "accent": "cyan teal"
+    },
+    "multitool": {
+      "subject": "a bold simple crossed wrench and chisel over an anvil, thick readable shapes, high contrast",
+      "accent": "lime green"
+    },
+    "project_hopper": {
+      "subject": "a hooded traveler leaping between floating rocky map islands, a scarf streaming behind",
+      "accent": "magenta"
+    },
+    "project_devotion": {
+      "subject": "a glowing crystal heart held in two carved stone hands, chains wrapping the heart, a compact round emblem centered in the coin face",
+      "accent": "deep pink"
+    },
+    "fleet": {
+      "subject": "four small carved laptop and phone devices arranged in a circle around one glowing central cube, simple bold readable shapes",
+      "accent": "steel blue"
+    },
+    "sync_diligence": {
+      "subject": "two interlocking gears meshing with a chain of small circulating arrows and a clock hand between them",
+      "accent": "emerald green"
+    }
+  }
+}
