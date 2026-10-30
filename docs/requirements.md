@@ -2,7 +2,11 @@
 
 > 2026-10-25 范围修订（操作者指令）：在 v1 基础上补「上游 Dashboard 核心」与
 > Sessions，设置新增外观偏好。上游 TokenTracker 的 Limits / Skills / Leaderboard /
-> Achievements / Pet / Widgets / Cloud / IP check 仍不在范围内（见「边界」）。
+> Pet / Widgets / Cloud / IP check 仍不在范围内（见「边界」）。
+>
+> 2026-10-30 范围修订（操作者指令）：新增**成就系统**（M7）——自研、账号级、读时计算，
+> 不移植上游的 Cloud / Leaderboard 成就（无排行榜与全局编号）。实施计划与进度见
+> `docs/achievements-plan.md`。
 
 需求的唯一真源：范围、边界、角色、验收都在本文维护；会话中的需求变更一律回写本文。
 技术选型与执行计划见 `docs/rewrite-plan.md`；两者不一致时以本文为准，并同步修订计划。
@@ -20,6 +24,7 @@
 | Sessions | `/sessions` | 会话列表与详情：按时间/设备/来源/项目筛选，展示时长、token、成本、模型拆分；仅设备级来源 |
 | 设置 | `/settings` | 账户资料、外观偏好（主题/语言/货币/Token 显示/单位/分组）、设备列表与吊销；退出登录在应用壳用户菜单 |
 | wrapped | `/wrapped` | 年度回顾（功能对齐旧版，视觉简化） |
+| 成就 | `/achievements` | 18 条成就 × 5 档（铜/银/金/钻/王者），账号级、只升不降；分类栅格、进度与达成日期、五档详情时间线、年度回顾「今年解锁 N 枚」；读时计算，不新增表 |
 | 服务状态 | `/service-status` | 端点健康自查页 |
 | 配对 | `/device` | 页面批准 CLI 配对码 |
 | CLI API | `/api/functions/token-usage-*` | 10 个契约端点（`docs/cli-contract.md`） |
@@ -29,21 +34,26 @@
 路由约定（2026-10-24 二次修订）：仪表盘挂 `/` 且**需要登录**；**除 `/login`、`/auth/callback`
 与 CLI API 外，所有页面未登录一律重定向到登录页**，重定向须保留原始路径与查询参数
 （配对链接 `?user_code=` 不得因跳转丢失），登录成功进入原目标（无 `?next=` 时缺省 `/`）。
-2026-10-25 新增 `/sessions`，同属登录后页面；设置分区用 `/settings?section=appearance|account|devices`
-深链，不新增顶层路由。
+2026-10-25 新增 `/sessions`，同属登录后页面；2026-10-30 新增 `/achievements`，同属登录后页面；
+设置分区用 `/settings?section=appearance|account|devices` 深链，不新增顶层路由。
 产品落地页不在本应用内，使用 **token-usage.cc** 独立域名创建（开源自部署介绍站，与本
 应用部署域相互独立）。CLI API 走 `docs/cli-contract.md` 自身的公开/鉴权规则，不受页面
 守卫影响。路由表变更需回写本表。
 
 ## 边界（v1 不做什么）
 
-排行榜、成就系统、pet/quota 桌面 widget、`/selfhost` 降级页、社区多实例管理面板、
+排行榜、pet/quota 桌面 widget、`/selfhost` 降级页、社区多实例管理面板、
 数据导入导出工具、端点限流与防滥用（与旧系统行为保持一致，进 backlog）、桌面端托盘应用
 （v1 后视情况，backlog，候选 Tauri）。
 
+2026-10-30 修订：**成就系统自本表移出**（操作者指令），进入范围（M7，`/achievements`）。
+排行榜与上游云端成就（依赖 Leaderboard 排名、全局发行编号）仍不移植；本项目成就为账号级、
+读时计算的自有实现，见下文与 `docs/achievements-plan.md`。
+
 上游 TokenTracker 的 **Limits**（provider 配额）、**Skills**（本地技能市场）、**Cloud /
-Leaderboard / Achievements / Pet / Widgets / IP check** 不移植：它们依赖云端、桌面端或
-本地 CLI 文件，自托管 Web 没有独立数据源。
+Leaderboard / Pet / Widgets / IP check** 不移植：它们依赖云端、桌面端或本地 CLI 文件，
+自托管 Web 没有独立数据源。上游成就的云端部分（排名依赖与全局编号）同样不移植；
+M7 成就只使用本实例自身的用量与会话数据。
 
 Sessions 只采集**用量元数据**：source、session_id、开始/结束时间、项目标签、token 拆分、
 模型拆分。**不采集 prompt、对话正文、绝对路径、resume command、会话标题**；项目标签由
@@ -67,6 +77,11 @@ upsert 键与 last-wins 语义跨版本保持不变（对账基线）。
 2026-10-25 增量：新增 `token_sessions`（设备级会话明细，`models` JSONB）；ingest 增加
 可选 `sessions` 数组，query 增加 `account-sessions` series。设计见 `docs/rewrite-plan.md`
 §3.1 与 `docs/cli-contract.md` §2.4 / §2.7。
+
+2026-10-30 增量：成就系统（M7）**不新增表、无迁移**——成就与段位由现有
+`token_usage_hourly` / `token_account_session_states` / `token_sessions` /
+`token_sync_runs` / `token_devices` 读时计算；口径、单调性与阈值规则见
+`docs/achievements-plan.md`。
 
 ## 验收标准
 
@@ -93,3 +108,13 @@ upsert 键与 last-wins 语义跨版本保持不变（对账基线）。
   Token 显示（紧凑/完整）、数字单位（K/M/B 或 万/亿）、数字分组（3 位/4 位）即时生效并
   跨刷新保留；`system` 语言由 Accept-Language 解析且 SSR 首帧正确；货币与数字格式在
   仪表盘、Sessions、Wrapped、设置中一致。
+
+2026-10-30 增量验收（成就 M7）：
+
+- 18 条成就 × 5 档（铜/银/金/钻/王者）全部可计算，指标只升不降；账号级口径（跨设备、
+  含账户级来源、含已吊销设备历史）；
+- 日界 / 连续 / 周末 / 夜间按浏览器时区计算，`achieved_at` 可由历史回推且一致；
+- Sessions 类成就明确标注「自 Sessions 数据可用起统计」，无会话数据不影响其余成就；
+- 页面 Loading / Empty / Error 三态齐全，中英文案完整，375px 无横向滚动；
+- 阈值经真实实例校准后定稿；守卫测试（阈值严格递增、指标单调白名单、文案完整性）全绿；
+- `pnpm verify` 全绿；数据通路函数预算已核对（超限时改 Server Component 直出）。

@@ -40,6 +40,7 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 | CLI 发版与 npm 发布 | `docs/cli-release.md` |
 | 改数据库、写迁移、迁移/切换/退役操作 | `docs/rewrite-plan.md` §3、§6–7 |
 | 写任何 UI | `docs/ui-spec.md` |
+| 成就系统（计划、阶段进度、决策记录） | `docs/achievements-plan.md` |
 | 部署与回滚 | `docs/launch-runbook.md` |
 
 ## 硬性约束

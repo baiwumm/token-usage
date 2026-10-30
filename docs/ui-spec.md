@@ -220,6 +220,36 @@
   卡片栈逐块对齐——四张统计卡（保留卡壳与图标位）、月度趋势、来源用量、模型表；灰条高度按
   真实排版取（`h4` 数字位 `h-7`、大数位 `h-8`），出数不跳高。页头随页面渲染，不画骨架。
 
+### 成就（`/achievements`，M7）
+
+- 导航：侧边栏与抽屉在 wrapped 后新增「成就」（`Medal` 图标），页面标题取菜单名；
+  受登录保护，401 跳登录并回跳 `/achievements`。
+- 数据源：`GET /api/app/achievements?tz=&tz_offset_minutes=`（cookie 会话鉴权；若 Vercel
+  函数预算不足则页面改 Server Component 直出，响应形状不变，见 `docs/achievements-plan.md`
+  P1.4）。无筛选条；页头右侧放与 Sessions 同款的刷新图标按钮（`ArrowsRotateRight`，
+  刷新中 `animate-spin`，`Tooltip` 显示上次更新时间）。时区取浏览器时区，不写 URL。
+- 摘要：页头一行统计——已解锁 x/18、各段位数量（铜 / 银 / 金 / 钻 / 王者），数字走统一
+  format provider；文案进 `lib/copy/achievements.ts`（zh / en）。
+- 分区栅格：按「里程碑 / 高峰 / 节奏 / 探索」四个分区渲染 `Card` 栅格（≥lg 三列、md
+  两列、移动端单列），已解锁在前、未解锁在后并显示当前值与下一档进度。每张卡为
+  `achievement-card.tsx`：medallion（图标 + 段位渐变环 + 五段刻度点）、名称、一句话描述、
+  进度条（HeroUI `Progress`）、已解锁时的达成日期；未解锁卡降低饱和度但不隐藏阈值。
+- 段位视觉：铜 / 银 / 金 / 钻沿用金属渐变语义，王者用黑金 / 紫金镭射渐变 + 轻量 CSS
+  流光；`prefers-reduced-motion` 下静态。颜色不是唯一信息，卡片与弹窗同时显示段位文字。
+- 详情：点击卡片打开 `Modal`（`achievement-dialog.tsx`）：大道具 medallion、五档时间线
+  （每档达成日期，未达成显示阈值）、当前值与下一档差额、数据覆盖说明（Sessions 类与
+  sync 类成就注明「自 … 起统计」）；分享按钮复用 `ShareCardButton` 体系（分享卡实装为
+  P3 backlog，未实装前不显示按钮）。
+- 新解锁：localStorage 按 userId 记录上次查看时间，与 `achieved_at` 比较；晚于上次查看的
+  卡片显示「新」`Chip`；浏览后更新记录。不做全局 toast。
+- 状态：首载骨架按摘要 + 四个分区占位；无任何用量数据时显示锁定栅格 + 配对设备引导；
+  错误态在页面内重试（401 跳登录）。
+- 可访问性：进度条带 `aria-label` 与百分比文本；卡片可键盘聚焦，弹窗焦点管理走 HeroUI；
+  达成日期用本地化日期格式。
+- 响应式：375px 单列、无页面级横向滚动；弹窗在 `<lg` 走 HeroUI 全屏尺寸。
+- wrapped：年度回顾统计区追加「今年解锁 N 枚」（按 `achieved_at` 落在所选年份），无解锁时
+  显示 0；不新增分享卡风格。
+
 ### 服务状态（`/service-status`）
 
 - 页头：副标题 + 右侧「重新检查」按钮（`isPending` 时图标位换成 `Spinner` 并禁用，
