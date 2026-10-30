@@ -1,23 +1,30 @@
 "use client";
 
-// Header for /wrapped: the year selector (only years that carry usage). The
-// share-card actions live in the share panel below the header.
+// Header for /wrapped: the year selector (only years that carry usage) on the
+// left and the shared share-card button (same trigger and dialog as the
+// dashboard) on the right.
 
 import type { WrappedCopy } from "@/lib/copy/wrapped";
+import type { ShareCardData } from "@/components/share-card";
 
 import { ListBox, Popover, Select, Spinner } from "@heroui/react";
+
+import { ShareCardButton } from "@/components/share-card-button";
 
 export function WrappedHeader({
   copy,
   year,
   yearOptions,
   refreshing,
+  shareInput,
   onYearChange,
 }: {
   copy: WrappedCopy;
   year: number;
   yearOptions: number[];
   refreshing: boolean;
+  /** Null until the year payload lands — the share action is disabled then. */
+  shareInput: ShareCardData | null;
   onYearChange: (year: number) => void;
 }) {
   return (
@@ -58,6 +65,8 @@ export function WrappedHeader({
           </ListBox>
         </Select.Popover>
       </Select>
+
+      <ShareCardButton input={shareInput} />
     </header>
   );
 }

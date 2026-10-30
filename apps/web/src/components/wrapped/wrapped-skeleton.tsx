@@ -1,30 +1,15 @@
 "use client";
 
-// First-load skeleton for /wrapped. Mirrors the loaded stack — the share-card
-// panel, the four stat cards, the monthly trend, the source mix and the model
-// table — so swapping in real data does not shift the page.
+// First-load skeleton for /wrapped. Mirrors the loaded stack — the four stat
+// cards, the monthly trend, the source mix and the model table — so swapping
+// in real data does not shift the page. The header (year select + share
+// button) renders with the page, not here.
 
 import { Card, Skeleton } from "@heroui/react";
 
 export function WrappedSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-6">
-      {/* Share panel: header, style switcher, tall preview, footer actions. */}
-      <Card className="flex-col gap-5 p-6">
-        <Card.Header>
-          <Skeleton className="h-5 w-28 rounded-full" />
-          <Skeleton className="h-4 w-72 rounded-full" />
-        </Card.Header>
-        <Skeleton className="h-9 w-full rounded-lg" />
-        <div className="flex min-h-40 justify-center">
-          <Skeleton className="h-[420px] w-full max-w-md rounded-2xl" />
-        </div>
-        <Card.Footer className="justify-end gap-2">
-          <Skeleton className="h-9 w-24 rounded-full" />
-          <Skeleton className="h-9 w-28 rounded-full" />
-        </Card.Footer>
-      </Card>
-
       {/* Four stat cards, same shell the loaded ones use. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[0, 1, 2, 3].map((index) => (

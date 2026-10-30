@@ -75,7 +75,8 @@
    均不接受未来日期；变更只重取数据，
    不整页刷新——各卡片保留旧内容并叠加模糊遮罩 + `Spinner`（仅首载无数据时出骨架屏，
    骨架屏圆角与卡片一致：`min(32px, var(--radius-3xl))`）。筛选条右侧固定「分享」
-   （`NodesRight`，打开分享卡 Modal）与「刷新」两个 tertiary 图标按钮，刷新中图标自旋；
+   （共享 `ShareCardButton`：`NodesRight` 图标 + `Tooltip`，打开分享卡 Modal）与「刷新」两个
+   tertiary 图标按钮，刷新中图标自旋；
    刷新按钮的 `Tooltip`（带箭头）显示上次更新时间（未加载时显示「尚未加载数据」）。仪表盘自动刷新
    默认关闭（2026-10-27 操作者裁定，设置页「数据刷新」可控）：定时与切回刷新均为静默
    更新（不叠加模糊遮罩），手动刷新仍带遮罩；「时」视图下手动刷新同时重取小时明细。
@@ -123,12 +124,16 @@
    `models` 非空时），打开该桶的模型明细 Modal（同 `ModelListModal`）。
 8. **成本分析**：从 Top 模型「成本分析」按钮打开 `Modal`；`Tabs` 按模型 / 按来源；
    总成本、日成本趋势、未定价模型提示；只读，不提供导出。
-9. **分享卡片**：筛选条「分享」打开 `Modal`，左右两栏（<lg 上下堆叠）：左侧预览共享分享卡引擎
+9. **分享卡片**：共享 `ShareCardButton`（`components/share-card-button.tsx`，`NodesRight` 图标 +
+   `Tooltip`，打开 `ShareCardDialog`）——仪表盘放在筛选条右侧，`/wrapped` 放在页头右侧（2026-10-30
+   操作者裁定：wrapped 从页内面板改为与仪表盘同一入口与交互）。`ShareCardDialog`
+   （`components/share-card-dialog.tsx`）为左右两栏（<lg 上下堆叠）：左侧预览共享分享卡引擎
    （`components/share-card/`，Canvas 2D 手绘——html-to-image 在本栈挂起，只含聚合数字）
    的四种风格之一，右侧为设置与操作——显示名称 `TextField`（默认当前用户名，仅本次弹窗内生效、
-   不持久化）、风格 `ToggleButtonGroup`（单选、不允空选，切换即重绘预览：旧帧留在上层淡出、
-   新帧淡入并轻微回弹，`prefers-reduced-motion` 下直接切换）、复制图片 / 保存图片
-   双按钮与隐私说明。四种风格：**特刊**（Broadsheet：米白纸底 + 朱红，报头、署名、衬线大数
+   不持久化）、风格 `ToggleButtonGroup`（2×2 磁贴、单选、不允空选，每项图标在文案左侧：
+   特刊 `SquareArticle`、小票 `Receipt`、霓虹 `Sparkles`、唱片 `MusicNote`；切换即重绘预览：
+   旧帧留在上层淡出、新帧淡入并轻微回弹，`prefers-reduced-motion` 下直接切换）、复制图片 /
+   保存图片双按钮与隐私说明。四种风格：**特刊**（Broadsheet：米白纸底 + 朱红，报头、署名、衬线大数
    （完整千分位数字）、数据金句、52 周热力图条、前五模型排行榜（序号 + 全量 token + 占比）、
    token-usage.cc 落款）、**小票**（热敏收据：Maple Mono 白纸黑字、模型行项目、装饰条形码、
    PAID 章、撕纸边）、**霓虹**（深色海报：程序化光晕+噪点、12 月热力图网格、连续天数/Top 模型
@@ -194,15 +199,11 @@
 
 - 页头：年份下拉只列**有数据的年份**（全历史月度桶去重、倒序；`aria-label` 为「选择
   年份」），默认当年，当年还没有数据时自动跳到最近有数据的一年；切换年份保留旧内容，
-  加载中 `Select.Indicator` 渲染为 `Spinner`（触发箭头位置）。
-- 分享卡面板（页面首卡，`components/wrapped/share-card-preview.tsx`）：`Card` 复合结构
-  （标题「分享卡片」+ 隐私说明）内嵌与仪表盘同一套共享分享卡引擎
-  （`components/share-card/`）——`ToggleButtonGroup` 四风格切换（特刊/小票/霓虹/唱片，
-  文案走 `lib/copy/share-card.ts`），预览即导出 PNG 本身（Canvas 2D 手绘，所见即所得），
-  底部保存 PNG / 复制图片双操作。数据由 `wrapped/share-input.ts` 从年度 payload 投影，
-  热力图条来自随页拉取的 `account-heatmap`（52 周、窗口=所选年份，拉取失败静默降级，
-  不阻塞页面）；「最常用来源」用 `sourceDisplayLabel`；无 `导出分享卡片` 头部按钮
-  （2026-10-28 裁定：操作收敛进面板）。
+  加载中 `Select.Indicator` 渲染为 `Spinner`（触发箭头位置）；右上角是共享 `ShareCardButton`
+  （与仪表盘同一按钮与 Modal，2026-10-30 操作者裁定：取代原先的页内分享卡面板）。
+- 分享卡数据由 `wrapped/share-input.ts` 从年度 payload 投影，热力图条来自随页拉取的
+  `account-heatmap`（52 周、窗口=所选年份，拉取失败静默降级，不阻塞页面）；「最常用来源」
+  用 `sourceDisplayLabel`；分享卡输入在当年无数据（`hasData` 为假）时为 `null`，按钮禁用。
 - 四张统计卡：全年 Tokens / 成本 / 会话 / 活跃天数，右上角 `text-accent/70` 图标
   （`Hashtag` / `Wallet` / `Comments` / `Calendar`）。
 - 月度趋势：复用仪表盘 `TrendChart`，输入 / 缓存 / 输出三色堆叠（缓存 = 读 + 写）；
@@ -216,9 +217,8 @@
   名）、Tokens、成本、占比（`Meter` + 百分比）；切换年份保留旧行并罩刷新浮层，这一年没有
   模型明细时给「无模型明细」空态。
 - 首载骨架：没有旧内容时整页画骨架（`components/wrapped/wrapped-skeleton.tsx`），按加载后的
-  卡片栈逐块对齐——分享卡预览（标题/副题、右侧大数连同下方标签、三块、亮点）、四张统计卡
-  （保留卡壳与图标位）、月度趋势、来源用量、模型表；灰条高度按真实排版取（`h4` 数字位 `h-7`、
-  大数位 `h-8`），出数不跳高。
+  卡片栈逐块对齐——四张统计卡（保留卡壳与图标位）、月度趋势、来源用量、模型表；灰条高度按
+  真实排版取（`h4` 数字位 `h-7`、大数位 `h-8`），出数不跳高。页头随页面渲染，不画骨架。
 
 ### 服务状态（`/service-status`）
 

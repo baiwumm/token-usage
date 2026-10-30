@@ -1,12 +1,13 @@
 "use client";
 
-// Wrapped (annual review) at /wrapped — year totals, monthly trend,
-// sources/models breakdown, and the shared multi-style share card panel.
-// Data comes from the frozen Dashboard-face endpoints (dashboard payload +
-// account-monthly + account-heatmap for the card's strips).
+// Wrapped (annual review) at /wrapped — year totals, monthly trend and the
+// sources/models breakdown. The share card is the dashboard's dialog, opened
+// from the header button. Data comes from the frozen Dashboard-face endpoints
+// (dashboard payload + account-monthly + account-heatmap for the card's
+// strips).
 //
-// The page is split by concern: wrapped-header.tsx (year select),
-// share-input.ts + share-card-preview.tsx (the share card panel),
+// The page is split by concern: wrapped-header.tsx (year select + share
+// button), share-input.ts (the card payload projection),
 // stat-cards.tsx, monthly-card.tsx, sources-card.tsx and models-table.tsx
 // render the blocks; wrapped-skeleton.tsx is the first load.
 
@@ -17,7 +18,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ModelsTable } from "./models-table";
 import { MonthlyCard } from "./monthly-card";
-import { ShareCardPreview } from "./share-card-preview";
 import { buildShareInput } from "./share-input";
 import { SourcesCard } from "./sources-card";
 import { StatCards } from "./stat-cards";
@@ -252,6 +252,7 @@ export function WrappedClient() {
       <WrappedHeader
         copy={copy}
         refreshing={refreshing}
+        shareInput={hasData ? shareInput : null}
         year={year}
         yearOptions={yearOptions}
         onYearChange={(next) => {
@@ -291,8 +292,6 @@ export function WrappedClient() {
 
       {status === "ready" && hasData && totals ? (
         <>
-          {shareInput ? <ShareCardPreview data={shareInput} /> : null}
-
           <StatCards copy={copy} totals={totals} />
 
           <MonthlyCard copy={copy} data={trendData} year={year} />

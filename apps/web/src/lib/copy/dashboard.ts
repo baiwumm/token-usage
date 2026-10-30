@@ -13,7 +13,6 @@ export interface DashboardCopy {
   refresh: string;
   lastUpdated: string;
   lastUpdatedNone: string;
-  share: string;
   ranges: Record<"today" | "7d" | "30d" | "90d" | "all" | "custom", string>;
   cards: {
     totalTokens: string;
@@ -121,18 +120,6 @@ export interface DashboardCopy {
   budget: {
     exceeded: string;
   };
-  shareCard: {
-    title: string;
-    subtitle: string;
-    displayName: string;
-    displayNamePlaceholder: string;
-    note: string;
-    save: string;
-    copyImage: string;
-    copied: string;
-    copyFailed: string;
-    close: string;
-  };
 }
 
 export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
@@ -147,7 +134,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     refresh: "刷新",
     lastUpdated: "上次更新 {time}",
     lastUpdatedNone: "尚未加载数据",
-    share: "分享",
     ranges: {
       today: "今天",
       "7d": "7D",
@@ -264,18 +250,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     budget: {
       exceeded: "已超出月度预算 {budget}：本月至今已花费 {spent}。",
     },
-    shareCard: {
-      title: "分享用量卡片",
-      subtitle: "生成海报卡片，随时分享。",
-      displayName: "显示名称",
-      displayNamePlaceholder: "留空则使用当前用户名",
-      note: "卡片只包含聚合数字与热力图，不含明细数据。",
-      save: "保存图片",
-      copyImage: "复制图片",
-      copied: "图片已复制到剪贴板。",
-      copyFailed: "复制失败，请改用「保存图片」。",
-      close: "关闭",
-    },
   },
   en: {
     pageTitle: "Dashboard",
@@ -288,7 +262,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     refresh: "Refresh",
     lastUpdated: "Updated {time}",
     lastUpdatedNone: "No data loaded yet",
-    share: "Share",
     ranges: {
       today: "Today",
       "7d": "7D",
@@ -407,18 +380,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     },
     budget: {
       exceeded: "Monthly budget {budget} exceeded: {spent} spent so far.",
-    },
-    shareCard: {
-      title: "Share usage card",
-      subtitle: "Generate a poster card and share it anywhere.",
-      displayName: "Display name",
-      displayNamePlaceholder: "Leave blank to use your account name",
-      note: "The card contains aggregate numbers and the heatmap only — no row-level data.",
-      save: "Save image",
-      copyImage: "Copy image",
-      copied: "Image copied to the clipboard.",
-      copyFailed: "Copy failed — use Save image instead.",
-      close: "Close",
     },
   },
 };

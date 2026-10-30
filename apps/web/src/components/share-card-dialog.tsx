@@ -1,15 +1,22 @@
 "use client";
 
-// Dashboard share modal: two-column dialog (live preview on the left, controls
-// on the right) over the shared canvas share-card engine. The display name is
-// a dialog-local override — never persisted — seeded from the signed-in user
-// each time it opens; the style switcher crossfades the preview in place. The
-// preview is the exported PNG itself. Privacy: only aggregated numbers leave
-// the page — no row-level data.
+// Share-card dialog shared by the dashboard and /wrapped: two-column modal
+// (live preview on the left, controls on the right) over the shared canvas
+// share-card engine. The display name is a dialog-local override — never
+// persisted — seeded from the signed-in user each time it opens; the style
+// switcher crossfades the preview in place. The preview is the exported PNG
+// itself. Privacy: only aggregated numbers leave the page — no row-level data.
 
 import type { ShareCardData, ShareCardVariant } from "@/components/share-card";
 
-import { ArrowDownToLine, Copy } from "@gravity-ui/icons";
+import {
+  ArrowDownToLine,
+  Copy,
+  MusicNote,
+  Receipt,
+  Sparkles,
+  SquareArticle,
+} from "@gravity-ui/icons";
 import {
   Button,
   Input,
@@ -30,21 +37,31 @@ import {
   downloadPngDataUrl,
   drawShareCard,
 } from "@/components/share-card";
-import { DASHBOARD_COPY } from "@/lib/copy/dashboard";
 import { useLocale } from "@/lib/copy/locale";
 import { SHARE_CARD_COPY } from "@/lib/copy/share-card";
 import { useFormat } from "@/lib/format/format";
 
-export interface ShareModalProps {
+export interface ShareCardDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   input: ShareCardData | null;
 }
 
-export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
+/** One glyph per style so the switcher reads before the label does. */
+const VARIANT_ICONS = {
+  broadsheet: SquareArticle,
+  receipt: Receipt,
+  neon: Sparkles,
+  vinyl: MusicNote,
+} as const;
+
+export function ShareCardDialog({
+  open,
+  onOpenChange,
+  input,
+}: ShareCardDialogProps) {
   const [locale] = useLocale();
-  const copy = DASHBOARD_COPY[locale];
-  const sharedCopy = SHARE_CARD_COPY[locale];
+  const copy = SHARE_CARD_COPY[locale];
   const { formatDate } = useFormat();
   const [busy, setBusy] = useState(false);
   const [variant, setVariant] = useState<ShareCardVariant>("broadsheet");
@@ -63,8 +80,8 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
 
   // Derived from the deferred input only — keying on `open` would null the
   // image the moment close starts, flashing a spinner through the exit
-  // animation. Redraws happen when the dashboard refreshes the input (rare,
-  // and cheap).
+  // animation. Redraws happen when the page refreshes the input (rare, and
+  // cheap).
   const cardData = useMemo(
     () =>
       input ? { ...input, handle: deferredName.trim() || input.handle } : null,
@@ -91,7 +108,7 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
         {/* `max-w-none` drops the default `size="md"` cap (max-w-md); the
             explicit width below is the only width constraint. */}
         <Modal.Dialog className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-none overflow-hidden p-0 sm:w-[min(64rem,calc(100vw-5rem))]">
-          <Modal.CloseTrigger aria-label={copy.shareCard.close} />
+          <Modal.CloseTrigger aria-label={copy.close} />
           <Modal.Body className="mx-0 p-0">
             <div className="flex flex-col lg:h-[80vh] lg:flex-row">
               {/* Preview column — the exported PNG itself, scaled to fit. The
@@ -105,7 +122,7 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         key={`in-${variant}`}
-                        alt={copy.shareCard.title}
+                        alt={copy.title}
                         className="animate-in fade-in-0 zoom-in-98 duration-300 ease-out motion-reduce:animate-none absolute inset-0 m-auto max-h-full max-w-full rounded-2xl shadow-lg ring-1 ring-black/5"
                         src={dataUrl}
                       />
@@ -132,29 +149,34 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
               <div className="border-border flex w-full shrink-0 flex-col gap-5 overflow-y-auto border-t p-5 sm:p-6 lg:w-85 lg:border-t-0 lg:border-l">
                 <div className="flex flex-col gap-1 pr-8">
                   <Modal.Heading className="text-lg">
-                    {copy.shareCard.title}
+                    {copy.title}
                   </Modal.Heading>
                   <Typography color="muted" type="body-xs">
-                    {copy.shareCard.subtitle}
+                    {copy.subtitle}
                   </Typography>
                 </div>
 
                 <TextField value={name} onChange={setName}>
-                  <Label>{copy.shareCard.displayName}</Label>
+                  <Label>{copy.displayName}</Label>
                   <Input
-                    placeholder={copy.shareCard.displayNamePlaceholder}
+                    placeholder={copy.displayNamePlaceholder}
                     variant="secondary"
                   />
                 </TextField>
 
                 <div className="flex flex-col gap-2">
                   <Typography color="muted" type="body-xs">
-                    {sharedCopy.styleLabel}
+                    {copy.styleLabel}
                   </Typography>
+                  {/* 2x2 tile grid: the control column is too narrow for four
+                      icon+label buttons in one row (English labels especially).
+                      Each tile re-declares the theme radius because the group's
+                      first/last-child corner rules would otherwise square the
+                      inner tiles. */}
                   <ToggleButtonGroup
                     disallowEmptySelection
-                    fullWidth
-                    aria-label={sharedCopy.styleLabel}
+                    aria-label={copy.styleLabel}
+                    className="grid w-full grid-cols-2 gap-2"
                     selectedKeys={new Set([variant])}
                     selectionMode="single"
                     onSelectionChange={(keys) => {
@@ -167,11 +189,20 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
                       setVariant(next as ShareCardVariant);
                     }}
                   >
-                    {SHARE_VARIANTS.map(({ id }) => (
-                      <ToggleButton key={id} id={id}>
-                        {sharedCopy.variants[id]}
-                      </ToggleButton>
-                    ))}
+                    {SHARE_VARIANTS.map(({ id }) => {
+                      const Icon = VARIANT_ICONS[id];
+
+                      return (
+                        <ToggleButton
+                          key={id}
+                          className="w-full rounded-[calc(var(--radius)*3)]"
+                          id={id}
+                        >
+                          <Icon aria-hidden="true" className="size-4" />
+                          {copy.variants[id]}
+                        </ToggleButton>
+                      );
+                    })}
                   </ToggleButtonGroup>
                 </div>
 
@@ -185,9 +216,9 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
                       void copyPngDataUrl(dataUrl).then((ok) => {
                         setBusy(false);
                         if (ok) {
-                          toast.success(copy.shareCard.copied);
+                          toast.success(copy.copied);
                         } else {
-                          toast(copy.shareCard.copyFailed);
+                          toast(copy.copyFailed);
                         }
                       });
                     }}
@@ -197,7 +228,7 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
                     ) : (
                       <Copy className="size-4" />
                     )}
-                    {copy.shareCard.copyImage}
+                    {copy.copyImage}
                   </Button>
                   <Button
                     isDisabled={!dataUrl || busy}
@@ -214,13 +245,13 @@ export function ShareModal({ open, onOpenChange, input }: ShareModalProps) {
                     }}
                   >
                     <ArrowDownToLine className="size-4" />
-                    {copy.shareCard.save}
+                    {copy.save}
                   </Button>
                 </div>
 
                 <div className="border-border mt-auto border-t pt-4">
                   <Typography color="muted" type="body-xs">
-                    {copy.shareCard.note}
+                    {copy.note}
                   </Typography>
                 </div>
               </div>

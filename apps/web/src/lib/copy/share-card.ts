@@ -1,12 +1,18 @@
-// Share-card copy shared by the dashboard share modal and the /wrapped share
-// panel (docs/ui-spec.md 分享卡片). The canvas variants render from these
+// Share-card copy shared by the dashboard and /wrapped (docs/ui-spec.md 分享
+// 卡片). The dialog chrome and the canvas variants both render from these
 // strings plus the ShareCardData projection — no literals inside the drawers.
 
 export interface ShareCardCopy {
   /** Switcher labels, keyed by variant id. */
   variants: Record<"broadsheet" | "receipt" | "neon" | "vinyl", string>;
-  panelTitle: string;
-  privacyNote: string;
+  /** Trigger tooltip / aria label — every entry point uses the same wording. */
+  share: string;
+  title: string;
+  subtitle: string;
+  displayName: string;
+  displayNamePlaceholder: string;
+  note: string;
+  close: string;
   styleLabel: string;
   save: string;
   copyImage: string;
@@ -75,8 +81,13 @@ export const SHARE_CARD_COPY: Record<"zh" | "en", ShareCardCopy> = {
       neon: "霓虹",
       vinyl: "唱片",
     },
-    panelTitle: "分享卡片",
-    privacyNote: "卡片只包含聚合数字，不含明细数据。",
+    share: "分享卡片",
+    title: "分享用量卡片",
+    subtitle: "生成海报卡片，随时分享。",
+    displayName: "显示名称",
+    displayNamePlaceholder: "留空则使用当前用户名",
+    note: "卡片只包含聚合数字与热力图，不含明细数据。",
+    close: "关闭",
     styleLabel: "风格",
     save: "保存 PNG",
     copyImage: "复制图片",
@@ -142,8 +153,13 @@ export const SHARE_CARD_COPY: Record<"zh" | "en", ShareCardCopy> = {
       neon: "Neon",
       vinyl: "Vinyl",
     },
-    panelTitle: "Share card",
-    privacyNote: "Cards carry aggregated numbers only — no row-level data.",
+    share: "Share card",
+    title: "Share your usage",
+    subtitle: "Generate a poster card and share it anywhere.",
+    displayName: "Display name",
+    displayNamePlaceholder: "Leave blank to use your current name",
+    note: "Cards carry aggregated numbers and the heatmap only — no row-level data.",
+    close: "Close",
     styleLabel: "Style",
     save: "Save PNG",
     copyImage: "Copy image",

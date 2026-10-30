@@ -7,11 +7,12 @@
 
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 import type { CalendarDate } from "@internationalized/date";
+import type { ShareCardData } from "@/components/share-card";
 import type { DashboardDevice } from "@/lib/dashboard/api";
 import type { DashboardRange } from "@/lib/dashboard/ranges";
 import type { Filters } from "./filters";
 
-import { ArrowsRotateRight, NodesRight } from "@gravity-ui/icons";
+import { ArrowsRotateRight } from "@gravity-ui/icons";
 import {
   Button,
   DateField,
@@ -28,6 +29,7 @@ import { useMemo, useState } from "react";
 
 import { DeviceFilterSelect } from "@/components/device-filter-select";
 import { RangePresetButtons } from "@/components/range-preset-buttons";
+import { ShareCardButton } from "@/components/share-card-button";
 import { formatMessage } from "@/lib/copy/message";
 import {
   ALL_RANGE_START,
@@ -40,7 +42,6 @@ import { useFormat } from "@/lib/format/format";
 
 export function DashboardFilterBar({
   activeDevices,
-  canShare,
   copy,
   devicesLoading,
   filters,
@@ -50,13 +51,11 @@ export function DashboardFilterBar({
   range,
   rangePickerMax,
   refreshing,
+  shareInput,
   onApply,
   onRefresh,
-  onShare,
 }: {
   activeDevices: DashboardDevice[];
-  /** Share input is ready — the share action stays disabled until it is. */
-  canShare: boolean;
   copy: DashboardCopy;
   devicesLoading: boolean;
   filters: Filters;
@@ -66,9 +65,10 @@ export function DashboardFilterBar({
   range: DashboardRange;
   rangePickerMax: CalendarDate;
   refreshing: boolean;
+  /** Share input is ready — the share action stays disabled until it is. */
+  shareInput: ShareCardData | null;
   onApply: (patch: Partial<Filters>) => void;
   onRefresh: () => void;
-  onShare: () => void;
 }) {
   const { formatDateTime } = useFormat();
   const [rangePickerOpen, setRangePickerOpen] = useState(false);
@@ -233,22 +233,7 @@ export function DashboardFilterBar({
       ) : null}
 
       <div className="ml-auto flex items-center gap-1.5">
-        <Tooltip delay={0}>
-          <Button
-            isIconOnly
-            aria-label={copy.share}
-            isDisabled={!canShare}
-            size="sm"
-            variant="tertiary"
-            onPress={onShare}
-          >
-            <NodesRight aria-hidden="true" className="size-4" />
-          </Button>
-          <Tooltip.Content showArrow placement="bottom">
-            <Tooltip.Arrow />
-            <Typography type="body-xs">{copy.share}</Typography>
-          </Tooltip.Content>
-        </Tooltip>
+        <ShareCardButton input={shareInput} />
         <Tooltip delay={0}>
           <Button
             isIconOnly

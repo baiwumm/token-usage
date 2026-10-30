@@ -33,7 +33,6 @@ import { DashboardBody } from "./dashboard-body";
 import { DashboardFilterBar } from "./filter-bar";
 import { buildDetailRows } from "./detail-rows";
 import { parseFilters, serializeFilters } from "./filters";
-import { ShareModal } from "./share-modal";
 import { buildShareInput } from "./share-input";
 
 import { useProfile } from "@/lib/auth/profile";
@@ -128,7 +127,6 @@ export function DashboardClient() {
   const [hourlyRefresh, setHourlyRefresh] = useState(0);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [costOpen, setCostOpen] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
 
   const timezone = filters.tz || browserTimezone();
   const range = useMemo(
@@ -543,7 +541,6 @@ export function DashboardClient() {
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 md:px-8">
       <DashboardFilterBar
         activeDevices={activeDevices}
-        canShare={shareInput != null}
         copy={copy}
         devicesLoading={dashboardState.status === "loading"}
         filters={filters}
@@ -553,9 +550,9 @@ export function DashboardClient() {
         range={range}
         rangePickerMax={rangePickerMax}
         refreshing={refreshing}
+        shareInput={shareInput}
         onApply={applyFilters}
         onRefresh={retryAll}
-        onShare={() => setShareOpen(true)}
       />
 
       <DashboardBody
@@ -617,12 +614,6 @@ export function DashboardClient() {
         sources={breakdown}
         totalCostUsd={Number(summary?.totals.total_cost_usd ?? 0)}
         onOpenChange={setCostOpen}
-      />
-
-      <ShareModal
-        input={shareInput}
-        open={shareOpen}
-        onOpenChange={setShareOpen}
       />
     </main>
   );
