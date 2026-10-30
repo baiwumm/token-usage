@@ -22,10 +22,13 @@ export function useSessionBootstrap(
   onNoClient?: () => void,
 ): {
   accessToken: string | null;
+  /** Auth user id, for client-side per-account preferences. */
+  userId: string | null;
   redirectToLogin: () => void;
 } {
   const router = useRouter();
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const redirectToLogin = useCallback(() => {
     router.replace(`${LOGIN_PATH}?next=${encodeURIComponent(target)}`);
@@ -52,8 +55,9 @@ export function useSessionBootstrap(
         return;
       }
       setAccessToken(session.access_token);
+      setUserId(session.user?.id ?? null);
     })();
   }, [onNoClient, redirectToLogin]);
 
-  return { accessToken, redirectToLogin };
+  return { accessToken, userId, redirectToLogin };
 }

@@ -10,6 +10,7 @@ export interface WrappedCopy {
     cost: string;
     conversations: string;
     activeDays: string;
+    achievements: string;
   };
   monthlyTitle: string;
   // Composition legend + tooltip rows for the monthly chart (distinct labels:
@@ -48,6 +49,7 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
       cost: "全年成本（USD）",
       conversations: "全年会话",
       activeDays: "活跃天数",
+      achievements: "今年解锁",
     },
     monthlyTitle: "月度趋势",
     trend: {
@@ -82,6 +84,7 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
       cost: "Cost this year (USD)",
       conversations: "Conversations",
       activeDays: "Active days",
+      achievements: "Unlocked this year",
     },
     monthlyTitle: "Monthly trend",
     trend: {

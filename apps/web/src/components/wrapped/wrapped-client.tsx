@@ -12,6 +12,7 @@
 // render the blocks; wrapped-skeleton.tsx is the first load.
 
 import type { TrendPoint } from "@/components/charts";
+import type { AchievementsPayload } from "@/lib/achievements/types";
 
 import { Button, Card, Typography } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -25,6 +26,7 @@ import { WrappedHeader } from "./wrapped-header";
 import { WrappedSkeleton } from "./wrapped-skeleton";
 
 import { useProfile } from "@/lib/auth/profile";
+import { fetchAchievements } from "@/lib/achievements/api";
 import {
   ALL_RANGE_START,
   browserTimezone,
@@ -78,6 +80,10 @@ export function WrappedClient() {
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [monthly, setMonthly] = useState<MonthlyPoint[]>([]);
   const [heatmap, setHeatmap] = useState<HeatmapPayload | null>(null);
+  // All-time achievements: only the "unlocked this year" card reads them.
+  const [achievements, setAchievements] = useState<AchievementsPayload | null>(
+    null,
+  );
   const [year, setYear] = useState(currentYear);
   // Years that actually carry usage, newest first — the select only offers
   // these (operator call 2026-10-28).
@@ -113,31 +119,35 @@ export function WrappedClient() {
             : `${year}-12-31`;
         // A heatmap failure must not sink the whole review — the share panel
         // degrades to the heatmap-less variants instead.
-        const [nextPayload, nextHistory, nextHeatmap] = await Promise.all([
-          fetchDashboard(token, {
-            fromIso: tzRange.fromIso,
-            toIso: tzRange.toIso,
-            rangeKey: "custom",
-            // Same zone the year window is cut in — the payload's daily rows
-            // (peak day) bucket by the requested tz too.
-            tz: timezone,
-          }),
-          // All-history months: drives both the year selector (months come
-          // back only when they carry rows) and the selected year's series.
-          fetchMonthly(token, {
-            fromDay: ALL_RANGE_START,
-            toDay: dayKeyInTz(new Date(), timezone),
-          }),
-          fetchHeatmap(token, {
-            weeks: 52,
-            toDay: heatmapToDay,
-            tz: timezone,
-          }).catch(() => null),
-        ]);
+        const [nextPayload, nextHistory, nextHeatmap, nextAchievements] =
+          await Promise.all([
+            fetchDashboard(token, {
+              fromIso: tzRange.fromIso,
+              toIso: tzRange.toIso,
+              rangeKey: "custom",
+              // Same zone the year window is cut in — the payload's daily rows
+              // (peak day) bucket by the requested tz too.
+              tz: timezone,
+            }),
+            // All-history months: drives both the year selector (months come
+            // back only when they carry rows) and the selected year's series.
+            fetchMonthly(token, {
+              fromDay: ALL_RANGE_START,
+              toDay: dayKeyInTz(new Date(), timezone),
+            }),
+            fetchHeatmap(token, {
+              weeks: 52,
+              toDay: heatmapToDay,
+              tz: timezone,
+            }).catch(() => null),
+            // Optional card: a failure here only hides the achievement count.
+            fetchAchievements({ tz: timezone }).catch(() => null),
+          ]);
 
         if (loadSeq.current !== seq) return;
         setPayload(nextPayload);
         setHeatmap(nextHeatmap);
+        setAchievements(nextAchievements);
         setHistoryYears(
           Array.from(
             new Set(
@@ -221,6 +231,19 @@ export function WrappedClient() {
 
   const totalTokens = totals?.total_tokens ?? 0;
 
+  // Achievements cover all history; the card counts the ones whose tier landed
+  // inside the reviewed year (achieved_at is a local YYYY-MM-DD day).
+  const unlockedThisYear = useMemo(() => {
+    if (!achievements) return null;
+    const prefix = `${year}-`;
+
+    return achievements.achievements.filter((entry) =>
+      Object.values(entry.achieved_at).some((day) =>
+        day ? day.startsWith(prefix) : false,
+      ),
+    ).length;
+  }, [achievements, year]);
+
   const shareInput = useMemo(
     () =>
       buildShareInput({
@@ -292,7 +315,11 @@ export function WrappedClient() {
 
       {status === "ready" && hasData && totals ? (
         <>
-          <StatCards copy={copy} totals={totals} />
+          <StatCards
+            copy={copy}
+            totals={totals}
+            unlockedAchievements={unlockedThisYear}
+          />
 
           <MonthlyCard copy={copy} data={trendData} year={year} />
 

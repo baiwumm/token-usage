@@ -14,6 +14,7 @@ export type PageSeoKey =
   | "sync-runs"
   | "service-status"
   | "device"
+  | "achievements"
   | "wrapped";
 
 export interface PageSeoCopy {
@@ -99,6 +100,10 @@ export const PAGE_SEO_COPY: Record<Locale, Record<PageSeoKey, PageSeoCopy>> = {
       title: NAV_COPY.zh.wrapped,
       description: "回顾年度 AI token 用量、成本与模型使用趋势。",
     },
+    achievements: {
+      title: NAV_COPY.zh.achievements,
+      description: "查看用量里程碑、高峰与节奏成就的五档进度。",
+    },
   },
   en: {
     dashboard: {
@@ -139,6 +144,11 @@ export const PAGE_SEO_COPY: Record<Locale, Record<PageSeoKey, PageSeoCopy>> = {
     wrapped: {
       title: NAV_COPY.en.wrapped,
       description: "Review your year in AI token usage, cost and model trends.",
+    },
+    achievements: {
+      title: NAV_COPY.en.achievements,
+      description:
+        "Track your usage milestones, peaks and rhythm across five tiers.",
     },
   },
 };

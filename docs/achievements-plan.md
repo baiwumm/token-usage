@@ -1,6 +1,6 @@
 # 成就系统实施计划（Achievements Plan）
 
-> 状态：**P1 完成（数据面已上线）；等待放行 P2 界面**
+> 状态：**P2 代码完成（成就页 / 侧栏 / wrapped / 文案）；待浏览器人工验收（P2.6）**
 > 创建 / 最后更新：2026-10-30
 > 决策来源：2026-10-30 方案讨论，操作者已确认方向与 §1 全部决策
 > 执行方式：按 §4 阶段顺序推进；**每阶段 `pnpm verify` 全绿后才打钩**，并同步更新 §0 与 §8，再进入下一阶段
@@ -15,11 +15,11 @@
 | 文档回写 | requirements / rewrite-plan / ui-spec / AGENTS 已更新 | ✅ 2026-10-30 |
 | P0 | 领域层：catalog + compute + 单测 + 校准 | ✅ 2026-10-30（阈值已按真实实例校准） |
 | P1 | 数据面：`/api/app/achievements` + 鉴权 + 测试 | ✅ 2026-10-30（已上线并线上验证） |
-| P2 | 界面：成就页 + 侧栏 + wrapped + 文案 | ⬜ 未开始 |
+| P2 | 界面：成就页 + 侧栏 + wrapped + 文案 | 🟡 2026-10-30 代码完成，待人工验收 |
 | Backlog | 见 §4 P3 | — |
 
-- 当前阶段：**P1 完成并上线**（线上 `GET /api/app/achievements` 返回 401 + `no-store`，函数已部署；`pnpm verify` 全绿）
-- 下一步：**P2 界面**（成就页 + 侧栏 + wrapped + 文案），待放行
+- 当前阶段：**P2 代码完成**（`/achievements` 页面 + 侧栏入口 + wrapped「今年解锁」+ zh/en 文案；`pnpm verify` 全绿）
+- 下一步：**P2.6 浏览器人工验收**（正常 / 空 / 锁定进度 / 时区切换 / 窄屏 / 深色 / reduced-motion；Sessions 类覆盖说明可见），通过后打钩 §4 阶段完成，并按 §9 回填 requirements / ui-spec 细节
 - 换机器恢复：`pnpm install` → `pnpm verify` 确认基线 → 读本节与 §8 → 从 §4 第一个未勾选条目继续
 - 执行规则：
   1. 开始某阶段时，把 §0 对应行改为「进行中」并注明日期；
@@ -247,14 +247,14 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 
 ### P2 界面
 
-- [ ] **P2.1** `app/achievements/page.tsx`：页面级 metadata + AppShell 组合（参照 `/sessions` 等受保护页）
-- [ ] **P2.2** `components/achievements/*`：client / body / summary / card / dialog / medallion / skeleton / hook，按 §3.5 实现
-- [ ] **P2.3** `lib/copy/achievements.ts`（zh + en）+ 侧栏 `nav-items.tsx` 入口
-- [ ] **P2.4** localStorage「新解锁」标记（按 user 维度）
-- [ ] **P2.5** `/wrapped` 集成「今年解锁 N 枚」
+- [x] **P2.1** `app/achievements/page.tsx`：页面级 metadata（`createPageMetadata` key `achievements`）+ AppShell 组合；无 `useSearchParams`，不需要 Suspense
+- [x] **P2.2** `components/achievements/*`：`achievements-client.tsx`（刷新 / 骨架 / 错误 / 新解锁）/ `achievements-body.tsx`（摘要 + 四分区 + 空态引导 + 弹窗编排）/ `achievements-summary.tsx` / `achievements-section.tsx` / `achievement-card.tsx` / `achievement-dialog.tsx` / `achievements-medallion.tsx` / `achievements-skeleton.tsx` / `use-achievements.ts` / `use-achievements-format.ts`
+- [x] **P2.3** `lib/copy/achievements.ts`（zh + en，扁平键对齐 catalog 的 copyKey / descriptionKey / coverageKey）+ 侧栏 `nav-items.tsx` 入口（Medal 图标，`/wrapped` 之后）+ 页面标题映射 + metadata 文案
+- [x] **P2.4** localStorage「新解锁」标记：键 `token-usage.achievements.seen.<userId>`（`useSessionBootstrap` 新增 `userId`），访问后把 marker 推进到最近一次 `achieved_at`，本次访问仍显示「新」
+- [x] **P2.5** `/wrapped` 集成「今年解锁 N 枚」：与既有三个请求并行拉取成就、按 `achieved_at` 年度前缀计数；请求失败只隐藏该卡
 - [ ] **P2.6** 浏览器人工验收：正常数据 / 空数据 / 锁定进度 / 时区切换 / 窄屏 / 深色模式 / reduced-motion；Sessions 类成就的覆盖说明可见
-- [ ] **P2.7** `pnpm verify` 全绿；更新 §0 / §8
-- [ ] **阶段完成**
+- [x] **P2.7** `pnpm verify` 全绿（lint 0 error / 4 条基线 warning、`tsc` 无输出、web 380 passed (27 files)、build 成功、CLI 72 passed）；§0 / §8 已更新
+- [ ] **阶段完成**（待 P2.6 人工验收）
 
 ### P3 Backlog（不在本轮，确认后再排期）
 
@@ -312,6 +312,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 2026-10-30 | P0 | ✅ | 本次提交 | catalog（18 条 × 5 档、阈值唯一真源）+ compute（五类扫描、本地日 `achieved_at`、含吊销设备）+ 34 条守卫测试 + 只读校准脚本 |
 | 2026-10-30 | P0.5 校准 | ✅ | 本次提交 | 真实实例校准：0 王者 / 7 钻（15 个月、21.66B tokens、94 活跃日）；改 `wordsmith` 50M/100M、`cache_alchemy` 70/85/93/98/99.8%、`marathon_session` 2h/6h/24h/3d/14d、`multitool` 王者 20、`project_hopper` 王者 60；reasoning 覆盖 36.5%，第 19 条不上线 |
 | 2026-10-30 | P1 | ✅ | 本次提交 | `/api/app/achievements`（cookie 鉴权 + `lib/achievements/payload.ts` 组装 + `lib/achievements/api.ts` 客户端封装）与 6 条路由测试；14 个 handler 部署无异常，线上 401 + `no-store` 验证通过 |
+| 2026-10-30 | P2 | 🟡 | 本次提交 | 成就页（page / client / body / summary / section / card / dialog / medallion / skeleton / hook / 格式化）+ zh/en 文案（含守卫测试）+ 侧栏入口 + 按 user 的 localStorage 新解锁 + wrapped「今年解锁 N 枚」；卡片整块为单一可聚焦按钮，锁定态仍显示当前值与下一档差值；待 P2.6 浏览器人工验收 |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 

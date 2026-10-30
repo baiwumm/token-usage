@@ -6,6 +6,7 @@ import {
   Display,
   Gear,
   ListUl,
+  Medal,
   Tachometer,
 } from "@gravity-ui/icons";
 import { Chip } from "@heroui/react";
@@ -20,6 +21,7 @@ const NAV_ICONS = {
   sessions: ListUl,
   syncRuns: ClockArrowRotateLeft,
   wrapped: Calendar,
+  achievements: Medal,
   status: Tachometer,
   settings: Gear,
 } as const;
