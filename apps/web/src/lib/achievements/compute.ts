@@ -10,7 +10,7 @@
 // the calibration run. Day boundaries, weekends and nights follow the caller's
 // timezone via lib/account/series, matching the heatmap and sessions pages.
 
-import type { AchievementProgress, AchievementsPayload } from "./types";
+import type { AchievementProgress, AchievementsSnapshot } from "./types";
 
 import {
   ACHIEVEMENTS,
@@ -23,7 +23,11 @@ import {
   type TierKey,
 } from "./catalog";
 
-export type { AchievementProgress, AchievementsPayload } from "./types";
+export type {
+  AchievementProgress,
+  AchievementsPayload,
+  AchievementsSnapshot,
+} from "./types";
 
 import {
   numberOr0,
@@ -535,7 +539,7 @@ function achievedAtFor(
 
 export function computeAchievements(
   input: AchievementsInput,
-): AchievementsPayload {
+): AchievementsSnapshot {
   const nowMs =
     input.now instanceof Date
       ? input.now.getTime()

@@ -24,7 +24,17 @@ export type AchievementProgress = {
   achieved_at: Record<TierKey, string | null>;
 };
 
-export type AchievementsPayload = {
+/** What the pure compute produces — no per-user read state. */
+export type AchievementsSnapshot = {
   generated_at: string;
   achievements: AchievementProgress[];
+};
+
+/**
+ * Wire shape of GET /api/app/achievements. `seen_through` is the account's
+ * server-side watermark (null on the first visit, before the client records a
+ * baseline); it is not part of the compute.
+ */
+export type AchievementsPayload = AchievementsSnapshot & {
+  seen_through: string | null;
 };

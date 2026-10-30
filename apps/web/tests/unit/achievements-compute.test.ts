@@ -13,7 +13,7 @@ import {
 import {
   computeAchievements,
   type AchievementsInput,
-  type AchievementsPayload,
+  type AchievementsSnapshot,
 } from "@/lib/achievements/compute";
 
 const SHANGHAI = { timeZone: "Asia/Shanghai", offsetMinutes: 480 };
@@ -65,7 +65,7 @@ function compute(over: Partial<AchievementsInput> = {}) {
   });
 }
 
-function progress(payload: AchievementsPayload, id: string) {
+function progress(payload: AchievementsSnapshot, id: string) {
   const found = payload.achievements.find((entry) => entry.id === id);
 
   if (!found) throw new Error(`missing achievement ${id}`);

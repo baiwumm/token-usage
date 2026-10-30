@@ -9,6 +9,7 @@
 // it is testable against the fake Supabase backend without browser cookies.
 
 import { computeAchievements } from "./compute";
+import { loadAchievementSeen } from "./seen";
 
 import { parseTzContext } from "@/lib/account/series";
 import {
@@ -39,15 +40,15 @@ export async function achievementsPayloadForUser(
 ): Promise<Response> {
   const tzContext = parseTzContext(searchParams);
   const { from, to } = sessionWindow(now);
-  const [usage, sessions, syncRuns] = await Promise.all([
+  const [usage, sessions, syncRuns, seenThrough] = await Promise.all([
     loadAccountUsage(userId),
     loadSessionRows(userId, from, to),
     loadSyncRunRows(userId, from, to),
+    loadAchievementSeen(userId),
   ]);
 
-  return jsonResponse(
-    200,
-    computeAchievements({
+  return jsonResponse(200, {
+    ...computeAchievements({
       hourly: usage.hourly,
       sessionStates: usage.sessionStates,
       sessions: sessions.sessions,
@@ -56,5 +57,6 @@ export async function achievementsPayloadForUser(
       tzContext,
       now,
     }),
-  );
+    seen_through: seenThrough,
+  });
 }

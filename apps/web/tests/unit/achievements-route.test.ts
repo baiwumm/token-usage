@@ -29,7 +29,7 @@ vi.mock("@/lib/auth/config", () => ({
 
 import type { NextRequest } from "next/server";
 
-import { GET } from "@/app/api/app/achievements/route";
+import { GET, POST } from "@/app/api/app/achievements/route";
 import { ACHIEVEMENTS } from "@/lib/achievements/catalog";
 import { achievementsPayloadForUser } from "@/lib/achievements/payload";
 import type { AchievementsPayload } from "@/lib/achievements/types";
@@ -123,6 +123,19 @@ function request(search = ""): NextRequest {
   return {
     nextUrl: new URL(`http://localhost/api/app/achievements${search}`),
   } as unknown as NextRequest;
+}
+
+function post(body: unknown): NextRequest {
+  return {
+    nextUrl: new URL("http://localhost/api/app/achievements"),
+    json: async () => body,
+  } as unknown as NextRequest;
+}
+
+function postedDay(): string | null {
+  const rows = fake.table("token_achievement_seen");
+
+  return rows.length === 0 ? null : String(rows[0].seen_through);
 }
 
 function find(payload: AchievementsPayload, id: string) {
@@ -243,6 +256,106 @@ describe("GET /api/app/achievements — payload", () => {
     expect(find(body, "marathon_session").value).toBe(3_600_000);
     expect(find(body, "sync_diligence").value).toBe(1);
     expect(find(body, "fleet").value).toBe(1);
+  });
+});
+
+describe("GET /api/app/achievements — seen watermark", () => {
+  it("starts null and reports the stored watermark", async () => {
+    const first = (await (await GET(request())).json()) as AchievementsPayload;
+
+    expect(first.seen_through).toBeNull();
+
+    fake.table("token_achievement_seen").push({
+      user_id: USER_ID,
+      seen_through: "2026-10-29",
+    });
+
+    const next = (await (await GET(request())).json()) as AchievementsPayload;
+
+    expect(next.seen_through).toBe("2026-10-29");
+  });
+
+  it("keeps the payload alive when the marker table is missing", async () => {
+    delete (fake as unknown as { tables: Record<string, unknown> }).tables
+      .token_achievement_seen;
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(200);
+    expect(
+      ((await response.json()) as AchievementsPayload).seen_through,
+    ).toBeNull();
+  });
+});
+
+describe("POST /api/app/achievements — seen watermark", () => {
+  it("answers 401 without a browser session", async () => {
+    auth.user = null;
+    const response = await POST(post({ seen_through: "2026-10-29" }));
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ error: "Unauthorized" });
+  });
+
+  it("rejects malformed, impossible and future days", async () => {
+    for (const day of [
+      undefined,
+      null,
+      20261029,
+      "2026-2-3",
+      "2026-02-30",
+      "1999-12-31",
+      "2999-01-01",
+    ]) {
+      const response = await POST(post({ seen_through: day }));
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "Invalid seen_through" });
+    }
+
+    expect(postedDay()).toBeNull();
+  });
+
+  it("creates the row on the first write", async () => {
+    const response = await POST(post({ seen_through: "2026-10-29" }));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ seen_through: "2026-10-29" });
+    expect(postedDay()).toBe("2026-10-29");
+    expect(fake.table("token_achievement_seen")).toHaveLength(1);
+  });
+
+  it("never moves the watermark backwards", async () => {
+    await POST(post({ seen_through: "2026-10-29" }));
+
+    const response = await POST(post({ seen_through: "2026-10-28" }));
+
+    expect(await response.json()).toEqual({ seen_through: "2026-10-29" });
+    expect(postedDay()).toBe("2026-10-29");
+  });
+
+  it("advances the watermark to a later day", async () => {
+    await POST(post({ seen_through: "2026-10-29" }));
+
+    const response = await POST(post({ seen_through: "2026-10-30" }));
+
+    expect(await response.json()).toEqual({ seen_through: "2026-10-30" });
+    expect(postedDay()).toBe("2026-10-30");
+  });
+
+  it("answers 503 when the marker cannot be written", async () => {
+    delete (fake as unknown as { tables: Record<string, unknown> }).tables
+      .token_achievement_seen;
+
+    const response = await POST(post({ seen_through: "2026-10-29" }));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({
+      error: "Seen marker unavailable",
+    });
   });
 });
 

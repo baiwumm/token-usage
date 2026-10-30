@@ -58,3 +58,58 @@ export async function fetchAchievements({
 
   return (await response.json()) as AchievementsPayload;
 }
+
+/**
+ * Record how far the account has seen the achievements. Best effort: the
+ * marker is decoration, so a failed write (or a deployment where the
+ * migration has not run yet) resolves to null and the caller moves on.
+ */
+export async function markAchievementsSeen(
+  day: string,
+): Promise<string | null> {
+  try {
+    const response = await fetch("/api/app/achievements", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seen_through: day }),
+    });
+
+    if (!response.ok) return null;
+    const payload = (await response.json()) as { seen_through?: unknown };
+
+    return typeof payload.seen_through === "string"
+      ? payload.seen_through
+      : day;
+  } catch {
+    return null;
+  }
+}
+
+// Concurrent callers on one screen (the unlock watcher and the dashboard
+// strip) must not run the whole-history compute twice. There is no TTL: the
+// entry disappears as soon as the request settles.
+const inFlight = new Map<string, Promise<AchievementsPayload>>();
+
+export function fetchAchievementsShared({
+  tz = null,
+  offsetMinutes = null,
+}: Pick<
+  FetchAchievementsParams,
+  "tz" | "offsetMinutes"
+> = {}): Promise<AchievementsPayload> {
+  const key = `${tz ?? ""}|${offsetMinutes ?? ""}`;
+  const existing = inFlight.get(key);
+
+  if (existing) return existing;
+
+  const request: Promise<AchievementsPayload> = fetchAchievements({
+    tz,
+    offsetMinutes,
+  }).finally(() => {
+    if (inFlight.get(key) === request) inFlight.delete(key);
+  });
+
+  inFlight.set(key, request);
+
+  return request;
+}
