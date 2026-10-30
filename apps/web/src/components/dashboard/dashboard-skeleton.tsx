@@ -1,9 +1,9 @@
 "use client";
 
 // First-load dashboard skeleton. The loaded page stacks a hero card, the
-// heatmap, the trend card, the model/source breakdown row, the device panel
-// and the detail table; mirror those shells so the cards settle into place
-// without a layout jump (docs/ui-spec.md 状态与可访问性).
+// heatmap, the achievements strip, the trend card, the model/source breakdown
+// row, the device panel and the detail table; mirror those shells so the cards
+// settle into place without a layout jump (docs/ui-spec.md 状态与可访问性).
 
 import { Card, Skeleton } from "@heroui/react";
 
@@ -59,6 +59,30 @@ export function DashboardSkeleton() {
         <PanelHeader description="w-52" title="w-40" trailing="w-28" />
         <Card.Content className="gap-3">
           <Skeleton className="h-44 w-full rounded-3xl" />
+        </Card.Content>
+      </Card>
+
+      {/* Achievements strip: header plus two stacked groups of five wall tiles. */}
+      <Card className="p-6">
+        <PanelHeader description="w-44" title="w-24" trailing="w-20" />
+        <Card.Content className="flex flex-col gap-4">
+          {Array.from({ length: 2 }, (_, group) => (
+            <div key={group} className="flex flex-col gap-2">
+              <Skeleton className="h-3 w-16 rounded-full" />
+              <div className="grid grid-cols-3 gap-1 sm:grid-cols-5">
+                {Array.from({ length: 5 }, (_, tile) => (
+                  <div
+                    key={tile}
+                    className="flex flex-col items-center gap-1.5 p-1"
+                  >
+                    <Skeleton className="size-20 rounded-full md:size-24" />
+                    <Skeleton className="h-3 w-16 rounded-full" />
+                    <Skeleton className="h-3 w-10 rounded-full" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </Card.Content>
       </Card>
 

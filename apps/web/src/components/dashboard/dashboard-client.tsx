@@ -14,6 +14,7 @@
 import type { DetailRow, DetailView } from "./detail-table";
 import type { Filters } from "./filters";
 import type { TrendMode } from "./trend-panel";
+import type { AchievementsPayload } from "@/lib/achievements/types";
 
 import { toast } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
@@ -37,6 +38,10 @@ import { buildShareInput } from "./share-input";
 
 import { useProfile } from "@/lib/auth/profile";
 import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
+import {
+  fetchAchievementsShared,
+  isUnauthorized as isAchievementsUnauthorized,
+} from "@/lib/achievements/api";
 import { DASHBOARD_COPY } from "@/lib/copy/dashboard";
 import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
@@ -118,6 +123,8 @@ export function DashboardClient() {
     useState<Loadable<ModelBreakdownSource[]>>(loadable);
   const [hourlyState, setHourlyState] =
     useState<Loadable<HourlyPoint[]>>(loadable);
+  const [achievementState, setAchievementState] =
+    useState<Loadable<AchievementsPayload>>(loadable);
 
   const [refreshing, setRefreshing] = useState(false);
   const [hourlyRefreshing, setHourlyRefreshing] = useState(false);
@@ -167,7 +174,7 @@ export function DashboardClient() {
       if (!silent) setRefreshing(true);
       lastAttemptAt.current = Date.now();
       const seq = ++loadSeq.current;
-      let pending = 6;
+      let pending = 7;
       let succeeded = 0;
       let redirected = false;
 
@@ -264,6 +271,17 @@ export function DashboardClient() {
           deviceId: filters.deviceId || null,
         }).then((payload) => payload.sources),
         setBreakdownState,
+      );
+      // Cookie-authenticated like /achievements itself (no bearer header).
+      // The shared fetch reuses the unlock watcher's in-flight request when
+      // both ask for the same timezone.
+      slot(
+        fetchAchievementsShared({ tz: timezone }).catch((cause: unknown) => {
+          throw isAchievementsUnauthorized(cause)
+            ? new DashboardApiError("unauthorized", 401)
+            : cause;
+        }),
+        setAchievementState,
       );
     },
     [
@@ -556,6 +574,8 @@ export function DashboardClient() {
       />
 
       <DashboardBody
+        achievements={achievementState.data}
+        achievementsStatus={achievementState.status}
         breakdown={breakdown}
         breakdownStatus={breakdownState.status}
         budgetExceeded={budgetExceeded}

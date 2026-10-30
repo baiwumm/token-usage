@@ -1,6 +1,7 @@
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 import type { CalendarDate } from "@internationalized/date";
 import type { LoadStatus } from "@/lib/loadable";
+import type { AchievementsPayload } from "@/lib/achievements/types";
 import type {
   AccountSummary,
   DashboardPayload,
@@ -13,6 +14,7 @@ import type { DashboardRange } from "@/lib/dashboard/ranges";
 import type { DetailRow, DetailView } from "./detail-table";
 import type { TrendMode } from "./trend-panel";
 
+import { AchievementStripSection } from "./achievement-strip-section";
 import { BreakdownPanels } from "./breakdown-panels";
 import { DashboardSkeleton } from "./dashboard-skeleton";
 import { DashboardEmptyCard, DashboardErrorCard } from "./dashboard-states";
@@ -28,6 +30,8 @@ import { TrendPanel } from "./trend-panel";
  * pieces live in the sibling section files; this file only wires them.
  */
 export function DashboardBody({
+  achievements,
+  achievementsStatus,
   breakdown,
   breakdownStatus,
   budgetExceeded,
@@ -68,6 +72,8 @@ export function DashboardBody({
   onTrendModeChange,
   onViewAll,
 }: {
+  achievements: AchievementsPayload | null;
+  achievementsStatus: LoadStatus;
   breakdown: ModelBreakdownSource[];
   breakdownStatus: LoadStatus;
   budgetExceeded: boolean;
@@ -146,6 +152,15 @@ export function DashboardBody({
               status={heatmapStatus}
               timezone={timezone}
               onDaySelect={onDaySelect}
+              onRetry={onRetry}
+            />
+
+            <AchievementStripSection
+              copy={copy}
+              locale={locale}
+              payload={achievements}
+              refreshing={refreshing}
+              status={achievementsStatus}
               onRetry={onRetry}
             />
 

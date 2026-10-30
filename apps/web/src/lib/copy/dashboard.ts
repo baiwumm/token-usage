@@ -120,6 +120,13 @@ export interface DashboardCopy {
   budget: {
     exceeded: string;
   };
+  achievements: {
+    title: string;
+    hint: string;
+    viewAll: string;
+    recent: string;
+    nearest: string;
+  };
 }
 
 export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
@@ -249,6 +256,13 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     },
     budget: {
       exceeded: "已超出月度预算 {budget}：本月至今已花费 {spent}。",
+    },
+    achievements: {
+      title: "成就",
+      hint: "最近解锁，以及最接近的下一档。",
+      viewAll: "查看全部",
+      recent: "最近解锁",
+      nearest: "最接近解锁",
     },
   },
   en: {
@@ -380,6 +394,13 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     },
     budget: {
       exceeded: "Monthly budget {budget} exceeded: {spent} spent so far.",
+    },
+    achievements: {
+      title: "Achievements",
+      hint: "Recent unlocks and the tiers closest to landing.",
+      viewAll: "View all",
+      recent: "Recently unlocked",
+      nearest: "Closest to unlock",
     },
   },
 };
