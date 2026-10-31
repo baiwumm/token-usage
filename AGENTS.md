@@ -37,6 +37,8 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 | 任务 | 先读 |
 |------|------|
 | 改 CLI 契约层（`app/api/functions/token-usage-*`） | `docs/cli-contract.md` |
+| 来源采集机制、积分制/账户级来源（长期参考） | `docs/sources-capture-audit.md` |
+| 来源接入任务派发（Trae CN / credits / 订阅额度） | `docs/sources-capture-plan.md` |
 | CLI 发版与 npm 发布 | `docs/cli-release.md` |
 | 改数据库、写迁移、迁移/切换/退役操作 | `docs/rewrite-plan.md` §3、§6–7 |
 | 写任何 UI | `docs/ui-spec.md` |
