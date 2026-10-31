@@ -50,10 +50,31 @@ function AchievementTile({
       />
       <span className="w-full truncate text-sm font-medium">{name}</span>
       {currentTier ? (
-        <TierBadge
-          label={achievementCopy(locale, currentTier.copyKey)}
-          tier={progress.tier}
-        />
+        <>
+          <TierBadge
+            label={achievementCopy(locale, currentTier.copyKey)}
+            tier={progress.tier}
+          />
+          {progress.next_threshold != null ? (
+            <span
+              aria-label={formatMessage(
+                achievementCopy(locale, "achievements.ui.cardProgress"),
+                locale,
+                { name, percent },
+              )}
+              aria-valuemax={100}
+              aria-valuemin={0}
+              aria-valuenow={percent}
+              className="bg-default h-1 w-16 overflow-hidden rounded-full"
+              role="progressbar"
+            >
+              <span
+                className="bg-accent block h-full rounded-full"
+                style={{ width: `${percent}%` }}
+              />
+            </span>
+          ) : null}
+        </>
       ) : (
         <span
           aria-label={formatMessage(
