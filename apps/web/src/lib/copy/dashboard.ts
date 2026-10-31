@@ -26,6 +26,10 @@ export interface DashboardCopy {
     heroCostApprox: string;
     heroCostNote: string;
   };
+  subscription: {
+    title: string;
+    hint: string;
+  };
   charts: {
     trendTitle: string;
     daily: string;
@@ -148,11 +152,15 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     lastUpdatedNone: "尚未加载数据",
     ranges: {
       today: "今天",
-      "7d": "7D",
-      "30d": "30D",
-      "90d": "90D",
+      "7d": "7 天",
+      "30d": "30 天",
+      "90d": "90 天",
       all: "总计",
       custom: "自定义",
+    },
+    subscription: {
+      title: "订阅额度",
+      hint: "读本机登录态查询云端余额，仅展示 · 不参与 Token 与成本口径。",
     },
     cards: {
       totalTokens: "总 Tokens",
@@ -289,11 +297,15 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     lastUpdatedNone: "No data loaded yet",
     ranges: {
       today: "Today",
-      "7d": "7D",
-      "30d": "30D",
-      "90d": "90D",
+      "7d": "7d",
+      "30d": "30d",
+      "90d": "90d",
       all: "All time",
       custom: "Custom",
+    },
+    subscription: {
+      title: "Subscriptions",
+      hint: "Balances read from your device's own sign-in state — display only, never merged into tokens or cost.",
     },
     cards: {
       totalTokens: "Total tokens",

@@ -10,6 +10,7 @@ import {
   loadSessionRows,
   loadSyncRunRows,
 } from "./account-data";
+import { select } from "./supabase-rest";
 
 import {
   boundRangeStart,
@@ -738,6 +739,26 @@ async function sessions({ url, principal }: SeriesArgs) {
   });
 }
 
+// §2.14 — the latest subscription snapshot per source, account-scoped. No
+// parameters and no pagination: one row per source by contract.
+async function subscriptions({ principal }: SeriesArgs) {
+  const rows = await select("token_subscription_snapshots", {
+    select: "source,plan,pools,windows,captured_at",
+    filters: [["user_id", "eq", String(principal.userId)]],
+    order: "source.asc",
+  });
+
+  return jsonResponse(200, {
+    subscriptions: rows.map((row) => ({
+      source: String(row.source ?? ""),
+      plan: row.plan == null ? null : String(row.plan),
+      pools: Array.isArray(row.pools) ? row.pools : [],
+      windows: Array.isArray(row.windows) ? row.windows : [],
+      captured_at: String(row.captured_at ?? ""),
+    })),
+  });
+}
+
 export const SERIES: Record<string, (args: SeriesArgs) => Promise<Response>> = {
   daily,
   hourly,
@@ -747,4 +768,5 @@ export const SERIES: Record<string, (args: SeriesArgs) => Promise<Response>> = {
   devices,
   sessions,
   "sync-runs": syncRuns,
+  subscriptions,
 };

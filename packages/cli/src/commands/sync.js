@@ -197,6 +197,7 @@ const { resolveTrackerPaths } = require("../lib/tracker-paths");
 const { readCloudSyncEnabled } = require("../lib/cloud-sync-prefs");
 const { isCollectionPaused, isRunReportEnabled } = require("../lib/collection-pause");
 const { createSyncRunTelemetry, resolveSyncTrigger } = require("../lib/sync-report");
+const { reportSubscriptionSnapshots } = require("../lib/subscription-report");
 const {
   appendUniqueDirs,
   extraScanRootPaths,
@@ -3920,6 +3921,23 @@ async function cmdSync(argv, context = {}) {
         anonKey: runtime.anonKey,
         deviceToken: runtime.deviceToken,
       });
+    }
+
+    // §2.13 subscription balance snapshots — strictly best-effort and
+    // throttled (one attempt per 10 minutes); a vendor failure only reaches
+    // the local log and never touches the ingest above.
+    if (!isBackgroundLightweightSync && canUpload() && runtime.deviceToken && runtime.baseUrl) {
+      try {
+        await reportSubscriptionSnapshots({
+          trackerDir,
+          baseUrl: runtime.baseUrl,
+          anonKey: runtime.anonKey,
+          deviceToken: runtime.deviceToken,
+          home,
+          env: process.env,
+          log: (line) => process.stderr.write(`${line}\n`),
+        });
+      } catch { /* never fails the sync */ }
     }
   } catch (error) {
     // A crashed run still reports (§2.11 error outcome) — best-effort and
