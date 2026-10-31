@@ -46,18 +46,12 @@ export function SessionDetailModal({
           copy.detail.billable,
           session.billable_total_tokens ?? session.total_tokens,
         ],
-        // Credit-based providers only: display-only, never part of the token
-        // identity above (docs/cli-contract.md §2.4).
-        ...(session.credits > 0
-          ? [
-              [
-                copy.detail.credits,
-                `${formatCredits(session.credits)} ${copy.detail.creditsUnit}`,
-              ],
-            ]
-          : []),
       ]
     : [];
+  // Credits render outside the formatTokens loop: they are a display-only
+  // dimension with their own unit, not a token count (docs/cli-contract.md
+  // §2.4).
+  const showCredits = (session?.credits ?? 0) > 0;
 
   return (
     <Modal.Backdrop isOpen={session != null} onOpenChange={onOpenChange}>
@@ -146,6 +140,23 @@ export function SessionDetailModal({
                         </Typography>
                       </div>
                     ))}
+                    {showCredits ? (
+                      <div className="flex flex-col gap-0.5">
+                        <Typography color="muted" type="body-xs">
+                          {copy.detail.credits}
+                        </Typography>
+                        <Typography
+                          className="tabular-nums"
+                          type="body-sm"
+                          weight="medium"
+                        >
+                          {formatCredits(session.credits)}{" "}
+                          <span className="text-foreground/60 text-xs">
+                            {copy.detail.creditsUnit}
+                          </span>
+                        </Typography>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
