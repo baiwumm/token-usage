@@ -70,13 +70,13 @@ export function AchievementMedallion({
 
   return (
     <div
-      className={`relative aspect-square shrink-0 transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transition-none ${className ?? "size-24"}`}
+      className={`relative aspect-square shrink-0 ${className ?? "size-24"}`}
     >
       {/* Unlocked badges keep a faint hue aura behind the metal ring. */}
       {unlocked ? (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -inset-1 rounded-full opacity-70 transition-opacity duration-200 group-hover:opacity-100 motion-reduce:transition-none"
+          className="pointer-events-none absolute -inset-1 rounded-full opacity-70"
           style={{
             background: `radial-gradient(closest-side, hsl(${accent} 90% 60% / 0.22), transparent 78%)`,
           }}

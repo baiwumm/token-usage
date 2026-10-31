@@ -55,7 +55,7 @@ export function AchievementCard({
     <div className="group relative flex flex-col items-center">
       <button
         aria-label={ariaLabel}
-        className="focus-visible:outline-accent flex w-full flex-col items-center gap-2 rounded-2xl p-1 text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none"
+        className="focus-visible:outline-accent flex w-full flex-col items-center gap-2 rounded-2xl p-1 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none"
         type="button"
         onClick={onOpen}
       >
