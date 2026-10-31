@@ -844,6 +844,9 @@ async function cmdStatus(argv = []) {
 
   const { resolveTraeDbPaths } = require("../lib/trae-db");
   const traeDbPaths = resolveTraeDbPaths(process.env);
+  const traeDbAppDirs = [...new Set(traeDbPaths.map(
+    (dbPath) => path.basename(path.resolve(dbPath, "..", "..", "..")),
+  ))];
   const traeStoragePath = resolveTraeStoragePath(process.env);
   const traeInstalled = Boolean(traeStoragePath || traeDbPaths.length);
   // Render path for the entitlement snapshot: read it straight from the
@@ -1232,7 +1235,7 @@ async function cmdStatus(argv = []) {
         trae: traeInstalled
           ? {
               installed: true,
-              detail: traeDbPaths[0] || traeStoragePath,
+              detail: traeDbPaths.join(", ") || traeStoragePath,
               usage_databases: traeDbPaths.length,
               usage_key_source: process.env.TOKENUSAGE_TRAE_SQLCIPHER_KEY?.trim() ? "environment" : "application",
               ...(traeEntitlement ? { entitlement: traeEntitlement } : {}),
@@ -1453,7 +1456,7 @@ async function cmdStatus(argv = []) {
         : null,
       traeInstalled
         ? traeDbPaths.length
-          ? `- TRAE: local usage reader, ${traeDbPaths.length} database(s) (shared application key; optional key override)`
+          ? `- TRAE: local usage reader, ${traeDbPaths.length} database(s): ${traeDbAppDirs.join(", ")} (shared application key; optional key override)`
           : `- TRAE: plan info only, no local usage database found (${traeStoragePath})`
         : null,
       traeEntitlement
