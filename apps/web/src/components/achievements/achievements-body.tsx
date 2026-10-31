@@ -11,8 +11,7 @@ import { Button, Card } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
-import { AchievementDialog } from "./achievement-dialog";
-import { AchievementShareDialog } from "./achievement-share-dialog";
+import { AchievementDetail } from "./achievement-detail";
 import { AchievementsSection } from "./achievements-section";
 import { AchievementsSummary } from "./achievements-summary";
 
@@ -38,10 +37,6 @@ export function AchievementsBody({
     AchievementsPayload["achievements"][number] | null
   >(null);
   const [open, setOpen] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [shared, setShared] = useState<
-    AchievementsPayload["achievements"][number] | null
-  >(null);
 
   const openDetail = useCallback(
     (id: string) => {
@@ -53,15 +48,6 @@ export function AchievementsBody({
     },
     [payload.achievements],
   );
-
-  // Detail and share never stack: the detail closes as the share opens for
-  // the same row (the selection survives the close animation).
-  const openShare = useCallback(() => {
-    if (!selected) return;
-    setShared(selected);
-    setOpen(false);
-    setShareOpen(true);
-  }, [selected]);
 
   // A brand-new account has zero on every metric: the grid still renders (all
   // locked) with the pairing hint on top, which is more useful than a blank page.
@@ -107,20 +93,12 @@ export function AchievementsBody({
         />
       ))}
 
-      <AchievementDialog
+      <AchievementDetail
+        handle={profile?.displayName || profile?.email || ""}
         locale={locale}
         open={open}
         progress={selected}
         onOpenChange={setOpen}
-        onShare={openShare}
-      />
-
-      <AchievementShareDialog
-        handle={profile?.displayName || profile?.email || ""}
-        locale={locale}
-        open={shareOpen}
-        progress={shared}
-        onOpenChange={setShareOpen}
       />
     </div>
   );

@@ -11,13 +11,15 @@ import type { LoadStatus } from "@/lib/loadable";
 
 import { Button, Card } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { PanelOverlay } from "./panel-overlay";
 import { AchievementStrip } from "./achievement-strip";
 
+import { AchievementDetail } from "@/components/achievements/achievement-detail";
 import { SectionError, SectionSkeleton } from "@/components/section-states";
 import { nearestUnlocks, recentUnlocks } from "@/lib/achievements/highlights";
+import { useProfile } from "@/lib/auth/profile";
 
 const GROUP_LIMIT = 5;
 
@@ -37,6 +39,11 @@ export function AchievementStripSection({
   onRetry: () => void;
 }) {
   const router = useRouter();
+  const { profile } = useProfile();
+  const [selected, setSelected] = useState<
+    AchievementsPayload["achievements"][number] | null
+  >(null);
+  const [open, setOpen] = useState(false);
   const recent = useMemo(
     () => (payload ? recentUnlocks(payload.achievements, GROUP_LIMIT) : []),
     [payload],
@@ -78,6 +85,13 @@ export function AchievementStripSection({
             nearestTitle={copy.achievements.nearest}
             recent={recent}
             recentTitle={copy.achievements.recent}
+            onOpen={(id) => {
+              const entry = payload.achievements.find((item) => item.id === id);
+
+              if (!entry) return;
+              setSelected(entry);
+              setOpen(true);
+            }}
           />
         ) : status === "loading" ? (
           <SectionSkeleton className="h-28 w-full" />
@@ -89,6 +103,13 @@ export function AchievementStripSection({
           />
         )}
       </Card.Content>
+      <AchievementDetail
+        handle={profile?.displayName || profile?.email || "Token Usage"}
+        locale={locale}
+        open={open}
+        progress={selected}
+        onOpenChange={setOpen}
+      />
     </Card>
   );
 }
