@@ -87,7 +87,11 @@ const {
 // v23 excludes database updates and user records from request durations.
 // v24 keeps OpenCode usage dates at event time and fork history on its ancestor.
 // v25 adds Kimi wire sessions, including official/legacy migration dedup.
-const SIDECAR_VERSION = 25;
+// 26: qoder session rows now apply the same billable gate as the token-side
+// bucket parser — billable:false rows carry un-billed "would-be" credits
+// (observed: 3718 of 4591 credits on this machine) and must not inflate the
+// session view. Bumped so existing sidecars rebuild once.
+const SIDECAR_VERSION = 26;
 const EDIT_TOOLS = new Set([
   "apply_patch",
   "edit",
@@ -1998,10 +2002,27 @@ function scanQoderSessionFile(filePath, source) {
     const timestamp = qoderTimestampMs(record);
     if (timestamp == null) continue;
 
-    tokens.input_tokens += clampQoderCounter(usage.input_tokens);
-    tokens.cached_input_tokens += clampQoderCounter(usage.cache_read_input_tokens ?? usage.cached_tokens);
-    tokens.cache_creation_input_tokens += clampQoderCounter(usage.cache_creation_input_tokens);
-    tokens.output_tokens += clampQoderCounter(usage.output_tokens);
+    // Same gate as the bucket parser (normalizeQoderNewTokens + its caller):
+    // a billable:false row with no tokens is un-billed internal activity —
+    // neither conversation nor credits — and must not reach either view.
+    const rowTokens = {
+      input_tokens: clampQoderCounter(usage.input_tokens),
+      cached_input_tokens: clampQoderCounter(usage.cache_read_input_tokens ?? usage.cached_tokens),
+      cache_creation_input_tokens: clampQoderCounter(usage.cache_creation_input_tokens),
+      output_tokens: clampQoderCounter(usage.output_tokens),
+      reasoning_output_tokens: 0,
+    };
+    const hasTokens =
+      rowTokens.input_tokens > 0 || rowTokens.cached_input_tokens > 0 ||
+      rowTokens.cache_creation_input_tokens > 0 || rowTokens.output_tokens > 0;
+    const isBillable = usage.billable !== false;
+    if (!hasTokens && !isBillable) continue;
+
+    tokens.input_tokens += rowTokens.input_tokens;
+    tokens.cached_input_tokens += rowTokens.cached_input_tokens;
+    tokens.cache_creation_input_tokens += rowTokens.cache_creation_input_tokens;
+    tokens.output_tokens += rowTokens.output_tokens;
+    tokens.reasoning_output_tokens += rowTokens.reasoning_output_tokens;
     const creditValue = Number(usage.credits ?? usage.original_credits ?? 0);
     credits = Math.round((credits + (Number.isFinite(creditValue) && creditValue > 0 ? creditValue : 0)) * 1e6) / 1e6;
 
