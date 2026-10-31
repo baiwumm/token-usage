@@ -7,10 +7,11 @@ import type { WrappedCopy } from "@/lib/copy/wrapped";
 import type { DashboardPayload } from "@/lib/dashboard/api";
 
 import { Card } from "@heroui/react";
+import { useMemo } from "react";
 
 import { seriesColor } from "@/components/mini-charts";
 import { SourceIcon } from "@/components/source-icon";
-import { sourceDisplayLabel } from "@/lib/sources";
+import { groupCanonicalSources, sourceDisplayLabel } from "@/lib/sources";
 import { useFormat } from "@/lib/format/format";
 
 export function SourcesCard({
@@ -24,6 +25,11 @@ export function SourcesCard({
 }) {
   const { formatTokens, formatCost, formatPercent } = useFormat();
 
+  // Aliased collector ids (pi-stepfun / pi-zai-coding-cn / pi, qoder-cn /
+  // qoder, …) must render as ONE row per canonical source — the raw wire rows
+  // share a display label and would read as duplicates.
+  const grouped = useMemo(() => groupCanonicalSources(sources), [sources]);
+
   return (
     <Card className="p-6">
       <Card.Header>
@@ -31,12 +37,12 @@ export function SourcesCard({
       </Card.Header>
       <Card.Content className="flex flex-col gap-3">
         {/* One stacked bar for the year's source mix, then a row per
-            source: brand logo, display label, volume and share. */}
+            canonical source: brand logo, display label, volume and share. */}
         <div
           aria-hidden="true"
           className="flex h-2 w-full overflow-hidden rounded-full"
         >
-          {sources.map((entry, index) => (
+          {grouped.map((entry, index) => (
             <div
               key={entry.source}
               style={{
@@ -48,7 +54,7 @@ export function SourcesCard({
             />
           ))}
         </div>
-        {sources.map((entry, index) => {
+        {grouped.map((entry, index) => {
           const share = totalTokens > 0 ? entry.total_tokens / totalTokens : 0;
 
           return (

@@ -204,3 +204,37 @@ export function modelLogoFile(model: string): string | null {
 
   return null;
 }
+
+export interface SourceVolume {
+  source: string;
+  total_tokens: number;
+  total_cost_usd: number;
+  buckets: number;
+}
+
+/**
+ * Merge raw collector source rows into canonical groups (docs/ui-spec.md
+ * 来源/模型图标): pi-stepfun / pi-zai-coding-cn / pi → "Pi", qoder-cn / qoder
+ * → "Qoder", … Display-level only — callers pass wire rows through and render
+ * the grouped result so aliases never show as duplicate rows.
+ */
+export function groupCanonicalSources<T extends SourceVolume>(
+  sources: readonly T[],
+): T[] {
+  const byId = new Map<string, T>();
+
+  for (const entry of sources) {
+    const id = canonicalSource(entry.source);
+    const agg = byId.get(id);
+
+    if (agg) {
+      agg.total_tokens += entry.total_tokens;
+      agg.total_cost_usd += entry.total_cost_usd;
+      agg.buckets += entry.buckets;
+    } else {
+      byId.set(id, { ...entry, source: id });
+    }
+  }
+
+  return [...byId.values()].sort((a, b) => b.total_tokens - a.total_tokens);
+}

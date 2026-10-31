@@ -6,6 +6,7 @@ import type { DashboardPayload, HeatmapPayload } from "@/lib/dashboard/api";
 import type { useFormat } from "@/lib/format/format";
 
 import { buildShareHook, type ShareCardData } from "@/components/share-card";
+import { groupCanonicalSources, sourceDisplayLabel } from "@/lib/sources";
 
 type Formatters = ReturnType<typeof useFormat>;
 
@@ -39,9 +40,9 @@ export function buildShareInput({
   const models = [...(payload?.models ?? [])].sort(
     (first, second) => second.total_tokens - first.total_tokens,
   );
-  const sources = [...(payload?.sources ?? [])].sort(
-    (first, second) => second.total_tokens - first.total_tokens,
-  );
+  // Canonical grouping keeps aliased collector ids (pi-stepfun / qoder-cn /
+  // …) from repeating under the same display label on the card.
+  const sources = groupCanonicalSources(payload?.sources ?? []);
   const daily = payload?.daily ?? [];
   const peakDay =
     daily.length > 0
@@ -79,7 +80,7 @@ export function buildShareInput({
           }
         : null,
     sources: sources.map((source) => ({
-      name: source.source,
+      name: sourceDisplayLabel(source.source),
       tokens: formatTokens(source.total_tokens),
       tokensFull: formatNumber(source.total_tokens),
       share: shareOf(source.total_tokens),
@@ -91,7 +92,7 @@ export function buildShareInput({
       share: shareOf(model.total_tokens),
     })),
     topModelName: topModel?.model ?? null,
-    topSourceName: sources[0]?.source ?? null,
+    topSourceName: sources[0] ? sourceDisplayLabel(sources[0].source) : null,
     heatmap: heatmap
       ? {
           weeks: heatmap.weeks.map((week) =>
