@@ -99,6 +99,21 @@
     token 恒 0、对话数不变；执行后 CLI 配置已还原（baseUrl = 生产）。
 - **待操作者**：本地 `pnpm dev` 验收三处展示 → 推 main（`6ec6220` + 后续 docs 提交）；
   不过则 `git revert 6ec6220`。
+- **2026-10-31 挂账事项落地（操作者批准"按方案执行、先不推送"）**：
+  - **P2 一期** `7dd2cb9`：§2.13 `token-usage-subscription-report`（每来源一行最新快照，
+    upsert 覆盖、`captured_at` 服务端派生、单一稳定码 `invalid_subscription_report`）+
+    §2.14 读面 series `subscriptions`（catch-all 第 9 个）+ 迁移④
+    `20261031000002_token_subscription_snapshots` + CLI `lib/subscription-report.js`
+    （Qoder/Qoder CN 积分池 + Trae 套餐元数据，10 分钟节流，best-effort）+ 仪表盘
+    「订阅额度」卡（双栏下，无快照整卡隐藏）。一期 Trae 无用量百分比（Local State
+    entitlement 只有套餐元数据；百分比在 trae-cn 用量 opt-in 通道，二期再接）。
+  - **Sessions credits** `8d81282`：§2.4 sessions 可选 `credits`（钳 0 不拒批）+
+    `session-analytics` 新增 qoder/qoder-cn 会话 reader（一文件=一会话，credits 随行，
+    子代理文件也计入）+ `session-upload` 透传 + 迁移⑤ `20261031000003`（token_sessions
+    .credits + RPC 替换）+ Sessions 表积分列（totals.credits>0 才显示）+ 详情弹窗积分行。
+    **历史会话保持 0**（ended_at 严格 last-wins 不重写老快照）。
+  - 四个迁移均已应用生产库（幂等验证通过）；两个批次 `pnpm verify` 445/445 绿，
+    本地提交 **未推送**，等操作者验收。
 - **2026-10-31 二轮增量（已验收推送后）**：P0/P1 已推 main（`52e5808..bbc42e8`）。追加：
   迁移 ② `20261031000001_token_sync_runs_credits.sql` 已应用生产库（操作者授权同前）；
   `credits_ingested` 遥测全链路（§2.11/§2.12 契约 + CLI + 读侧 + 采集记录页行内显示）；
