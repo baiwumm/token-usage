@@ -2128,16 +2128,40 @@ async function discoverSessionFiles(home, env = process.env, deps = {}) {
   const kimi = discoverKimiWireFiles(dedupeDirsByRealpath(kimiRoots), incomplete);
   // Qoder's flat per-session JSONL (one file = one session id) carries the
   // same usage shape as the token side — including credits-only rows, so the
-  // session rows sum credits alongside tokens (2026-10-31).
-  const qoder = [
-    ...providerRoots(home, ".qoder", env, deps).map((root) => ({ root, source: "qoder" })),
-    ...providerRoots(home, ".qoder-cn", env, deps).map((root) => ({ root, source: "qoder-cn" })),
-  ].flatMap(({ root, source }) =>
-    listRolloutFilesDeep(path.join(root, "projects"))
-      .filter((filePath) => /\.jsonl$/i.test(filePath))
-      .map((filePath) => ({ filePath, source })),
-  );
+  // session rows sum credits alongside tokens (2026-10-31). listRolloutFilesDeep
+  // is codex-specific (rollout-* names), so qoder walks its own tree.
+  const qoder = (await Promise.all(
+    [
+      ...providerRoots(home, ".qoder", env, deps).map((root) => ({ root, source: "qoder" })),
+      ...providerRoots(home, ".qoder-cn", env, deps).map((root) => ({ root, source: "qoder-cn" })),
+    ].map(async ({ root, source }) =>
+      (await listQoderSessionFiles(path.join(root, "projects")))
+        .map((filePath) => ({ filePath, source })),
+    ),
+  )).flat();
   return { claude, codex: groupCodexFiles([...codex, ...archived]), grok, zcode, opencode, kimi, qoder, incomplete };
+}
+
+// Qoder session files: `<projects>/<slug>/<sessionId>.jsonl` — any .jsonl is
+// a session transcript, so the walk is generic (unlike codex's rollout-* rule).
+async function listQoderSessionFiles(projectsDir) {
+  const out = [];
+  async function walk(dir) {
+    let entries;
+    try {
+      entries = await fsp.readdir(dir, { withFileTypes: true });
+    } catch {
+      return; // absent or unreadable: an empty result, reported as such upstream
+    }
+    for (const entry of entries) {
+      const p = path.join(dir, entry.name);
+      if (entry.isDirectory()) await walk(p);
+      else if (entry.isFile() && entry.name.endsWith(".jsonl")) out.push(p);
+    }
+  }
+  await walk(projectsDir);
+  out.sort((a, b) => a.localeCompare(b));
+  return out;
 }
 
 // Warn once per unreadable directory per process: the dashboard polls this
@@ -2325,6 +2349,7 @@ async function buildSessionAnalyticsInternal({ home = os.homedir(), force = fals
     ...discovered.grok.map(grokSignalsPathFor),
     // db + its WAL sidecars: the trio is one logical file for change detection.
     ...[...(discovered.zcode || []), ...(discovered.opencode || [])].flatMap((dbPath) => [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]),
+    ...discovered.qoder.map(({ filePath }) => filePath),
   ]);
   if (!force && !retryZcodeScan && !retryOpencodeScan && !retryKimiScan && previousMeta?.version === SIDECAR_VERSION && previousMeta.signature === signature) {
     await writeAtomic(metaPath, `${JSON.stringify({ ...previousMeta, checked_at: new Date().toISOString() })}\n`);
