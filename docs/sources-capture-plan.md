@@ -114,6 +114,13 @@
     **历史会话保持 0**（ended_at 严格 last-wins 不重写老快照）。
   - 四个迁移均已应用生产库（幂等验证通过）；两个批次 `pnpm verify` 445/445 绿，
     本地提交 **未推送**，等操作者验收。
+- **2026-10-31 撤项（操作者裁定）**：实机验收后确认订阅余额对本机计划**没有展示价值**
+  （Qoder CN 主池为厂商空计划标记、真实额度在第三窗口且会随用量清零，Trae 只有套餐元
+  数据），**订阅额度功能整体移除**——§2.13/§2.14 契约段、CLI `lib/subscription-report.js`
+  与 sync 接线、服务端路由/读面、仪表盘卡、迁移④文件均删除；生产库
+  `token_subscription_snapshots` 表已 drop。**保留**：Sessions 会话级 credits、
+  sync-runs `credits_ingested` 遥测、桶级 credits（各自独立有价值）。`usage-limits.js`
+  的 16 家限额 reader 不受影响（status 面继续用）。
 - **2026-10-31 二轮增量（已验收推送后）**：P0/P1 已推 main（`52e5808..bbc42e8`）。追加：
   迁移 ② `20261031000001_token_sync_runs_credits.sql` 已应用生产库（操作者授权同前）；
   `credits_ingested` 遥测全链路（§2.11/§2.12 契约 + CLI + 读侧 + 采集记录页行内显示）；

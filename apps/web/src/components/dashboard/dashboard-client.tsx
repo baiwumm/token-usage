@@ -53,7 +53,6 @@ import {
   fetchHourly,
   fetchModelBreakdown,
   fetchMonthly,
-  fetchSubscriptions,
   fetchSummary,
   type AccountSummary,
   type DashboardPayload,
@@ -62,7 +61,6 @@ import {
   type ModelBreakdownSource,
   type MonthlyPoint,
   type SeriesPoint,
-  type SubscriptionSnapshot,
 } from "@/lib/dashboard/api";
 import {
   browserTimezone,
@@ -127,8 +125,6 @@ export function DashboardClient() {
     useState<Loadable<HourlyPoint[]>>(loadable);
   const [achievementState, setAchievementState] =
     useState<Loadable<AchievementsPayload>>(loadable);
-  const [subscriptionState, setSubscriptionState] =
-    useState<Loadable<SubscriptionSnapshot[]>>(loadable);
 
   const [refreshing, setRefreshing] = useState(false);
   const [hourlyRefreshing, setHourlyRefreshing] = useState(false);
@@ -286,18 +282,6 @@ export function DashboardClient() {
             : cause;
         }),
         setAchievementState,
-      );
-      // Optional card: a subscription fetch failure degrades to an empty list
-      // (card hidden) — only 401 still redirects to login.
-      slot(
-        fetchSubscriptions(token)
-          .then((payload) => payload.subscriptions)
-          .catch((cause: unknown) => {
-            if (isUnauthorized(cause)) throw cause;
-
-            return [] as SubscriptionSnapshot[];
-          }),
-        setSubscriptionState,
       );
     },
     [
@@ -616,7 +600,6 @@ export function DashboardClient() {
         rangePickerMax={rangePickerMax}
         refreshing={refreshing}
         selectedDeviceId={filters.deviceId}
-        subscriptions={subscriptionState.data ?? []}
         summary={summary}
         summaryStatus={summaryState.status}
         timezone={timezone}

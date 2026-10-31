@@ -347,53 +347,6 @@ Query：`from`、`to`（ISO 瞬时，按 `started_at ∈ [from,to)`）、`device
 - `credits_ingested`（2026-10-31 增量）：§2.11 可选遥测字段的读取面透传（行级与 `totals`
   求和，6 位小数）；旧 CLI 的运行行为 0。
 
-### 2.13 `POST /api/functions/token-usage-subscription-report`（仅设备令牌｜CLI 面）
-
-> 2026-10-31 新增（P2 一期，操作者批准）：订阅制工具的**最新余额快照**上报。凭据只存在于
-> 采集端本机（硬性约束 7）——余额只能由 CLI 读取后上报；服务端仅存**每来源一行**的最新
-> 快照（upsert 覆盖，无历史）。上报严格 best-effort：失败只记本地日志，绝不影响 ingest；
-> 厂商接口不可达/未登录的来源由客户端直接跳过。
-
-请求体：
-
-```json
-{
-  "subscriptions": [
-    {
-      "source": "qoder",
-      "plan": "Pro",
-      "pools": [ { "name": "个人积分池", "unit": "Credits", "total": 12000, "used": 8340, "remaining": 3660 } ],
-      "windows": [ { "label": "credits", "percent": 69.5, "resets_at": "2026-11-24T00:00:00.000Z" } ]
-    }
-  ]
-}
-```
-
-| 字段 | 说明 |
-|---|---|
-| `subscriptions` | 必填，数组，≤10 条；空数组合法（`ok:true, upserted:0`） |
-| `subscriptions[].source` | 必填。trim + 转小写，≤100，空则非法（`400 invalid_subscription_report`，单一稳定码） |
-| `subscriptions[].plan` | 可选。trim ≤100，缺省 `null` |
-| `subscriptions[].pools` | 可选数组 ≤8。每项 `{name?, unit?, total?, used?, remaining?}`：字符串 ≤100 或 `null`，数值非负或 `null`，四舍五入 6 位小数 |
-| `subscriptions[].windows` | 可选数组 ≤8。每项 `{label?, percent?, resets_at?}`：`percent` 数值 0–100 或 `null`；`resets_at` 可解析 ISO 或 `null` |
-| 其余字段 | 一律忽略（白名单持久化） |
-
-- 上报主体语义：**快照覆盖更新**——按 `(user_id, source)` upsert，`captured_at` 由服务端
-  派生（客户端时钟不可信）；无幂等键、重放即刷新。
-- 隐私白名单：套餐名、余额/百分比数值、单位与重置时间；不含正文、路径、令牌。
-- 成功 `200 {"ok":true,"upserted":<条数>}`。
-- 落库表 `token_subscription_snapshots`（迁移 `20261031000002`）：RLS 零 policy，
-  service_role only。
-
-### 2.14 `GET /api/functions/token-usage-account-subscriptions`（设备令牌或 JWT｜Dashboard 面）
-
-> §2.13 的读取面，作为 §2.7 catch-all 的**第 9 个 series**（catch-all 单函数，不新增
-> 函数数目）；无参数、无分页——每来源仅一行最新快照。
-
-- 响应：`{ "subscriptions": [ { "source", "plan", "pools", "windows", "captured_at" } ] }`，
-  按 `source` 升序；`pools` / `windows` 形态同 §2.13；`captured_at` 为该行最近一次上报时间。
-- 无快照返回空数组；账户隔离同其他 series（只看本账户）。
-
 ## 3. 冻结不变量清单（逐条对应契约测试）
 
 适用范围：涉及 §2.6–2.10 的条目（6、7 的字段形态与聚合规则，含 `sessions` series）属
@@ -420,12 +373,6 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
 14. `account-sync-runs` 的 `[from,to)` 过滤、366 天窗口钳制、`started_at` 倒序（同刻按
     `run_id` 升序）、`total`/`totals` 全集语义、吊销设备剔除、`trigger`/`result` 非法值
     按无结果处理、分页钳制（limit 1–200）。
-15. subscription-report（§2.13）的逐项校验（`subscriptions` ≤10、`source` 必填 ≤100、
-    pools/windows ≤8、数值非负、`percent` 0–100、6 位小数）与单一稳定码
-    `400 invalid_subscription_report`；落库键 `(user_id, source)` 覆盖更新，
-    `captured_at` 服务端派生。
-16. `account-subscriptions`（§2.14）的账户隔离、`source` 升序、每来源仅最新一行、
-    `pools`/`windows` 形态透传。
 
 > §2.11 / §2.12 已于 2026-10-27 随 0.2.0 实现转正式：golden 测试
 > `tests/contract/sync-runs.test.ts` 覆盖两端点（校验、幂等重放、空跑派生、筛选分页、

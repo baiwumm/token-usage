@@ -648,39 +648,3 @@ export function fetchSyncRuns(params: {
 
   return callApp<SyncRunsPayload>(`?${query}`);
 }
-
-// Subscription balance snapshots (docs/cli-contract.md §2.13/§2.14): the
-// latest per-source balance the device reported. Display-only — balances are
-// never merged into tokens or cost.
-
-export interface SubscriptionPool {
-  name: string | null;
-  unit: string | null;
-  total: number | null;
-  used: number | null;
-  remaining: number | null;
-}
-
-export interface SubscriptionWindow {
-  label: string | null;
-  percent: number | null;
-  resets_at: string | null;
-}
-
-export interface SubscriptionSnapshot {
-  source: string;
-  plan: string | null;
-  pools: SubscriptionPool[];
-  windows: SubscriptionWindow[];
-  captured_at: string;
-}
-
-export function fetchSubscriptions(
-  token: string,
-): Promise<{ subscriptions: SubscriptionSnapshot[] }> {
-  return callContract<{ subscriptions: SubscriptionSnapshot[] }>(
-    "account-subscriptions",
-    "",
-    token,
-  );
-}

@@ -9,7 +9,6 @@ import type {
   ModelBreakdownSource,
   MonthlyPoint,
   SeriesPoint,
-  SubscriptionSnapshot,
 } from "@/lib/dashboard/api";
 import type { DashboardRange } from "@/lib/dashboard/ranges";
 import type { DetailRow, DetailView } from "./detail-table";
@@ -23,7 +22,6 @@ import { DetailTable } from "./detail-table";
 import { DeviceSection } from "./device-section";
 import { HeatmapSection } from "./heatmap-section";
 import { HeroSection } from "./hero-section";
-import { SubscriptionSection } from "./subscription-section";
 import { TrendPanel } from "./trend-panel";
 
 /**
@@ -60,7 +58,6 @@ export function DashboardBody({
   selectedDeviceId,
   summary,
   summaryStatus,
-  subscriptions,
   timezone,
   trendMode,
   trendSelectedDay,
@@ -104,7 +101,6 @@ export function DashboardBody({
   selectedDeviceId: string;
   summary: AccountSummary | null;
   summaryStatus: LoadStatus;
-  subscriptions: SubscriptionSnapshot[];
   timezone: string;
   trendMode: TrendMode;
   /** Day the trend chart highlights — only when one was clicked (raw state). */
@@ -190,12 +186,6 @@ export function DashboardBody({
               status={breakdownStatus}
               onRetry={onRetry}
               onViewAll={onViewAll}
-            />
-
-            <SubscriptionSection
-              copy={copy}
-              refreshing={refreshing}
-              subscriptions={subscriptions}
             />
 
             <DeviceSection

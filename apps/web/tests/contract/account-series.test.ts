@@ -699,7 +699,7 @@ describe("series dispatch", () => {
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.error).toBe("Unknown account series: bogus");
-    expect(body.series).toEqual(["daily", "hourly", "monthly", "heatmap", "model-breakdown", "devices", "sessions", "sync-runs", "subscriptions"]);
+    expect(body.series).toEqual(["daily", "hourly", "monthly", "heatmap", "model-breakdown", "devices", "sessions", "sync-runs"]);
   });
 
   it("404s non-account paths on the catch-all", async () => {
