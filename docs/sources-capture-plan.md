@@ -61,3 +61,28 @@
 | 日期 | 动作 | 结果 |
 |---|---|---|
 | 2026-10-31 | 任务列出，待指令 | — |
+| 2026-10-31 | 操作者指令"按 plan 开工"；P0/P1 执行，P2 后置 | **完成（本地提交，未推送）**：P0 `c8b9d9e`、P1 `6ec6220`、文档 `46a054c`；`pnpm verify` 全绿 |
+
+### P0 交付记录（commit `c8b9d9e`）
+
+- T0.1–T0.3 完成：`trae-db.js` roots 增加 `Trae CN`（跨库身份复用既有 per-store ledger，
+  零新机制）；status 行显示 `2 database(s): Trae, Trae CN`；新增 `packages/cli/test/trae-db.test.js`。
+- T0.4 实测通过：本机 sync 后 ledger `stores: 2, turns: 17`（全部 `deepseek-v4.1-flash`），
+  与审计基线一致，桶已上传。
+- 注意：本机计划任务跑的是全局 npm 包 0.2.6（无 CN 扫描）——**持续采集 Trae CN 需随下个
+  npm 版本发布 + 本机 `init` 升级接管**；历史 17 turns 已由手跑 sync 回填。
+
+### P1 交付记录（commit `6ec6220`）
+
+- T1.1–T1.7 全部完成：契约 §2.4/§2.6/§2.7/§2.10 回写；CLI credits 透传（零值抑制，其他来源
+  队列行逐字不变）；credits-only 行记 credits + 对话（token 仍 0）；服务端钳制归一；
+  迁移 `20261031000000_token_usage_credits.sql`；展示 C 方案三处（明细积分列自动隐藏、
+  来源卡角标、独立积分卡）；golden 71→新增 credits 分组 + series/dashboard 流转断言。
+- **验收前置（操作者执行，顺序敏感）**：
+  1. 先对 Supabase 应用迁移（`supabase db push` 或 SQL editor 执行该迁移文件的
+     `alter table`，幂等）——**必须在部署新 web / 升级 CLI 之前**：新 ingest 会写 `credits`
+     列，列不存在时 PostgREST 整批报错；
+  2. `pnpm dev` 看仪表盘效果（qoder-cn 自 2026-10-30 起有 credits 数据需由新版 CLI 采集，
+     老数据 credits 为 0，积分卡在范围内无 credits 时整卡不渲染）；
+  3. 验收通过 → 推送 main（CI 兜底）；不过 → `git revert 6ec6220`（DB 列可留，无害）。
+- 明确未做：P2 订阅额度卡（后置，另拍板契约面）；本机 CLI 升级（随 npm 发版）。
