@@ -1,4 +1,4 @@
-# 来源接入计划：Trae CN / credits 字段 / 订阅额度（2026-10-31）
+# 来源接入计划：Trae CN / credits 字段（2026-10-31）
 
 > 状态：任务已列出，**待操作者指令派发**（可整批、可只派 P0、可调整顺序）。
 > 机制与背景先读 `docs/sources-capture-audit.md`；契约规范 `docs/cli-contract.md`；UI 规范 `docs/ui-spec.md`。
@@ -44,12 +44,6 @@
 
 回撤：revert 代码；DB 列可留（default 0 无害）或补一个 drop 迁移。
 
-## 4. P2 批次：订阅额度卡（可选，后置）
-
-- [ ] 素材现成：`packages/cli/src/lib/usage-limits.js` 的 qoder（`qoder-limits.js:11-26`）、qoder-cn CLI（`qoder-cn-cli-limits.js:8-112`）、Trae entitlement reader（`rollout.js:23296-23320`）
-- [ ] 契约面待拍板：新 `/api/app/*` 订阅快照接口或 CLI 上报快照记录；**不落 `token_usage_hourly`**，仅展示
-- [ ] dashboard「订阅额度」卡（Qoder 积分池 total/used/remaining + 到期；Trae basic/bonus/extra 百分比条）；数据标注"示例/快照时间"，获取失败整卡隐藏
-
 ## 5. 明确不做
 
 - 积分 × 系数 → token 入库（audit §2 铁律 1）
@@ -61,7 +55,7 @@
 | 日期 | 动作 | 结果 |
 |---|---|---|
 | 2026-10-31 | 任务列出，待指令 | — |
-| 2026-10-31 | 操作者指令"按 plan 开工"；P0/P1 执行，P2 后置 | **完成（本地提交，未推送）**：P0 `c8b9d9e`、P1 `6ec6220`、文档 `46a054c`；`pnpm verify` 全绿 |
+| 2026-10-31 | 操作者指令"按 plan 开工"；P0/P1 执行 | **完成（本地提交，未推送）**：P0 `c8b9d9e`、P1 `6ec6220`、文档 `46a054c`；`pnpm verify` 全绿 |
 
 ### P0 交付记录（commit `c8b9d9e`）
 
@@ -85,7 +79,7 @@
   2. `pnpm dev` 看仪表盘效果（qoder-cn 自 2026-10-30 起有 credits 数据需由新版 CLI 采集，
      老数据 credits 为 0，积分卡在范围内无 credits 时整卡不渲染）；
   3. 验收通过 → 推送 main（CI 兜底）；不过 → `git revert 6ec6220`（DB 列可留，无害）。
-- 明确未做：P2 订阅额度卡（后置，另拍板契约面）；本机 CLI 升级（随 npm 发版）。
+- 明确未做：本机 CLI 升级（随 npm 发版）。
 - **迁移与补记（2026-10-31 操作者授权执行，已完成）**：
   - 迁移已应用于生产库（`information_schema` 验证 `credits numeric not null default 0`）；
   - 历史补记走账本重算：`totalsKey` 的 `|c:` 后缀使 qoder-cn 全部消息"先减后加"，sync 重发
@@ -100,27 +94,6 @@
 - **待操作者**：本地 `pnpm dev` 验收三处展示 → 推 main（`6ec6220` + 后续 docs 提交）；
   不过则 `git revert 6ec6220`。
 - **2026-10-31 挂账事项落地（操作者批准"按方案执行、先不推送"）**：
-  - **P2 一期** `7dd2cb9`：§2.13 `token-usage-subscription-report`（每来源一行最新快照，
-    upsert 覆盖、`captured_at` 服务端派生、单一稳定码 `invalid_subscription_report`）+
-    §2.14 读面 series `subscriptions`（catch-all 第 9 个）+ 迁移④
-    `20261031000002_token_subscription_snapshots` + CLI `lib/subscription-report.js`
-    （Qoder/Qoder CN 积分池 + Trae 套餐元数据，10 分钟节流，best-effort）+ 仪表盘
-    「订阅额度」卡（双栏下，无快照整卡隐藏）。一期 Trae 无用量百分比（Local State
-    entitlement 只有套餐元数据；百分比在 trae-cn 用量 opt-in 通道，二期再接）。
-  - **Sessions credits** `8d81282`：§2.4 sessions 可选 `credits`（钳 0 不拒批）+
-    `session-analytics` 新增 qoder/qoder-cn 会话 reader（一文件=一会话，credits 随行，
-    子代理文件也计入）+ `session-upload` 透传 + 迁移⑤ `20261031000003`（token_sessions
-    .credits + RPC 替换）+ Sessions 表积分列（totals.credits>0 才显示）+ 详情弹窗积分行。
-    **历史会话保持 0**（ended_at 严格 last-wins 不重写老快照）。
-  - 四个迁移均已应用生产库（幂等验证通过）；两个批次 `pnpm verify` 445/445 绿，
-    本地提交 **未推送**，等操作者验收。
-- **2026-10-31 撤项（操作者裁定）**：实机验收后确认订阅余额对本机计划**没有展示价值**
-  （Qoder CN 主池为厂商空计划标记、真实额度在第三窗口且会随用量清零，Trae 只有套餐元
-  数据），**订阅额度功能整体移除**——§2.13/§2.14 契约段、CLI `lib/subscription-report.js`
-  与 sync 接线、服务端路由/读面、仪表盘卡、迁移④文件均删除；生产库
-  `token_subscription_snapshots` 表已 drop。**保留**：Sessions 会话级 credits、
-  sync-runs `credits_ingested` 遥测、桶级 credits（各自独立有价值）。`usage-limits.js`
-  的 16 家限额 reader 不受影响（status 面继续用）。
 - **2026-10-31 二轮增量（已验收推送后）**：P0/P1 已推 main（`52e5808..bbc42e8`）。追加：
   迁移 ② `20261031000001_token_sync_runs_credits.sql` 已应用生产库（操作者授权同前）；
   `credits_ingested` 遥测全链路（§2.11/§2.12 契约 + CLI + 读侧 + 采集记录页行内显示）；

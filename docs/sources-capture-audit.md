@@ -12,7 +12,7 @@
 - **本机唯一有真实数据却未被采集的缺口**：Trae CN 的本地库（`%APPDATA%\Trae CN\ModularData\ai-agent\database.db`，SQLCipher 加密但内置共享密钥可解）不在 `resolveTraeDbPaths` 的扫描范围（`packages/cli/src/lib/trae-db.js:24`）。
 - **本机唯一"本地只有积分"的活跃源**：qoder-cn 新版 JSONL（`~/.qoder-cn/projects`），credits-only 行被有意丢弃、只计对话（`packages/cli/src/lib/rollout.js:6892-6929`）。
 - **行业事实（双重验证）**：订阅制工具的云端接口只有余额/百分比快照，**没有任何一家开放按 token 的消耗明细**——我们自己的 `lib/usage-limits.js` 覆盖 16 家、参照项目 12 个订阅渠道，结论一致。唯一例外是 Cursor 的 dashboard CSV 导出（逐事件 token 明细 + 真实美元成本），本项目已实现。
-- 改动任务共 3 批（Trae CN 接入 / credits 字段 / 订阅额度），见 `docs/sources-capture-plan.md`；其余保持现状（§6）。
+- 改动任务共 2 批（Trae CN 接入 / credits 字段），见 `docs/sources-capture-plan.md`；其余保持现状（§6）。
 
 ## 2. 双平面原则（铁律）
 
@@ -21,7 +21,7 @@
 | 平面 | 数据来源 | 形态 | 去向 |
 |---|---|---|---|
 | **token 面** | 各工具写在本地磁盘的会话日志/数据库 | 真实 token 明细 | `queue.jsonl` → ingest → `token_usage_hourly` / `token_sessions` |
-| **积分面** | 云端订阅接口（凭据取自本机登录态） | 余额 / 百分比 / 剩余次数快照 | 仅展示（CLI status 现状；P2 若做则进仪表盘），**永不落 token 表** |
+| **积分面** | 云端订阅接口（凭据取自本机登录态） | 余额 / 百分比 / 剩余次数快照 | 仅展示（CLI status 面，`lib/usage-limits.js`），**永不落 token 表** |
 
 铁律：
 
@@ -59,7 +59,7 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 
 ## 5. 标准来源速览
 
-其余来源（claude、codex、zcode、dsh、opencode、workbuddy、minimax-code、pi、zed、codebuddy、grok、copilot、gemini、antigravity、cline、kilocode、roocode、kimi、kimi-code、devin、droid、goose、lmstudio、unsloth、anythingllm、craft、muse、omo、omp、hermes、reasonix、dumate、acode、every-code、command-code、openclaw、claude-science、kilo-cli、mimo、workbuddy-ai、qoder legacy 等）均为**本地文件/SQLite 直读真实 token**（个别为累计差分快照：goose、zed、reasonix、droid），路径与解析器见 `sync.js` 与 `rollout.js` 各自的 resolve/parse 函数。其中 grok/copilot/kimi/zcode 等**按积分/限额计费但本地有真实 token** 的源，云端限额已由 `lib/usage-limits.js`（16 家，status-only）覆盖——**它们没有采集问题**，只是订阅额度展示（plan 文档 P2）的素材。
+其余来源（claude、codex、zcode、dsh、opencode、workbuddy、minimax-code、pi、zed、codebuddy、grok、copilot、gemini、antigravity、cline、kilocode、roocode、kimi、kimi-code、devin、droid、goose、lmstudio、unsloth、anythingllm、craft、muse、omo、omp、hermes、reasonix、dumate、acode、every-code、command-code、openclaw、claude-science、kilo-cli、mimo、workbuddy-ai、qoder legacy 等）均为**本地文件/SQLite 直读真实 token**（个别为累计差分快照：goose、zed、reasonix、droid），路径与解析器见 `sync.js` 与 `rollout.js` 各自的 resolve/parse 函数。其中 grok/copilot/kimi/zcode 等**按积分/限额计费但本地有真实 token** 的源，云端限额已由 `lib/usage-limits.js`（16 家，status-only）覆盖——**它们没有采集问题**，只是 status 限额面板已有的素材。
 
 ## 6. 保持现状清单（带理由）
 

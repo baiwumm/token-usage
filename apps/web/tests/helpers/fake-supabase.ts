@@ -110,16 +110,6 @@ function defaultTables(): Record<string, TableDef> {
       generate: ["created_at", "updated_at"],
       unique: [{ name: "token_achievement_seen_pkey", columns: ["user_id"] }],
     },
-    token_subscription_snapshots: {
-      rows: [],
-      generate: ["updated_at"],
-      unique: [
-        {
-          name: "token_subscription_snapshots_pkey",
-          columns: ["user_id", "source"],
-        },
-      ],
-    },
     token_allowed_emails: { rows: [], generate: ["created_at"], unique: [{ name: "token_allowed_emails_email_key", columns: ["email"] }] },
   };
 }
