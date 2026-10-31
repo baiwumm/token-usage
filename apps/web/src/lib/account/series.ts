@@ -206,6 +206,8 @@ export type SeriesBucket = {
   cache_creation_input_tokens: number;
   reasoning_output_tokens: number;
   conversation_count: number;
+  /** Vendor credits (docs/cli-contract.md §2.4, 2026-10-31) — display-only. */
+  credits: number;
   models: Record<string, number>;
 };
 
@@ -224,6 +226,7 @@ function emptyBucket(
     cache_creation_input_tokens: 0,
     reasoning_output_tokens: 0,
     conversation_count: 0,
+    credits: 0,
     models: {},
   } as SeriesBucket;
 }
@@ -254,6 +257,10 @@ function addRowToBucket(bucket: SeriesBucket, row: UsageRow): void {
   bucket.conversation_count += numberOr0(
     row.conversations ?? row.conversation_count,
   );
+  // Credits never merge into any token column — a display-only dimension
+  // (docs/sources-capture-audit.md §2), rounded to 6 decimals like the CLI.
+  bucket.credits =
+    Math.round((bucket.credits + numberOr0(row.credits)) * 1e6) / 1e6;
   const model = String(row.model || "").trim() || "unknown";
 
   bucket.models[model] = (bucket.models[model] || 0) + total;
@@ -541,6 +548,8 @@ export type BreakdownTotals = {
   cache_creation_input_tokens: number;
   reasoning_output_tokens: number;
   total_cost_usd: number;
+  /** Vendor credits (docs/cli-contract.md §2.4, 2026-10-31) — display-only. */
+  credits: number;
 };
 
 // Wire variant: model-breakdown prints costs as fixed 6-decimal strings.
@@ -558,6 +567,7 @@ function modelBreakdownTotals(): BreakdownTotals {
     cache_creation_input_tokens: 0,
     reasoning_output_tokens: 0,
     total_cost_usd: 0,
+    credits: 0,
   };
 }
 
@@ -577,6 +587,8 @@ function addRowToTotals(totals: BreakdownTotals, row: UsageRow): void {
   );
   totals.reasoning_output_tokens += numberOr0(row.reasoning_output_tokens);
   totals.total_cost_usd += rowCost(row);
+  totals.credits =
+    Math.round((totals.credits + numberOr0(row.credits)) * 1e6) / 1e6;
 }
 
 // (source, model) breakdown over [from, to], tz-local. Each model carries the

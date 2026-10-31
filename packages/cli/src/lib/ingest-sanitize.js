@@ -35,6 +35,15 @@ function sanitizeBucketForUpload(bucket) {
   if (bucket.conversation_count !== undefined) sanitized.conversation_count = nonNegativeInteger(bucket.conversation_count);
   if (bucket.conversations !== undefined) sanitized.conversations = nonNegativeInteger(bucket.conversations);
   sanitized.total_cost_usd = bucket.total_cost_usd == null ? 0 : nonNegativeNumber(bucket.total_cost_usd);
+  // Credits (docs/cli-contract.md §2.4, 2026-10-31): optional float, dropped
+  // entirely when zero/invalid so rows without a credit-based provider keep
+  // their previous wire shape.
+  const credits = Number(bucket.credits);
+  if (Number.isFinite(credits) && credits > 0) {
+    sanitized.credits = Math.round(credits * 1e6) / 1e6;
+  } else {
+    delete sanitized.credits;
+  }
   return sanitized;
 }
 

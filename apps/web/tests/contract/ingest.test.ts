@@ -237,6 +237,81 @@ describe("ingest dedup + last-wins", () => {
   });
 });
 
+describe("ingest credits", () => {
+  it("defaults credits to 0 for payloads without the field (additive field)", async () => {
+    const res = await ingest({ hourly: [bucket()] });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ inserted: 1, skipped: 0, upload_scope: "private" });
+    expect(fake.table("token_usage_hourly").at(-1)!.credits).toBe(0);
+  });
+
+  it("stores float credits and accepts credits-only buckets (tokens all zero)", async () => {
+    const zeroTokens = {
+      input_tokens: 0,
+      cached_input_tokens: 0,
+      cache_creation_input_tokens: 0,
+      output_tokens: 0,
+      reasoning_output_tokens: 0,
+      total_tokens: 0,
+    };
+    const res = await ingest({
+      hourly: [
+        bucket({ source: "qoder-cn", model: "dfmodel", credits: 0.642 }),
+        bucket({ source: "qoder-cn", model: "dfmodel", hour_start: "2026-10-21T09:30:00.000Z", ...zeroTokens, credits: 2.5, conversations: 1 }),
+      ],
+    });
+    expect(res.status).toBe(200);
+    const rows = fake.table("token_usage_hourly").filter((r) => r.source === "qoder-cn");
+    expect(rows).toHaveLength(2);
+    expect(rows[0].credits).toBe(0.642);
+    // The credits-only bucket keeps a zero token delta (no credit→token rate).
+    expect(rows[1]).toMatchObject({ total_tokens: 0, credits: 2.5 });
+  });
+
+  it("rounds credits to 6 decimals and clamps invalid, negative and over-cap rows", async () => {
+    const res = await ingest({
+      hourly: [
+        bucket({ hour_start: "2026-10-21T09:00:00.000Z", credits: 0.1234567 }),
+        bucket({ hour_start: "2026-10-21T08:00:00.000Z", credits: -1 }),
+        bucket({ hour_start: "2026-10-21T07:00:00.000Z", credits: "abc" }),
+        bucket({ hour_start: "2026-10-21T06:00:00.000Z", credits: 2_000_000 }),
+      ],
+    });
+    expect(res.status).toBe(200);
+    // Scope to this request's rows: the seed scenario plants unrelated
+    // buckets at 07:00/08:00 (trae-cn / machine-src) without credits.
+    const creditsAt = (hour: string) =>
+      fake
+        .table("token_usage_hourly")
+        .find((r) => r.hour_start === hour && r.source === "codex")!.credits;
+    expect(creditsAt("2026-10-21T09:00:00.000Z")).toBe(0.123457);
+    expect(creditsAt("2026-10-21T08:00:00.000Z")).toBe(0);
+    expect(creditsAt("2026-10-21T07:00:00.000Z")).toBe(0);
+    expect(creditsAt("2026-10-21T06:00:00.000Z")).toBe(1_000_000);
+  });
+
+  it("credits never participate in the request-internal total dedup", async () => {
+    const res = await ingest({
+      hourly: [
+        bucket({ credits: 5 }),
+        bucket({ total_tokens: 99, output_tokens: 89, credits: 0.1 }),
+      ],
+    });
+    expect(res.status).toBe(200);
+    const rows = fake.table("token_usage_hourly").filter((r) => r.hour_start === "2026-10-21T09:00:00.000Z");
+    expect(rows).toHaveLength(1);
+    // The largest total_tokens wins regardless of credits.
+    expect(rows[0].total_tokens).toBe(99);
+    expect(rows[0].credits).toBe(0.1);
+  });
+
+  it("last-wins replay without credits resets the stored credits to 0", async () => {
+    await ingest({ hourly: [bucket({ credits: 3.5 })] });
+    await ingest({ hourly: [bucket()] });
+    expect(fake.table("token_usage_hourly").at(-1)!.credits).toBe(0);
+  });
+});
+
 function session(over: Record<string, unknown> = {}) {
   return {
     session_id: "session-1",

@@ -159,7 +159,7 @@ export function seedScenario(fake: FakeSupabase): void {
 
   // Machine-level rows on device A.
   hourly.push(
-    row({ hour_start: "2026-10-21T00:00:00.000Z", source: "codex", model: RAW_MODEL, total_tokens: 1500, input_tokens: 1000, output_tokens: 500 }),
+    row({ hour_start: "2026-10-21T00:00:00.000Z", source: "codex", model: RAW_MODEL, total_tokens: 1500, input_tokens: 1000, output_tokens: 500, credits: 0.642 }),
     row({ hour_start: "2026-10-21T02:00:00.000Z", source: "claude-code", model: RAW_MODEL, total_tokens: 700, input_tokens: 400, output_tokens: 300, conversations: 2 }),
     // A grok row with an authoritative provider-reported cost.
     row({ hour_start: "2026-10-21T03:00:00.000Z", source: "grok", model: "grok-code-fast-1", total_tokens: 2000, input_tokens: 2000, output_tokens: 0, total_cost_usd: 0.5 }),

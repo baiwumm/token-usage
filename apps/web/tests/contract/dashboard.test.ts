@@ -68,6 +68,8 @@ describe("GET dashboard", () => {
     expect(body.totals.first_hour).toBe("2026-10-21T00:00:00.000Z");
     expect(body.totals.last_hour).toBe("2026-10-21T07:00:00.000Z");
     expect(body.all_time.total_tokens).toBe(5700);
+    // Credits: only the codex seed row carries them (display-only dimension).
+    expect(body.totals.credits).toBe(0.642);
 
     expect(body.daily).toHaveLength(1);
     expect(body.daily[0]).toMatchObject({
@@ -75,6 +77,7 @@ describe("GET dashboard", () => {
       total_tokens: 5700,
       billable_total_tokens: 5700,
       conversations: 6,
+      credits: 0.642,
     });
 
     expect(body.models.map((m: { model: string }) => m.model)).toEqual([

@@ -94,6 +94,8 @@ describe("GET account-summary", () => {
       // codex 1000 + claude 400 + grok 2000 + cursor 900 + session 300
       input_tokens: 4600,
       conversation_count: 6,
+      // Only the codex row carries credits (display-only dimension).
+      credits: 0.642,
     });
     expect(body.totals.total_cost_usd).toBe("0.501125");
     expect(body.rolling.last_7d).toMatchObject({
@@ -147,6 +149,7 @@ describe("series: daily", () => {
       total_tokens: EXPECTED_TOTAL,
       billable_total_tokens: EXPECTED_TOTAL,
       conversation_count: 6,
+      credits: 0.642,
     });
     expect(day.models).toEqual({
       "test-unpriced-model": 2800,
@@ -293,6 +296,10 @@ describe("series: model-breakdown", () => {
     expect(cursor.models[0]).toMatchObject({ model: "composer-1", cost_source: "model_pricing" });
     expect(cursor.models[0].pricing).toMatchObject({ status: "priced", input: 1.25, output: 10 });
     expect(cursor.totals.total_cost_usd).toBe("0.001125");
+    // Credits ride the source totals, not the 6dp cost string (§2.4).
+    const codex = body.sources.find((s: { source: string }) => s.source === "codex");
+    expect(codex.totals.credits).toBe(0.642);
+    expect(grok.totals.credits).toBe(0);
   });
 
   it("requires from and to", async () => {

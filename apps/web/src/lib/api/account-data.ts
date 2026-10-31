@@ -96,7 +96,7 @@ async function fetchAccountUsage(userId: string): Promise<AccountUsage> {
   const [hourly, sessionStates, deviceRows, tokenRows] = await Promise.all([
     selectAll("token_usage_hourly", {
       columns:
-        "device_id,hour_start,source,model,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,conversations,total_cost_usd,updated_at",
+        "device_id,hour_start,source,model,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,conversations,total_cost_usd,credits,updated_at",
       filters: [["user_id", "eq", userId]],
       order: "hour_start.asc,device_id.asc,source.asc,model.asc",
     }),

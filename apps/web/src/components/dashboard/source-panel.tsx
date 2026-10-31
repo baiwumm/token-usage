@@ -24,7 +24,7 @@ export function SourcePanel({
   sources: ModelBreakdownSource[];
   copy: DashboardCopy;
 }) {
-  const { formatTokens, formatPercent } = useFormat();
+  const { formatTokens, formatPercent, formatCredits } = useFormat();
   const [locale] = useLocale();
   // Click-to-toggle distribution (juejin 工具分布 style): hidden canonical
   // sources drop out of the donut, the share denominator recomputes, and the
@@ -75,8 +75,11 @@ export function SourcePanel({
               </span>
             </span>
             <span className="text-foreground/60 tabular-nums text-xs">
-              {formatTokens(row.totalTokens)} ·{" "}
-              {isHidden ? "—" : formatPercent(share)}
+              {formatTokens(row.totalTokens)}
+              {row.totalCredits > 0
+                ? ` · ${formatCredits(row.totalCredits)} ${copy.panels.creditsUnit}`
+                : ""}{" "}
+              · {isHidden ? "—" : formatPercent(share)}
             </span>
           </button>
         );

@@ -24,6 +24,7 @@ export type NormalizedBucket = {
     billable_total_tokens: number | null;
     conversations: number;
     total_cost_usd: number;
+    credits: number;
   };
 
 export type NormalizedSessionState = {
@@ -45,6 +46,20 @@ export function nonNegativeInteger(value: unknown): number | null {
 // otherwise forge arbitrary dashboard totals. Clamped, not rejected — a
 // whole-batch 400 would stall deployed collectors on one stray row.
 export const MAX_BUCKET_COST_USD = 10;
+
+// Per-row credits clamp (docs/cli-contract.md §2.4, 2026-10-31): vendor
+// credits (e.g. Qoder Credits) are a display-only dimension that is never
+// merged into any token column. Clamped like cost, not rejected — a stray row
+// must never stall a deployed collector's queue. Floats round to 6 decimals.
+export const MAX_BUCKET_CREDITS = 1_000_000;
+
+export function normalizeCredits(value: unknown): number {
+  const number = Number(value);
+
+  return Number.isFinite(number) && number > 0
+    ? Math.min(Math.round(number * 1e6) / 1e6, MAX_BUCKET_CREDITS)
+    : 0;
+}
 
 export function normalizeBucket(raw: unknown): NormalizedBucket | null {
   if (!raw || typeof raw !== "object") return null;
@@ -93,6 +108,7 @@ export function normalizeBucket(raw: unknown): NormalizedBucket | null {
       Number.isFinite(cost) && cost >= 0
         ? Math.min(cost, MAX_BUCKET_COST_USD)
         : 0,
+    credits: normalizeCredits(record.credits),
   };
 }
 

@@ -3684,6 +3684,7 @@ async function enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets })
             total_cost_usd: totals.total_cost_usd || 0,
             usage_precision: usagePrecision || undefined,
             ...prioritySubsetOf(totals),
+            ...creditsSubsetOf(totals),
             conversation_count: totals.conversation_count,
           }),
         );
@@ -3765,6 +3766,7 @@ async function enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets })
         total_cost_usd: unknownBucket.totals.total_cost_usd || 0,
         usage_precision: usagePrecision || undefined,
         ...prioritySubsetOf(unknownBucket.totals),
+        ...creditsSubsetOf(unknownBucket.totals),
         conversation_count: unknownBucket.totals.conversation_count,
       }),
     );
@@ -3814,6 +3816,7 @@ async function enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets })
           billable_total_tokens: group.totals.billable_total_tokens ?? group.totals.total_tokens,
           total_cost_usd: group.totals.total_cost_usd || 0,
           ...prioritySubsetOf(group.totals),
+          ...creditsSubsetOf(group.totals),
           conversation_count: group.totals.conversation_count,
         }),
       );
@@ -4405,6 +4408,7 @@ function initTotals() {
     billable_total_tokens: 0,
     total_cost_usd: 0,
     conversation_count: 0,
+    credits: 0,
   };
 }
 
@@ -4440,6 +4444,14 @@ function prioritySubsetOf(totals) {
   return subset;
 }
 
+// Vendor credits (docs/sources-capture-audit.md §2) serialize only when
+// positive, so buckets that never see a credit-based provider keep their
+// previously persisted queuedKey and queue rows unchanged.
+function creditsSubsetOf(totals) {
+  const value = Number(totals?.credits) || 0;
+  return value > 0 ? { credits: value } : {};
+}
+
 function addTotals(target, delta) {
   for (const [field] of PRIORITY_SUBSET_FIELDS) {
     const value = Number(delta?.[field]) || 0;
@@ -4456,6 +4468,9 @@ function addTotals(target, delta) {
     ((target.total_cost_usd || 0) + (delta.total_cost_usd || 0)) * USD_TICKS_PER_USD,
   ) / USD_TICKS_PER_USD;
   target.conversation_count += delta.conversation_count || 0;
+  // Credits are a display-only dimension: summed like cost but never part of
+  // any token column or sum check (docs/sources-capture-audit.md §2).
+  target.credits = Math.round(((target.credits || 0) + (delta.credits || 0)) * 1e6) / 1e6;
 }
 
 // Signed-delta defense (audit fix): OpenCode corrections subtract a prior
@@ -4473,6 +4488,7 @@ function clampTotalsNonNegative(totals) {
     "total_tokens",
     "billable_total_tokens",
     "conversation_count",
+    "credits",
   ]) {
     if (totals[key] != null) totals[key] = Math.max(0, totals[key]);
   }
@@ -4516,6 +4532,10 @@ function subtractTotals(target, totals) {
     0,
     target.conversation_count - (totals.conversation_count || 0),
   );
+  target.credits = Math.max(
+    0,
+    Math.round(((target.credits || 0) - (totals.credits || 0)) * 1e6) / 1e6,
+  );
 }
 
 function totalsKey(totals) {
@@ -4533,7 +4553,9 @@ function totalsKey(totals) {
   // Appended only when a priority subset exists, so buckets that never see the
   // tier keep their previously persisted queuedKey and are not re-enqueued.
   const priority = PRIORITY_SUBSET_FIELDS.map(([field]) => Number(totals[field]) || 0);
-  return priority.some((value) => value > 0) ? `${base}|p:${priority.join(",")}` : base;
+  const key = priority.some((value) => value > 0) ? `${base}|p:${priority.join(",")}` : base;
+  const credits = Number(totals.credits) || 0;
+  return credits > 0 ? `${key}|c:${credits}` : key;
 }
 
 function toUtcHalfHourStart(ts) {
@@ -6889,9 +6911,18 @@ function qoderNewTimestampMs(record) {
     || 0;
 }
 
+// Vendor credits (Qoder) ride along on token rows and are the only counter on
+// credits-only rows. They are a display-only dimension
+// (docs/sources-capture-audit.md §2): summed for visibility, never converted
+// to tokens and never merged into any token column.
+function qoderUsageCredits(usage) {
+  const credits = Number(usage?.credits ?? usage?.original_credits ?? 0);
+  return Number.isFinite(credits) && credits > 0 ? Math.round(credits * 1e6) / 1e6 : 0;
+}
+
 function normalizeQoderNewTokens(usage) {
   if (!usage || typeof usage !== "object") return null;
-  const credits = Number(usage.credits ?? usage.original_credits ?? 0);
+  const credits = qoderUsageCredits(usage);
   let input = Number(usage.input_tokens ?? 0);
   let cached = Number(usage.cache_read_input_tokens ?? usage.cached_tokens ?? 0);
   let cacheCreation = Number(usage.cache_creation_input_tokens ?? 0);
@@ -7024,9 +7055,14 @@ async function parseQoderNewIncremental({
         total_tokens: base.total_tokens,
         billable_total_tokens: base.billable_total_tokens,
         total_cost_usd: 0,
+        credits: base.credits || 0,
         usage_precision: base.usage_precision || undefined,
         conversation_count: 1,
       } : {
+        // Credit-only usage: the token delta stays zero (no first-party
+        // credit→token rate), but the vendor credits are now recorded for
+        // display instead of being dropped (2026-10-31 P1,
+        // docs/sources-capture-plan.md §3).
         input_tokens: 0,
         cached_input_tokens: 0,
         cache_creation_input_tokens: 0,
@@ -7035,6 +7071,7 @@ async function parseQoderNewIncremental({
         total_tokens: 0,
         billable_total_tokens: 0,
         total_cost_usd: 0,
+        credits: qoderUsageCredits(usage),
         conversation_count: 1,
       };
       let projectKey = null;

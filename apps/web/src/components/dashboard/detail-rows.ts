@@ -37,6 +37,7 @@ export function buildDetailRows({
       billable: point.billable_total_tokens,
       cost: point.total_cost_usd,
       conversations: point.conversation_count,
+      credits: point.credits,
       models: Object.keys(point.models).length,
       modelTokens: point.models,
     }));
@@ -52,6 +53,7 @@ export function buildDetailRows({
       billable: point.billable_total_tokens,
       cost: point.total_cost_usd,
       conversations: point.conversation_count,
+      credits: point.credits,
       models: Object.keys(point.models).length,
       modelTokens: point.models,
     }));
@@ -70,6 +72,7 @@ export function buildDetailRows({
     billable: point.billable_total_tokens,
     cost: point.total_cost_usd,
     conversations: point.conversation_count,
+    credits: point.credits,
     models: Object.keys(point.models).length,
     modelTokens: point.models,
   }));

@@ -39,6 +39,12 @@ export interface DetailRow {
   cost: number;
   conversations: number;
   models: number;
+  /**
+   * Vendor credits for the bucket (docs/cli-contract.md §2.4) — display-only,
+   * never merged into the token columns. Rows without credit-based providers
+   * carry 0 and render as an em dash.
+   */
+  credits: number;
   /** Tokens per model name for the bucket; powers the count-column modal. */
   modelTokens: Record<string, number>;
 }
@@ -74,7 +80,7 @@ function DetailTableImpl({
   onHourlyDayChange: (day: string) => void;
   rangePickerMax: CalendarDate;
 }) {
-  const { formatTokens, formatCost, formatNumber } = useFormat();
+  const { formatTokens, formatCost, formatNumber, formatCredits } = useFormat();
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: "time",
     direction: "descending",
@@ -99,6 +105,13 @@ function DetailTableImpl({
       return (left - right) * direction;
     });
   }, [rows, sortDescriptor]);
+
+  // The credits column only appears when the window actually has credit-based
+  // usage (docs/ui-spec.md: no cost data → no cost column, same pattern).
+  const showCredits = useMemo(
+    () => rows.some((row) => row.credits > 0),
+    [rows],
+  );
 
   const columns = useMemo<DataTableColumn<DetailRow>[]>(
     () => [
@@ -177,8 +190,20 @@ function DetailTableImpl({
             formatNumber(row.models)
           ),
       },
+      ...(showCredits
+        ? [
+            {
+              id: "credits",
+              header: copy.detail.columnCredits,
+              sortable: true,
+              className: "tabular-nums",
+              cell: (row: DetailRow) =>
+                row.credits > 0 ? formatCredits(row.credits) : "—",
+            } satisfies DataTableColumn<DetailRow>,
+          ]
+        : []),
     ],
-    [copy, formatCost, formatNumber, formatTokens],
+    [copy, formatCost, formatNumber, formatTokens, formatCredits, showCredits],
   );
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));

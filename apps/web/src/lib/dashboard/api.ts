@@ -10,6 +10,7 @@ export interface DashboardTotals {
   conversations: number;
   buckets: number;
   active_days: number;
+  credits: number;
   first_hour: string | null;
   last_hour: string | null;
 }
@@ -20,6 +21,7 @@ export interface DashboardDay {
   billable_total_tokens: number;
   total_cost_usd: number;
   conversations: number;
+  credits: number;
 }
 
 export interface DashboardModel {
@@ -35,6 +37,7 @@ export interface DashboardSource {
   total_tokens: number;
   total_cost_usd: number;
   buckets: number;
+  credits: number;
 }
 
 export interface DashboardDevice {
@@ -84,6 +87,7 @@ export interface AccountSummaryTotals {
   reasoning_output_tokens: number;
   conversation_count: number;
   total_cost_usd: string;
+  credits: number;
 }
 
 export interface AccountSummaryRolling {
@@ -123,6 +127,8 @@ export interface SeriesPoint {
   cache_creation_input_tokens: number;
   reasoning_output_tokens: number;
   conversation_count: number;
+  /** Vendor credits (docs/cli-contract.md §2.4, 2026-10-31) — display-only. */
+  credits: number;
   models: Record<string, number>;
 }
 
@@ -147,6 +153,7 @@ export interface ModelBreakdownModel {
     cache_creation_input_tokens: number;
     reasoning_output_tokens: number;
     total_cost_usd: string;
+    credits: number;
   };
 }
 
@@ -161,6 +168,7 @@ export interface ModelBreakdownSource {
     cache_creation_input_tokens: number;
     reasoning_output_tokens: number;
     total_cost_usd: string;
+    credits: number;
   };
   models: ModelBreakdownModel[];
 }
@@ -189,6 +197,7 @@ export interface HourlyPoint {
   cache_creation_input_tokens: number;
   reasoning_output_tokens: number;
   conversation_count: number;
+  credits: number;
   models: Record<string, number>;
 }
 
@@ -327,6 +336,7 @@ export interface MonthlyPoint {
   cache_creation_input_tokens: number;
   reasoning_output_tokens: number;
   conversation_count: number;
+  credits: number;
   models: Record<string, number>;
 }
 

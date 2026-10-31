@@ -12,6 +12,8 @@ export interface CanonicalSourceRow {
   label: string;
   totalTokens: number;
   totalCost: number;
+  /** Vendor credits summed across the canonical group (display-only). */
+  totalCredits: number;
   models: ModelBreakdownSource["models"];
 }
 
@@ -28,11 +30,13 @@ export function canonicalSourceRows(
       label: sourceDisplayLabel(entry.source),
       totalTokens: 0,
       totalCost: 0,
+      totalCredits: 0,
       models: [],
     };
 
     agg.totalTokens += entry.totals.total_tokens;
     agg.totalCost += Number(entry.totals.total_cost_usd);
+    agg.totalCredits += entry.totals.credits || 0;
     agg.models.push(...entry.models);
     byId.set(id, agg);
   }

@@ -48,6 +48,7 @@ function sumDaily(days: Array<Record<string, unknown>>) {
     reasoning_output_tokens: 0,
     conversation_count: 0,
     total_cost_usd: 0,
+    credits: 0,
   };
 
   for (const day of days) {

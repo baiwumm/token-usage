@@ -155,6 +155,7 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 | `billable_total_tokens` | 非负整数或显式 `null` |
 | `conversations`（别名 `conversation_count`） | 非负整数，默认 0 |
 | `total_cost_usd` | 非负数，默认 0；**单行钳制 ≤ 10.0 USD**（2026-10-27 安全收紧，防设备令牌伪造天价成本扭曲仪表盘：超出按 10.0 计，不整批拒绝——避免卡住已部署采集机的队列） |
+| `credits` | **可选**（2026-10-31 P1），非负数，默认 0。厂商积分/点数（如 Qoder Credits），浮点，服务端四舍五入到 6 位小数、单行钳制 ≤ 1,000,000，非法/负值按 0 计（对齐 `total_cost_usd` 的钳制哲学，不整批拒绝）。**独立维度**：永不并入任何 token 列、`total_tokens` 校验或成本；是否携带不影响请求合法性。机制背景见 `docs/sources-capture-audit.md` §2 |
 
 **session 字段**（`sessions` 可选；除标注可选者外全部必填；任一非法 → 整批 `400 {"error":"Invalid session"}`）：
 
@@ -178,6 +179,7 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 - 校验先于任何写入：任一条非法则整批拒绝（`400 {"error":"Invalid usage bucket"}` / `"Invalid account session state"` / `"Invalid session"`）。**例外**：账户级来源的会话按上表整条跳过，不触发 400；旧/等值 `ended_at` 快照在写入阶段跳过。
 - `account_session_states` 条目：`source` 当前**必须是 `"trae-cn"`**，`session_id` 非空 ≤256，`total_tokens` 必须等于 `input + cached_input + cache_creation + output`；按 `user_id + source + session_id` upsert。
 - 会话落库键 `(user_id, device_id, source, session_id)`；**last-wins 以 `ended_at` 严格大于现有值为准**。迁移提供原子 RPC `token_upsert_sessions` 做条件 upsert；旧快照或等值重放只计 `sessions_skipped`，不得覆盖新快照。
+- **credits 语义（2026-10-31 P1）**：credits-only 上报（六个 token 列全 0、`conversations ≥ 1`、仅 `credits` > 0）是合法桶；桶 upsert 是**整行覆盖**，重放自不携带 credits 的客户端会把既有行 credits 覆盖回 0——这是桶粒度 last-wins 的直接推论；credits 不参与请求内"取 `total_tokens` 最大"的去重比较。
 - 服务端只持久化上表白名单字段；未知字段一律忽略。`project_key` 只保留 basename，`session_id` 拒绝路径分隔符；不存 prompt、正文、标题、绝对路径、resume command。
 - 成功 `200`：`{ "inserted": <桶数>, "skipped": 0, "upload_scope": "private" }`；仅带 `sessions` 时 `inserted` 为 0。请求携带 `sessions` 时追加可选字段 `sessions_upserted`（插入+更新条数）与 `sessions_skipped`（请求内去重丢弃 + 账户级来源 + 旧/等值快照）。旧 CLI 不传 `sessions` 时响应逐字不变。
 - 附带一次尽力而为的 `last_used_at` 更新（失败只记日志，**不影响已提交的写入**，响应仍 200）。
@@ -199,6 +201,7 @@ Query：`from`、`to`（`YYYY-MM-DD`，缺省= 首日 / 调用方本地今天）
     "input_tokens": 0, "output_tokens": 0,
     "cached_input_tokens": 0, "cache_creation_input_tokens": 0,
     "reasoning_output_tokens": 0, "conversation_count": 0,
+    "credits": 0,
     "total_cost_usd": "0.000000"
   },
   "rolling": {
@@ -209,6 +212,8 @@ Query：`from`、`to`（`YYYY-MM-DD`，缺省= 首日 / 调用方本地今天）
 ```
 
 - `total_cost_usd` 为**字符串，固定 6 位小数**；滚动窗口始终以调用方时区的"今天"结尾。
+- `totals.credits`（2026-10-31 增量）：厂商积分合计，数字类型。**独立维度**——不参与
+  token/成本口径，机制见 `docs/sources-capture-audit.md` §2。
 
 ### 2.7 `GET /api/functions/token-usage-account-<series>`（设备令牌或 JWT｜Dashboard 面）
 
@@ -219,16 +224,20 @@ Query：`from`、`to`（`YYYY-MM-DD`，缺省= 首日 / 调用方本地今天）
 
 | series | 参数 | 响应顶层 |
 |---|---|---|
-| `daily` | `from`,`to` 必填；`from` 自动钳制使窗口 ≤1095 天 | `{from,to,data:[{day, total_tokens, billable_total_tokens, total_cost_usd, input_tokens, output_tokens, cached_input_tokens, cache_creation_input_tokens, reasoning_output_tokens, conversation_count, models:{<model>:<tokens>}}]}` |
+| `daily` | `from`,`to` 必填；`from` 自动钳制使窗口 ≤1095 天 | `{from,to,data:[{day, total_tokens, billable_total_tokens, total_cost_usd, input_tokens, output_tokens, cached_input_tokens, cache_creation_input_tokens, reasoning_output_tokens, conversation_count, credits, models:{<model>:<tokens>}}]}` |
 | `hourly` | `day`（默认今天 UTC） | `{day, data:[{hour:"<day>THH:00:00", …同 daily 行}]}` |
 | `monthly` | `from`+`to`，或 `months`(1–24) | `{from,to,data:[{month, …同 daily 行}]}`（**月桶固定 UTC**） |
 | `heatmap` | `weeks`(1–104，默认 52)、`to`、`week_starts_on`(sun/mon)、`format=compact` | 完整：`{from,to,week_starts_on,active_days,streak_days:0,weeks:[[cell]],total_cost_usd}`；cell=`{day,total_tokens,billable_total_tokens,level(0–4 按最大计费日四分),models|null,sources|null}`；`sources` 为该日按来源的 token 映射（2026-10-25 增量，可选字段，老客户端忽略）。compact：`{format:"compact",from,to,week_starts_on,active_days,streak_days,max_value,model_names:[],days:[[day,total_tokens,[modelIdx,tokens,…]]]}` |
-| `model-breakdown` | `from`,`to` 必填 | `{from,to,days:0,sources:[{source,totals{…,total_cost_usd 字符串 6dp},models:[{model,model_id,pricing,cost_source,totals}}]}],pricing:{model:"per-model",pricing_mode:"per_token_type",source:"litellm",effective_from}}` |
+| `model-breakdown` | `from`,`to` 必填 | `{from,to,days:0,sources:[{source,totals{…,total_cost_usd 字符串 6dp, credits},models:[{model,model_id,pricing,cost_source,totals}}]}],pricing:{model:"per-model",pricing_mode:"per_token_type",source:"litellm",effective_from}}` |
 | `devices` | `from`,`to` 必填 | `{from,to,devices:[{id,device_name,platform,created_at,total_tokens,default_device_name}](仅活跃设备，按用量降序),account_sources:[{source,total_tokens}]}` |
 | `sessions` | `from`,`to` 必填（ISO 瞬时，按 `ended_at` 落在 `[from,to)`）；`device_id`、`source`、`q`（项目标签子串）、`limit`(1–200，默认 50)、`offset` | `{from,to,total,limit,offset,totals:{sessions,total_tokens,billable_total_tokens,total_cost_usd,duration_ms},facets:{sources:[{source,sessions}],devices:[{device_id,device_name,sessions}]},sessions:[{device_id,device_name,session_id,source,project_key,started_at,ended_at,duration_ms,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,total_cost_usd,models:[{model,total_tokens,total_cost_usd,share}]}]}`；按 `ended_at` 倒序（同刻按 `source`、`session_id` 升序） |
 | `sync-runs` | `from`,`to` 必填（ISO 瞬时，按 `started_at` 落在 `[from,to)`）；`device_id`（UUID）、`trigger`、`result`（枚举同 §2.11）、`limit`(1–200，默认 50)、`offset` | `{from,to,total,limit,offset,totals:{runs,empty_runs,tokens_ingested,sessions_uploaded,duration_ms},runs:[{device_id,device_name,run_id,started_at,ended_at,duration_ms,trigger,result,error_code,empty,parsed_files,buckets_uploaded,tokens_ingested,sessions_uploaded,sessions_skipped,queue_bytes,cli_version,os}]}`；按 `started_at` 倒序（同刻按 `run_id` 升序） |
 
 聚合语义（移植时必须保持）：`source ∈ {cursor, trae-cn}` 是**账户级来源**——cursor 桶跨设备去重（同键取 total 最大/updated_at 最新/device_id 最小者），trae-cn 由会话状态聚合而来且忽略设备状态；带 `device_id` 过滤时账户级来源**整段剔除**；已吊销设备的机器级桶**不进入账户聚合**（行保留在库，重新配对后回来）；成本按读取时定价引擎计算（grok/cline 用 provider 上报值，未知模型/订阅/本地推理计 0）。
+
+**credits 增量（2026-10-31）**：`daily` / `hourly` / `monthly` 行与 `model-breakdown` 的
+`totals` 追加 `credits` 数字字段（§2.4 的可选字段透传，独立维度，不参与 token/成本聚合），
+旧客户端忽略即可；`heatmap` / `devices` / `sessions` / `sync-runs` 不携带。
 
 Devices 序列语义（2026-10-28 增量）：`default_device_name` 是 §2.2 签发时写入 `token_devices.default_device_name` 的**创建期名称快照**（`<主机名> #<machine_id 前 8 位>`，含重名退避后缀），此后任何改名都不再更新它；该列可空，缺失时响应里为 `null`。设置页的「恢复默认名称」= 客户端把本字段原值作为 `device_name` 提交给 §2.8，**不新增写接口**；重名由 §2.8 的 `409 device_name_taken` 承担。
 
@@ -262,11 +271,11 @@ Query：`range`(≤20 字符，默认 `"custom"`)、`from`、`to`（ISO 时间�
   "user": {"id","email":null},
   "generated_at": "ISO",
   "range": {"key","from","to","timezone","offset_minutes"},
-  "totals":   {"total_tokens","billable_total_tokens","total_cost_usd","conversations","buckets","active_days","first_hour","last_hour"},
+  "totals":   {"total_tokens","billable_total_tokens","total_cost_usd","conversations","buckets","active_days","credits","first_hour","last_hour"},
   "all_time": { "…同 totals" },
-  "daily":   [{"date","total_tokens","billable_total_tokens","total_cost_usd","conversations"}],
+  "daily":   [{"date","total_tokens","billable_total_tokens","total_cost_usd","conversations","credits"}],
   "models":  [{"model","total_tokens","billable_total_tokens","total_cost_usd","buckets","share"}],  // 最多 24 条
-  "sources": [{"source","total_tokens","total_cost_usd","buckets"}],
+  "sources": [{"source","total_tokens","total_cost_usd","buckets","credits"}],
   "devices": [{"device_id","device_name","platform","active","created_at","last_used_at","last_hour","total_tokens","billable_total_tokens","total_cost_usd","buckets"}],
   "shared_account_sources": {"sources":[…sources 子集],"total_tokens":0,"total_cost_usd":0}
 }
@@ -360,6 +369,11 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
 > `tests/contract/sync-runs.test.ts` 覆盖两端点（校验、幂等重放、空跑派生、筛选分页、
 > 吊销剔除、窗口钳制），冻结条目为 §3 的 13/14。
 
+> `credits` 可选字段已于 2026-10-31 随 P1 落地（§2.4 新增可选请求字段，§4 规则允许）：
+> 不改变任何既有字段、校验阈值与错误码，旧 CLI 不传时请求与响应逐字不变；golden 覆盖见
+> `tests/contract/ingest.test.ts` 的 credits 分组，机制背景见
+> `docs/sources-capture-audit.md` §2。
+
 ## 4. 兼容演进规则
 
 - 只允许**追加可选响应字段**、**新增端点/series** 与**新增可选请求字段**。
@@ -367,6 +381,8 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
 - `sessions` 是 ingest 的可选追加字段；旧 CLI 不传时行为逐字不变。`account-sessions` 是新增
   series，不改变既有六个 series 的响应；`sessions_upserted` / `sessions_skipped` 只在请求
   携带 `sessions` 时追加。
+- `credits` 是 ingest 桶的可选追加字段（2026-10-31）；旧 CLI 不传时行为逐字不变，读取侧
+  以 0 为缺省（独立维度，不参与 token/成本聚合）。
 - Sessions 的隐私白名单（不存 prompt、正文、标题、绝对路径、resume command）属于契约，
   不得以"调试字段"或"未来扩展"为名放宽；新增会话字段必须先回写本文并过隐私评审。
 - 规范路径命名为 `token-usage-*`；旧 `tokentracker-*` 路径经 §1.5 别名永久保留。

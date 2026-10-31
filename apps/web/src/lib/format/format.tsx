@@ -19,6 +19,7 @@ import {
 import {
   BUILT_IN_FX,
   formatCost,
+  formatCredits,
   formatDate,
   formatDateTime,
   formatDuration,
@@ -46,6 +47,7 @@ interface FormatContextValue {
   resetPreferences: () => void;
   formatTokens: (value: unknown) => string;
   formatNumber: (value: unknown) => string;
+  formatCredits: (value: unknown) => string;
   formatPercent: (ratio: unknown) => string;
   formatCost: (valueUsd: unknown) => string;
   formatDuration: (valueMs: unknown) => string;
@@ -108,6 +110,7 @@ export function FormatProvider({
       formatTokens: (value) => formatTokens(value, preferences, locale),
       formatNumber: (value) =>
         formatNumber(value, locale, preferences.tokenGrouping),
+      formatCredits: (value) => formatCredits(value, locale),
       formatPercent: (ratio) => formatPercent(ratio, locale),
       formatCost: (valueUsd) => formatCost(valueUsd, preferences, locale, fx),
       formatDuration: (valueMs) => formatDuration(valueMs, locale),

@@ -67,6 +67,10 @@ export interface DashboardCopy {
     columnTokens: string;
     columnCost: string;
     columnShare: string;
+    creditsTitle: string;
+    creditsHint: string;
+    creditsTotal: string;
+    creditsUnit: string;
   };
   detail: {
     title: string;
@@ -83,6 +87,7 @@ export interface DashboardCopy {
     columnCost: string;
     columnConversations: string;
     columnModels: string;
+    columnCredits: string;
     viewModels: string;
     empty: string;
     loadError: string;
@@ -203,6 +208,11 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnTokens: "Tokens",
       columnCost: "成本",
       columnShare: "占比",
+      creditsTitle: "积分消耗",
+      creditsHint:
+        "仅积分制来源上报的 Credits，独立于 Token 与成本口径，永不并入 Token 总量。",
+      creditsTotal: "本期合计",
+      creditsUnit: "积分",
     },
     detail: {
       title: "用量明细",
@@ -219,6 +229,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnCost: "成本",
       columnConversations: "会话",
       columnModels: "模型数",
+      columnCredits: "积分",
       viewModels: "查看模型明细",
       empty: "该时间范围内没有明细数据。",
       loadError: "明细加载失败。",
@@ -341,6 +352,11 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnTokens: "Tokens",
       columnCost: "Cost",
       columnShare: "Share",
+      creditsTitle: "Credits",
+      creditsHint:
+        "Reported by credit-based sources only — a separate dimension that is never merged into token totals.",
+      creditsTotal: "Total",
+      creditsUnit: "credits",
     },
     detail: {
       title: "Usage detail",
@@ -357,6 +373,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnCost: "Cost",
       columnConversations: "Conversations",
       columnModels: "Models",
+      columnCredits: "Credits",
       viewModels: "View model breakdown",
       empty: "No detail rows in this range.",
       loadError: "Failed to load detail.",

@@ -106,6 +106,7 @@ function aggregateSessionStates(states: UsageRow[]): UsageRow[] {
         billable_total_tokens: 0,
         conversations: 0,
         total_cost_usd: 0,
+        credits: 0,
       } as UsageRow);
 
     for (const keyName of TOKEN_KEYS)
@@ -150,6 +151,8 @@ export type DashboardTotals = {
   conversations: number;
   buckets: number;
   active_days: number;
+  /** Vendor credits (docs/cli-contract.md §2.4, 2026-10-31) — display-only. */
+  credits: number;
   first_hour: string | null;
   last_hour: string | null;
 };
@@ -162,6 +165,7 @@ function emptyTotals(): DashboardTotals {
     conversations: 0,
     buckets: 0,
     active_days: 0,
+    credits: 0,
     first_hour: null,
     last_hour: null,
   };
@@ -177,6 +181,8 @@ function addRow(totals: DashboardTotals, row: UsageRow, cost: number): void {
       : numberOr0(row.billable_total_tokens);
   totals.total_cost_usd += cost;
   totals.conversations += numberOr0(row.conversations);
+  totals.credits =
+    Math.round((totals.credits + numberOr0(row.credits)) * 1e6) / 1e6;
   totals.buckets += 1;
   const start = iso(row.hour_start);
 
@@ -193,6 +199,7 @@ export type DayBucket = {
   billable_total_tokens: number;
   total_cost_usd: number;
   conversations: number;
+  credits: number;
 };
 
 export type ModelEntry = {
@@ -211,6 +218,7 @@ export type SourceEntry = {
   total_tokens: number;
   total_cost_usd: number;
   buckets: number;
+  credits: number;
 };
 
 export type DeviceUsageEntry = {
@@ -263,6 +271,7 @@ export function summarizeRows(
       billable_total_tokens: 0,
       total_cost_usd: 0,
       conversations: 0,
+      credits: 0,
     };
 
     day.total_tokens += numberOr0(row.total_tokens);
@@ -272,6 +281,8 @@ export function summarizeRows(
         : numberOr0(row.billable_total_tokens);
     day.total_cost_usd += cost;
     day.conversations += numberOr0(row.conversations);
+    day.credits =
+      Math.round((day.credits + numberOr0(row.credits)) * 1e6) / 1e6;
     days.set(key, day);
 
     const model = text(row.model) || "unknown";
@@ -298,11 +309,14 @@ export function summarizeRows(
       total_tokens: 0,
       total_cost_usd: 0,
       buckets: 0,
+      credits: 0,
     };
 
     sourceEntry.total_tokens += numberOr0(row.total_tokens);
     sourceEntry.total_cost_usd += cost;
     sourceEntry.buckets += 1;
+    sourceEntry.credits =
+      Math.round((sourceEntry.credits + numberOr0(row.credits)) * 1e6) / 1e6;
     sources.set(source, sourceEntry);
 
     if (row.device_id) {

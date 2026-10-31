@@ -8,6 +8,7 @@ import {
   dedupeSessions,
   dedupeStates,
   isAccountLevelSessionSource,
+  MAX_BUCKET_CREDITS,
   MAX_BUCKET_COST_USD,
   normalizeBucket,
   normalizeProjectKey,
@@ -111,6 +112,23 @@ describe("normalizeBucket", () => {
     expect(normalizeBucket(validBucket({ total_cost_usd: 9.5 }))?.total_cost_usd).toBe(9.5);
     expect(normalizeBucket(validBucket({ total_cost_usd: 10 }))?.total_cost_usd).toBe(10);
     expect(normalizeBucket(validBucket({ total_cost_usd: 1234.56 }))?.total_cost_usd).toBe(MAX_BUCKET_COST_USD);
+  });
+
+  it("defaults credits to 0 and coerces numeric strings like the reference", () => {
+    expect(normalizeBucket(validBucket())?.credits).toBe(0);
+    expect(normalizeBucket(validBucket({ credits: "0.5" }))?.credits).toBe(0.5);
+    expect(normalizeBucket(validBucket({ credits: null }))?.credits).toBe(0);
+  });
+
+  it("rounds credits to 6 decimals and clamps negatives and non-finite to 0", () => {
+    expect(normalizeBucket(validBucket({ credits: 0.1234567 }))?.credits).toBe(0.123457);
+    expect(normalizeBucket(validBucket({ credits: -1 }))?.credits).toBe(0);
+    expect(normalizeBucket(validBucket({ credits: "abc" }))?.credits).toBe(0);
+  });
+
+  it("clamps per-row credits at MAX_BUCKET_CREDITS (§2.4)", () => {
+    expect(normalizeBucket(validBucket({ credits: 999_999.5 }))?.credits).toBe(999_999.5);
+    expect(normalizeBucket(validBucket({ credits: 2_000_000 }))?.credits).toBe(MAX_BUCKET_CREDITS);
   });
 
   it("rejects non-object input", () => {

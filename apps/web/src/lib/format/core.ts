@@ -332,6 +332,24 @@ export function formatNumber(
   return parsed == null ? "—" : groupDigits(parsed, locale, grouping);
 }
 
+/**
+ * Vendor credits (e.g. Qoder Credits) — a display-only dimension, formatted
+ * with locale grouping and at most 2 decimals (trailing zeros trimmed).
+ */
+export function formatCredits(value: unknown, locale: Locale): string {
+  const parsed = numeric(value);
+
+  if (parsed == null) return "—";
+
+  return memoFormatter(
+    `credits\0${locale}`,
+    () =>
+      new Intl.NumberFormat(localeTag(locale), {
+        maximumFractionDigits: 2,
+      }),
+  ).format(parsed);
+}
+
 export function formatPercent(ratio: unknown, locale: Locale): string {
   const parsed = numeric(ratio);
 
