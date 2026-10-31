@@ -261,7 +261,7 @@ export function loadSyncRunRows(
     const [runs, devices] = await Promise.all([
       selectAll("token_sync_runs", {
         columns:
-          "device_id,run_id,started_at,ended_at,duration_ms,trigger,result,error_code,empty,parsed_files,buckets_uploaded,tokens_ingested,sessions_uploaded,sessions_skipped,queue_bytes,cli_version,os",
+          "device_id,run_id,started_at,ended_at,duration_ms,trigger,result,error_code,empty,parsed_files,buckets_uploaded,tokens_ingested,credits_ingested,sessions_uploaded,sessions_skipped,queue_bytes,cli_version,os",
         filters: [
           ["user_id", "eq", userId],
           ["started_at", "gte", fromIso],
