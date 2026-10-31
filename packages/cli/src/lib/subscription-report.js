@@ -88,33 +88,38 @@ function normalizeSnapshot(snapshot) {
 
 function snapshotFromQoderLimits(source, limits) {
   if (!limits?.configured || limits.error) return null;
-  const primary = limits.primary_window;
+  const windows = [];
+  const pools = [];
 
-  if (!primary) return null;
-  const windows = [
-    normalizeWindow({
-      label: "credits",
-      percent: primary.used_percent,
-      resets_at: primary.reset_at,
-    }),
-    limits.secondary_window &&
-    Number.isFinite(Number(limits.secondary_window?.used_percent))
-      ? normalizeWindow({
-          label: "activity",
-          percent: limits.secondary_window.used_percent,
-          resets_at: limits.secondary_window.reset_at,
-        })
-      : null,
-  ].filter(Boolean);
-  const pools = [
-    normalizePool({
-      name: limits.plan_label || null,
-      unit: primary.unit || "Credits",
-      total: primary.limit_credits,
-      used: primary.used_credits,
-      remaining: primary.remaining_credits,
-    }),
-  ].filter(Boolean);
+  // Qoder reports several credit buckets: the primary big_model pool is an
+  // all-zero "empty active plan" marker on some plans, while the real monthly
+  // quota sits in secondary/tertiary windows (observed: 1122/2200 @ 51%).
+  // Map every window; drop all-zero pools so the empty marker never shows.
+  for (const [label, window] of [
+    [null, limits.primary_window],
+    ["activity", limits.secondary_window],
+    [null, limits.tertiary_window],
+  ]) {
+    if (!window || typeof window !== "object") continue;
+    const pool = normalizePool({
+      name: optionalString(window.name) ?? (label ? null : optionalString(limits.plan_label)),
+      unit: optionalString(window.unit) ?? "Credits",
+      total: optionalNonNegativeNumber(window.limit_credits),
+      used: optionalNonNegativeNumber(window.used_credits),
+      remaining: optionalNonNegativeNumber(window.remaining_credits),
+    });
+
+    if (pool && ((pool.total ?? 0) > 0 || (pool.used ?? 0) > 0 || (pool.remaining ?? 0) > 0)) {
+      pools.push(pool);
+    }
+    const normalized = normalizeWindow({
+      label: window.label ?? label,
+      percent: window.used_percent,
+      resets_at: window.reset_at,
+    });
+
+    if (normalized && normalized.percent != null) windows.push(normalized);
+  }
 
   if (!pools.length && !windows.length) return null;
 
