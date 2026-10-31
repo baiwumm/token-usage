@@ -86,3 +86,16 @@
      老数据 credits 为 0，积分卡在范围内无 credits 时整卡不渲染）；
   3. 验收通过 → 推送 main（CI 兜底）；不过 → `git revert 6ec6220`（DB 列可留，无害）。
 - 明确未做：P2 订阅额度卡（后置，另拍板契约面）；本机 CLI 升级（随 npm 发版）。
+- **迁移与补记（2026-10-31 操作者授权执行，已完成）**：
+  - 迁移已应用于生产库（`information_schema` 验证 `credits numeric not null default 0`）；
+  - 历史补记走账本重算：`totalsKey` 的 `|c:` 后缀使 qoder-cn 全部消息"先减后加"，sync 重发
+    22 桶；上传经 `TOKENUSAGE_LOCAL_SYNC_DEVICE_TOKEN` + 本地 dev ingest（新代码）写入，
+    避免"旧生产 ingest 白名单丢 credits 且光标已推进"的顺序陷阱——**该陷阱是通用规律：
+    凡新增 ingest 字段，采集必须打到已部署新代码的端点**；
+  - 本地通道护栏记录：`runtime-config.js:90` 规定 custom base URL + `DEFAULT_ANON_KEY` 一律
+    `invalid_insforge_anon_key`（防令牌外泄），本地验证需另给格式合法的占位 publishable key
+    （本地 ingest 只认设备令牌，anon key 不参与鉴权）；
+  - 落库验证：21 个 qoder-cn 桶 credits>0（10-30 21:00 → 10-31 21:00），合计 747.02 积分，
+    token 恒 0、对话数不变；执行后 CLI 配置已还原（baseUrl = 生产）。
+- **待操作者**：本地 `pnpm dev` 验收三处展示 → 推 main（`6ec6220` + 后续 docs 提交）；
+  不过则 `git revert 6ec6220`。
