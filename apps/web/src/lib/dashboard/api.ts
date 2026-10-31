@@ -579,6 +579,7 @@ export interface SyncRunItem {
   parsed_files: number;
   buckets_uploaded: number;
   tokens_ingested: number;
+  credits_ingested: number;
   sessions_uploaded: number;
   sessions_skipped: number;
   queue_bytes: number | null;
@@ -596,6 +597,7 @@ export interface SyncRunsPayload {
     runs: number;
     empty_runs: number;
     tokens_ingested: number;
+    credits_ingested: number;
     sessions_uploaded: number;
     duration_ms: number;
   };

@@ -99,3 +99,10 @@
     token 恒 0、对话数不变；执行后 CLI 配置已还原（baseUrl = 生产）。
 - **待操作者**：本地 `pnpm dev` 验收三处展示 → 推 main（`6ec6220` + 后续 docs 提交）；
   不过则 `git revert 6ec6220`。
+- **2026-10-31 二轮增量（已验收推送后）**：P0/P1 已推 main（`52e5808..bbc42e8`）。追加：
+  迁移 ② `20261031000001_token_sync_runs_credits.sql` 已应用生产库（操作者授权同前）；
+  `credits_ingested` 遥测全链路（§2.11/§2.12 契约 + CLI + 读侧 + 采集记录页行内显示）；
+  wrapped 来源重复修复（canonical 分组，分享卡同步）；成就条「最接近解锁」加进度条。
+  待办拍板：模型名大小写变体归一（`glm-5.3-flash` vs `GLM-5.3-Flash` 一组即 133.5 亿
+  tokens 拆两行，建议读侧按 lower(model) 分组、展示取组内多数写法）；Sessions 会话级
+  credits（建议暂缓，见对话记录）。

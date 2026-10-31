@@ -162,6 +162,17 @@ export async function POST(request: Request) {
       if (queueBytes == null) return invalidSyncReport();
     }
 
+    // Optional credits telemetry (§2.11, 2026-10-31): a non-negative number
+    // rounded to 6 decimals; absent → 0. Old CLIs never send it.
+    let creditsIngested = 0;
+
+    if (report.credits_ingested != null) {
+      const value = Number(report.credits_ingested);
+
+      if (!Number.isFinite(value) || value < 0) return invalidSyncReport();
+      creditsIngested = Math.round(value * 1e6) / 1e6;
+    }
+
     const cliVersion = trimField(report.cli_version, 32);
 
     if (!cliVersion) return invalidSyncReport();
@@ -211,6 +222,7 @@ export async function POST(request: Request) {
           parsed_files: counts.parsed_files,
           buckets_uploaded: counts.buckets_uploaded,
           tokens_ingested: counts.tokens_ingested,
+          credits_ingested: creditsIngested,
           sessions_uploaded: counts.sessions_uploaded,
           sessions_skipped: counts.sessions_skipped,
           queue_bytes: queueBytes,

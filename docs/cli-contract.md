@@ -302,6 +302,7 @@ Query：`range`(≤20 字符，默认 `"custom"`)、`from`、`to`（ISO 时间�
 | `parsed_files` | 必填。非负安全整数，本轮扫描的会话文件数 |
 | `buckets_uploaded` | 必填。非负安全整数，本轮放入 ingest 请求的桶数 |
 | `tokens_ingested` | 必填。非负安全整数，上述桶的 `total_tokens` 之和。**客户端上报口径的遥测**：桶被更大的重放按 last-wins 覆盖时可能高于净增，**不参与对账**——对账基线仍是 §2.4 的桶 upsert 键与本地 queue last-wins 总数 |
+| `credits_ingested` | **可选**（2026-10-31 增量）。非负数，四舍五入到 6 位小数，本轮放入 ingest 请求的桶的 `credits` 之和（§2.4）。与 `tokens_ingested` 同为客户端上报遥测口径，**不参与对账**；旧 CLI 不传（服务端按 0 计） |
 | `sessions_uploaded` `sessions_skipped` | 必填。非负安全整数 |
 | `queue_bytes` | 可选。非负整数或 `null`，本轮结束后本地待传队列字节数（离线/退避排障用） |
 | `cli_version` | 必填。trim ≤32（如 `"0.1.0"`） |
@@ -328,15 +329,17 @@ Query：`from`、`to`（ISO 瞬时，按 `started_at ∈ [from,to)`）、`device
 ```json
 {
   "from": "...", "to": "...", "total": 0, "limit": 50, "offset": 0,
-  "totals": { "runs": 0, "empty_runs": 0, "tokens_ingested": 0, "sessions_uploaded": 0, "duration_ms": 0 },
+  "totals": { "runs": 0, "empty_runs": 0, "tokens_ingested": 0, "credits_ingested": 0, "sessions_uploaded": 0, "duration_ms": 0 },
   "runs": [ { "device_id", "device_name", "run_id", "started_at", "ended_at", "duration_ms",
               "trigger", "result", "error_code", "empty",
-              "parsed_files", "buckets_uploaded", "tokens_ingested",
+              "parsed_files", "buckets_uploaded", "tokens_ingested", "credits_ingested",
               "sessions_uploaded", "sessions_skipped", "queue_bytes", "cli_version", "os" } ]
 }
 ```
 
 - `empty` 为服务端派生布尔（规则同 §2.11），供 UI 打"空跑"标记与筛选，客户端无需自行推导。
+- `credits_ingested`（2026-10-31 增量）：§2.11 可选遥测字段的读取面透传（行级与 `totals`
+  求和，6 位小数）；旧 CLI 的运行行为 0。
 
 ## 3. 冻结不变量清单（逐条对应契约测试）
 

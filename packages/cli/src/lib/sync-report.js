@@ -49,6 +49,7 @@ function createSyncRunTelemetry({
   let parsedFiles = 0;
   let bucketsUploaded = 0;
   let tokensIngested = 0;
+  let creditsIngested = 0;
   let sessionsUploaded = 0;
   let sessionsSkipped = 0;
   let queueBytes = null;
@@ -64,10 +65,14 @@ function createSyncRunTelemetry({
     },
     // Server-acked drain result: buckets placed into successful ingest
     // requests plus their total_tokens sum (client-side telemetry semantics
-    // per §2.11 — a larger replay may override these buckets later).
-    noteUpload({ inserted = 0, tokens = 0 } = {}) {
+    // per §2.11 — a larger replay may override these buckets later). Credits
+    // (docs/sources-capture-audit.md §2) sum identically as display-only
+    // telemetry.
+    noteUpload({ inserted = 0, tokens = 0, credits = 0 } = {}) {
       bucketsUploaded += Math.max(0, Number(inserted) || 0);
       tokensIngested += Math.max(0, Number(tokens) || 0);
+      creditsIngested =
+        Math.round((creditsIngested + Math.max(0, Number(credits) || 0)) * 1e6) / 1e6;
     },
     noteSessions({ upserted = 0, skipped = 0 } = {}) {
       sessionsUploaded += Math.max(0, Number(upserted) || 0);
@@ -91,6 +96,7 @@ function createSyncRunTelemetry({
         parsed_files: parsedFiles,
         buckets_uploaded: bucketsUploaded,
         tokens_ingested: tokensIngested,
+        ...(creditsIngested > 0 ? { credits_ingested: creditsIngested } : {}),
         sessions_uploaded: sessionsUploaded,
         sessions_skipped: sessionsSkipped,
         queue_bytes: queueBytes,

@@ -31,6 +31,7 @@ export interface SyncRunsCopy {
     volume: string;
     filesUnit: string;
     bucketsUnit: string;
+    creditsUnit: string;
     pageSummary: string;
     pageSize: string;
     pageSizeItem: string;
@@ -89,6 +90,7 @@ export const SYNC_RUNS_COPY: Record<"zh" | "en", SyncRunsCopy> = {
       volume: "采集数据",
       filesUnit: "文件",
       bucketsUnit: "桶",
+      creditsUnit: "积分",
       pageSummary: "第 {start} - {end} 条，共 {total} 条",
       pageSize: "每页条数",
       pageSizeItem: "每页 {count} 条",
@@ -155,6 +157,7 @@ export const SYNC_RUNS_COPY: Record<"zh" | "en", SyncRunsCopy> = {
       volume: "Ingested",
       filesUnit: "files",
       bucketsUnit: "buckets",
+      creditsUnit: "credits",
       pageSummary: "Rows {start}–{end} of {total}",
       pageSize: "Rows per page",
       pageSizeItem: "{count} / page",

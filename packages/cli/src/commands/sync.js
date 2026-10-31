@@ -3795,7 +3795,7 @@ async function cmdSync(argv, context = {}) {
     // semantics). A failed upload reports the run as partial — data stays
     // queued locally for the next pass.
     if (syncRun && uploadAttempted) {
-      syncRun.noteUpload({ inserted: uploadResult.inserted, tokens: uploadResult.tokens || 0 });
+      syncRun.noteUpload({ inserted: uploadResult.inserted, tokens: uploadResult.tokens || 0, credits: uploadResult.credits || 0 });
       if (uploadError) syncRun.setOutcome({ result: "partial", errorCode: "upload_failed" });
     }
 
@@ -4596,12 +4596,13 @@ async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, que
   let skipped = 0;
   let batches = 0;
   let tokensIngested = 0;
+  let creditsIngested = 0;
   let cloudAccess = null;
   const uploadId = crypto.randomUUID();
   const deadline = Date.now() + maxDurationMs;
   let batchBudget = Math.min(maxBatches, 100);
   let requestSignal = null;
-  const resultSoFar = () => ({ inserted, skipped, batches, tokens: tokensIngested, ...(cloudAccess?.next_allowed_at ? { cloudAccess } : {}) });
+  const resultSoFar = () => ({ inserted, skipped, batches, tokens: tokensIngested, credits: creditsIngested, ...(cloudAccess?.next_allowed_at ? { cloudAccess } : {}) });
 
   const queueSize = await safeStatSize(queuePath);
   const limit = Math.min(Math.max(1, Math.floor(Number(batchSize || 200))), MAX_INGEST_BUCKETS);
@@ -4672,9 +4673,13 @@ async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, que
       skipped += Number(data?.skipped || 0);
       // Client-side §2.11 telemetry: the total_tokens of the buckets this
       // request carried (a larger replay may last-wins-override them later;
-      // this figure never participates in reconciliation).
+      // this figure never participates in reconciliation). Credits sum the
+      // same way — the display-only dimension (docs/sources-capture-audit.md
+      // §2) — rounded to 6 decimals to keep float noise out of the ledger.
       for (const bucketRow of result.buckets) {
         tokensIngested += Number(bucketRow?.total_tokens) || 0;
+        creditsIngested =
+          Math.round((creditsIngested + (Number(bucketRow?.credits) || 0)) * 1e6) / 1e6;
       }
       batches += 1;
 

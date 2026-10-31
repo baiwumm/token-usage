@@ -317,6 +317,7 @@ export async function syncRunsPayloadForUser(
         parsed_files: numberOr0(row.parsed_files),
         buckets_uploaded: numberOr0(row.buckets_uploaded),
         tokens_ingested: numberOr0(row.tokens_ingested),
+        credits_ingested: numberOr0(row.credits_ingested),
         sessions_uploaded: numberOr0(row.sessions_uploaded),
         sessions_skipped: numberOr0(row.sessions_skipped),
         queue_bytes:
@@ -345,12 +346,15 @@ export async function syncRunsPayloadForUser(
   // totals aggregate the FULL filtered set, not the current page (§2.12).
   let emptyRuns = 0;
   let tokensIngested = 0;
+  let creditsIngested = 0;
   let sessionsUploaded = 0;
   let durationMs = 0;
 
   for (const item of filtered) {
     if (item.empty) emptyRuns += 1;
     tokensIngested += item.tokens_ingested;
+    creditsIngested =
+      Math.round((creditsIngested + item.credits_ingested) * 1e6) / 1e6;
     sessionsUploaded += item.sessions_uploaded;
     durationMs += item.duration_ms;
   }
@@ -369,6 +373,7 @@ export async function syncRunsPayloadForUser(
     parsed_files: item.parsed_files,
     buckets_uploaded: item.buckets_uploaded,
     tokens_ingested: item.tokens_ingested,
+    credits_ingested: item.credits_ingested,
     sessions_uploaded: item.sessions_uploaded,
     sessions_skipped: item.sessions_skipped,
     queue_bytes: item.queue_bytes,
@@ -386,6 +391,7 @@ export async function syncRunsPayloadForUser(
       runs: filtered.length,
       empty_runs: emptyRuns,
       tokens_ingested: tokensIngested,
+      credits_ingested: creditsIngested,
       sessions_uploaded: sessionsUploaded,
       duration_ms: durationMs,
     },

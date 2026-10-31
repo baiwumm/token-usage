@@ -91,6 +91,7 @@ function seedRuns(fake: FakeSupabase): void {
     parsed_files: 10,
     buckets_uploaded: 2,
     tokens_ingested: 3000,
+    credits_ingested: 0.642,
     sessions_uploaded: 1,
     sessions_skipped: 0,
     queue_bytes: 512,
@@ -101,8 +102,8 @@ function seedRuns(fake: FakeSupabase): void {
 
   runs.push(
     run({}),
-    run({ run_id: "run-a2", started_at: "2026-10-27T09:00:00.000Z", ended_at: "2026-10-27T09:00:05.000Z", duration_ms: 5000, trigger: "manual", tokens_ingested: 1200, buckets_uploaded: 1 }),
-    run({ device_id: DEVICE_B, run_id: "run-b1", started_at: "2026-10-27T09:00:00.000Z", ended_at: "2026-10-27T09:00:00.000Z", duration_ms: 0, empty: true, tokens_ingested: 0, buckets_uploaded: 0, sessions_uploaded: 0 }),
+    run({ run_id: "run-a2", started_at: "2026-10-27T09:00:00.000Z", ended_at: "2026-10-27T09:00:05.000Z", duration_ms: 5000, trigger: "manual", tokens_ingested: 1200, buckets_uploaded: 1, credits_ingested: 0 }),
+    run({ device_id: DEVICE_B, run_id: "run-b1", started_at: "2026-10-27T09:00:00.000Z", ended_at: "2026-10-27T09:00:00.000Z", duration_ms: 0, empty: true, tokens_ingested: 0, buckets_uploaded: 0, credits_ingested: 0, sessions_uploaded: 0 }),
     run({ device_id: DEVICE_REVOKED, run_id: "run-revoked", started_at: "2026-10-27T07:00:00.000Z", ended_at: "2026-10-27T07:00:01.000Z", duration_ms: 1000, tokens_ingested: 999_999 }),
   );
 }
@@ -239,6 +240,7 @@ describe("sync-report persistence semantics", () => {
     expect(row.parsed_files).toBe(12);
     expect(row.buckets_uploaded).toBe(3);
     expect(row.tokens_ingested).toBe(0);
+    expect(row.credits_ingested).toBe(0);
     expect(row.sessions_uploaded).toBe(0);
     expect(row.sessions_skipped).toBe(1);
     expect(row.queue_bytes).toBeNull();
@@ -254,6 +256,25 @@ describe("sync-report persistence semantics", () => {
 
     const rows = fake.table("token_sync_runs");
     expect(rows.map((row) => row.empty)).toEqual([false, false]);
+  });
+
+  it("accepts optional credits_ingested telemetry (rounded, absent → 0) and rejects negatives", async () => {
+    const ok = await report(
+      reportBody({ run_id: "run-credits", credits_ingested: 12.1234567 }),
+    );
+    expect(ok.status).toBe(200);
+    expect(fake.table("token_sync_runs")[0].credits_ingested).toBe(12.123457);
+
+    const bare = await report(reportBody({ run_id: "run-credits-bare" }));
+    expect(bare.status).toBe(200);
+    // Old CLIs never send the field — the column defaults to 0.
+    expect(fake.table("token_sync_runs")[1].credits_ingested).toBe(0);
+
+    const negative = await report(
+      reportBody({ run_id: "run-credits-bad", credits_ingested: -1 }),
+    );
+    expect(negative.status).toBe(400);
+    expect(await negative.json()).toEqual({ error: "invalid_sync_report" });
   });
 
   it("replays are idempotent: duplicate:true, no second row, first write wins", async () => {
@@ -325,6 +346,7 @@ describe("series: sync-runs", () => {
       runs: 3,
       empty_runs: 1,
       tokens_ingested: 3000 + 1200 + 0,
+      credits_ingested: 0.642,
       sessions_uploaded: 2,
       duration_ms: 10_000 + 5000 + 0,
     });
@@ -337,6 +359,7 @@ describe("series: sync-runs", () => {
       [
         "buckets_uploaded",
         "cli_version",
+        "credits_ingested",
         "device_id",
         "device_name",
         "duration_ms",

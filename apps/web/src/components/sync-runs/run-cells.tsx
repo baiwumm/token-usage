@@ -58,12 +58,15 @@ export function RunVolumeCell({
   run: SyncRunItem;
   copy: SyncRunsCopy;
 }) {
-  const { formatTokens, formatNumber } = useFormat();
+  const { formatTokens, formatNumber, formatCredits } = useFormat();
 
   return (
     <div className="flex flex-col">
       <Typography className="whitespace-nowrap tabular-nums" type="body-sm">
         {formatTokens(run.tokens_ingested)}
+        {run.credits_ingested > 0
+          ? ` · ${formatCredits(run.credits_ingested)} ${copy.list.creditsUnit}`
+          : ""}
       </Typography>
       <Typography
         className="whitespace-nowrap tabular-nums"
