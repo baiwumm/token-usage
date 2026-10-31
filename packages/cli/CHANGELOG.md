@@ -3,6 +3,26 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## 0.3.0
+
+新增三个采集来源/维度，修复 Windows 下 Qoder 会话的发现与口径问题。
+
+- **Trae CN 本地库接入**：`resolveTraeDbPaths` 新增 `Trae CN` 安装目录
+  （与 `Trae` / `TRAE SOLO` 同 schema，共享应用密钥直接解密）。此前国内版
+  安装的整个本地用量库被静默漏扫。
+- **Qoder credits 维度**：Qoder 新版会话日志是 credits-only（token 全零），
+  现按桶记录 `credits`（独立维度，不并入 token 列与成本）；会话级 credits
+  随 sessions 上报；sync-run 遥测新增 `credits_ingested`。
+- **Qoder 会话进入 Sessions**：新增 qoder / qoder-cn 会话清单读取器
+  （一文件 = 一会话），并应用与桶解析器一致的 billable 门槛——
+  `billable:false` 行是未扣费理论值（实测占总量 81%），不计入消耗。
+  `SIDECAR_VERSION` 随之重建一次 sidecar。
+- 模型口径：读侧按 model 小写折叠分组（大小写漂移不再拆行），展示名取
+  组内 token 份额最大的写法。
+- 采集期修复：会话清单缓存签名纳入 qoder 文件（否则永远复用旧 sidecar）；
+  `listRolloutFilesDeep` 为异步且只认 `rollout-*` 文件名，qoder 改用专用
+  `.jsonl` 深遍历。
+
 ## 0.2.6
 
 移除从未接线的错误上报 SDK，安装体积与运行时副本明显变小；采集行为不变。
