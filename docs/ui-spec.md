@@ -122,6 +122,10 @@
 5. **双栏**：Top 模型（`SourceIcon`、名称、Token、占比 `Meter`、成本，前 8 条 +
    「成本分析」按钮打开成本分析 Modal）；来源卡（`SourceIcon`、占比 + 成本，随设备筛选，
    取 `model-breakdown`）。
+   两卡下方为**积分消耗卡**（2026-10-31）：逐来源列出上报了 credits 的积分用量与占比
+   （仅积分制来源如 Qoder 会携带；范围内无 credits 数据时整卡隐藏）——积分是独立维度，
+   **永不并入 Token、计费 Token 或成本口径**。模型列表按 model 的小写折叠键聚合
+   （大小写漂移不拆行，展示名取组内 token 份额最大的写法，2026-10-31 口径）。
    来源/模型图标走 `components/source-icon.tsx`：`public/brand-logos/`（品牌商标，
    来源与许可登记在根 `THIRD_PARTY_NOTICES.md`）优先，source 全称映射 + 模型名
    前缀映射（deepseek/kimi/k3/gemini/grok/mimo/gpt/composer/claude/step/minimax/
@@ -134,7 +138,7 @@
 6. **设备卡**（独占一行）：名称/平台/最后上报/Token/成本，取 `dashboard.devices`，
    仅活跃设备且不随设备筛选收窄；点击设备卡把 `device_id` 写入筛选条。
 7. **明细**：`Tabs` 日 / 时 / 月；`Table` 列（时间、Token、计费 Token、成本、会话、
-   模型数）；列头排序、`Pagination`（默认 10/页，可选 10/20/50/100）；时视图先选日期（默认今天）；时区
+   模型数、积分——仅窗口内有 credit 上报才显示该列，2026-10-31 增量）；列头排序、`Pagination`（默认 10/页，可选 10/20/50/100）；时视图先选日期（默认今天）；时区
    切换即时重算日/时，月视图按契约固定 UTC；空窗口显示空态；模型数列可点击（桶内
    `models` 非空时），打开该桶的模型明细 Modal（同 `ModelListModal`）。
 8. **成本分析**：从 Top 模型「成本分析」按钮打开 `Modal`；`Tabs` 按模型 / 按来源；
@@ -196,14 +200,15 @@
   刷新时汇总卡不遮罩，数值变化由 `FlowNumber` 滚动过渡（2026-10-28 操作者裁定）。
 - 列表：`DataTableCard`（标题「会话」+ 副标题说明），`≥md` 用 `Table`、`<md` 用 Card 列表
   都由组件承担（`renderMobileRow`）。列：结束时间、来源 `Chip`（`SourceIcon`
-  Logo + 规范化显示名）、项目、设备、时长、Token、成本、模型（前 3 个 `Chip` + `+N`）、
+  Logo + 规范化显示名）、项目、设备、时长、Token、积分（仅积分制来源上报，2026-10-31
+  增量；窗口内无 credits 数据时整列自动隐藏）、成本、模型（前 3 个 `Chip` + `+N`）、
   「详情」操作列（表头「详情」、行内按钮「查看」，`variant="tertiary"`，2026-10-26 操作者
   裁定）。v1 固定按
   结束时间倒序；服务端分页默认 20/页（可选 10/20/50/100），页脚走 `TablePagination`；不做列排序。
 - 详情：行尾「查看」按钮打开 `Modal`（整行点击为增强，键盘焦点落在按钮上）；头部为来源
   （Logo `Chip`）、项目、设备三枚 `Chip`；meta 两列 结束时间（含相对时间小字）+ 时长；
   Token 拆分（input / cached / cache creation / output / reasoning /
-  total / billable）；模型拆分为 `Table`（模型 Logo、Token、占比、成本，右对齐定宽列）；
+  total / billable；积分制来源额外有积分行，独立维度不计入上列各项）；模型拆分为 `Table`（模型 Logo、Token、占比、成本，右对齐定宽列）；
   隐私提示“仅用量元数据，不含对话内容、路径或命令”；成本脚注“按模型定价估算，可能与
   仪表盘 provider 上报成本存在差异”。
   `session_id` 只作内部键，不在 UI 展示。
