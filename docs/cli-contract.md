@@ -239,6 +239,11 @@ Query：`from`、`to`（`YYYY-MM-DD`，缺省= 首日 / 调用方本地今天）
 `totals` 追加 `credits` 数字字段（§2.4 的可选字段透传，独立维度，不参与 token/成本聚合），
 旧客户端忽略即可；`heatmap` / `devices` / `sessions` / `sync-runs` 不携带。
 
+**模型名归一口径（2026-10-31）**：`models` 记录与 `model-breakdown` 的模型行按 model 的
+**小写折叠键**聚合——采集端/版本间的大小写漂移（如 `GLM-5.3-Flash` vs `glm-5.3-flash`）
+不再拆行；记录的键名为该组内 token 份额最大的原始写法。仅聚合口径变更：模型仍是桶
+upsert 键的一部分，存储保持采集原串。
+
 Devices 序列语义（2026-10-28 增量）：`default_device_name` 是 §2.2 签发时写入 `token_devices.default_device_name` 的**创建期名称快照**（`<主机名> #<machine_id 前 8 位>`，含重名退避后缀），此后任何改名都不再更新它；该列可空，缺失时响应里为 `null`。设置页的「恢复默认名称」= 客户端把本字段原值作为 `device_name` 提交给 §2.8，**不新增写接口**；重名由 §2.8 的 `409 device_name_taken` 承担。
 
 Sessions 聚合语义（2026-10-25 新增）：仅设备级来源，`cursor` / `trae-cn` 永不出现；已吊销设备的会话行保留在库但**整段剔除**；`total` 是筛选全集计数，`totals` 是筛选全集汇总而非当前页；`billable_total_tokens` 为 `null` 时按 `total_tokens` 计入；`total_cost_usd` 读取时按定价引擎逐模型计算后求和（未知模型计 0），所有层级（`totals` / 会话 / 模型）均为固定 6 位小数字符串；`duration_ms = ended_at - started_at`（毫秒非负整数，`totals.duration_ms` 为筛选全集求和）；`models[].share = model.total_tokens / session.total_tokens`（0–1，保留 4 位小数；会话 total 为 0 时记 0）；跨窗口长会话按 `ended_at` 归属单一窗口，不按天切分（v1 无会话内桶）。`facets.sources` 基于 `from/to` + `device_id` + `q`（忽略 `source`），`facets.devices` 基于 `from/to` + `source` + `q`（忽略 `device_id`）；两者均剔除吊销设备与账户级来源，按 `sessions` 降序，供筛选下拉使用，不受 `limit` / `offset` 影响。参数：`from` / `to` 缺失或不可解析 → `400 {"error":"Missing from/to"}`；`from > to` → `400 {"error":"Invalid from/to"}`；窗口 >1095 天时把 `from` 钳制到 `to - 1095d`；`device_id` 非 UUID → `400 {"error":"Invalid device_id"}`；`source` trim + 转小写、≤100，`cursor` / `trae-cn` 按无结果处理（不 400）；`limit` 非数字按 50、钳制 1–200，`offset` 非数字或负数按 0；`q` trim、≤120、大小写不敏感子串，`%` / `_` / `\` 作为字面量转义。

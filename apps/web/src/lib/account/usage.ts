@@ -19,6 +19,8 @@ import {
   type UsageRow,
 } from "./series";
 
+import { ModelDisplayName, modelGroupKey } from "@/lib/model-names";
+
 const TOKEN_KEYS = [
   "input_tokens",
   "cached_input_tokens",
@@ -245,7 +247,13 @@ export function summarizeRows(
 } {
   const totals = emptyTotals();
   const days = new Map<string, DayBucket>();
-  const models = new Map<string, ModelAccumulator>();
+  // Models group by the folded id (docs/cli-contract.md §2.10): casing drift
+  // across collectors must not split one model into two rows — the display
+  // spelling is the variant that carried the most tokens.
+  const models = new Map<
+    string,
+    ModelAccumulator & { names: ModelDisplayName }
+  >();
   const sources = new Map<string, SourceEntry>();
   const devices = new Map<string, DeviceUsageEntry>();
 
@@ -285,15 +293,22 @@ export function summarizeRows(
       Math.round((day.credits + numberOr0(row.credits)) * 1e6) / 1e6;
     days.set(key, day);
 
-    const model = text(row.model) || "unknown";
-    const modelEntry = models.get(model) || {
-      model,
-      total_tokens: 0,
-      billable_total_tokens: 0,
-      total_cost_usd: 0,
-      buckets: 0,
-    };
+    const rawModel = text(row.model) || "unknown";
+    const modelKey = modelGroupKey(rawModel);
+    let modelEntry = models.get(modelKey);
 
+    if (!modelEntry) {
+      modelEntry = {
+        model: "",
+        total_tokens: 0,
+        billable_total_tokens: 0,
+        total_cost_usd: 0,
+        buckets: 0,
+        names: new ModelDisplayName(),
+      };
+      models.set(modelKey, modelEntry);
+    }
+    modelEntry.names.add(rawModel, numberOr0(row.total_tokens));
     modelEntry.total_tokens += numberOr0(row.total_tokens);
     modelEntry.billable_total_tokens +=
       row.billable_total_tokens == null
@@ -301,7 +316,6 @@ export function summarizeRows(
         : numberOr0(row.billable_total_tokens);
     modelEntry.total_cost_usd += cost;
     modelEntry.buckets += 1;
-    models.set(model, modelEntry);
 
     const source = text(row.source) || "unknown";
     const sourceEntry = sources.get(source) || {
@@ -348,8 +362,9 @@ export function summarizeRows(
   );
   const modelList = Array.from(models.values())
     .sort((a, b) => b.total_tokens - a.total_tokens)
-    .map((entry) => ({
+    .map(({ names, ...entry }) => ({
       ...entry,
+      model: names.resolve(),
       share:
         totals.total_tokens > 0 ? entry.total_tokens / totals.total_tokens : 0,
     }));

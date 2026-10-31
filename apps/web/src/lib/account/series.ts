@@ -14,6 +14,7 @@ import {
   getModelPricingInfo,
   type PricingInfo,
 } from "@/lib/pricing";
+import { ModelDisplayName, modelGroupKey } from "@/lib/model-names";
 
 export const ACCOUNT_LEVEL_SOURCES = new Set(["cursor", "trae-cn"]);
 
@@ -238,6 +239,61 @@ export function rowCost(row: UsageRow): number {
   return Number.isFinite(computed) ? computed : 0;
 }
 
+// Per-bucket variant weights behind the folded model keys: the wire record
+// presents the variant that carried the most tokens (docs/cli-contract.md
+// §2.7, 2026-10-31 口径). Dropped once the bucket's models record is rebuilt.
+const bucketModelNames = new WeakMap<
+  SeriesBucket,
+  Map<string, ModelDisplayName>
+>();
+
+function trackBucketModel(
+  bucket: SeriesBucket,
+  rawModel: string,
+  tokens: number,
+): void {
+  const key = modelGroupKey(rawModel);
+  let pickers = bucketModelNames.get(bucket);
+
+  if (!pickers) {
+    pickers = new Map();
+    bucketModelNames.set(bucket, pickers);
+  }
+  let picker = pickers.get(key);
+
+  if (!picker) {
+    picker = new ModelDisplayName();
+    pickers.set(key, picker);
+  }
+  picker.add(rawModel, tokens);
+}
+
+/** Rebuild a folded-key models record with the majority display spellings. */
+function resolveModelRecord(
+  models: Record<string, number>,
+  pickers?: Map<string, ModelDisplayName>,
+): Record<string, number> {
+  if (!pickers) return models;
+  const resolved: Record<string, number> = {};
+
+  for (const [key, tokens] of Object.entries(models)) {
+    resolved[pickers.get(key)?.resolve() ?? key] = tokens;
+  }
+
+  return resolved;
+}
+
+/** Rebuild each bucket's models record with the majority display spellings. */
+function finalizeBucketModels(buckets: SeriesBucket[]): void {
+  for (const bucket of buckets) {
+    const pickers = bucketModelNames.get(bucket);
+
+    if (!pickers) continue;
+    bucket.models = resolveModelRecord(bucket.models, pickers);
+    bucketModelNames.delete(bucket);
+  }
+}
+
 function addRowToBucket(bucket: SeriesBucket, row: UsageRow): void {
   const total = numberOr0(row.total_tokens);
 
@@ -261,9 +317,11 @@ function addRowToBucket(bucket: SeriesBucket, row: UsageRow): void {
   // (docs/sources-capture-audit.md §2), rounded to 6 decimals like the CLI.
   bucket.credits =
     Math.round((bucket.credits + numberOr0(row.credits)) * 1e6) / 1e6;
-  const model = String(row.model || "").trim() || "unknown";
+  const rawModel = String(row.model || "").trim() || "unknown";
 
-  bucket.models[model] = (bucket.models[model] || 0) + total;
+  bucket.models[modelGroupKey(rawModel)] =
+    (bucket.models[modelGroupKey(rawModel)] || 0) + total;
+  trackBucketModel(bucket, rawModel, total);
 }
 
 /** Tz-local daily buckets, sorted by day. */
@@ -287,9 +345,13 @@ export function dailySeries(
     addRowToBucket(bucket, row);
   }
 
-  return Array.from(byDay.values()).sort((a, b) =>
+  const buckets = Array.from(byDay.values()).sort((a, b) =>
     (a.day || "").localeCompare(b.day || ""),
   );
+
+  finalizeBucketModels(buckets);
+
+  return buckets;
 }
 
 /** Tz-local hourly buckets of one requested day, sorted by hour. */
@@ -333,9 +395,13 @@ export function hourlySeriesForDay(
     addRowToBucket(bucket, row);
   }
 
-  return Array.from(byHour.values()).sort((a, b) =>
+  const buckets = Array.from(byHour.values()).sort((a, b) =>
     (a.hour || "").localeCompare(b.hour || ""),
   );
+
+  finalizeBucketModels(buckets);
+
+  return buckets;
 }
 
 /** UTC monthly buckets whose month intersects [from, to], sorted by month. */
@@ -366,9 +432,13 @@ export function monthlySeries(
     addRowToBucket(bucket, row);
   }
 
-  return Array.from(byMonth.values()).sort((a, b) =>
+  const buckets = Array.from(byMonth.values()).sort((a, b) =>
     (a.month || "").localeCompare(b.month || ""),
   );
+
+  finalizeBucketModels(buckets);
+
+  return buckets;
 }
 
 /**
@@ -404,6 +474,7 @@ export function heatmapCells(
       sources: Record<string, number>;
     }
   >();
+  const cellModelNames = new Map<string, Map<string, ModelDisplayName>>();
   let totalCostUsd = 0;
 
   for (const row of rows) {
@@ -432,9 +503,23 @@ export function heatmapCells(
         : numberOr0(row.billable_total_tokens);
     bucket.total_cost_usd += rowCost(row);
     totalCostUsd += rowCost(row);
-    const model = String(row.model || "").trim() || "unknown";
+    const rawModel = String(row.model || "").trim() || "unknown";
+    const modelKey = modelGroupKey(rawModel);
 
-    bucket.models[model] = (bucket.models[model] || 0) + total;
+    bucket.models[modelKey] = (bucket.models[modelKey] || 0) + total;
+    let dayPickers = cellModelNames.get(day);
+
+    if (!dayPickers) {
+      dayPickers = new Map();
+      cellModelNames.set(day, dayPickers);
+    }
+    let picker = dayPickers.get(modelKey);
+
+    if (!picker) {
+      picker = new ModelDisplayName();
+      dayPickers.set(modelKey, picker);
+    }
+    picker.add(rawModel, total);
     const source = String(row.source || "").trim() || "unknown";
 
     bucket.sources[source] = (bucket.sources[source] || 0) + total;
@@ -477,7 +562,9 @@ export function heatmapCells(
       total_tokens: hit ? hit.total_tokens : 0,
       billable_total_tokens: billable,
       level: levelOf(billable),
-      models: hit ? hit.models : null,
+      models: hit
+        ? resolveModelRecord(hit.models, cellModelNames.get(day))
+        : null,
       sources: hit ? hit.sources : null,
     });
     cursor.setUTCDate(cursor.getUTCDate() + 1);
@@ -621,8 +708,7 @@ export function modelBreakdownSources(
       models: Map<
         string,
         {
-          model: string;
-          model_id: string;
+          names: ModelDisplayName;
           cost_source: string | null;
           totals: BreakdownTotals;
         }
@@ -636,7 +722,8 @@ export function modelBreakdownSources(
 
     if (!day || day < from || day > to) continue;
     const source = String(row.source || "").trim() || "unknown";
-    const model = String(row.model || "").trim() || "unknown";
+    const rawModel = String(row.model || "").trim() || "unknown";
+    const modelKey = modelGroupKey(rawModel);
     let sourceAgg = bySource.get(source);
 
     if (!sourceAgg) {
@@ -644,16 +731,15 @@ export function modelBreakdownSources(
       bySource.set(source, sourceAgg);
     }
     addRowToTotals(sourceAgg.totals, row);
-    let modelAgg = sourceAgg.models.get(model);
+    let modelAgg = sourceAgg.models.get(modelKey);
 
     if (!modelAgg) {
       modelAgg = {
-        model,
-        model_id: model,
+        names: new ModelDisplayName(),
         cost_source: null,
         totals: modelBreakdownTotals(),
       };
-      sourceAgg.models.set(model, modelAgg);
+      sourceAgg.models.set(modelKey, modelAgg);
     }
     const costSource =
       ["grok", "cline"].includes(source) && Number(row.total_cost_usd) > 0
@@ -664,22 +750,29 @@ export function modelBreakdownSources(
       modelAgg.cost_source && modelAgg.cost_source !== costSource
         ? "mixed"
         : costSource;
+    modelAgg.names.add(rawModel, numberOr0(row.total_tokens));
     addRowToTotals(modelAgg.totals, row);
   }
 
   return Array.from(bySource.values())
     .map((sourceAgg) => {
       const models = Array.from(sourceAgg.models.values())
-        .map((modelAgg) => ({
-          model: modelAgg.model,
-          model_id: modelAgg.model_id,
-          pricing: getModelPricingInfoFor(modelAgg.model, sourceAgg.source),
-          cost_source: modelAgg.cost_source,
-          totals: {
-            ...modelAgg.totals,
-            total_cost_usd: modelAgg.totals.total_cost_usd.toFixed(6),
-          },
-        }))
+        .map((modelAgg) => {
+          // The display spelling is the variant that carried the most tokens;
+          // pricing resolves against that spelling.
+          const model = modelAgg.names.resolve();
+
+          return {
+            model,
+            model_id: model,
+            pricing: getModelPricingInfoFor(model, sourceAgg.source),
+            cost_source: modelAgg.cost_source,
+            totals: {
+              ...modelAgg.totals,
+              total_cost_usd: modelAgg.totals.total_cost_usd.toFixed(6),
+            },
+          };
+        })
         .sort((a, b) => b.totals.total_tokens - a.totals.total_tokens);
       const sourceCost = models.reduce(
         (sum, model) => sum + Number(model.totals.total_cost_usd),
