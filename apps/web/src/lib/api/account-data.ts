@@ -192,7 +192,7 @@ export function loadSessionRows(
     const [sessions, devices] = await Promise.all([
       selectAll("token_sessions", {
         columns:
-          "device_id,source,session_id,project_key,started_at,ended_at,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,models",
+          "device_id,source,session_id,project_key,started_at,ended_at,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,credits,models",
         filters: [
           ["user_id", "eq", userId],
           ["ended_at", "gte", fromIso],

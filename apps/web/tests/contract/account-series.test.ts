@@ -393,6 +393,7 @@ function seedSessions(): void {
       ended_at: "2026-10-21T11:30:00.000Z",
       input_tokens: 900,
       total_tokens: 900,
+      credits: 0.642,
       models: [sessionModel("composer-1", { input_tokens: 900, total_tokens: 900 })],
     }),
     sessionRow({
@@ -436,11 +437,14 @@ describe("series: sessions", () => {
     expect(body.total).toBe(3);
     expect(body.limit).toBe(50);
     expect(body.offset).toBe(0);
+    // credits sum across the filtered full set (display-only dimension).
     expect(body.totals).toEqual({
       sessions: 3,
       total_tokens: 2200,
       // s1 billable null falls back to total_tokens.
       billable_total_tokens: 2200,
+      // Only s2 carries credits (display-only dimension).
+      credits: 0.642,
       // composer-1: 900 input × $1.25/M = 0.001125; unpriced models cost 0.
       total_cost_usd: "0.001125",
       duration_ms: 3_900_000,
@@ -695,7 +699,7 @@ describe("series dispatch", () => {
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.error).toBe("Unknown account series: bogus");
-    expect(body.series).toEqual(["daily", "hourly", "monthly", "heatmap", "model-breakdown", "devices", "sessions", "sync-runs"]);
+    expect(body.series).toEqual(["daily", "hourly", "monthly", "heatmap", "model-breakdown", "devices", "sessions", "sync-runs", "subscriptions"]);
   });
 
   it("404s non-account paths on the catch-all", async () => {

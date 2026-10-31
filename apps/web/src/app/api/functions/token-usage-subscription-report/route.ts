@@ -36,7 +36,8 @@ function optionalNonNegativeNumber(value: unknown): number | null | undefined {
   if (value === undefined || value === null) return null;
   const parsed = Number(value);
 
-  if (!Number.isFinite(parsed) || parsed < 0) return undefined as unknown as number;
+  if (!Number.isFinite(parsed) || parsed < 0)
+    return undefined as unknown as number;
   // Flag the overflow case separately so callers can reject oversized input.
   if (parsed > Number.MAX_SAFE_INTEGER) return undefined as unknown as number;
 
@@ -54,7 +55,8 @@ function normalizePools(raw: unknown): Record<string, unknown>[] | undefined {
   const pools: Record<string, unknown>[] = [];
 
   for (const entry of raw) {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return undefined;
+    if (!entry || typeof entry !== "object" || Array.isArray(entry))
+      return undefined;
     const record = entry as Record<string, unknown>;
     const name = optionalString(record.name, 100);
 
@@ -84,7 +86,8 @@ function normalizeWindows(raw: unknown): Record<string, unknown>[] | undefined {
   const windows: Record<string, unknown>[] = [];
 
   for (const entry of raw) {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return undefined;
+    if (!entry || typeof entry !== "object" || Array.isArray(entry))
+      return undefined;
     const record = entry as Record<string, unknown>;
     const label = optionalString(record.label, 40);
 

@@ -501,6 +501,7 @@ export class FakeSupabase {
         reasoning_output_tokens: entry.reasoning_output_tokens,
         total_tokens: entry.total_tokens,
         billable_total_tokens: entry.billable_total_tokens ?? null,
+        credits: entry.credits ?? 0,
         models: entry.models ?? [],
       });
       const existing = def.rows.find(

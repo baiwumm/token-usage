@@ -294,6 +294,7 @@ export function DashboardClient() {
           .then((payload) => payload.subscriptions)
           .catch((cause: unknown) => {
             if (isUnauthorized(cause)) throw cause;
+
             return [] as SubscriptionSnapshot[];
           }),
         setSubscriptionState,

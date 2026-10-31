@@ -186,6 +186,12 @@ function mapSessionRow(row) {
     project_key: basenameKey(row.project_key ?? row.project_ref),
     ...tokens,
     billable_total_tokens: null,
+    // Session-level credits (docs/cli-contract.md §2.4, 2026-10-31): optional
+    // display-only telemetry; old backends ignore it, so it rides only when
+    // the sidecar carried a positive figure.
+    ...(Number(row.credits) > 0
+      ? { credits: Math.round(Number(row.credits) * 1e6) / 1e6 }
+      : {}),
     ...(models.length > 0 ? { models } : {}),
   };
 }

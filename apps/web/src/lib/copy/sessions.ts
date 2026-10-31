@@ -31,6 +31,8 @@ export interface SessionsCopy {
     duration: string;
     tokens: string;
     cost: string;
+    credits: string;
+    creditsUnit: string;
     models: string;
     detail: string;
     view: string;
@@ -53,6 +55,8 @@ export interface SessionsCopy {
     reasoning: string;
     total: string;
     billable: string;
+    credits: string;
+    creditsUnit: string;
     modelsTitle: string;
     modelName: string;
     modelTokens: string;
@@ -110,6 +114,8 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
       duration: "时长",
       tokens: "Token",
       cost: "成本",
+      credits: "积分",
+      creditsUnit: "积分",
       models: "模型",
       detail: "详情",
       view: "查看",
@@ -132,6 +138,8 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
       reasoning: "推理",
       total: "总计",
       billable: "计费",
+      credits: "积分",
+      creditsUnit: "积分",
       modelsTitle: "模型拆分",
       modelName: "模型",
       modelTokens: "Token",
@@ -188,6 +196,8 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
       duration: "Duration",
       tokens: "Tokens",
       cost: "Cost",
+      credits: "Credits",
+      creditsUnit: "credits",
       models: "Models",
       detail: "Details",
       view: "View",
@@ -210,6 +220,8 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
       reasoning: "Reasoning",
       total: "Total",
       billable: "Billable",
+      credits: "Credits",
+      creditsUnit: "credits",
       modelsTitle: "Model breakdown",
       modelName: "Model",
       modelTokens: "Tokens",

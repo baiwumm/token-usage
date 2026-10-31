@@ -427,6 +427,7 @@ interface SessionWire {
   reasoning_output_tokens: number;
   total_tokens: number;
   billable_total_tokens: number | null;
+  credits: number;
   total_cost_usd: string;
   models: SessionModelWire[];
 }
@@ -488,6 +489,7 @@ function toSessionWire(item: SessionWire & { endedMs: number }): SessionWire {
     reasoning_output_tokens: item.reasoning_output_tokens,
     total_tokens: item.total_tokens,
     billable_total_tokens: item.billable_total_tokens,
+    credits: item.credits,
     total_cost_usd: item.total_cost_usd,
     models: item.models,
   };
@@ -552,6 +554,7 @@ async function sessions({ url, principal }: SeriesArgs) {
       total_tokens: 0,
       billable_total_tokens: 0,
       total_cost_usd: "0.000000",
+      credits: 0,
       duration_ms: 0,
     },
     facets: { sources: [], devices: [] },
@@ -619,6 +622,7 @@ async function sessions({ url, principal }: SeriesArgs) {
         row.billable_total_tokens == null
           ? null
           : numberOr0(row.billable_total_tokens),
+      credits: numberOr0(row.credits),
       total_cost_usd: cost.toFixed(6),
       models,
       endedMs,
@@ -710,12 +714,14 @@ async function sessions({ url, principal }: SeriesArgs) {
   let totalTokens = 0;
   let billableTokens = 0;
   let totalCost = 0;
+  let totalCredits = 0;
   let durationMs = 0;
 
   for (const item of filtered) {
     totalTokens += item.total_tokens;
     billableTokens += item.billable_total_tokens ?? item.total_tokens;
     totalCost += Number(item.total_cost_usd);
+    totalCredits = Math.round((totalCredits + item.credits) * 1e6) / 1e6;
     durationMs += item.duration_ms;
   }
 
@@ -732,6 +738,7 @@ async function sessions({ url, principal }: SeriesArgs) {
       total_tokens: totalTokens,
       billable_total_tokens: billableTokens,
       total_cost_usd: totalCost.toFixed(6),
+      credits: totalCredits,
       duration_ms: durationMs,
     },
     facets,

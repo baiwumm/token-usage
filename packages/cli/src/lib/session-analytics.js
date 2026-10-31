@@ -1935,6 +1935,105 @@ async function scanKimiSessions(filePaths) {
   }));
 }
 
+// Qoder's flat per-session JSONL: one file per session id, assistant messages
+// carry Anthropic-style usage — credits-only on current builds (2026-10-31).
+// Sessions sum both dimensions; the credits figure rides the row as
+// display-only telemetry and never feeds the token identity.
+function clampQoderCounter(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 0;
+}
+
+function qoderTimestampMs(record) {
+  const raw = record?.timestamp ?? record?.message?.timestamp;
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw < 1e12 ? Math.trunc(raw * 1000) : Math.trunc(raw);
+  }
+  if (typeof raw === "string") {
+    const parsed = Date.parse(raw);
+    if (Number.isFinite(parsed)) return parsed;
+    const numeric = Number(raw);
+    if (Number.isFinite(numeric) && raw.trim() !== "") {
+      return numeric < 1e12 ? Math.trunc(numeric * 1000) : Math.trunc(numeric);
+    }
+  }
+  return null;
+}
+
+function scanQoderSessionFile(filePath, source) {
+  let lines;
+  try {
+    lines = fs.readFileSync(filePath, "utf8").split("\n");
+  } catch (error) {
+    if (isRecoverableSessionReadError(error)) throw error;
+    throw error;
+  }
+  const sessionId = path.basename(filePath).replace(/\.jsonl$/i, "");
+  if (!sessionId) throw new Error("qoder session file without an id");
+
+  let projectRef = null;
+  let startedMs = null;
+  let endedMs = null;
+  let credits = 0;
+  const tokens = {
+    input_tokens: 0,
+    cached_input_tokens: 0,
+    cache_creation_input_tokens: 0,
+    output_tokens: 0,
+    reasoning_output_tokens: 0,
+  };
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    let record;
+    try { record = JSON.parse(line); } catch { continue; }
+    if (record?.type === "workspace-directories") {
+      const cwd = Array.isArray(record.directories) ? record.directories[0] : null;
+      if (typeof cwd === "string" && cwd.trim()) projectRef = cwd.trim();
+      continue;
+    }
+    if (record?.type !== "assistant" || record?.message?.role !== "assistant") continue;
+    const usage = record.message.usage;
+    if (!usage || typeof usage !== "object") continue;
+    const timestamp = qoderTimestampMs(record);
+    if (timestamp == null) continue;
+
+    tokens.input_tokens += clampQoderCounter(usage.input_tokens);
+    tokens.cached_input_tokens += clampQoderCounter(usage.cache_read_input_tokens ?? usage.cached_tokens);
+    tokens.cache_creation_input_tokens += clampQoderCounter(usage.cache_creation_input_tokens);
+    tokens.output_tokens += clampQoderCounter(usage.output_tokens);
+    const creditValue = Number(usage.credits ?? usage.original_credits ?? 0);
+    credits = Math.round((credits + (Number.isFinite(creditValue) && creditValue > 0 ? creditValue : 0)) * 1e6) / 1e6;
+
+    if (startedMs == null || timestamp < startedMs) startedMs = timestamp;
+    if (endedMs == null || timestamp > endedMs) endedMs = timestamp;
+  }
+
+  if (endedMs == null) return null; // no timestamped usage in this file
+
+  const totalTokens =
+    tokens.input_tokens + tokens.cached_input_tokens +
+    tokens.cache_creation_input_tokens + tokens.output_tokens +
+    tokens.reasoning_output_tokens;
+
+  return finalizeRecord({
+    version: SIDECAR_VERSION,
+    session_hash: sessionHash(source, sessionId),
+    session_id: sessionId,
+    source,
+    ...sessionStorageUsage([filePath]),
+    project_key: projectKey(projectRef, filePath),
+    project_ref: projectRef || null,
+    tokens,
+    total_tokens: totalTokens,
+    credits,
+    started_at: new Date(startedMs).toISOString(),
+    ended_at: new Date(endedMs).toISOString(),
+    active_ms: Math.max(0, endedMs - startedMs),
+    provenance: { source: "local-session-log", confidence: "observed", retry_confidence: "inferred", content_retained: false },
+  });
+}
+
 async function discoverSessionFiles(home, env = process.env, deps = {}) {
   const grokHome = resolveGrokHome(home);
   // config.scanRoots (#657): read from the tracker config unless the caller
@@ -2027,7 +2126,18 @@ async function discoverSessionFiles(home, env = process.env, deps = {}) {
     return roots;
   });
   const kimi = discoverKimiWireFiles(dedupeDirsByRealpath(kimiRoots), incomplete);
-  return { claude, codex: groupCodexFiles([...codex, ...archived]), grok, zcode, opencode, kimi, incomplete };
+  // Qoder's flat per-session JSONL (one file = one session id) carries the
+  // same usage shape as the token side — including credits-only rows, so the
+  // session rows sum credits alongside tokens (2026-10-31).
+  const qoder = [
+    ...providerRoots(home, ".qoder", env, deps).map((root) => ({ root, source: "qoder" })),
+    ...providerRoots(home, ".qoder-cn", env, deps).map((root) => ({ root, source: "qoder-cn" })),
+  ].flatMap(({ root, source }) =>
+    listRolloutFilesDeep(path.join(root, "projects"))
+      .filter((filePath) => /\.jsonl$/i.test(filePath))
+      .map((filePath) => ({ filePath, source })),
+  );
+  return { claude, codex: groupCodexFiles([...codex, ...archived]), grok, zcode, opencode, kimi, qoder, incomplete };
 }
 
 // Warn once per unreadable directory per process: the dashboard polls this
@@ -2239,6 +2349,11 @@ async function buildSessionAnalyticsInternal({ home = os.homedir(), force = fals
     ...(discovered.zcode.length ? [{ source: "zcode", filePath: discovered.zcode, scan: scanZcodeSessions }] : []),
     ...(discovered.opencode.length ? [{ source: "opencode", filePath: discovered.opencode, scan: scanOpencodeSessions }] : []),
     ...(discovered.kimi.length ? [{ source: "kimi", filePath: discovered.kimi, scan: scanKimiSessions }] : []),
+    ...discovered.qoder.map(({ filePath, source }) => ({
+      source,
+      filePath,
+      scan: (file) => scanQoderSessionFile(file, source),
+    })),
   ];
   // Files we could not turn into a row (permission denied, half-written line,
   // vanished mid-scan). Swallowing these silently made sessions disappear with
@@ -2247,6 +2362,7 @@ async function buildSessionAnalyticsInternal({ home = os.homedir(), force = fals
   let incompleteZcodeScan = false;
   let incompleteOpencodeScan = false;
   let incompleteKimiScan = false;
+  let incompleteQoderScan = false;
   for (const entry of entries) {
     const cacheKey = sessionFileCacheKey(entry.source, entry.filePath);
     const statKey = analyticsEntryStatKey(entry.source, entry.filePath);
@@ -2255,6 +2371,7 @@ async function buildSessionAnalyticsInternal({ home = os.homedir(), force = fals
       if (entry.source === "zcode") incompleteZcodeScan = true;
       if (entry.source === "opencode") incompleteOpencodeScan = true;
       if (entry.source === "kimi") incompleteKimiScan = true;
+      if (entry.source === "qoder" || entry.source === "qoder-cn") incompleteQoderScan = true;
       continue;
     }
     let rows = null;
@@ -2280,6 +2397,7 @@ async function buildSessionAnalyticsInternal({ home = os.homedir(), force = fals
         if (entry.source === "zcode") incompleteZcodeScan = true;
         if (entry.source === "opencode") incompleteOpencodeScan = true;
         if (entry.source === "kimi") incompleteKimiScan = true;
+        if (entry.source === "qoder" || entry.source === "qoder-cn") incompleteQoderScan = true;
         if (!process.env.NODE_TEST_CONTEXT) {
           console.warn(`[session-analytics] skipped ${entry.source} session file: ${error?.message || error}`);
         }
@@ -2317,10 +2435,14 @@ async function buildSessionAnalyticsInternal({ home = os.homedir(), force = fals
     await writeAtomic(incompleteKimiPath, "1\n");
     sessions.push(...readSidecar(sidecarPath).filter((row) => row.source === "kimi" && row.version === SIDECAR_VERSION));
   }
+  if (incompleteQoderScan) {
+    sessions.push(...readSidecar(sidecarPath).filter((row) =>
+      (row.source === "qoder" || row.source === "qoder-cn") && row.version === SIDECAR_VERSION));
+  }
   sessions.sort((a, b) => String(b.ended_at || "").localeCompare(String(a.ended_at || "")));
   // A failed database scan is an incomplete inventory. Keep the last complete
   // snapshot and signature so an unchanged database is retried next build.
-  if (incompleteDirs.length === 0 && !incompleteZcodeScan && !incompleteOpencodeScan && !incompleteKimiScan) {
+  if (incompleteDirs.length === 0 && !incompleteZcodeScan && !incompleteOpencodeScan && !incompleteKimiScan && !incompleteQoderScan) {
     const content = sessions.map(serializeSessionRecord).join("\n") + (sessions.length ? "\n" : "");
     await writeAtomic(sidecarPath, content);
     const generatedAt = new Date().toISOString();

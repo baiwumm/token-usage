@@ -131,6 +131,12 @@ describe("normalizeBucket", () => {
     expect(normalizeBucket(validBucket({ credits: 2_000_000 }))?.credits).toBe(MAX_BUCKET_CREDITS);
   });
 
+  it("defaults session credits to 0, rounds to 6 decimals and clamps negatives", () => {
+    expect(normalizeSession(validSession())?.credits).toBe(0);
+    expect(normalizeSession(validSession({ credits: 0.1234567 }))?.credits).toBe(0.123457);
+    expect(normalizeSession(validSession({ credits: -1 }))?.credits).toBe(0);
+  });
+
   it("rejects non-object input", () => {
     expect(normalizeBucket(null)).toBeNull();
     expect(normalizeBucket("bucket")).toBeNull();

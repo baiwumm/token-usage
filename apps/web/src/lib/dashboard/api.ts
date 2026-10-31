@@ -455,6 +455,7 @@ export interface SessionItem {
   reasoning_output_tokens: number;
   total_tokens: number;
   billable_total_tokens: number | null;
+  credits: number;
   total_cost_usd: string;
   models: SessionModel[];
 }
@@ -470,6 +471,7 @@ export interface SessionsPayload {
     total_tokens: number;
     billable_total_tokens: number;
     total_cost_usd: string;
+    credits: number;
     duration_ms: number;
   };
   facets: {

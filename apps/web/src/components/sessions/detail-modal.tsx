@@ -27,6 +27,7 @@ export function SessionDetailModal({
   const {
     formatTokens,
     formatCost,
+    formatCredits,
     formatDuration,
     formatDateTime,
     formatRelativeTime,
@@ -45,6 +46,16 @@ export function SessionDetailModal({
           copy.detail.billable,
           session.billable_total_tokens ?? session.total_tokens,
         ],
+        // Credit-based providers only: display-only, never part of the token
+        // identity above (docs/cli-contract.md §2.4).
+        ...(session.credits > 0
+          ? [
+              [
+                copy.detail.credits,
+                `${formatCredits(session.credits)} ${copy.detail.creditsUnit}`,
+              ],
+            ]
+          : []),
       ]
     : [];
 

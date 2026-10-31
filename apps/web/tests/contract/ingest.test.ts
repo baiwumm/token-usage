@@ -388,6 +388,23 @@ describe("ingest sessions", () => {
     }
   });
 
+  it("stores optional session credits (display-only; absent → 0; negatives clamp to 0)", async () => {
+    const ok = await ingest({ sessions: [session({ credits: 12.1234567 })] });
+    expect(ok.status).toBe(200);
+    expect(fake.table("token_sessions")[0].credits).toBe(12.123457);
+
+    const bare = await ingest({ sessions: [session({ session_id: "session-2" })] });
+    expect(bare.status).toBe(200);
+    // Old CLIs never send the field — the column defaults to 0.
+    expect(fake.table("token_sessions")[1].credits).toBe(0);
+
+    // Same clamp-not-reject philosophy as the bucket field: one stray row
+    // must never stall a deployed collector's queue.
+    const negative = await ingest({ sessions: [session({ session_id: "session-3", credits: -1 })] });
+    expect(negative.status).toBe(200);
+    expect(fake.table("token_sessions")[2].credits).toBe(0);
+  });
+
   it("rejects non-arrays, oversize batches and invalid entries before writing", async () => {
     const nonArray = await ingest({ sessions: "nope" });
     expect(nonArray.status).toBe(400);

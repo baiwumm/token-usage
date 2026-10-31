@@ -176,6 +176,7 @@ export type NormalizedSession = {
   ended_at: string;
   project_key: string | null;
   billable_total_tokens: number | null;
+  credits: number;
   models: NormalizedSessionModel[];
 } & Record<TokenKey, number>;
 
@@ -309,6 +310,9 @@ export function normalizeSession(raw: unknown): NormalizedSession | null {
     project_key: normalizeProjectKey(record.project_key),
     ...values,
     billable_total_tokens: billable,
+    // Session-level credits (§2.4, 2026-10-31): optional display-only
+    // telemetry, clamped like the bucket field; old CLIs omit it → 0.
+    credits: normalizeCredits(record.credits),
     models,
   };
 }

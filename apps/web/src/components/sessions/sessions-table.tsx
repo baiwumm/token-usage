@@ -61,8 +61,13 @@ export function SessionsTable({
   onClearFilters: () => void;
   onRetry: () => void;
 }) {
-  const { formatTokens, formatCost, formatDuration, formatDateTime } =
-    useFormat();
+  const {
+    formatTokens,
+    formatCost,
+    formatCredits,
+    formatDuration,
+    formatDateTime,
+  } = useFormat();
   const router = useRouter();
 
   const totalPages =
@@ -114,6 +119,21 @@ export function SessionsTable({
         className: "whitespace-nowrap tabular-nums",
         cell: (session) => formatTokens(session.total_tokens),
       },
+      // The credits column only appears once the window has credit-based
+      // usage (same auto-hide pattern as the dashboard detail table).
+      ...(payload && payload.totals.credits > 0
+        ? [
+            {
+              id: "credits",
+              header: copy.list.credits,
+              className: "whitespace-nowrap tabular-nums",
+              cell: (session: SessionItem) =>
+                session.credits > 0
+                  ? `${formatCredits(session.credits)} ${copy.list.creditsUnit}`
+                  : "—",
+            } satisfies DataTableColumn<SessionItem>,
+          ]
+        : []),
       {
         id: "cost",
         header: copy.list.cost,
@@ -144,9 +164,11 @@ export function SessionsTable({
     [
       copy,
       formatCost,
+      formatCredits,
       formatDateTime,
       formatDuration,
       formatTokens,
+      payload,
       onViewDetail,
     ],
   );

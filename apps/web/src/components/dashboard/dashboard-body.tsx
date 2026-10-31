@@ -194,8 +194,8 @@ export function DashboardBody({
 
             <SubscriptionSection
               copy={copy}
-              subscriptions={subscriptions}
               refreshing={refreshing}
+              subscriptions={subscriptions}
             />
 
             <DeviceSection
