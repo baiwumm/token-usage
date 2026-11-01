@@ -3,6 +3,16 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## 0.4.1
+
+2026-11-01。修复 `tokenusage reconcile` 在真实队列上的误报：队列行写的是
+`conversation_count`（`docs/cli-contract.md` §2.4 的线名），小时表列名是
+`conversations`，按字段名直接比较会把每一行都报成 `conversations local 0 → cloud N`
+（本机首跑 41/43 行误报）。现在按别名归一后比较，真实差异仍照常报出。
+
+- 会话数比较读 `conversations`，缺失时回退 `conversation_count`（两者都没有按 0）。
+- 单测按真实队列形态（只带 `conversation_count`）覆盖，并断言真差异仍落在 `conversations` 字段。
+
 ## 0.4.0
 
 2026-11-01。错误提示更友好（一行 `Error:` + `Hint:` 且不再刷堆栈），帮助信息改为

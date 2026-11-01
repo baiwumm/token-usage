@@ -296,12 +296,23 @@ function round6(value) {
 
 const COMPARED_COLUMNS = [...TOKEN_COLUMNS, "billable_total_tokens", "conversations", "credits"];
 
+// Queue rows use the `conversation_count` wire alias (§2.4) while the hourly
+// table stores `conversations`; read either name so a row that only carries the
+// legacy one is not compared as 0.
+function columnValue(row, column) {
+  if (column === "conversations" && row?.conversations === undefined) {
+    return row?.conversation_count;
+  }
+  return row?.[column];
+}
+
 function describeRow(row) {
   const out = {};
   for (const column of COMPARED_COLUMNS) {
-    if (column === "billable_total_tokens" && row?.[column] == null) out[column] = null;
-    else if (column === "credits") out[column] = round6(Number(row?.[column] ?? 0));
-    else out[column] = Number(row?.[column] ?? 0);
+    const value = columnValue(row, column);
+    if (column === "billable_total_tokens" && value == null) out[column] = null;
+    else if (column === "credits") out[column] = round6(Number(value ?? 0));
+    else out[column] = Number(value ?? 0);
   }
   return out;
 }
@@ -320,7 +331,7 @@ function compareBuckets({ local, server }) {
       continue;
     }
     const fields = COMPARED_COLUMNS.filter((column) =>
-      valuesDiffer(localRow?.[column], serverRow?.[column], column),
+      valuesDiffer(columnValue(localRow, column), serverRow?.[column], column),
     );
     if (fields.length > 0) {
       mismatches.push({

@@ -92,7 +92,8 @@ function bucket(overrides = {}) {
     cache_creation_input_tokens: 0,
     reasoning_output_tokens: 0,
     total_tokens: 120,
-    conversations: 1,
+    // Real queue rows use the wire alias; the cloud column is `conversations`.
+    conversation_count: 1,
     ...overrides,
   };
 }
@@ -109,7 +110,7 @@ function serverRow(local, overrides = {}) {
     reasoning_output_tokens: local.reasoning_output_tokens || 0,
     total_tokens: local.total_tokens || 0,
     billable_total_tokens: null,
-    conversations: local.conversations || 0,
+    conversations: local.conversation_count ?? local.conversations ?? 0,
     credits: 0,
     ...overrides,
   };
@@ -267,6 +268,30 @@ describe("local baseline", () => {
     assert.equal(codex.input_tokens, 100, "cached reads are stripped from input");
     const cursor = [...rows.values()].find((row) => row.source === "cursor");
     assert.equal(cursor.billable_total_tokens, 40);
+  });
+
+  test("aliases the queue's conversation_count to the cloud's conversations column", async () => {
+    // Real parsers write `conversation_count`; the hourly table stores it as
+    // `conversations` (docs/cli-contract.md §2.4). Comparing raw field names
+    // would report every such row as 0-vs-N drift.
+    const queuePath = writeQueue([bucket({ conversation_count: 7 })]);
+    const rows = await readLocalBaseline({ queuePath, fromMs, toMs });
+    const localRow = [...rows.values()][0];
+    assert.equal(localRow.conversation_count, 7, "the baseline keeps the queued wire shape");
+
+    const mapKey = JSON.stringify([localRow.hour_start, localRow.source, localRow.model]);
+    const matched = compareBuckets({
+      local: new Map([[mapKey, localRow]]),
+      server: new Map([[mapKey, serverRow(localRow)]]),
+    });
+    assert.equal(matched.counts.mismatch, 0, "the alias is compared, not the raw field name");
+
+    const drifted = compareBuckets({
+      local: new Map([[mapKey, localRow]]),
+      server: new Map([[mapKey, serverRow(localRow, { conversations: 9 })]]),
+    });
+    assert.deepEqual(drifted.mismatch[0].fields, ["conversations"]);
+    assert.equal(drifted.mismatch[0].server.conversations, 9);
   });
 
   test("a missing queue.jsonl is an empty baseline", async () => {
