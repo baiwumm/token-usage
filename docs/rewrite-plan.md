@@ -249,8 +249,10 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 ## 10. 当前状态与剩余事项（2026-11-01 复核）
 
 **里程碑**：M0–M7 全部交付；生产实例 `token-usage.baiwumm.com` 自 2026-10-26 起承载
-两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.3.0`（2026-11-01
-发布；本机全局包与运行时副本均已升级）。
+两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.1`（2026-11-01
+发布；本机全局包与 `~/.tokenusage/tracker/app` 运行时副本均已升级到 0.4.1，`reconcile`
+真机验收通过）。仓库内已备 0.4.2（`init` 的 degraded 摘要显示被拒原因），待操作者放行
+打 `cli-v0.4.2` tag 发布。
 
 **最近一批交付（2026-10-31 ~ 11-01）**：Trae CN 本地库、桶级 / 会话级 credits、
 `credits_ingested` 遥测、模型大小写归一、wrapped canonical 来源、成就条进度与详情弹窗、
@@ -283,6 +285,15 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1。已随 0.4.0 / 0.4.1 
 （2026-11-01，本机 7 天窗口 103/103 桶匹配、退出码 0）通过（0.4.1 修掉了
 `conversation_count` 别名比较的误报）。⚠ 该端点占用最后一个 Vercel function
 槽位（12/12，见 §8 风险行），后续端点须复用 catch-all。
+
+**发版后剩余事项（2026-11-01）**：
+
+- 另一台采集机升级：`npm i -g tokenusage-cli@0.4.1` → `tokenusage init --yes
+  --no-integrations --no-open`（刷新运行时副本）→ `tokenusage reconcile --days 7`；
+  步骤见 `docs/launch-runbook.md` 的采集机切换清单。
+- macOS / Linux 调度真机验证：暂无真机，目前只有产物级测试（plist / systemd unit 与
+  文案断言）。首次在真机跑 `init` 后需确认 `launchctl list` / `systemctl --user
+  list-timers` 里有对应条目，再回填 `docs/cli-release.md` §四。
 
 **操作者拍板记录（2026-11-01）**：
 
