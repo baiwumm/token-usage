@@ -164,6 +164,33 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > `total_tokens` 较大值，极端情况下云端可能保留较大值而本地已下调——此类键以 `mismatch`
 > 呈现供人工判断，命令本身永不写入。
 
+> **0.4.2（2026-11-01 已发 npm 并完成本机升级）**：`init` 的调度摘要显示降级原因
+> ——`degraded: xml_rejected — <被拒文本首行>`（裁到一行），不再只报类别：非提升 shell
+> 下用户能直接区分「改以管理员再跑一次 `init`」与「任务定义本身写错」。发版：commit
+> `0829050`（+ 文档 `3571cd7`）→ tag `cli-v0.4.2` → release run 41303962434 全绿
+> （workflow 内 `pnpm verify`：web 33 files / 455 tests + build；CLI 131 tests），
+> `npm publish --provenance` 成功，GitHub Release 正文取 CHANGELOG 的 0.4.2 段；
+> registry `dist-tags.latest` 为 0.4.2。本机 `npm i -g tokenusage-cli@0.4.2` 后
+> `--version` 为 v0.4.2；`init --yes --no-integrations --no-open` 把
+> `~/.tokenusage/tracker/app` 副本刷到 0.4.2（449 文件 / 22.6 MB / `.runtime-ready`
+> 为 v0.4.2，首采 5,847,530,955 tokens / 13 providers）。
+> 本机验收：首跑 `reconcile --days 7` 报 5 个漂移（3 `missing_on_server` + 2
+> `mismatch`），逐项核对后全部落在 `queue.state.json` 未覆盖的队列尾部（offset
+> 228331 vs 文件 230536，7 行待传、按 last-wins 折成 5 键）；补跑一次 `tokenusage
+> sync` 后同一窗口为 **OK 103/103 桶匹配、退出码 0**——drift 报的是「尚未上传」，
+> 不是数据不一致，`reconcile` 无需改动。
+> 同批 CI 修复：`.github/workflows/ci.yml` 的 Windows smoke 仍在传已删除的
+> `--no-auth`（41300932457 / 41301237077 / 41302095486 三次 `verify-windows-cli` 都报
+> `Error: --no-auth was removed` → `init --dry-run exited 2`），commit `c6d7b68` 去掉该
+> 参数后 CI 41304070415 转绿。
+> 未修观测（记入 `docs/rewrite-plan.md` §10 待办）：同一小时键在 `queue.jsonl` 里会出现
+> 多行递增值（当次全队列 735 行 / 644 桶 / 56 个重复键，例如
+> `2026-11-01T10:30|zcode|GLM-5.3-Flash` 4,075,888 conv 9 → 46,903,536 conv 97），
+> last-wins 取后者、云端补传后核对一致；成因未定位（继承来的解析器对同一 30 分钟桶
+> 重复聚合），暂不改。另：`degraded` 文案首行仍是 `Command failed: schtasks …` 的命令
+> 回显，真正原因 `ERROR: Access is denied.` 在第二行被 `errorText()` 的 200 字符截断
+> ——0.4.3 候选：改取 `stderr`。
+>
 > **0.4.1（2026-11-01 已发 npm 并完成本机升级）**：修复 `reconcile` 在真实队列上的
 > 误报——队列行写 `conversation_count`（`docs/cli-contract.md` §2.4 的线名），小时表列名
 > `conversations`，按字段名直接比较把 41/43 行报成 `conversations local 0 → cloud N`；

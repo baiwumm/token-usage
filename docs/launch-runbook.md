@@ -47,7 +47,8 @@
 
 逐台迁移（每台完成后进下一台；属于 G1 闸门，操作者放行）：
 
-1. `npm i -g tokenusage-cli`（已发布，当前 0.4.1）或从仓库 `packages/cli` 安装；
+1. `npm i -g tokenusage-cli`（已发布，当前 0.4.2）或从仓库 `packages/cli` 安装；
+   升级后跑一次 `tokenusage init --yes --no-integrations --no-open` 刷新运行时副本；
 2. `tokenusage device-login` → 浏览器登录新站点 → `/device` 批准 `user_code`；
 3. `tokenusage sync --drain` → 仪表盘/Sessions 出现该设备数据；
 4. 桶级对账：`tokenusage reconcile --days 7` 应为 `OK`（有漂移会逐键列出并退出 1）；

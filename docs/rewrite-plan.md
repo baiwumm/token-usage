@@ -249,10 +249,12 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 ## 10. 当前状态与剩余事项（2026-11-01 复核）
 
 **里程碑**：M0–M7 全部交付；生产实例 `token-usage.baiwumm.com` 自 2026-10-26 起承载
-两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.1`（2026-11-01
-发布；本机全局包与 `~/.tokenusage/tracker/app` 运行时副本均已升级到 0.4.1，`reconcile`
-真机验收通过）。仓库内已备 0.4.2（`init` 的 degraded 摘要显示被拒原因），待操作者放行
-打 `cli-v0.4.2` tag 发布。
+两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.2`（2026-11-01
+发布；本机全局包与 `~/.tokenusage/tracker/app` 运行时副本均已升级到 0.4.2，7 天窗口
+`reconcile` 103/103 桶匹配、退出码 0）。版本沿革：0.4.0 交付 CLI 加固批与 `reconcile`，
+0.4.1 修 `reconcile` 的 `conversation_count` 别名误报，0.4.2 让 `init` 的 degraded 摘要
+显示被拒原因。0.4.3 候选已备（降级原因改取 `stderr`，见下），待操作者放行；两条待办见
+本节末尾。
 
 **最近一批交付（2026-10-31 ~ 11-01）**：Trae CN 本地库、桶级 / 会话级 credits、
 `credits_ingested` 遥测、模型大小写归一、wrapped canonical 来源、成就条进度与详情弹窗、
@@ -261,7 +263,9 @@ Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）、Sessions CSV 导�
 
 **测试与部署**：`pnpm verify` 全绿（lint 0 error + 5 条既有 `no-console` warning；
 web 33 files / 455 tests + build；CLI 131 tests）。CI 在 main 与 `cli-v*` tag 上运行；
-web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
+web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。0.4.2 期间 CI 的 Windows `init`
+smoke 曾连挂三次（仍在传 0.4.0 删掉的 `--no-auth`，见 `docs/cli-release.md` §四），
+commit `c6d7b68` 去掉该参数后转绿。
 
 **Web 工程待办**：已清空，历史明细见 `docs/web-optimization-backlog.md`。
 
@@ -281,19 +285,27 @@ web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 `GET /api/functions/token-usage-reconcile`（`docs/cli-contract.md` §2.13 + §3 条目 15，
 golden 测试 `apps/web/tests/contract/reconcile.test.ts`）与 CLI 命令
 （`packages/cli/src/commands/reconcile.js`）均已落地；只读，按基线（AGENTS 约束 8 的
-queue.jsonl last-wins）逐键比对，漂移退出码 1。已随 0.4.0 / 0.4.1 发到 npm；真机验收
+queue.jsonl last-wins）逐键比对，漂移退出码 1。已随 0.4.0 起发到 npm（最新 0.4.2）；真机验收
 （2026-11-01，本机 7 天窗口 103/103 桶匹配、退出码 0）通过（0.4.1 修掉了
-`conversation_count` 别名比较的误报）。⚠ 该端点占用最后一个 Vercel function
+`conversation_count` 别名比较的误报，0.4.2 复核同样 OK）。⚠ 该端点占用最后一个 Vercel function
 槽位（12/12，见 §8 风险行），后续端点须复用 catch-all。
 
-**发版后剩余事项（2026-11-01）**：
+**发版后剩余事项（2026-11-01，0.4.2 收尾）**：
 
-- 另一台采集机升级：`npm i -g tokenusage-cli@0.4.1` → `tokenusage init --yes
+- 另一台采集机升级：`npm i -g tokenusage-cli@0.4.2` → `tokenusage init --yes
   --no-integrations --no-open`（刷新运行时副本）→ `tokenusage reconcile --days 7`；
-  步骤见 `docs/launch-runbook.md` 的采集机切换清单。
+  步骤见 `docs/launch-runbook.md` 的采集机切换清单。本机（Windows）已按这三步做完：
+  首跑漂移 5 键全部落在未上传的队列尾部，补一次 `sync` 后 103/103 匹配。
 - macOS / Linux 调度真机验证：暂无真机，目前只有产物级测试（plist / systemd unit 与
   文案断言）。首次在真机跑 `init` 后需确认 `launchctl list` / `systemctl --user
   list-timers` 里有对应条目，再回填 `docs/cli-release.md` §四。
+- 0.4.3 候选（待操作者放行）：`init` 的 degraded 摘要改取 `stderr`。0.4.2 已能显示原因，
+但首行仍是 `Command failed: schtasks …` 的命令回显，真正的 `ERROR: Access is denied.`
+在第二行被 `errorText()` 的 200 字符截断。
+- 待查观测（未定位、暂不改）：同一小时键在 `queue.jsonl` 里会出现多行递增值（当次全队列
+735 行 / 644 桶 / 56 个重复键，如 `2026-11-01T10:30|zcode|GLM-5.3-Flash` 4,075,888
+conv 9 → 46,903,536 conv 97）。last-wins 取后者、补传后云端核对一致，故不影响对账
+结论；成因疑为继承来的解析器对同一 30 分钟桶重复聚合，需先核对源库真值再决定是否改。
 
 **操作者拍板记录（2026-11-01）**：
 
