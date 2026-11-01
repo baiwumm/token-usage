@@ -100,7 +100,7 @@ M-CLI 采集端（`tokenusage-cli`，当前 0.3.0）→ M6 数据迁移与切换
 | [`docs/sources-capture-audit.md`](docs/sources-capture-audit.md) | 来源采集机制：双平面原则、账户级来源、缺口审计 |
 | [`docs/sources-capture-plan.md`](docs/sources-capture-plan.md) | 来源接入任务：Trae CN、credits 全链路、Sessions credits |
 | [`docs/cli-release.md`](docs/cli-release.md) | CLI 发版手册：tag 流水线、版本升级与实测记录 |
-| [`docs/web-optimization-backlog.md`](docs/web-optimization-backlog.md) | Web 端剩余待办与安全升级清单 |
+| [`docs/web-optimization-backlog.md`](docs/web-optimization-backlog.md) | Web 端优化历史清单（2026-11-01 已清） |
 | [`docs/deploy-guide.md`](docs/deploy-guide.md) | 部署指南：Supabase + Vercel 从零跑通 |
 | [`docs/launch-runbook.md`](docs/launch-runbook.md) | 发布手册：部署顺序、冒烟清单、回滚 |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 第三方资产与许可登记（品牌图标、字体、定价快照、代码来源） |

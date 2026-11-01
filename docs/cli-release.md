@@ -120,7 +120,8 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
   init 即可换成官方接管。注意 `schtasks /TR` 会毁坏带引号参数（实测把
   `"C:\...vbs"` 存成 `" C:\...vbs\` 导致 wscript 挂死）——改任务动作一律用
   PowerShell `Set-ScheduledTask`（参数原样存储），路径无空格时不加引号。
-- [ ] **观察首日**：仪表盘数据、sync.log、GitHub Release 页面三处对账。
+- **观察首日（存档）**：仪表盘数据、sync.log、GitHub Release 页面三处对账；
+  0.1.0 首发时未单独勾选，后续 0.2.x / 0.3.0 的发版验收与日常观察已覆盖同类检查。
 
 ## 四、CLI 后续版本候选与实测记录（不阻塞已发版本）
 

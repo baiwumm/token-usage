@@ -43,7 +43,7 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 | 改数据库、写迁移、迁移/切换/退役操作 | `docs/rewrite-plan.md` §3、§6–7 |
 | 写任何 UI | `docs/ui-spec.md` |
 | 成就系统（计划、阶段进度、决策记录） | `docs/achievements-plan.md` |
-| 剩余 Web 待办、安全升级与拍板项 | `docs/web-optimization-backlog.md` |
+| Web 端优化历史与已清项（2026-11-01 已清） | `docs/web-optimization-backlog.md` |
 | 当前进度、剩余事项与待决策 | `docs/rewrite-plan.md` §10 |
 | 部署与回滚 | `docs/launch-runbook.md` |
 
