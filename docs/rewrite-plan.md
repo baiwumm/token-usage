@@ -258,7 +258,7 @@ Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）、Sessions CSV 导�
 10,000 行 / 4 MiB 双上限）。来源接入的验收记录见 `docs/sources-capture-plan.md`。
 
 **测试与部署**：`pnpm verify` 全绿（lint 0 error + 5 条既有 `no-console` warning；
-web 33 files / 455 tests + build；CLI 130 tests）。CI 在 main 与 `cli-v*` tag 上运行；
+web 33 files / 455 tests + build；CLI 131 tests）。CI 在 main 与 `cli-v*` tag 上运行；
 web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 
 **Web 工程待办**：已清空，历史明细见 `docs/web-optimization-backlog.md`。
@@ -279,7 +279,9 @@ web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 `GET /api/functions/token-usage-reconcile`（`docs/cli-contract.md` §2.13 + §3 条目 15，
 golden 测试 `apps/web/tests/contract/reconcile.test.ts`）与 CLI 命令
 （`packages/cli/src/commands/reconcile.js`）均已落地；只读，按基线（AGENTS 约束 8 的
-queue.jsonl last-wins）逐键比对，漂移退出码 1。⚠ 该端点占用最后一个 Vercel function
+queue.jsonl last-wins）逐键比对，漂移退出码 1。已随 0.4.0 / 0.4.1 发到 npm；真机验收
+（2026-11-01，本机 7 天窗口 103/103 桶匹配、退出码 0）通过（0.4.1 修掉了
+`conversation_count` 别名比较的误报）。⚠ 该端点占用最后一个 Vercel function
 槽位（12/12，见 §8 风险行），后续端点须复用 catch-all。
 
 **操作者拍板记录（2026-11-01）**：

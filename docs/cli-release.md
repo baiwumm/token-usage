@@ -125,14 +125,14 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 后续版本候选与实测记录（不阻塞已发版本）
 
-> **未发版候选（2026-11-01 盘点）**：① `init` 逐工具集成选择（当前 `--no-integrations`
-> 只有全有 / 全无）；② macOS / Linux 原生调度（当前仅 Windows 计划任务，其他平台靠
-> `--watch` / 手动）。
+> **原「未发版候选」（2026-11-01 盘点；两项均已随 0.4.0 交付）**：① `init` 逐工具集成
+> 选择（当时 `--no-integrations` 只有全有 / 全无）；② macOS / Linux 原生调度（当时仅
+> Windows 计划任务，其他平台靠 `--watch` / 手动）。
 >
 > **2026-11-01 操作者拍板（最终）**：对上一条「下个版本不做 / 单独评估」的结论做出修订——
 > **两项随本版开发**，并与同一批的 CLI 加固一起交付（见下条记录）。
 >
-> **CLI 加固批（2026-11-01，未发版）**：对照上游 `tokentracker-cli` / `jusage` 核对后落地：
+> **CLI 加固批（2026-11-01，已随 0.4.0 发版）**：对照上游 `tokentracker-cli` / `jusage` 核对后落地：
 > ① 用户输入错误统一为 `UsageError`（`src/lib/cli-errors.js`，bin 只打一行 + hint、退出码 2、
 > 不再打堆栈）；② 命令表驱动 help（`src/cli.js` 的 `COMMANDS`），`tokenusage <cmd> --help`
 > 对每条命令有效，未知命令抛 `UNKNOWN_COMMAND`；③ 新增 `tokenusage upload`（只刷队列不扫描，
@@ -149,7 +149,7 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > 数据，共约 550 KB），`normalizeQueueRow` 抽到 `src/lib/queue-row-normalize.js`；
 > ⑪ `package.json` 的 `files` 去掉 `test/`；⑫ `autoLog` 落盘改 JSONL（`{ts,msg,...}`，
 > 仍 1 MiB 滚动一代，TTY 行保持人类可读）。
-> 测试：CLI 76 → 130 条（新增 `cli-dispatch` / `args-strict` / `scheduled-task` /
+> 测试：CLI 76 → 131 条（新增 `cli-dispatch` / `args-strict` / `scheduled-task` /
 > `queue-row-normalize` / `integration-gate` / `reconcile`，并把「src 内零可达模块」写成
 > packaging 守卫）。
 > **对账命令 `reconcile`（2026-11-01 同批第二批交付）**：先按硬性约束 1 改契约——
@@ -164,6 +164,26 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > `total_tokens` 较大值，极端情况下云端可能保留较大值而本地已下调——此类键以 `mismatch`
 > 呈现供人工判断，命令本身永不写入。
 
+> **0.4.1（2026-11-01 已发 npm 并完成本机升级）**：修复 `reconcile` 在真实队列上的
+> 误报——队列行写 `conversation_count`（`docs/cli-contract.md` §2.4 的线名），小时表列名
+> `conversations`，按字段名直接比较把 41/43 行报成 `conversations local 0 → cloud N`；
+> 改为按别名归一后比较，真差异仍报 `mismatch`。发版：commit `51768d6` → tag
+> `cli-v0.4.1` → release run 41300310934 全绿（workflow 内 `pnpm verify`：web 33 files /
+> 455 tests + build；CLI 131 tests；lint 0 error / 5 warning），`npm publish --provenance`
+> 成功，GitHub Release 正文取 CHANGELOG 的 0.4.1 段。本机 `npm i -g tokenusage-cli@0.4.1`
+> 后 `--version` 为 v0.4.1。真机验收（同日）：`reconcile --days 1` 43/43 桶匹配；
+> 默认 7 天窗口 103/103 桶匹配、`--json` 结构正常、退出码 0。
+>
+> **0.4.0（2026-11-01 已发 npm 并完成本机升级）**：交付 CLI 加固批（错误模型、命令表
+> help、`upload`、`--source` 严格校验、`sessions` 严格解析、watch 退避）、
+> `reconcile` 对账命令、`init --integrations` 逐工具选择、macOS / Linux 原生调度，并删除
+> 18 个从未接线的本地服务模块。发版：commit `3690db0` → tag `cli-v0.4.0` → release run
+> 41299668944 全绿（workflow 内 `pnpm verify`：web 33 files / 455 tests + build；CLI 130
+> tests），`npm publish --provenance` 成功，GitHub Release 正文取 CHANGELOG 的 0.4.0 段；
+> registry `dist-tags.latest` 为 0.4.0。本机升级后首跑暴露 `conversation_count` 别名误报
+> （见 0.4.1）。⚠ 同批新增 `token-usage-reconcile` 端点占满最后一个 Vercel function 槽位
+> （12/12）。macOS / Linux 调度仅有产物级测试，无真机验证。
+>
 > **0.3.0（2026-11-01 已发 npm 并完成本机升级）**：新增 Trae CN 本地库扫描、Qoder
 > credits 维度（桶级 / 会话级 / sync-run `credits_ingested` 遥测）、Qoder 会话进入
 > Sessions（一文件 = 一会话，应用与桶解析器一致的 billable 门槛），读侧模型名按
