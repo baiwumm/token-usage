@@ -173,6 +173,15 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > 成功，GitHub Release 正文取 CHANGELOG 的 0.4.1 段。本机 `npm i -g tokenusage-cli@0.4.1`
 > 后 `--version` 为 v0.4.1。真机验收（同日）：`reconcile --days 1` 43/43 桶匹配；
 > 默认 7 天窗口 103/103 桶匹配、`--json` 结构正常、退出码 0。
+> 本机 `init --yes --no-integrations --no-open` 已把 `~/.tokenusage/tracker/app` 运行时
+> 副本从 0.3.0 刷到 0.4.1（首采 5,823,062,224 tokens / 13 providers）。调度健康检查：
+> 任务 `\TokenUsageSync` 为 Ready、上次运行结果 0、动作为 `wscript.exe
+> run-sync-hidden.vbs`（隐藏窗口），下次整点触发。**但 XML 定义注册被系统拒绝**
+> （`degraded: xml_rejected`，实测 `schtasks /Create /XML` 报 `ERROR: Access is denied.`：
+> 非提升 shell 下 XML 注册需提升权限，普通 `/SC HOURLY` 不受限），因此自动降级为每小时
+> 触发，丢失 `StartWhenAvailable`（漏跑补采）/ `RestartOnFailure`（失败重试）/ 无执行
+> 时限三项增强。要启用增强调度需以管理员身份再跑一次 `tokenusage init`（行为未验证，
+> 待操作者决定是否值得；降级路径本身按设计工作，采集不受影响）。
 >
 > **0.4.0（2026-11-01 已发 npm 并完成本机升级）**：交付 CLI 加固批（错误模型、命令表
 > help、`upload`、`--source` 严格校验、`sessions` 严格解析、watch 退避）、

@@ -8,7 +8,8 @@
 
 ```bash
 # 1) 初始化：扫描根配置、各工具用量 hook、并注册每小时自动采集的计划任务
-#    （Windows 经 VBS 隐藏窗口运行，不弹黑框；--no-task 可跳过任务注册）
+#    （Windows 经 VBS 隐藏窗口运行，不弹黑框；--no-task 可跳过任务注册。增强任务定义
+#     需要管理员权限，非提升 shell 下会自动降级为普通每小时触发并提示 degraded）
 tokenusage init
 
 # 2) 配对：输出一个 user_code，浏览器打开提示的链接批准
