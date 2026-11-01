@@ -258,14 +258,10 @@ Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）、Sessions CSV 导�
 10,000 行 / 4 MiB 双上限）。来源接入的验收记录见 `docs/sources-capture-plan.md`。
 
 **测试与部署**：`pnpm verify` 全绿（lint 0 error + 5 条既有 `no-console` warning；
-web 31 files / 435 tests + build；CLI 76 tests）。CI 在 main 与 `cli-v*` tag 上运行；
+web 32 files / 444 tests + build；CLI 76 tests）。CI 在 main 与 `cli-v*` tag 上运行；
 web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 
-**剩余工程待办**（明细与拍板记录见 `docs/web-optimization-backlog.md`）：
-
-- C6 索引：`token_usage_hourly (user_id, source, hour_start)` 与 `token_device_tokens (user_id)`；
-  当前数据量无感知，**保持待办**，等数据量触发。
-- D7 仪表盘刷新探针 `GET /api/app/dashboard-revision`（未开工）。
+**Web 工程待办**：已清空，历史明细见 `docs/web-optimization-backlog.md`。
 
 **CLI 候选**（不阻塞当前版本，见 `docs/cli-release.md` §四）：
 
@@ -276,8 +272,8 @@ web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 
 1. **Next 16.4.3 升级** → 立即执行，单独一批：升级 → `pnpm verify` → 浏览器冒烟 →
    推送观察 Vercel 部署。完成后勾掉 E1。
-2. **D2 / C6 / D7 优先级** → 顺序 **D2 → D7 → C6**；D2 单独一批并单独验收，C6 继续等
-   数据量触发。
+2. **D2 Sessions CSV 导出** → 只做 CSV，**取消列排序**；单独一批并单独验收
+   （2026-11-01 完成）。
 3. **`token-usage.cc` 官方落地页** → **延后**，等 web、桌面端与 CLI 端功能全部完成后
    再启动；在那之前不排期、不改 requirements 的「v1 范围」表述（仍属规划内，只是后置）。
 4. **旧 `tokentracker-*` 路径别名** → **暂不退役**。`tokentracker-cli` npm 近一月下载
