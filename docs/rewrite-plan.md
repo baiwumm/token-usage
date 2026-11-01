@@ -265,7 +265,8 @@ web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 
 **CLI 候选**（不阻塞当前版本，见 `docs/cli-release.md` §四）：
 
-- `init` 逐工具集成选择（当前 `--no-integrations` 只有全有 / 全无）。
+- `init` 逐工具集成选择（当前 `--no-integrations` 只有全有 / 全无）——
+  **列入后续版本计划，下个版本不做**。
 - macOS / Linux 原生调度（当前仅 Windows 计划任务；其他平台靠 `--watch` / 手动）。
 
 **操作者拍板记录（2026-11-01）**：
@@ -279,5 +280,5 @@ web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 4. **旧 `tokentracker-*` 路径别名** → **暂不退役**。`tokentracker-cli` npm 近一月下载
    约 1.7 万次，无法排除外部钉版客户端；别名保留成本接近零，等正式废弃公告与观察期
    后再议（契约 §1.5 继续有效）。
-5. **CLI 候选** → `init` 逐工具集成选择排入下个 CLI 版本；macOS / Linux 原生调度
-   **单独评估**，不随下个版本发布（先确认真机需求与调度形态）。
+5. **CLI 候选** → `init` 逐工具集成选择**列入后续版本计划，下个版本不做**；
+   macOS / Linux 原生调度 **单独评估**，不随下个版本发布（先确认真机需求与调度形态）。
