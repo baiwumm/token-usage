@@ -3,6 +3,51 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## Unreleased
+
+对账上游 `tokentracker-cli` / `jusage` 后的加固批：统一错误模型、补齐帮助与
+`upload` 命令、参数严格校验、三平台原生调度，并清掉从未接线的本地服务模块。
+不发版（等下一个版本号确定）。
+
+- **用户输入错误统一为 `UsageError`**：未知命令 / 未知参数 / 非法取值只打一行
+  `Error: ...` 加 `Hint:`，退出码 2，不再刷堆栈；`--debug` 才展开。
+- **命令表驱动 help**：`tokenusage help <cmd>` 与 `tokenusage <cmd> --help` 对每条
+  命令都有效，未知命令抛 `UNKNOWN_COMMAND`。
+- **新增 `tokenusage upload`**：只刷本地队列、不扫描来源（`--drain` / `--force`
+  抬批次上限，`--json` 输出结构），与 `sync` 共用 `drainQueueToCloud` 与
+  `sync.lock`；`sync --upload-only` 为同一实现的别名。积压较多时不必再等
+  全量扫描。
+- **`--source` 严格校验**：非法 id 直接报错并列出可用列表（此前静默降级为全量
+  扫描，容易误以为只采了某个来源）。
+- **`sessions` 严格解析**：未知参数、缺值、非法 `--format` 均报错；`--out` 改为
+  原子写（0600），避免脚本拿到半截 JSON / CSV。
+- **`--watch` 失败退避**：连续失败按 1x → 2x → 5x 拉长间隔并在 stderr 提示，
+  成功一次即归零；此前固定间隔会持续打服务端。
+- **`init --integrations <ids|all|none>`**：可只接管部分集成；不带该参数时在交互
+  确认里提供多选（空格切换 / `a` 全选 / `n` 清空），`--no-integrations` 仍等于
+  `none`。12 个 hook 型集成逐个 gate，被动读取器不受影响。
+- **移除浏览器登录期死参数**：`--email` / `--password` / `--device-name` /
+  `--link-code` / `--no-auth` 改为报错并指向 `device-login`。
+- **调度多平台**：Windows 计划任务改用 `schtasks /Create /XML` 定义
+  （`StartWhenAvailable`、登录触发、失败重试 3 次、无执行时限；XML 被拒时回退
+  `-SC HOURLY`）；macOS 用 launchd（`com.token-usage.sync`）；Linux 用 systemd
+  user timer（`token-usage-sync.timer`，`Persistent=true`）。`pause` / `resume` /
+  `uninstall` 走同一分发层。
+- **`sync.log` 改 JSONL**：`{ts,msg,...}` 每行一条，带上 `phase` / `status` /
+  `parsed_files` / `buckets` / `inserted` / `skipped` / `pending_bytes` 等结构化
+  字段；TTY 输出仍是人类可读行，1 MiB 滚动一代不变。
+- **清理死模块**：删除从未接线的本地服务模块图（`local-api.js` 与 18 个可达性为零
+  的模块，约 550 KB），`normalizeQueueRow` 抽到 `src/lib/queue-row-normalize.js`
+  并补空值守卫。
+- **打包收紧**：`files` 去掉 `test/`；`test/packaging.test.js` 新增两条守卫——
+  已退役模块不得回归、`src/` 内每个文件都必须能从 CLI 入口可达。
+- 测试 76 → 111 条（新增 `cli-dispatch` / `args-strict` / `scheduled-task` /
+  `queue-row-normalize` / `integration-gate`；后者锁定「选中才写工具配置」与
+  `upload` 未配对即拒绝的语义）。
+- **未做**：对账命令（`calibrate` / `reconcile`）需要新契约端点，先改
+  `docs/cli-contract.md` §2 与 golden 测试并经操作者确认（见
+  `docs/cli-release.md` §四）。
+
 ## 0.3.0
 
 新增三个采集来源/维度，修复 Windows 下 Qoder 会话的发现与口径问题。

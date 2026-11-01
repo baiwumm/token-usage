@@ -127,13 +127,32 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 > **未发版候选（2026-11-01 盘点）**：① `init` 逐工具集成选择（当前 `--no-integrations`
 > 只有全有 / 全无）；② macOS / Linux 原生调度（当前仅 Windows 计划任务，其他平台靠
-> `--watch` / 手动）。两项都不阻塞 0.3.0；逐工具选择等真实混合需求，原生调度等
-> 真机形态确认后再启动。
+> `--watch` / 手动）。
 >
-> **2026-11-01 操作者拍板**：① `init` 逐工具集成选择**列入后续版本计划，下个版本不做**
-> （同日重估：收益主要是实时性与配置侵入范围，当前两台机器都用 `--no-integrations`，
-> 数据完整，先不动）；② macOS / Linux 原生调度单独评估，不随下个版本发布
-> （先确认真机需求与调度形态）。
+> **2026-11-01 操作者拍板（最终）**：对上一条「下个版本不做 / 单独评估」的结论做出修订——
+> **两项随本版开发**，并与同一批的 CLI 加固一起交付（见下条记录）。
+>
+> **CLI 加固批（2026-11-01，未发版）**：对照上游 `tokentracker-cli` / `jusage` 核对后落地：
+> ① 用户输入错误统一为 `UsageError`（`src/lib/cli-errors.js`，bin 只打一行 + hint、退出码 2、
+> 不再打堆栈）；② 命令表驱动 help（`src/cli.js` 的 `COMMANDS`），`tokenusage <cmd> --help`
+> 对每条命令有效，未知命令抛 `UNKNOWN_COMMAND`；③ 新增 `tokenusage upload`（只刷队列不扫描，
+> 复用同一 `drainQueueToCloud` + `sync.lock`，`sync --upload-only` 为别名）；④ `--source`
+> 非法值改为报错并列出可用 id（原实现静默降级为全量扫描）；⑤ `sessions` 严格解析 +
+> `--out` 原子写（0600）；⑥ `--watch` 失败退避 1x → 2x → 5x（成功即归零）；
+> ⑦ `init --integrations <ids|all|none>` + 交互式多选（12 个 hook 型集成逐个 gate，
+> 被动读取器不 gate）；⑧ 移除浏览器登录期死参数（`--email/--password/--device-name/
+> --link-code/--no-auth`，改为指向 `device-login` 的报错）；⑨ 调度多平台化（Windows 改
+> `schtasks /Create /XML` 定义：`StartWhenAvailable` + 登录触发 + `RestartOnFailure 3` +
+> 无执行时限；macOS launchd `com.token-usage.sync`；Linux systemd `--user` timer
+> `token-usage-sync.timer`，`Persistent=true`），pause/resume/uninstall 走同一分发层；
+> ⑩ 删除从未接线的本地服务模块图（`local-api.js` + 18 个可达性为零的模块 + `pricing/`
+> 数据，共约 550 KB），`normalizeQueueRow` 抽到 `src/lib/queue-row-normalize.js`；
+> ⑪ `package.json` 的 `files` 去掉 `test/`；⑫ `autoLog` 落盘改 JSONL（`{ts,msg,...}`，
+> 仍 1 MiB 滚动一代，TTY 行保持人类可读）。
+> 测试：CLI 76 → 111 条（新增 `cli-dispatch` / `args-strict` / `scheduled-task` /
+> `queue-row-normalize` / `integration-gate`，并把「src 内零可达模块」写成 packaging 守卫）。
+> 对账命令（`calibrate` / `reconcile`）**未实现**：需要 CLI 面新端点（按设备 + 日期读小时桶
+> 明细），按硬性约束 1 必须先改 `docs/cli-contract.md` §2 与 golden 测试并经操作者确认。
 
 > **0.3.0（2026-11-01 已发 npm 并完成本机升级）**：新增 Trae CN 本地库扫描、Qoder
 > credits 维度（桶级 / 会话级 / sync-run `credits_ingested` 遥测）、Qoder 会话进入

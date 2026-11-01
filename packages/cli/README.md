@@ -30,20 +30,33 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 
 | 命令 | 说明 |
 |---|---|
-| `tokenusage init` | 本地初始化：扫描根配置、各工具 hook 安装、注册每小时计划任务（Windows 隐藏窗口）。`--no-task` 跳过任务；`--run-report=off` 关闭运行记录上报；`--no-integrations` 不装任何 hook/notify/插件，只做纯定时采集；`--yes` 非交互；`--dry-run` 只预览不落盘；`--no-open` 不打开浏览器；`--link-code <code>` 用已有配对码。不含配对 |
+| `tokenusage init` | 本地初始化：扫描根配置、各工具 hook 安装、注册每小时计划任务（Windows 隐藏窗口）。`--no-task` 跳过任务；`--run-report=off` 关闭运行记录上报；`--integrations <ids,all,none>` 逐工具选择要接管的集成（缺省在交互确认里多选），`--no-integrations` 等于 `none`（只做纯定时采集）；`--yes` 非交互；`--dry-run` 只预览不落盘；`--no-open` 不打开浏览器。不含配对 |
 | `tokenusage device-login` | 设备流配对：输出 `user_code`，在站点 `/device` 页批准后本机拿到设备令牌 |
 | `tokenusage sync` | 解析本地 AI 工具日志 → 上报小时桶 + 会话元数据 |
+| `tokenusage upload` | 只刷本地队列，不扫描来源（`--drain` / `--force` 抬批次上限、`--json` 输出结构化结果） |
 | `tokenusage sync --watch` | 常驻模式，默认每 15 分钟增量一轮（`--interval <ms>` 可调，≥60000） |
 | `tokenusage sync --no-sessions` | 只上报小时桶，跳过会话元数据 |
 | `tokenusage sync --drain` | 补传模式：更大的批处理预算，适合首次接入/长期积压 |
-| `tokenusage pause` / `resume` | 暂停/恢复自动采集：定时任务、hook、`--watch` 全部静默停手，手动 `sync` 不受影响（Windows 上同步启停计划任务） |
+| `tokenusage pause` / `resume` | 暂停/恢复自动采集：定时任务、hook、`--watch` 全部静默停手，手动 `sync` 不受影响（同步启停系统的调度项） |
 | `tokenusage status` | 本地状态：Base URL、令牌、采集状态、运行上报开关、队列积压、最近解析/上传时间 |
 | `tokenusage doctor` | 体检（运行时 / 网络 / 各工具配置），`--json` 输出 |
 | `tokenusage diagnostics` | 诊断信息导出 |
-| `tokenusage sessions` | 本地导出会话分析（JSON/CSV，元数据级） |
+| `tokenusage sessions` | 本地导出会话分析（JSON/CSV，元数据级）；`--out <file>` 原子写（0600） |
 | `tokenusage uninstall [--purge]` | 移除 hook 与计划任务；`--purge` 连数据目录一起删 |
 
 配置优先级：CLI 参数 > `~/.tokenusage/.../config.json` > 环境变量（`TOKENUSAGE_BASE_URL` 等）> 内置默认（你的部署地址 + 其公开 publishable key）。
+
+帮助与错误：`tokenusage help`、`tokenusage help <命令>`、`tokenusage <命令> --help` 都可用。
+参数写错（未知命令 / 未知参数 / 非法取值）只输出一行 `Error: ...` 加 `Hint:`，退出码
+`2`；其余运行错误退出码 `1`。要堆栈加 `--debug`。
+
+只补传积压、不重扫本地日志：
+
+```bash
+tokenusage upload            # 刷队列（默认最多 5 批，每批 200 条）
+tokenusage upload --drain    # 大积压补传（最多 100 批）
+tokenusage upload --json     # 结构化结果，便于脚本消费
+```
 
 ## `sync --watch`：常驻自动上报
 
@@ -56,6 +69,7 @@ tokenusage sync --watch --interval 3600000 --no-sessions   # 每小时，只传�
 - `--interval` 毫秒，最小 60000（小于该值回落到默认 15 分钟——每轮至少要跑一次本地扫描，过密无意义）。
 - **停止**：在运行的终端 Ctrl+C 即可；`--watch` 只是前台进程，不注册任何系统计划任务/守护。随时终止都安全——队列与水位都已落盘，下次 `sync` 从断点继续。
 - 每轮增量：首轮解析全部历史日志（可能较慢），之后只重扫有变化的文件；上报侧队列 offset + 会话水位双断点，多轮之间不重不漏。
+- 失败退避：连续失败按 1x → 2x → 5x 拉长间隔（stderr 提示原因），成功一次即回到正常间隔——服务端抖动时不会持续敲。
 
 ## 采集控制：pause / resume 与计划任务
 
@@ -65,13 +79,23 @@ tokenusage resume           # 恢复
 tokenusage status           # 查看当前采集状态
 ```
 
-- 暂停是持久标志：`sync --auto`、hook/notify 触发、`--watch`、计划任务都会静默
+- 暂停是持久标志：`sync --auto`、hook/notify 触发、`--watch`、定时任务都会静默
   退出（不报错、不上报、不留运行记录）；**手动 `tokenusage sync` 永远可用**。
-- Windows 上 init 会注册每小时计划任务 `TokenUsageSync`（隐藏窗口，无黑框），
-  pause/resume 顺势 disable/enable 它；`uninstall` 一并删除任务与脚本。
-  任务以 `--from-scheduled` 运行：运行记录标记为"定时"并写入滚动日志。
-- 自动采集的日志落在 `~/.tokenusage/tracker/logs/sync.log`（1 MiB 滚动一代），
-  不依赖终端重定向。
+- init 会在系统里注册每小时自动采集，按平台分发；pause/resume 顺势停用/启用它，
+  `uninstall` 一并删除调度项与脚本。任务以 `--from-scheduled` 运行：运行记录标记
+  为"定时"并写入滚动日志。
+
+  | 平台 | 调度形态 |
+  |---|---|
+  | Windows | 计划任务 `TokenUsageSync`（`schtasks /Create /XML`，隐藏窗口 VBS 启动，登录后可用、错过启动会补跑、失败重试 3 次、无执行时限） |
+  | macOS | launchd `~/Library/LaunchAgents/com.token-usage.sync.plist`（`StartInterval` 3600 + `RunAtLoad`） |
+  | Linux | systemd user timer `token-usage-sync.timer`（`Persistent=true`，开机/错过补跑） |
+  | 其他 | 不支持原生调度，请用 `tokenusage sync --watch` 常驻或手动 `sync` |
+
+- 自动采集的日志落在 `~/.tokenusage/tracker/logs/sync.log`（**JSONL**：每行
+  `{ts,msg,...}`，带 `phase` / `status` / `parsed_files` / `buckets` / `inserted` /
+  `skipped` / `pending_bytes` 等字段，方便 `jq` 过滤；1 MiB 滚动一代），不依赖终端
+  重定向。前台终端输出仍是人类可读行。
 
 ## 运行记录上报
 

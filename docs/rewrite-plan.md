@@ -258,16 +258,26 @@ Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）、Sessions CSV 导�
 10,000 行 / 4 MiB 双上限）。来源接入的验收记录见 `docs/sources-capture-plan.md`。
 
 **测试与部署**：`pnpm verify` 全绿（lint 0 error + 5 条既有 `no-console` warning；
-web 32 files / 444 tests + build；CLI 76 tests）。CI 在 main 与 `cli-v*` tag 上运行；
+web 32 files / 444 tests + build；CLI 111 tests）。CI 在 main 与 `cli-v*` tag 上运行；
 web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 
 **Web 工程待办**：已清空，历史明细见 `docs/web-optimization-backlog.md`。
 
-**CLI 候选**（不阻塞当前版本，见 `docs/cli-release.md` §四）：
+**CLI 候选**（原「下个版本不做」，2026-11-01 操作者拍板改为随本版交付，见
+`docs/cli-release.md` §四「CLI 加固批」）：
 
-- `init` 逐工具集成选择（当前 `--no-integrations` 只有全有 / 全无）——
-  **列入后续版本计划，下个版本不做**。
-- macOS / Linux 原生调度（当前仅 Windows 计划任务；其他平台靠 `--watch` / 手动）。
+- `init` 逐工具集成选择 —— **已交付**：`--integrations <ids|all|none>` + 交互式多选，
+  12 个 hook 型集成逐个 gate（被动读取器不 gate，避免关掉文件扫描）。
+- macOS / Linux 原生调度 —— **已交付**：launchd（`com.token-usage.sync`）与 systemd
+  user timer（`token-usage-sync.timer`，`Persistent=true`），与 Windows 计划任务共用
+  同一分发层；pause / resume / uninstall 走同一套文案。
+
+附带交付（同批 CLI 加固，明细见 `docs/cli-release.md` §四）：`UsageError` 统一用户输入
+错误、命令表驱动 help、`tokenusage upload`、`--source` 严格校验、`sessions` 严格解析 +
+原子写、`--watch` 退避、调度重写、死模块清理、`files` 去掉 `test/`、`sync.log` 改 JSONL。
+对账命令（`calibrate` / `reconcile`）**仍未做**：按硬性约束 1，需先在
+`docs/cli-contract.md` §2 增补「按设备 + 日期读小时桶明细」端点与 golden 测试，经操作者
+确认后再实现。
 
 **操作者拍板记录（2026-11-01）**：
 
@@ -280,5 +290,10 @@ web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 4. **旧 `tokentracker-*` 路径别名** → **暂不退役**。`tokentracker-cli` npm 近一月下载
    约 1.7 万次，无法排除外部钉版客户端；别名保留成本接近零，等正式废弃公告与观察期
    后再议（契约 §1.5 继续有效）。
-5. **CLI 候选** → `init` 逐工具集成选择**列入后续版本计划，下个版本不做**；
-   macOS / Linux 原生调度 **单独评估**，不随下个版本发布（先确认真机需求与调度形态）。
+5. **CLI 候选** → 原结论「`init` 逐工具集成选择下个版本不做、macOS / Linux 原生调度单独
+   评估」**由本条修订作废**：两项**随本版开发**（2026-11-01 当日交付，见上「CLI 候选」）。
+6. **CLI 加固批** → 「按建议执行」：上游 `tokentracker-cli` / `jusage` 核对结论中的
+   P0/P1/P2 全部落地（错误模型、命令表 help、`upload`、严格 `--source`、`sessions` 严格
+   解析、watch 退避、`--integrations`、死参数移除、调度三平台、死模块清理、`files` 收紧、
+   JSONL 日志）。唯一未做项是对账命令 `calibrate` / `reconcile`——受硬性约束 1 限制，
+   必须先改契约文档与 golden 测试并经操作者确认，本批不动。
