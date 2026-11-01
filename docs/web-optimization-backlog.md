@@ -1,8 +1,14 @@
-# Web 端优化待办清单（2026-10-27 审计）
+# Web 端优化待办清单（2026-10-27 审计；2026-11-01 复核）
 
 来源：2026-10-26/27 全量审计。P0/P1 已修复并推送（`3f191ac` 竞态与死锁、`85d1fb4`
 快照缓存与格式化缓存，CI 绿）；本文件是**遗留拍板项与剩余任务**的唯一清单，做完一项勾一项，
 全部完成后可删除本文件或在标题标注"已清"。
+
+2026-11-01 复核：A / B / C / D 除 C6、D2、D7 外全部完成，未发现回退；新增 E1
+（Next.js 安全升级，同日完成）。C6 / D2 / D7 保持原明细与待办状态。
+
+2026-11-01 操作者拍板：**E1 已完成**（本批）；剩余顺序 **D2 → D7 → C6**，C6 继续等
+数据量触发。
 
 约定：动任何 §2.6/§2.7 冻结行为前，先改 `docs/cli-contract.md` 与 golden 测试 → 操作者确认 →
 再改实现（AGENTS 硬性约束 1）。每次提交前跑 `pnpm verify`，conventional commits +
@@ -149,6 +155,17 @@
       固定间隔轮询探针，版本变化才拉 6 个面板接口，无变化时连遮罩都不闪。目标是把轮询
       成本压到一次索引查询，同时比定时刷新更及时。可再评估按面板细分版本、多标签页
       leader 去重（`BroadcastChannel` / `storage`）与合并 6 个接口。
+
+### E. 安全与依赖（2026-11-01 复核）
+
+- [x] E1 Next.js 升级（2026-11-01 完成）：`next@16.3.6` → **16.4.3**，
+      `@next/eslint-plugin-next` 同步。`pnpm audit --prod` 由 2 critical / 2 high /
+      5 moderate / 1 low 降为 **No known vulnerabilities**；`pnpm verify` 全绿
+      （web 435 tests + build，CLI 76 tests）；本机 `next start` 冒烟：`/login` 200、
+      public-config 200（新旧路径）、`/` 与 `/achievements` 307 带 `next` 回跳、
+      `manifest.json` 200。登录后视觉冒烟留给操作者验收。
+- 说明：其余 `pnpm outdated` 条目为 minor / major 升级（HeroUI 3.2.7、React 19.3.1、
+  `intl-messageformat` 12 等），无安全通告驱动，按需再评估，不在本清单默认开工。
 
 ---
 

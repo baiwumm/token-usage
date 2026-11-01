@@ -5,8 +5,9 @@
 
 ## 环境变量
 
-清单以 `docs/rewrite-plan.md` §9 为准（全部 server-only，无 `NEXT_PUBLIC_*`）；
-在 Vercel 项目的 Production 与 Preview 各配一份。
+清单以 `docs/rewrite-plan.md` §9 为准：`NEXT_PUBLIC_SUPABASE_URL` 与
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 是浏览器可见的公开值，`SUPABASE_SECRET_KEY` 等
+其余变量为 server-only；在 Vercel 项目的 Production 与 Preview 各配一份。
 
 ## 部署顺序
 
@@ -14,7 +15,9 @@
    （操作者经 service-role 创建），生产数据零触碰。
 1. 新建**独立的 Supabase 项目**（与旧系统项目分离），跑 `supabase/migrations` 建表；
    本仓库导入为新 Vercel 项目，绑定域名 `token-usage.baiwumm.com`，按 §9 配齐环境变量
-   （Supabase 三项指向新项目）。
+   （Supabase 三项指向新项目）。**升级已有部署时**，按文件名顺序补齐新增迁移；新版
+   ingest 会写 `credits` 列，必须先应用 `20261031000000` / `20261031000001` /
+   `20261031000003` 再部署新代码。
 2. 在新域名跑下方冒烟清单，全绿（含旧路径别名）。
 3. 【G1 闸门——操作者放行】采集机逐台把 base URL 改为
    `https://token-usage.baiwumm.com/api`。
@@ -44,7 +47,7 @@
 
 逐台迁移（每台完成后进下一台；属于 G1 闸门，操作者放行）：
 
-1. `npm i -g tokenusage-cli`（已发布，当前 0.2.6）或从仓库 `packages/cli` 安装；
+1. `npm i -g tokenusage-cli`（已发布，当前 0.3.0）或从仓库 `packages/cli` 安装；
 2. `tokenusage device-login` → 浏览器登录新站点 → `/device` 批准 `user_code`；
 3. `tokenusage sync --drain` → 仪表盘/Sessions 出现该设备数据；
 4. 对账：`tokenusage sessions --format json` 汇总与 /sessions 页一致（token、会话数），
@@ -95,4 +98,6 @@
 
 - GitHub Actions 跑 `pnpm verify` 作为合并门禁；Vercel Git 集成负责构建：
   每次 push 自动生成 Preview，main 产出 Production。
-- M6 接入：tag 触发版本号、CHANGELOG、Release 的自动流水线。
+- CLI 已接入 tag 触发流水线：`.github/workflows/release-cli.yml` 在 `cli-v*` tag 上
+  校验版本与 main 祖先、跑 `pnpm verify`、`npm publish --provenance` 并生成 GitHub
+  Release；操作步骤见 `docs/cli-release.md`。web 端仍由 Vercel 部署，不发 npm 版本。

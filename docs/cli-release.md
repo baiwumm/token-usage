@@ -124,6 +124,27 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 后续版本候选与实测记录（不阻塞已发版本）
 
+> **未发版候选（2026-11-01 盘点）**：① `init` 逐工具集成选择（当前 `--no-integrations`
+> 只有全有 / 全无）；② macOS / Linux 原生调度（当前仅 Windows 计划任务，其他平台靠
+> `--watch` / 手动）。两项都等真机验证或形态确认后再做，不阻塞 0.3.0。
+>
+> **2026-11-01 操作者拍板**：① 排入下个 CLI 版本；② 单独评估，不随下个版本发布
+> （先确认真机需求与调度形态）。
+
+> **0.3.0（2026-11-01 已发 npm 并完成本机升级）**：新增 Trae CN 本地库扫描、Qoder
+> credits 维度（桶级 / 会话级 / sync-run `credits_ingested` 遥测）、Qoder 会话进入
+> Sessions（一文件 = 一会话，应用与桶解析器一致的 billable 门槛），读侧模型名按
+> 小写折叠分组。采集期修复 Qoder 文件未纳入会话缓存签名、`listRolloutFilesDeep`
+> 只认 `rollout-*` 文件名的问题。发版：tag `cli-v0.3.0`（`56ff02c`）→ release run
+> 41220305466 全绿，`npm publish --provenance` 成功，GitHub Release 正文取 CHANGELOG
+> 的 0.3.0 段；registry `dist-tags.latest` 为 0.3.0。本机 `pnpm verify` 全绿
+> （web 31 files / 435 tests + build；CLI 76 tests；lint 0 error / 5 warning）。
+> 本机验收（2026-11-01）：`tokenusage --version` 为 v0.3.0，
+> `~/.tokenusage/tracker/app/.runtime-ready` 为 0.3.0（2026-10-31T16:38Z），
+> 运行时副本已刷新；计划任务下次运行走 0.3.0。Trae CN 已具备持续采集条件（P0 起）。
+> 另一台采集机升级同样需重跑 `tokenusage init --yes --no-integrations --no-open`
+> 刷新运行时副本。
+>
 > **本机升级复核（2026-10-29 晚，0.2.4 → 0.2.6 重装）**：复核发现本机全局
 > `tokenusage` 与 `~/.tokenusage/tracker/app` 副本实际停在 0.2.4（计划任务运行
 > 记录 `cli=0.2.4`），与本节 0.2.6 验收记录不符。处理：`npm i -g

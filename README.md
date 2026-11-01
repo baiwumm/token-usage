@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/baiwumm/token-usage/actions/workflows/ci.yml"><img src="https://github.com/baiwumm/token-usage/actions/workflows/ci.yml/badge.svg?branch=main&style=flat-square" alt="CI" /></a>
-  <img src="https://img.shields.io/badge/%E7%8A%B6%E6%80%81-v1_%E9%87%8D%E5%86%99%E4%B8%AD-F59E0B?style=flat-square" alt="状态：v1 重写中" />
+  <img src="https://img.shields.io/badge/%E7%8A%B6%E6%80%81-v1_%E5%B7%B2%E4%B8%8A%E7%BA%BF-3FB950?style=flat-square" alt="状态：v1 已上线" />
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-0A0A0A?style=flat-square" alt="MIT License" /></a>
 </p>
 
@@ -44,6 +44,7 @@
 
 - **一个账户、多台设备**：桌面 / 笔记本各自的采集端独立配对、独立吊销，用量按账户聚合、按设备下钻
 - **数据自主**：每个部署实例绑定自己的 Supabase 项目，采集端只向配对实例上报，跨实例零共享
+- **可观测**：仪表盘 / Sessions 会话明细 / 采集运行记录 / 成就墙；积分（credits）作为独立维度展示，不混入 token 与成本
 - **契约先行**：CLI 采集契约两档制——采集面硬冻结、仪表盘面随 UI 演进（[`docs/cli-contract.md`](docs/cli-contract.md)）
 - **开源自部署**：Vercel free + Supabase free 即可跑通，见[部署指南](docs/deploy-guide.md)
 
@@ -71,7 +72,7 @@ token-usage/
 ```bash
 pnpm install
 pnpm dev        # http://localhost:3000
-pnpm verify     # 提交前门禁：lint + typecheck + build
+pnpm verify     # 提交前门禁：lint + typecheck + test + build
 ```
 
 前置要求：Node.js 24+、pnpm（版本由根 `packageManager` 字段锁定）。
@@ -80,8 +81,11 @@ pnpm verify     # 提交前门禁：lint + typecheck + build
 
 ## 🗺️ 路线图
 
-M1 契约层 → M2 认证与设置 → M3 仪表盘 → M4 wrapped / 分享 / 服务状态 → M5 配对页与部署文档 →
-M-CLI 采集端（`tokenusage-cli`）→ M6 数据迁移与切换。详见 [`docs/rewrite-plan.md`](docs/rewrite-plan.md) §5。
+M0 脚手架 → M1 契约层 → M2 认证与设置 → M3 仪表盘 → M4 wrapped / 分享 / 服务状态 →
+M5 配对页与部署文档 → M5.5 上游 Dashboard 核心 + 外观设置 → M5.6 Sessions →
+M-CLI 采集端（`tokenusage-cli`，当前 0.3.0）→ M6 数据迁移与切换 → M7 成就系统。
+**v1 全部完成并上线（2026-10-30）**；剩余待办与待拍板事项见
+[`docs/rewrite-plan.md`](docs/rewrite-plan.md) §10。
 
 ## 📚 文档
 
@@ -91,7 +95,12 @@ M-CLI 采集端（`tokenusage-cli`）→ M6 数据迁移与切换。详见 [`doc
 | [`docs/requirements.md`](docs/requirements.md) | 需求真源：范围、边界、角色、验收标准 |
 | [`docs/cli-contract.md`](docs/cli-contract.md) | API 契约（两档制）：CLI 面硬冻结 + Dashboard 面可演进 |
 | [`docs/ui-spec.md`](docs/ui-spec.md) | UI 规范：Design Tokens、组件规则、三态与响应式 |
-| [`docs/rewrite-plan.md`](docs/rewrite-plan.md) | 计划：表结构、里程碑、数据迁移与切换闸门 |
+| [`docs/rewrite-plan.md`](docs/rewrite-plan.md) | 计划：表结构、里程碑、数据迁移、当前状态与剩余事项 |
+| [`docs/achievements-plan.md`](docs/achievements-plan.md) | 成就系统：18 条 × 5 档、阈值校准、实施与验收记录 |
+| [`docs/sources-capture-audit.md`](docs/sources-capture-audit.md) | 来源采集机制：双平面原则、账户级来源、缺口审计 |
+| [`docs/sources-capture-plan.md`](docs/sources-capture-plan.md) | 来源接入任务：Trae CN、credits 全链路、Sessions credits |
+| [`docs/cli-release.md`](docs/cli-release.md) | CLI 发版手册：tag 流水线、版本升级与实测记录 |
+| [`docs/web-optimization-backlog.md`](docs/web-optimization-backlog.md) | Web 端剩余待办与安全升级清单 |
 | [`docs/deploy-guide.md`](docs/deploy-guide.md) | 部署指南：Supabase + Vercel 从零跑通 |
 | [`docs/launch-runbook.md`](docs/launch-runbook.md) | 发布手册：部署顺序、冒烟清单、回滚 |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 第三方资产与许可登记（品牌图标、字体、定价快照、代码来源） |
@@ -99,10 +108,11 @@ M-CLI 采集端（`tokenusage-cli`）→ M6 数据迁移与切换。详见 [`doc
 ## 🌍 English
 
 **Token Usage** is a self-hosted AI token usage tracker — one account, many collector
-devices, CLI-based reporting, aggregated usage & cost dashboards. All data lives in
-**your own Supabase** project; nothing is shared across instances. It is an independent
-community project; code provenance and third-party licenses live in [`LICENSE`](./LICENSE)
-and [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
+devices, CLI-based reporting, aggregated usage & cost dashboards, session details,
+collector run history, vendor credits, and an account-level achievement wall. All data
+lives in **your own Supabase** project; nothing is shared across instances. It is an
+independent community project; code provenance and third-party licenses live in
+[`LICENSE`](./LICENSE) and [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
 
 - **Stack**: Next.js 16 (App Router) · React 19 · HeroUI 3 · Tailwind CSS 4 · Supabase (Auth + Postgres, RLS denies all client roles) · pnpm workspace
 - **Deploy**: Supabase (free tier) + Vercel (Hobby) is enough — see the [English-friendly deploy guide](docs/deploy-guide.md) (Chinese, step by step) or use the Deploy button above

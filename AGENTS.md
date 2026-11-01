@@ -30,7 +30,7 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 |------|---------|
 | 全部门禁（每次提交前） | `pnpm verify` |
 | Dev / Build | `pnpm dev` / `pnpm build` |
-| 单个测试文件 | `pnpm vitest run <file>`（M1 起存在） |
+| 单个测试文件 | `pnpm --filter @token-usage/web exec vitest run <file>` |
 
 ## 文档地图（对应任务动手前先读）
 
@@ -38,11 +38,13 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 |------|------|
 | 改 CLI 契约层（`app/api/functions/token-usage-*`） | `docs/cli-contract.md` |
 | 来源采集机制、积分制/账户级来源（长期参考） | `docs/sources-capture-audit.md` |
-| 来源接入任务派发（Trae CN / credits / 订阅额度） | `docs/sources-capture-plan.md` |
+| 来源接入任务派发（Trae CN / credits / Sessions credits） | `docs/sources-capture-plan.md` |
 | CLI 发版与 npm 发布 | `docs/cli-release.md` |
 | 改数据库、写迁移、迁移/切换/退役操作 | `docs/rewrite-plan.md` §3、§6–7 |
 | 写任何 UI | `docs/ui-spec.md` |
 | 成就系统（计划、阶段进度、决策记录） | `docs/achievements-plan.md` |
+| 剩余 Web 待办、安全升级与拍板项 | `docs/web-optimization-backlog.md` |
+| 当前进度、剩余事项与待决策 | `docs/rewrite-plan.md` §10 |
 | 部署与回滚 | `docs/launch-runbook.md` |
 
 ## 硬性约束

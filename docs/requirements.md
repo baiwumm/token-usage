@@ -27,8 +27,8 @@
 | 成就 | `/achievements` | 18 条成就 × 5 档（铜/银/金/钻/王者），账号级、只升不降；分类栅格、进度与达成日期、五档详情时间线、年度回顾独立成就卡（当前已获得成就 + 段位）；读时计算；仅 `token_achievement_seen` 存账号级已读水位（跨设备「新」标记与解锁 toast） |
 | 服务状态 | `/service-status` | 端点健康自查页 |
 | 配对 | `/device` | 页面批准 CLI 配对码 |
-| CLI API | `/api/functions/token-usage-*` | 10 个契约端点（`docs/cli-contract.md`） |
-| 产品落地页 | token-usage.cc | **独立建站**（不在本应用内）：产品介绍、自部署入口（部署指南 / GitHub）、登录入口 |
+| CLI API | `/api/functions/token-usage-*` | CLI 面 8 端点 + Dashboard 面 10 端点（`docs/cli-contract.md` §2） |
+| 产品落地页 | token-usage.cc | **独立建站**（不在本应用内）：产品介绍、自部署入口（部署指南 / GitHub）、登录入口；**2026-11-01 拍板延后**，等 web / 桌面端 / CLI 功能全部完成后启动 |
 | 开源自部署 | — | 中文部署指南、迁移脚本、Deploy to Vercel 按钮 |
 
 路由约定（2026-10-24 二次修订）：仪表盘挂 `/` 且**需要登录**；**除 `/login`、`/auth/callback`
@@ -37,7 +37,8 @@
 2026-10-25 新增 `/sessions`，同属登录后页面；2026-10-30 新增 `/achievements`，同属登录后页面；
 设置分区用 `/settings?section=appearance|account|devices` 深链，不新增顶层路由。
 产品落地页不在本应用内，使用 **token-usage.cc** 独立域名创建（开源自部署介绍站，与本
-应用部署域相互独立）。CLI API 走 `docs/cli-contract.md` 自身的公开/鉴权规则，不受页面
+应用部署域相互独立）；启动时机见上表（2026-11-01 拍板延后至 web / 桌面端 / CLI 功能
+全部完成）。CLI API 走 `docs/cli-contract.md` 自身的公开/鉴权规则，不受页面
 守卫影响。路由表变更需回写本表。
 
 ## 边界（v1 不做什么）

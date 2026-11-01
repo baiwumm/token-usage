@@ -61,10 +61,10 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
   `sync` 只上传到配对实例；实例的 route.ts 用它自己环境里的 service-role 写入它自己的
   Supabase。数据跨实例零共享，自部署者无需任何额外配置。
 - 账户级来源（cursor / trae-cn）的去重与会话状态聚合、读取时定价引擎（vendored LiteLLM 快照 + curated 覆盖）从旧仓库 `api/_lib/` 移植，作为**纯函数模块**保留并被两层共用。
-- Vercel 函数预算：`account-[series]` 一个动态路由覆盖 8 个 series（2026-10-25 追加 `sessions`，2026-10-27 追加 `sync-runs`）。**2026-10-30 复核**：仓库实际已有 13 个 route handler（含 `/api/app/sync-runs` 与 `/auth/callback`），已超过本行原先记载的 Hobby 12 上限——预算可能已随套餐或平台策略变化；M7 数据面实施前必须在 Vercel 控制台核对，超限时成就页改 Server Component 直出（零新增函数，见 `docs/achievements-plan.md` P1.4）。**2026-10-30 P3**：成就已读水位的 `POST` 复用 `/api/app/achievements` 同一个 route（导出 `GET` + `POST`），**不新增 route handler**，函数预算不变。
+- Vercel 函数预算：`account-[series]` 一个动态路由覆盖 8 个 series（2026-10-25 追加 `sessions`，2026-10-27 追加 `sync-runs`）。**2026-10-30 复核**：仓库实际有 14 个 route handler（含 `/api/app/sync-runs`、`/api/app/achievements` 与 `/auth/callback`），此前记载的 Hobby 12 上限在当前 Vercel 文档中已不再列出；P1.4 已核对控制台并线上验证 `/api/app/achievements` 正常部署（见 `docs/achievements-plan.md`），**无需改 Server Component 直出**。**2026-10-30 P3**：成就已读水位的 `POST` 复用 `/api/app/achievements` 同一个 route（导出 `GET` + `POST`），**不新增 route handler**。
 - 数据访问（2026-10-24 修订，操作者指令）：route.ts 经 **@supabase/supabase-js**（secret key 客户端）访问 PostgREST；封装层保持异常式错误语义（唯一约束 → 409，其余 → 500），与 CLI 契约 §1.3 对齐。
 
-## 3. 新表结构（M1 定稿成 migration；`token_sessions` 于 M5.6 追加，`token_sync_runs` 于 0.2.0 追加，`token_achievement_seen` 于 M7 P3 追加）
+## 3. 新表结构（M1 定稿成 migration；`token_sessions` 于 M5.6 追加，`token_sync_runs` 于 0.2.0 追加，`token_achievement_seen` 于 M7 P3 追加，credits 列于 2026-10-31 追加）
 
 所有表 `enable row level security`，且对 `anon, authenticated` **无任何 policy**（全拒）；`service_role` 全量授权。迁移文件放在 `supabase/migrations/`，幂等（`if not exists`），部署者可 `supabase db push` 一键建库。
 
@@ -73,11 +73,11 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 | `token_devices` | 每用户多设备，软吊销 | `id uuid pk`, `user_id → auth.users`, `device_name`, `platform`, `machine_id`, `machine_cluster_id`（由旧 `tokentracker_device_machine` 1:1 表折叠为列）, `name_customized bool`（**v1 未启用**：实现从不写入，「恢复默认名称」按 `default_device_name` 快照比较判定），`default_device_name`（§2.2 签发时写入的创建期名称快照，改名不更新）, `revoked_at`, `created_at`, `updated_at`；部分唯一索引：活跃设备 `(user_id, machine_id)` 与 `(user_id, platform, device_name)` |
 | `token_device_tokens` | 设备令牌，只存哈希 | `token_hash unique`, `user_id`, `device_id → token_devices`, `revoked_at`, `last_used_at` |
 | `token_device_codes` | CLI 配对码 | `device_code pk(64hex)`, `user_code unique(XXXX-XXXX)`, `status check in (pending/approved/used/expired)`, `user_id`, `expires_at`, `client_info`, `machine_id`, `approved_at` |
-| `token_usage_hourly` | 机器级小时桶（旧 tokentracker_hourly） | 主键 `(user_id, device_id, hour_start, source, model)`；6 个 token 列非负 check；`billable_total_tokens` 可空非负；`conversations ≥0`；`total_cost_usd ≥0`（CLI 上报恒 0，成本读取时算） |
+| `token_usage_hourly` | 机器级小时桶（旧 tokentracker_hourly） | 主键 `(user_id, device_id, hour_start, source, model)`；6 个 token 列非负 check；`billable_total_tokens` 可空非负；`conversations ≥0`；`total_cost_usd ≥0`（CLI 上报恒 0，成本读取时算）；`credits numeric not null default 0`（2026-10-31：厂商积分，非负，独立维度，永不并入 token / 成本） |
 | `token_account_session_states` | trae-cn 规范会话 | 主键 `(user_id, source, session_id)`；`total = input+cached+cache_creation+output` check |
-| `token_sessions` | 设备级会话明细（Sessions 页，B 阶段） | `id uuid pk`, `user_id`, `device_id → token_devices`, `source`（check 1–100）, `session_id`（check 1–256）, `project_key`（可空，check ≤120，basename），`started_at`, `ended_at`, 6 个 token 列（非负 check）+ `billable_total_tokens`（可空、非负），`models jsonb not null default '[]'`（`[{model, 6 个 token 列}]`，数组 ≤32），`created_at`, `updated_at`；唯一 `(user_id, device_id, source, session_id)`；check `ended_at >= started_at`；check `total_tokens = input_tokens + cached_input_tokens + cache_creation_input_tokens + output_tokens`（reasoning 单列，不计入 total）；check `jsonb_typeof(models) = 'array' and jsonb_array_length(models) <= 32`；check `lower(source) not in ('cursor','trae-cn')`；索引 `(user_id, ended_at desc)` / `(user_id, device_id, ended_at desc)` / `(user_id, source, ended_at desc)` / `(user_id, project_key)` |
+| `token_sessions` | 设备级会话明细（Sessions 页，B 阶段） | `id uuid pk`, `user_id`, `device_id → token_devices`, `source`（check 1–100）, `session_id`（check 1–256）, `project_key`（可空，check ≤120，basename），`started_at`, `ended_at`, 6 个 token 列（非负 check）+ `billable_total_tokens`（可空、非负），`credits numeric not null default 0`（2026-10-31：会话级厂商积分，非负、独立维度），`models jsonb not null default '[]'`（`[{model, 6 个 token 列}]`，数组 ≤32），`created_at`, `updated_at`；唯一 `(user_id, device_id, source, session_id)`；check `ended_at >= started_at`；check `total_tokens = input_tokens + cached_input_tokens + cache_creation_input_tokens + output_tokens`（reasoning 单列，不计入 total）；check `jsonb_typeof(models) = 'array' and jsonb_array_length(models) <= 32`；check `lower(source) not in ('cursor','trae-cn')`；索引 `(user_id, ended_at desc)` / `(user_id, device_id, ended_at desc)` / `(user_id, source, ended_at desc)` / `(user_id, project_key)` |
 | `token_allowed_emails` | 可选：自助注册白名单 | `email citext unique`, `added_by`, `created_at`；配套触发器迁移（单独文件，注释标明 optional） |
-| `token_sync_runs` | 采集端每轮 sync 运行记录（§2.11/§2.12，0.2.0，含空跑） | `id uuid pk`, `user_id → auth.users`, `device_id → token_devices`, `run_id`（check 1–128）, `started_at`, `ended_at`, `duration_ms`（服务端派生，≥0）, `trigger`（check scheduled/manual/watch/notify）, `result`（check ok/partial/error）, `error_code`（可空 ≤64）, `empty`（服务端派生 bool）, `parsed_files`/`buckets_uploaded`/`tokens_ingested`/`sessions_uploaded`/`sessions_skipped`（非负 check）, `queue_bytes`（可空 ≥0）, `cli_version`, `os`（可空）, `created_at`, `updated_at`；唯一 `(user_id, device_id, run_id)`（幂等键，重放 duplicate:true、首写胜出）；check `ended_at >= started_at`；索引 `(user_id, started_at desc)`；RLS 零 policy |
+| `token_sync_runs` | 采集端每轮 sync 运行记录（§2.11/§2.12，0.2.0，含空跑） | `id uuid pk`, `user_id → auth.users`, `device_id → token_devices`, `run_id`（check 1–128）, `started_at`, `ended_at`, `duration_ms`（服务端派生，≥0）, `trigger`（check scheduled/manual/watch/notify）, `result`（check ok/partial/error）, `error_code`（可空 ≤64）, `empty`（服务端派生 bool）, `parsed_files`/`buckets_uploaded`/`tokens_ingested`/`sessions_uploaded`/`sessions_skipped`（非负 check）, `credits_ingested numeric`（2026-10-31：可选遥测，非负，不参与对账）, `queue_bytes`（可空 ≥0）, `cli_version`, `os`（可空）, `created_at`, `updated_at`；唯一 `(user_id, device_id, run_id)`（幂等键，重放 duplicate:true、首写胜出）；check `ended_at >= started_at`；索引 `(user_id, started_at desc)`；RLS 零 policy |
 | `token_achievement_seen` | 成就已读水位（M7 P3，跨设备「新」标记与解锁 toast） | `user_id uuid pk → auth.users on delete cascade`, `seen_through date`（check `>= 2000-01-01`，只前进）, `created_at`, `updated_at`；每用户单行；RLS 零 policy，仅 `service_role`。**只存已读日，不存成就快照**——成就仍由现有表读时计算 |
 
 与旧结构的映射（迁移用）：`tokentracker_* → token_*` 一一对应，`device_machine` 折叠进 `token_devices.machine_cluster_id`，其余列语义不变——**upsert 键与 last-wins 语义逐字保留**。
@@ -131,7 +131,7 @@ models:[{model,total_tokens,total_cost_usd,share}]}]}`；
 
 ## 4. 依赖预算（新依赖装前必须经操作者批准）
 
-运行时：`@supabase/supabase-js`、`@supabase/ssr`、`@gravity-ui/icons`（HeroUI v3 官方示例同款）、`date-fns`、`html-to-image`（分享卡片导出）、`recharts`（2026-10-24 经操作者批准加入，替代原“图表手写 SVG”决策）、`motion`（`motion/react`，2026-10-24 经操作者批准，动效确有必要时安装）、`intl-messageformat`（2026-10-25 经操作者批准启用，ICU 复数/插值；此前已在依赖中但未使用）。动画优先 CSS（零依赖）；除此之外一律先问；任何新依赖统一选用当前**最流行、最新的稳定版本**（lockfile 锁定）。UI 一律 HeroUI 内置组件优先（项目 Skill `heroui-react` 为准），内置覆盖不了才自研。
+运行时：`@supabase/supabase-js`、`@supabase/ssr`、`@gravity-ui/icons`（HeroUI v3 官方示例同款）、`recharts`（2026-10-24 经操作者批准加入，替代原“图表手写 SVG”决策）、`intl-messageformat`（2026-10-25 经操作者批准启用，ICU 复数/插值；此前已在依赖中但未使用）、`@number-flow/react`（2026-10-25 操作者 UI 调整轮加入，数字滚动过渡）、`@internationalized/date`（HeroUI `DateRangePicker` 配套，见下文）。`html-to-image` 与 `motion` 只保留预算位、**当前未安装**：分享卡最终用 Canvas 2D（`html-to-image` 在本栈挂起），动效全部用 CSS。动画优先 CSS（零依赖）；除此之外一律先问；任何新依赖统一选用当前**最流行、最新的稳定版本**（lockfile 锁定）。UI 一律 HeroUI 内置组件优先（项目 Skill `heroui-react` 为准），内置覆盖不了才自研。
 
 2026-10-25 增量：A / B / 外观设置不新增依赖。2026-10-25 第二轮增量（操作者指令隐含批准）：`zustand`（v5，显示偏好持久化——外观/格式偏好的 localStorage 读写统一收编为 zustand persist store）、`react-easy-crop`（v6，与 better-admin 头像裁剪方案一致，设置-头像裁剪上传用）。货币换算用内置汇率表（USD/EUR/GBP/
 CNY/JPY/HKD，`as_of` 2026-10-25，USD 基准；具体数值为实现常量）+ 可选
@@ -165,14 +165,13 @@ CLI 依赖集单独维护在 `packages/cli/package.json`：2026-10-29 删除
 |--------|------|--------|
 | **M0 脚手架清理**（已完成 2026-10-23；CI 随 M1 首次推送验证） | 删 HeroUI 模板演示页；package.json / 品牌文案改为 Token Usage；LICENSE 衍生声明；AGENTS.md；pnpm workspace（`apps/web`）+ src 目录结构；Maple Mono 字体；`.github/workflows/ci.yml`（typecheck + lint + build，test 自 M1 接入） | CI 绿；`apps/web/src` 无模板残留 |
 | **M1 契约层**（已完成 2026-10-24，实跑验收全绿） | `token_*` 表 migration（§3 全部实体表 + 可选 `token_allowed_emails`，RLS 零 policy，幂等可 `supabase db push`）；10 个 route handler（六个 series 由 `api/functions/[...slug]` catch-all 承接，M5.6 追加 `sessions` 后为七个，见 `docs/cli-contract.md` §2.7）+ 旧路径别名 rewrites + proxy（OPTIONS 204 / 非 GET·POST 405）；数据访问经 `@supabase/supabase-js`（新 key 体系 env，§9）；移植 `api/_lib`（去重/聚合/定价为纯函数模块）；契约 golden 测试锁定 `docs/cli-contract.md` 第 3 节全部不变量（含服务器级别名等价）+ 单元测试 216 个；移植 seed-queue / verify-two-device / verify-cross-device 对账脚本并新增 accept-m1 实跑验收工具 | **verify 全绿**（lint + tsc + 216 测试 + build）；**实跑验收全绿**（accept-m1：真实项目建库 → 设备流 ×3 → 去重/聚合/定价/吊销语义 → 本机 queue.jsonl last-wins 6,479,004,696 == 新表设备过滤聚合，combined == fixture + queue 总数，重复种子幂等，测试数据零残留）；golden 测试覆盖每端点成功/错误路径与旧别名逐字等价 |
-| **M2 认证与设置** | @supabase/ssr middleware、登录（密码+魔法链接）、`/auth/callback`、邀请建号流程文档、设置页（改名/设备列表/吊销/登出）；管理员建号用 service-role 脚本 | 登录闭环可演示；吊销设备后其令牌立即 401（契约测试覆盖） |
 | **M2 认证与设置**（已完成 2026-10-24，操作者验收通过——含魔法链接真实点击验证） | @supabase/ssr middleware、登录（密码+魔法链接）、`/auth/callback`、邀请建号流程文档、设置页（改名/设备列表/吊销/登出）；管理员建号用 service-role 脚本；路由守卫（2026-10-24 需求变更：未登录跳登录并回跳原目标；原 `/` 公开落地页经二次修订迁至 token-usage.cc 独立建站，`/` 归还仪表盘，见 requirements 路由约定） | 登录闭环可演示；吊销设备后其令牌立即 401（契约测试覆盖）；未登录访问受保护页跳登录、登录后回跳（`?user_code=` 不丢失） |
 | **M3 仪表盘核心**（已完成 2026-10-24，操作者验收通过；对账=种子期望==契约端点==表级真值三方一致，与旧仪表盘的跨项目对账随 M6 演练） | 主仪表盘（`/`）：汇总卡、日/时图表（recharts）、活跃热力图、模型/来源/设备下钻、时间范围与时区切换；数据由 UI 直连冻结 Dashboard 面契约端点（§2.10/§2.7）——`/api/app/dashboard` 内部接口暂不需要（无真实缺口，出现时再建并回写本行） | 数据与旧仪表盘同源对账一致（同一账号同窗口数值相等） |
 | **M4 wrapped + 分享 + 服务状态**（已完成 2026-10-24，操作者验收通过；含应用壳导航与语言切换补充、分享卡片 Canvas 方案偏差） | wrapped 年度回顾（简化视觉：年度大数、月度趋势、亮点、模型用量、年份切换）、分享卡片（**Canvas 2D 绘制导出 PNG**——html-to-image 在本页 Tailwind4/oklch 计算样式下 toPng 无论字体开关/像素比均挂起（img.onload 不落定），如实记录该偏差；`html-to-image` 保留 §4 预算位、当前未安装）、服务状态页（public-config / dashboard / account-devices 探活 + 延迟 + 项目与会话状态展示）；应用壳：lg+ 固定全高侧边栏（fixed inset-y-0）、<lg 抽屉、壳内置中英切换（useLocale 共享 store） | 三页可用，中英 copy 齐全 |
-| **M5 配对页 + 部署文档**（开发完成 2026-10-24，操作者待验收；页面批准→approved 已实测，"全新账号从零跑通"的完整演练随真实 Vercel 部署由操作者执行） | `/device` 配对/批准页（?user_code= 确认批准 + 手动输入 + 错误三态，调冻结 device-flow-grant）；中文部署指南（`docs/deploy-guide.md`：Supabase 建库 → Auth 配置 → Vercel → 建号 → 配对 → 闭环 + FAQ）、`apps/web/.env.example`、README Deploy to Vercel 按钮 + 英文摘要；本地验收提示：device-flow-authorize 需服务端配置 `TOKEN_USAGE_DASHBOARD_URL` | 全新 Supabase/Vercel 账号按文档从零跑通：建库 → 部署 → CLI 配对 → 上报 → 仪表盘可见 |
+| **M5 配对页 + 部署文档**（已完成并上线：2026-10-24 开发完成，2026-10-26 生产实例完成 CLI 配对与真实上报闭环） | `/device` 配对/批准页（?user_code= 确认批准 + 手动输入 + 错误三态，调冻结 device-flow-grant）；中文部署指南（`docs/deploy-guide.md`：Supabase 建库 → Auth 配置 → Vercel → 建号 → 配对 → 闭环 + FAQ）、`apps/web/.env.example`、README Deploy to Vercel 按钮 + 英文摘要；本地验收提示：device-flow-authorize 需服务端配置 `TOKEN_USAGE_DASHBOARD_URL` | 全新 Supabase/Vercel 账号按文档从零跑通：建库 → 部署 → CLI 配对 → 上报 → 仪表盘可见 |
 | **M5.5 Dashboard 上游核心（A）+ 外观设置**（已完成 2026-10-25，操作者验收通过；二轮 UI 调整同日完成：总 Tokens 头卡、近一年热力图 + 平台筛选（契约 cell 新增可选 `sources` 字段）、卡片级模糊遮罩 Loading、分享卡（canvas Broadsheet）、`@number-flow/react` 数字过渡、卡片标题层级、Tooltip/Popover 箭头、Select 新 API、charts 色板接 `--color-chart-*`） | 仪表盘对齐上游基础信息架构：KPI（总量/计费量/成本/会话/活跃天）+ rolling 7d/30d/日均（复用 `account-summary`）、Top 模型、日/月趋势、活跃热力图、来源/设备（复用现有 Dashboard 面端点）、日/时/月明细表（排序/分页）、成本分析 Modal、统一筛选（范围/时区/设备）；设置新增外观分区：主题/语言/货币/Token 显示/单位/分组；新增统一格式 provider（`Intl.NumberFormat` + 内置汇率表）并替换现有零散格式化；不新增表、端点、CLI 改动、依赖 | 数值与 `dashboard` / `account-summary` / `daily` / `hourly` / `monthly` / `heatmap` / `model-breakdown` 对账一致，设备卡与 `dashboard.devices` 一致；桌面与 375px 无页面级横向滚动；三态齐全；外观偏好即时生效、刷新保留、`system` 语言 SSR 首帧正确；`pnpm verify` 全绿 |
 | **M5.6 Sessions（B）**（已完成 2026-10-25；真实数据对账通过 2026-10-26——公司机 448 会话与本地 sidecar 全一致（依赖 M-CLI reasoning 折算修复）；`token_sessions` 迁移、ingest 可选 `sessions`、第七个 series、`/sessions` 页面 + 导航已上线） | `token_sessions` 迁移（RLS 零 policy + 原子 `token_upsert_sessions` RPC）；ingest 可选 `sessions`（≤200、`ended_at` 严格 last-wins、账户级来源跳过）；`account-sessions` 第七个 series（catch-all，不新增 route）；`/sessions` 列表/详情（筛选/分页/汇总/模型拆分）；应用壳导航加入 Sessions；只落用量元数据 | 契约 golden 测试覆盖校验/幂等/乱序快照/吊销/隐私；旧 CLI 请求与响应逐字不变；新 CLI 上报后列表与本地会话对账一致；无会话时显示「等待新版采集器」空态；375px 可用；`pnpm verify` 全绿 |
-| **M-CLI 采集端**（真机迁移完成 2026-10-26：两台采集机切换、13.67B 历史重放、总量 20.94B 对账达标；sessions 真实数据对账一致 2026-10-26——zcode/opencode 行的 total 含 reasoning 而 output 不含，违反契约恒等式被映射器整行丢弃，修复为映射时按 `total = identity + reasoning` 精确形状折算进 output（fix(cli) 2026-10-26），公司机 448/448 会话全对上；npm 已发布 0.1.0（2026-10-27）并持续至 0.2.4；包名定为 tokenusage-cli） | fork 上游 CLI（MIT）改造为 `tokenusage-cli`（pnpm workspace 子包，二进制命令 `tokenusage`）：改名、指向新契约路径、`sync` 手动为主、`--watch` / `install-task` 可选自动档、剥离用不到的部分、`sessions` 元数据采集（session_id / source / 时间 / 项目 basename / token / 模型；不采集 prompt、正文、绝对路径、标题、resume command）、npm 发布（已完成：0.1.0 2026-10-27 首发，2026-10-28 至 0.2.4）；采集机迁移（装新 CLI → 配对 → 撤旧任务）。命名复查：tokenusage.org 为同类 Rust 工具（crates.io `tokenusage`），最终包名定为 `tokenusage-cli`（见 §1#19） | 任一台采集机 `npm i -g tokenusage-cli` 完成配对 + `tokenusage sync`，数值与该机 queue.jsonl 对账一致；`sessions` 与该机本地会话分析对账一致且无敏感字段；端到端契约测试全绿。**交付补充（2026-10-25）**：`packages/cli` skeleton + 契约重指向（delta.vercel.app / publishable key / `~/.tokenusage` 数据目录与旧 CLI 共存）+ sessions 增量上报（水位去重、恒等式自检、隐私白名单）+ payload golden 测试 14 项；serve/wrapped 本地面板剥除；`--watch` 常驻增量；npm 发布与真机对账已完成（见 `docs/cli-release.md`、`docs/launch-runbook.md` 新 CLI 迁移段） |
+| **M-CLI 采集端**（真机迁移完成 2026-10-26：两台采集机切换、13.67B 历史重放、总量 20.94B 对账达标；sessions 真实数据对账一致 2026-10-26——zcode/opencode 行的 total 含 reasoning 而 output 不含，违反契约恒等式被映射器整行丢弃，修复为映射时按 `total = identity + reasoning` 精确形状折算进 output（fix(cli) 2026-10-26），公司机 448/448 会话全对上；npm 已发布 0.1.0（2026-10-27）并持续至 0.3.0（2026-11-01，新增 Trae CN 本地库、Qoder credits、Qoder 会话清单）；包名定为 tokenusage-cli） | fork 上游 CLI（MIT）改造为 `tokenusage-cli`（pnpm workspace 子包，二进制命令 `tokenusage`）：改名、指向新契约路径、`sync` 手动为主、`--watch` / `install-task` 可选自动档、剥离用不到的部分、`sessions` 元数据采集（session_id / source / 时间 / 项目 basename / token / 模型；不采集 prompt、正文、绝对路径、标题、resume command）、npm 发布（已完成：0.1.0 2026-10-27 首发，2026-11-01 至 0.3.0）；采集机迁移（装新 CLI → 配对 → 撤旧任务）。命名复查：tokenusage.org 为同类 Rust 工具（crates.io `tokenusage`），最终包名定为 `tokenusage-cli`（见 §1#19） | 任一台采集机 `npm i -g tokenusage-cli` 完成配对 + `tokenusage sync`，数值与该机 queue.jsonl 对账一致；`sessions` 与该机本地会话分析对账一致且无敏感字段；端到端契约测试全绿。**交付补充（2026-10-25）**：`packages/cli` skeleton + 契约重指向（delta.vercel.app / publishable key / `~/.tokenusage` 数据目录与旧 CLI 共存）+ sessions 增量上报（水位去重、恒等式自检、隐私白名单）+ payload golden 测试 14 项；serve/wrapped 本地面板剥除；`--watch` 常驻增量；npm 发布与真机对账已完成（见 `docs/cli-release.md`、`docs/launch-runbook.md` 新 CLI 迁移段） |
 | **M6 数据迁移与切换**（**已完成**：G1 2026-10-26 切换，G2/G3 2026-10-29 退役删除） | 迁移演练（见 §6）→ 生产切换 → 退役 | 见 §7 闸门清单逐项打勾 |
 | **M7 成就系统**（已完成 2026-10-30：P0/P1/P2/P4 + P3 收尾全部验收；实施与进度见 `docs/achievements-plan.md`） | 账号级成就：18 条 × 5 档（铜/银/金/钻/王者），指标单调白名单，按浏览器时区计算；读时计算，仅 `token_achievement_seen` 存账号级已读水位；`GET` + `POST /api/app/achievements`（同一 route）+ `/achievements` 页（徽章墙 / 摘要 / 五档详情）、侧栏入口、wrapped 独立成就卡（已获得成就 + 段位）、仪表盘成就条、全局解锁 toast、分享卡、详情 3D 翻面；中英文案与三态齐全；Sessions 类成就标明数据覆盖起点 | 18 条成就全部可计算且只升不降；阈值经真实实例校准；守卫测试（阈值递增 / 单调白名单 / 文案 / 资产）全绿；浏览器验收（正常 / 空 / 错误 / 窄屏 / 深色 / reduced-motion）；`pnpm verify` 全绿 |
 
@@ -246,3 +245,44 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 
 契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），
 其值从 publishable key 取——公开客户端值的语义不变。
+
+## 10. 当前状态与剩余事项（2026-11-01 复核）
+
+**里程碑**：M0–M7 全部交付；生产实例 `token-usage.baiwumm.com` 自 2026-10-26 起承载
+两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.3.0`（2026-11-01
+发布；本机全局包与运行时副本均已升级）。
+
+**最近一批交付（2026-10-31 ~ 11-01）**：Trae CN 本地库、桶级 / 会话级 credits、
+`credits_ingested` 遥测、模型大小写归一、wrapped canonical 来源、成就条进度与详情弹窗、
+Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）。来源接入的验收记录见
+`docs/sources-capture-plan.md`。
+
+**测试与部署**：`pnpm verify` 全绿（lint 0 error + 5 条既有 `no-console` warning；
+web 31 files / 435 tests + build；CLI 76 tests）。CI 在 main 与 `cli-v*` tag 上运行；
+web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
+
+**剩余工程待办**（明细与拍板记录见 `docs/web-optimization-backlog.md`）：
+
+- C6 索引：`token_usage_hourly (user_id, source, hour_start)` 与 `token_device_tokens (user_id)`；
+  当前数据量无感知，**保持待办**，等数据量触发。
+- D2 Sessions 表列排序 + 导出当前过滤结果 CSV（契约 + golden + UI，单独一批）。
+- D7 仪表盘刷新探针 `GET /api/app/dashboard-revision`（未开工）。
+
+**CLI 候选**（不阻塞当前版本，见 `docs/cli-release.md` §四）：
+
+- `init` 逐工具集成选择（当前 `--no-integrations` 只有全有 / 全无）。
+- macOS / Linux 原生调度（当前仅 Windows 计划任务；其他平台靠 `--watch` / 手动）。
+
+**操作者拍板记录（2026-11-01）**：
+
+1. **Next 16.4.3 升级** → 立即执行，单独一批：升级 → `pnpm verify` → 浏览器冒烟 →
+   推送观察 Vercel 部署。完成后勾掉 E1。
+2. **D2 / C6 / D7 优先级** → 顺序 **D2 → D7 → C6**；D2 单独一批并单独验收，C6 继续等
+   数据量触发。
+3. **`token-usage.cc` 官方落地页** → **延后**，等 web、桌面端与 CLI 端功能全部完成后
+   再启动；在那之前不排期、不改 requirements 的「v1 范围」表述（仍属规划内，只是后置）。
+4. **旧 `tokentracker-*` 路径别名** → **暂不退役**。`tokentracker-cli` npm 近一月下载
+   约 1.7 万次，无法排除外部钉版客户端；别名保留成本接近零，等正式废弃公告与观察期
+   后再议（契约 §1.5 继续有效）。
+5. **CLI 候选** → `init` 逐工具集成选择排入下个 CLI 版本；macOS / Linux 原生调度
+   **单独评估**，不随下个版本发布（先确认真机需求与调度形态）。

@@ -3,7 +3,7 @@
 本文件是 Token Usage 后端的 HTTP 接口规范，分两档：
 
 - **CLI 面（硬冻结）**：device-flow-authorize / device-flow-poll / device-flow-grant /
-  ingest / public-config / device-rename / device-revoke。消费者是采集端 CLI——已配对的
+  ingest / public-config / device-rename / device-revoke / sync-report。消费者是采集端 CLI——已配对的
   钉版 `tokentracker-cli@1.4.x` 把绝对 URL 存在本地 `config.json` 里，**不能随服务端升级而
   更新**，因此这一档的路径、字段名、语义一经发布即冻结。
 - **Dashboard 面（可演进）**：account-summary、account-\<series\> ×8（含 `sessions` 与

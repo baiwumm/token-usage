@@ -45,6 +45,9 @@ Supabase Dashboard → SQL Editor → 按文件名顺序依次粘贴执行：
 4. `supabase/migrations/20261025000000_token_sessions.sql`（必需：Sessions 页 + 3 条 Sessions 类成就）
 5. `supabase/migrations/20261027000000_token_sync_runs.sql`（必需：采集端运行记录 + `sync_diligence` 成就）
 6. `supabase/migrations/20261030000000_token_achievement_seen.sql`（必需：成就已读水位；缺少时成就页仍可用，只是「新」标记与解锁 toast 不生效）
+7. `supabase/migrations/20261031000000_token_usage_credits.sql`（必需：小时桶 `credits` 列；缺列时新版 CLI 的 ingest 会整批报错）
+8. `supabase/migrations/20261031000001_token_sync_runs_credits.sql`（必需：采集记录 `credits_ingested` 遥测列）
+9. `supabase/migrations/20261031000003_token_sessions_credits.sql`（必需：会话级 `credits` 列与 `token_upsert_sessions` RPC 替换）
 
 执行后确认 Table Editor 里出现 `token_devices`、`token_device_tokens`、`token_device_codes`、
 `token_usage_hourly`、`token_account_session_states`、`token_sessions`、`token_sync_runs`、
