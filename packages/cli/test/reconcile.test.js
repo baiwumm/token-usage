@@ -20,6 +20,7 @@ const {
   compareBuckets,
   parseArgs,
   readLocalBaseline,
+  readPendingBuckets,
   resolveWindow,
 } = require("../src/commands/reconcile");
 const { isUsageError } = require("../src/lib/cli-errors");
@@ -72,13 +73,30 @@ function collect() {
   };
 }
 
-function writeQueue(rows) {
+// `uploadedThrough` = how many leading rows queue.state.json's offset already
+// covers (default: the whole file). Reconcile reports the rest as pending.
+function writeQueue(rows, { uploadedThrough } = {}) {
   const queuePath = path.join(sandbox.trackerDir, "queue.jsonl");
-  const body = rows
-    .map((row) => (typeof row === "string" ? row : JSON.stringify(row)))
-    .join("\n");
-  fs.writeFileSync(queuePath, `${body}${body ? "\n" : ""}`);
+  const lines = rows.map((row) => (typeof row === "string" ? row : JSON.stringify(row)));
+  const body = lines.length ? `${lines.join("\n")}\n` : "";
+  fs.writeFileSync(queuePath, body);
+
+  let offset = body.length;
+  if (uploadedThrough != null) {
+    offset = 0;
+    for (let i = 0; i < Math.min(uploadedThrough, lines.length); i++) {
+      offset += Buffer.byteLength(`${lines[i]}\n`, "utf8");
+    }
+  }
+  fs.writeFileSync(
+    path.join(sandbox.trackerDir, "queue.state.json"),
+    JSON.stringify({ offset, updatedAt: "2026-10-31T00:00:00.000Z" }),
+  );
   return queuePath;
+}
+
+function dropUploadState() {
+  fs.rmSync(path.join(sandbox.trackerDir, "queue.state.json"), { force: true });
 }
 
 function bucket(overrides = {}) {
@@ -302,6 +320,26 @@ describe("local baseline", () => {
     });
     assert.equal(rows.size, 0);
   });
+
+  test("readPendingBuckets returns only the rows past the upload offset", async () => {
+    const first = bucket({ hour_start: "2026-10-31T13:00:00.000Z" });
+    const second = bucket({ hour_start: "2026-10-31T14:00:00.000Z", total_tokens: 150, output_tokens: 50 });
+    const queuePath = writeQueue([first, second], { uploadedThrough: 1 });
+    const offset = Buffer.byteLength(`${JSON.stringify(first)}\n`, "utf8");
+
+    const pending = await readPendingBuckets({ queuePath, offset, fromMs, toMs });
+    assert.equal(pending.size, 1, "the uploaded row is not pending");
+    assert.equal([...pending.values()][0].total_tokens, 150);
+    assert.equal([...pending.values()][0].hour_start, "2026-10-31T14:00:00.000Z");
+
+    const uploadedAll = await readPendingBuckets({
+      queuePath: writeQueue([first, second]),
+      offset: Buffer.byteLength(`${JSON.stringify(first)}\n${JSON.stringify(second)}\n`, "utf8"),
+      fromMs,
+      toMs,
+    });
+    assert.equal(uploadedAll.size, 0, "a fully uploaded queue has nothing pending");
+  });
 });
 
 describe("drift classification", () => {
@@ -323,7 +361,7 @@ describe("drift classification", () => {
     ]);
 
     const result = compareBuckets({ local, server });
-    assert.deepEqual(result.counts, { missing_on_server: 0, server_only: 1, mismatch: 1 });
+    assert.deepEqual(result.counts, { missing_on_server: 0, server_only: 1, mismatch: 1, pending: 0 });
     assert.equal(result.drifted, 2);
     assert.deepEqual(result.server_only.map((row) => row.source), ["grok"]);
     const mismatch = result.mismatch[0];
@@ -349,8 +387,31 @@ describe("drift classification", () => {
         local: new Map([[key(localRow), localRow]]),
         server: new Map([[key(rounded), rounded]]),
       }).counts,
-      { missing_on_server: 0, server_only: 0, mismatch: 0 },
+      { missing_on_server: 0, server_only: 0, mismatch: 0, pending: 0 },
     );
+  });
+
+  test("a key past the upload offset is pending instead of missing or mismatched", () => {
+    const localRow = bucket();
+    const older = serverRow(localRow, { total_tokens: 110, output_tokens: 10 });
+
+    const result = compareBuckets({
+      local: new Map([[key(localRow), localRow]]),
+      server: new Map([[key(older), older]]),
+      pending: new Set([key(localRow)]),
+    });
+    assert.deepEqual(result.counts, { missing_on_server: 0, server_only: 0, mismatch: 0, pending: 1 });
+    assert.equal(result.drifted, 0, "an unuploaded key cannot be drift: the cloud never saw it");
+    assert.equal(result.pending[0].local.total_tokens, 120);
+    assert.equal(result.pending[0].server.total_tokens, 110);
+
+    const neverSent = compareBuckets({
+      local: new Map([[key(localRow), localRow]]),
+      server: new Map(),
+      pending: new Set([key(localRow)]),
+    });
+    assert.equal(neverSent.counts.missing_on_server, 0, "a pending key with no cloud row is still pending");
+    assert.equal(neverSent.pending[0].server, null);
   });
 });
 
@@ -389,6 +450,50 @@ describe("cmdReconcile", () => {
     assert.equal(summary.status, "drift");
     assert.equal(summary.counts.missing_on_server, 1);
     assert.equal(summary.drift.missing_on_server[0].local.total_tokens, 150);
+    assert.equal(process.exitCode, 1);
+  });
+
+  test("a queue tail past the upload offset is pending, not drift", async () => {
+    const uploaded = bucket({ hour_start: "2026-10-31T13:00:00.000Z" });
+    const queued = bucket({ hour_start: "2026-10-31T14:00:00.000Z", total_tokens: 150, output_tokens: 50 });
+    writeQueue([uploaded, queued], { uploadedThrough: 1 });
+    const { fetchImpl } = fakeServer([serverRow(uploaded)]);
+
+    const out = collect();
+    const summary = await run([], { fetchImpl, output: out.write });
+    assert.equal(summary.status, "ok", "unuploaded rows must not read as drift");
+    assert.equal(summary.drifted, 0);
+    assert.equal(summary.counts.pending, 1);
+    assert.equal(summary.pending[0].local.total_tokens, 150);
+    assert.equal(summary.upload_offset, Buffer.byteLength(`${JSON.stringify(uploaded)}\n`, "utf8"));
+    assert.ok(process.exitCode !== 1, "pending rows must not fail the gate");
+    assert.match(out.text(), /pending upload/i);
+    assert.match(out.text(), /tokenusage sync/);
+  });
+
+  test("a missing queue.state.json treats every bucket as pending", async () => {
+    writeQueue([bucket()]);
+    dropUploadState();
+    const { fetchImpl } = fakeServer([serverRow(bucket())]);
+
+    const summary = await run(["--json"], { fetchImpl, output: () => {} });
+    assert.equal(summary.status, "ok");
+    assert.equal(summary.upload_offset, 0, "no offset means nothing is known to be uploaded");
+    assert.equal(summary.counts.pending, 1);
+    assert.ok(process.exitCode !== 1);
+  });
+
+  test("drift still fails the gate while pending rows are reported alongside", async () => {
+    const uploaded = bucket({ hour_start: "2026-10-31T13:00:00.000Z" });
+    const staleUpload = bucket({ hour_start: "2026-10-31T14:00:00.000Z", total_tokens: 150, output_tokens: 50 });
+    writeQueue([uploaded, staleUpload]);
+    const { fetchImpl } = fakeServer([serverRow(uploaded, { total_tokens: 999 })]);
+    // The stale row is already uploaded, so it is real drift, not pending.
+    const out = collect();
+    const summary = await run([], { fetchImpl, output: out.write });
+    assert.equal(summary.status, "drift");
+    assert.equal(summary.counts.mismatch, 1);
+    assert.equal(summary.counts.pending, 0);
     assert.equal(process.exitCode, 1);
   });
 

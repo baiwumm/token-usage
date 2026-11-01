@@ -32,6 +32,9 @@ const {
   formatScheduleRegistration,
   formatScheduleToggle,
   formatScheduleDelete,
+  consoleEncoding,
+  decodeStream,
+  errorText,
 } = require("../src/lib/scheduled-task");
 
 test("platform routing covers the three supported families", () => {
@@ -135,6 +138,69 @@ test("schedule paths follow the documented home layout", () => {
   assert.equal(launchAgentPath(home), path.join(home, "Library", "LaunchAgents", "com.token-usage.sync.plist"));
   assert.equal(systemdServicePath(home), path.join(home, ".config", "systemd", "user", SYSTEMD_SERVICE_UNIT));
   assert.equal(systemdTimerPath(home), path.join(home, ".config", "systemd", "user", SYSTEMD_TIMER_UNIT));
+});
+
+test("error text prefers the child's own output over the command echo", () => {
+  // A real `schtasks /Create /XML` rejection: the reason is on stderr, while
+  // `message` only repeats the command line.
+  const exitError = {
+    message: "Command failed: schtasks /Create /F /TN TokenUsageSync /XML C:\\Users\\me\\.tokenusage\\bin\\TokenUsageSync.xml",
+    stderr: "ERROR: Access is denied.\r\n",
+    stdout: Buffer.alloc(0),
+  };
+  assert.equal(errorText(exitError), "ERROR: Access is denied.");
+
+  // Multi-line stderr collapses to the first meaningful line.
+  assert.equal(
+    errorText({ message: "Command failed: x", stderr: "\r\n  Access is denied.  \r\nERROR: second line\r\n" }),
+    "Access is denied.",
+  );
+
+  // stdout carries the reason when the tool writes there instead.
+  assert.equal(errorText({ message: "Command failed: x", stderr: "", stdout: "job not found\n" }), "job not found");
+
+  // A plain filesystem error has no child output: fall back to the message.
+  assert.equal(errorText(new Error("EACCES: permission denied")), "EACCES: permission denied");
+
+  // One short line keeps the init summary readable.
+  const long = errorText({ stderr: `ERROR: ${"x".repeat(250)}` });
+  assert.ok(long.endsWith("…"), "over-long output is clipped");
+  assert.ok(long.length <= 200);
+});
+
+test("console-codepage output decodes to readable text instead of mojibake", (t) => {
+  // Windows console tools print in the active codepage: a zh-CN `schtasks`
+  // writes GBK bytes, and decoding them as UTF-8 yields U+FFFD replacements.
+  assert.equal(consoleEncoding(936), "gbk");
+  assert.equal(consoleEncoding(932), "shift_jis");
+  assert.equal(consoleEncoding(950), "big5");
+  assert.equal(consoleEncoding(65001), null, "UTF-8 needs no fallback decoder");
+  assert.equal(consoleEncoding(437), null, "single-byte pages cannot be mis-decoded");
+
+  let gbk;
+  try {
+    gbk = new TextDecoder("gbk");
+  } catch (_error) {
+    t.skip("this Node build has no full ICU (GBK decoder)");
+    return;
+  }
+
+  // 错误: 拒绝访问。 — the real non-elevated `schtasks /Create /XML` rejection.
+  const rejected = Buffer.from("b4edcef33a20bedcbef8b7c3cecaa1a3", "hex");
+  assert.equal(decodeStream(rejected, gbk), "错误: 拒绝访问。");
+
+  // Already-valid UTF-8 is returned untouched (no needless re-decoding).
+  assert.equal(decodeStream(Buffer.from("ERROR: Access is denied.\n", "utf8"), gbk), "ERROR: Access is denied.\n");
+
+  // Strings and absent values pass through as-is.
+  assert.equal(decodeStream("ERROR: Access is denied."), "ERROR: Access is denied.");
+  assert.equal(decodeStream(null, gbk), "");
+  assert.equal(decodeStream(undefined, gbk), "");
+
+  // Bytes that stay broken under the codepage fall back to the UTF-8 reading.
+  const invalid = Buffer.from([0x81, 0x00]);
+  assert.ok(gbk.decode(invalid).includes("\uFFFD"), "the sample must be unreadable in GBK too");
+  assert.equal(decodeStream(invalid, gbk), invalid.toString("utf8"));
 });
 
 test("registration copy distinguishes success, degraded and unsupported", () => {

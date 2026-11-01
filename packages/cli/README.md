@@ -35,7 +35,7 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 | `tokenusage device-login` | 设备流配对：输出 `user_code`，在站点 `/device` 页批准后本机拿到设备令牌 |
 | `tokenusage sync` | 解析本地 AI 工具日志 → 上报小时桶 + 会话元数据 |
 | `tokenusage upload` | 只刷本地队列，不扫描来源（`--drain` / `--force` 抬批次上限、`--json` 输出结构化结果） |
-| `tokenusage reconcile` | 只读对账：本地 `queue.jsonl` 的 last-wins 基线 vs 云端该设备的桶明细，按 `(hour_start, source, model)` 逐键比对，有漂移退出码 1 |
+| `tokenusage reconcile` | 只读对账：本地 `queue.jsonl` 的 last-wins 基线 vs 云端该设备的桶明细，按 `(hour_start, source, model)` 逐键比对，有漂移退出码 1；尚未上传的桶（`queue.state.json` 偏移之后）记为 pending，不算漂移 |
 | `tokenusage sync --watch` | 常驻模式，默认每 15 分钟增量一轮（`--interval <ms>` 可调，≥60000） |
 | `tokenusage sync --no-sessions` | 只上报小时桶，跳过会话元数据 |
 | `tokenusage sync --drain` | 补传模式：更大的批处理预算，适合首次接入/长期积压 |
@@ -74,6 +74,9 @@ tokenusage reconcile --json              # 结构化漂移明细，供脚本/看
 - 漂移分三类：`missing_on_server`（本地有、云端没有，通常是待补传）、`server_only`
   （云端有、本地已无，队列被裁剪或换过机器身份）、`mismatch`（同键不同值，附逐字段
   `local → cloud` 差异）。任一存在即以退出码 `1` 结束，便于 cron / CI 判定。
+- `queue.state.json` 偏移之后的本地桶记为 **pending**（尚未上传，云端只可能持有更早的值），
+  单独列出、不计入漂移、不触发退出码 `1`；`tokenusage sync` 传完后重新对账即可比对这些键。
+  `--json` 里对应 `upload_offset`、`counts.pending` 与 `pending[]`。
 
 ## `sync --watch`：常驻自动上报
 

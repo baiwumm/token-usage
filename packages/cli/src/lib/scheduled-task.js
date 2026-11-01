@@ -375,8 +375,79 @@ function run(command, args) {
   execFileSync(command, args, { stdio: "pipe", windowsHide: true });
 }
 
-function errorText(error) {
-  return String(error?.message || error).slice(0, 200);
+// `stdio: "pipe"` keeps the child's own output on `error.stderr` / `stdout`,
+// while `error.message` starts with a command echo ("Command failed: schtasks
+// /Create /XML C:\Users\me\..."). Reading the message first buried the real
+// reason — the non-elevated Windows rejection "ERROR: Access is denied."
+// lands on the *second* line and was clipped away. Child output wins; the
+// command echo is the last resort.
+//
+// Windows console tools also write their message in the console codepage, not
+// UTF-8: a zh-CN "schtasks" prints "错误: 拒绝访问。" as GBK bytes, which decode
+// to replacement characters and reached the user as mojibake. decodeStream()
+// retries with the active codepage before giving up on the original text.
+const CONSOLE_CODEPAGE_DECODERS = {
+  932: "shift_jis",
+  936: "gbk",
+  949: "euc-kr",
+  950: "big5",
+};
+
+// UTF-8 itself (65001) and the legacy single-byte pages need no decoder here.
+function consoleEncoding(codepage) {
+  return CONSOLE_CODEPAGE_DECODERS[codepage] || null;
+}
+
+let cachedConsoleDecoder;
+
+function consoleDecoder() {
+  if (cachedConsoleDecoder !== undefined) return cachedConsoleDecoder;
+  cachedConsoleDecoder = null;
+  if (process.platform !== "win32") return null;
+  try {
+    // "Active code page: 936" — digits survive any localisation.
+    const output = execFileSync("chcp.com", [], { stdio: "pipe", windowsHide: true })
+      .toString("latin1");
+    const codepage = Number((output.match(/\d{3,5}/) || [])[0]);
+    const encoding = consoleEncoding(codepage);
+    if (encoding) cachedConsoleDecoder = new TextDecoder(encoding);
+  } catch (_error) {
+    cachedConsoleDecoder = null;
+  }
+  return cachedConsoleDecoder;
+}
+
+function decodeStream(value, fallbackDecoder) {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  const bytes = Buffer.isBuffer(value) ? value : Buffer.from(value);
+  const utf8 = bytes.toString("utf8");
+  if (!utf8.includes("\uFFFD")) return utf8;
+  const decoder = fallbackDecoder || consoleDecoder();
+  if (!decoder) return utf8;
+  const decoded = decoder.decode(bytes);
+  return decoded.includes("\uFFFD") ? utf8 : decoded;
+}
+
+function firstLine(value) {
+  return (
+    String(value ?? "")
+      .split(/\r?\n/)
+      .map((part) => part.trim())
+      .find(Boolean) ?? ""
+  );
+}
+
+function clipLine(line, max) {
+  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
+
+function errorText(error, max = 200) {
+  for (const stream of [error?.stderr, error?.stdout]) {
+    const line = firstLine(decodeStream(stream));
+    if (line) return clipLine(line, max);
+  }
+  return clipLine(firstLine(decodeStream(error?.message)), max);
 }
 
 /**
@@ -644,12 +715,7 @@ function deleteAutoSyncSchedule({ home = os.homedir(), binDir, platform = proces
 // administrator" apart from a genuinely malformed definition. Clip it to one
 // short line so the summary table stays readable.
 function scheduleDetailLine(value, max = 100) {
-  const line =
-    String(value ?? "")
-      .split(/\r?\n/)
-      .map((part) => part.trim())
-      .find(Boolean) ?? "";
-  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+  return clipLine(firstLine(value), max);
 }
 
 function formatScheduleRegistration(outcome) {
@@ -725,4 +791,7 @@ module.exports = {
   formatScheduleRegistration,
   formatScheduleToggle,
   formatScheduleDelete,
+  consoleEncoding,
+  decodeStream,
+  errorText,
 };

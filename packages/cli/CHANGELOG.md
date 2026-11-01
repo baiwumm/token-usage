@@ -3,6 +3,29 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## 0.4.3
+
+2026-11-01。两处只有真机首跑才暴露的问题：调度摘要依旧看不出拒绝原因（修的过程中又追出
+一层 Windows 控制台代码页乱码），`reconcile` 把「还没上传」的桶报成漂移。
+
+- **调度降级原因改取子进程输出**：`execFileSync` 的 `error.message` 以命令回显开头
+  （`Command failed: schtasks /Create /XML C:\Users\...`），0.4.2 打印第一行时正好把
+  真正的 `ERROR: Access is denied.` 挤出 200 字符窗口。现在优先读 `stderr` / `stdout`，
+  再退回 message，统一折成一行（Windows / macOS / Linux 的注册、启停、卸载错误文案
+  共用这一处）。
+- **Windows 控制台代码页不再乱码**：只取 stderr 后又暴露一层——中文 Windows 的
+  `schtasks` 按控制台代码页（936/GBK）写字节，Node 按 UTF-8 解出来是
+  `����: �ܾ����ʡ�`。现按 `chcp.com` 报告的活动代码页（932/936/949/950）回退
+  `TextDecoder` 重解，解不通才回到原 UTF-8 文本；65001 与单字节页原样直出。
+  zh-CN 非提升 shell 下现在的摘要就是可读的 `错误: 拒绝访问。`。
+- **`reconcile` 区分 pending 与 drift**：`queue.state.json` 上传偏移之后的本地桶记入
+  `pending`，不计入漂移、不触发退出码 1——真机 `init` + 首跑曾报 5 个「漂移」，实际只是
+  队列尾部尚未上传，一次 `sync` 后全部匹配。`--json` 新增 `upload_offset`、
+  `counts.pending` 与 `pending[]`；真实漂移仍照常报出并退出 1。
+- 单测：stderr 优先 / 多行折叠 / 超长截断、GBK 字节解出可读文本与解不通时回退、
+  pending 分类、缺 `queue.state.json` 时全部按 pending、以及已上传行的真漂移仍失败
+  （`test/scheduled-task.test.js`、`test/reconcile.test.js`）。
+
 ## 0.4.2
 
 2026-11-01。`init` 的调度摘要不再只写 `degraded: xml_rejected`：现在把被拒的第一行原因

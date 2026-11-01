@@ -14,10 +14,15 @@
 // queue.state.json (the upload offset) is not touched. Drift is reported per
 // key and exits 1 so a script can gate on it:
 //
-//   missing_on_server  local bucket the cloud never stored (pending/blocked upload)
+//   missing_on_server  local bucket the cloud never stored (blocked upload)
 //   server_only        cloud row without a local counterpart (pruned queue, or
 //                      a row written under another machine identity)
-//   mismatch           same key, different values (partial upload / legacy repair)
+//   mismatch           same key, different values (legacy repair / stale row)
+//
+// Keys whose last-wins row sits past the upload offset are reported as
+// `pending` instead: they have never been sent, so the cloud holding the older
+// value is expected, not drift (a fresh `init` + `reconcile` used to exit 1 on
+// exactly those keys until a `sync` flushed them).
 //
 // Known residual: ingest dedupes a REPLAYED duplicate inside one request by
 // taking the larger total_tokens, so a queue that carried the same key twice
@@ -164,7 +169,7 @@ function bucketKey(hourMs, source, model) {
 // Local baseline: every usage row in queue.jsonl, normalized/sanitized exactly
 // like the upload path, keyed and filtered on the normalized hour. Control
 // records (kind-bearing account session states / watermarks) are not buckets.
-async function readLocalBaseline({ queuePath, fromMs, toMs }) {
+async function collectBuckets({ queuePath, fromMs, toMs, start = 0 }) {
   let handle;
   try {
     handle = await fs.open(queuePath, "r");
@@ -175,7 +180,8 @@ async function readLocalBaseline({ queuePath, fromMs, toMs }) {
   const buckets = new Map();
   try {
     const before = await handle.stat();
-    for await (const record of iterateQueueLines(handle, 0, before.size)) {
+    const from = Math.min(Math.max(Number(start) || 0, 0), before.size);
+    for await (const record of iterateQueueLines(handle, from, before.size)) {
       // A producer may be mid-write; an incomplete tail is not yet queued data.
       if (!record.complete) break;
       const line = record.bytes.toString("utf8");
@@ -206,6 +212,19 @@ async function readLocalBaseline({ queuePath, fromMs, toMs }) {
     await handle.close();
   }
   return buckets;
+}
+
+function readLocalBaseline({ queuePath, fromMs, toMs }) {
+  return collectBuckets({ queuePath, fromMs, toMs });
+}
+
+// The queue suffix past queue.state.json's upload offset. Every key found here
+// has its last-wins row not uploaded yet, so comparing it against the cloud is
+// premature: the cloud legitimately holds the older value. Reporting it as
+// drift made the first `init` + `reconcile` on a machine look broken (5 "drifted"
+// keys that a single `sync` fixed), so these keys are listed as pending.
+function readPendingBuckets({ queuePath, offset = 0, fromMs, toMs }) {
+  return collectBuckets({ queuePath, fromMs, toMs, start: offset });
 }
 
 async function fetchPage({ url, deviceToken, anonKey, timeoutMs, fetchImpl }) {
@@ -317,15 +336,24 @@ function describeRow(row) {
   return out;
 }
 
-function compareBuckets({ local, server }) {
+function compareBuckets({ local, server, pending = new Set() }) {
   const missingOnServer = [];
   const mismatches = [];
   const serverOnly = [];
+  const pendingUpload = [];
 
   for (const [key, localRow] of local) {
     const hourStart = new Date(Date.parse(localRow.hour_start)).toISOString();
     const base = { hour_start: hourStart, source: localRow.source, model: localRow.model };
     const serverRow = server.get(key);
+    if (pending.has(key)) {
+      pendingUpload.push({
+        ...base,
+        local: describeRow(localRow),
+        server: serverRow ? describeRow(serverRow) : null,
+      });
+      continue;
+    }
     if (!serverRow) {
       missingOnServer.push({ ...base, local: describeRow(localRow), server: null });
       continue;
@@ -366,10 +394,12 @@ function compareBuckets({ local, server }) {
     missing_on_server: sortEntries(missingOnServer),
     server_only: sortEntries(serverOnly),
     mismatch: sortEntries(mismatches),
+    pending: sortEntries(pendingUpload),
     counts: {
       missing_on_server: missingOnServer.length,
       server_only: serverOnly.length,
       mismatch: mismatches.length,
+      pending: pendingUpload.length,
     },
     drifted: missingOnServer.length + serverOnly.length + mismatches.length,
   };
@@ -388,17 +418,31 @@ function describeEntry(entry, isMismatch = false) {
 }
 
 function renderText(summary) {
+  const pendingCount = summary.counts?.pending ?? 0;
   const lines = [
     `Reconcile window (UTC, hour_start in [from, to)):`,
     `  from ${summary.from}`,
     `  to   ${summary.to}`,
     summary.clamped ? "  (from clamped to the server's 366-day ceiling)" : null,
     `Local baseline: ${summary.local_buckets.toLocaleString("en-US")} bucket(s) from queue.jsonl (last-wins)`,
+    pendingCount > 0
+      ? `  ${pendingCount.toLocaleString("en-US")} of them are past the upload offset (queue.state.json) and not compared yet`
+      : null,
     `Cloud device:   ${summary.device_id || "unknown"} — ${summary.cloud_buckets.toLocaleString("en-US")} row(s) in ${summary.pages} page(s)`,
   ].filter(Boolean);
 
   if (summary.drifted === 0) {
-    lines.push("Result: OK — every local bucket matches the cloud row.");
+    lines.push(
+      pendingCount > 0
+        ? `Result: OK — every uploaded bucket matches the cloud row (${pendingCount.toLocaleString("en-US")} still pending upload).`
+        : "Result: OK — every local bucket matches the cloud row.",
+    );
+    if (pendingCount > 0) {
+      lines.push(
+        "Pending buckets are local rows `sync` has not uploaded yet, so the cloud cannot",
+        "hold them; run `tokenusage sync` and re-run this command to compare them.",
+      );
+    }
     return `${lines.join("\n")}\n`;
   }
 
@@ -421,6 +465,11 @@ function renderText(summary) {
     if (entries.length > TEXT_DRIFT_LIMIT) {
       lines.push(`  … and ${entries.length - TEXT_DRIFT_LIMIT} more (use --json for the full list)`);
     }
+  }
+  if (pendingCount > 0) {
+    lines.push(
+      `Note: ${pendingCount.toLocaleString("en-US")} local key(s) are still pending upload and were left out of the drift count.`,
+    );
   }
   lines.push(
     "Hint: `tokenusage upload` pushes pending local buckets; `server_only` keys mean the",
@@ -453,6 +502,16 @@ async function cmdReconcile(argv = [], options = {}) {
   }
 
   const local = await readLocalBaseline({ queuePath, fromMs: window.fromMs, toMs: window.toMs });
+  // Rows past queue.state.json's offset have not been uploaded: their keys are
+  // pending (not drift), because the cloud can only hold the previous value.
+  const queueState = (await readJson(path.join(trackerDir, "queue.state.json"))) || {};
+  const uploadOffset = Number.isFinite(Number(queueState.offset)) ? Math.max(0, Number(queueState.offset)) : 0;
+  const pending = await readPendingBuckets({
+    queuePath,
+    offset: uploadOffset,
+    fromMs: window.fromMs,
+    toMs: window.toMs,
+  });
   const { buckets: server, deviceId, pages } = await fetchServerBuckets({
     baseUrl: runtime.baseUrl,
     anonKey: runtime.anonKey,
@@ -463,7 +522,7 @@ async function cmdReconcile(argv = [], options = {}) {
     timeoutMs: runtime.httpTimeoutMs,
     fetchImpl,
   });
-  const compared = compareBuckets({ local, server });
+  const compared = compareBuckets({ local, server, pending: new Set(pending.keys()) });
 
   const summary = {
     status: compared.drifted === 0 ? "ok" : "drift",
@@ -474,6 +533,7 @@ async function cmdReconcile(argv = [], options = {}) {
     local_buckets: local.size,
     cloud_buckets: server.size,
     pages,
+    upload_offset: uploadOffset,
     counts: compared.counts,
     drifted: compared.drifted,
     drift: {
@@ -481,6 +541,7 @@ async function cmdReconcile(argv = [], options = {}) {
       server_only: compared.server_only,
       mismatch: compared.mismatch,
     },
+    pending: compared.pending,
   };
 
   // Output seam: tests render without hijacking process.stdout (which would
@@ -493,4 +554,12 @@ async function cmdReconcile(argv = [], options = {}) {
   return summary;
 }
 
-module.exports = { cmdReconcile, parseArgs, resolveWindow, readLocalBaseline, compareBuckets, RECONCILE_SLUG };
+module.exports = {
+  cmdReconcile,
+  parseArgs,
+  resolveWindow,
+  readLocalBaseline,
+  readPendingBuckets,
+  compareBuckets,
+  RECONCILE_SLUG,
+};
