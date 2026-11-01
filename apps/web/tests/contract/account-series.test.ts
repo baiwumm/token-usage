@@ -688,6 +688,74 @@ describe("series: sessions", () => {
     ).json();
     expect(negativeOffset.offset).toBe(0);
   });
+
+  it("exports the full filtered set as CSV and ignores paging", async () => {
+    seedSessions();
+    const res = await series(
+      "sessions",
+      sessionQuery({ format: "csv", limit: "1", offset: "1" }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(res.headers.get("content-disposition")).toMatch(
+      /^attachment; filename="token-usage-sessions-\d{8}-\d{8}\.csv"$/,
+    );
+    expect(res.headers.get("x-export-total")).toBe("3");
+    expect(res.headers.get("x-export-rows")).toBe("3");
+    expect(res.headers.get("x-export-truncated")).toBe("false");
+    expect(res.headers.get("access-control-expose-headers")).toContain(
+      "X-Export-Total",
+    );
+
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    // Response.text() strips the BOM; assert the wire bytes instead.
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+
+    const csv = new TextDecoder("utf-8").decode(bytes);
+    const lines = csv.trimEnd().split("\r\n");
+
+    expect(lines).toHaveLength(4);
+    expect(lines[0]).toBe(
+      "ended_at,started_at,source,project_key,device_name,duration_ms,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,credits,total_cost_usd,models",
+    );
+    // ended_at desc: s3 is the newest visible session.
+    expect(lines[1]).toContain("2026-10-21T12:05:00.000Z");
+    // The revoked device's session never reaches the export.
+    expect(csv).not.toContain("9999");
+  });
+
+  it("returns a header-only CSV for account-level or empty filters", async () => {
+    seedSessions();
+    const res = await series(
+      "sessions",
+      sessionQuery({ format: "csv", source: "cursor" }),
+    );
+    const csv = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-export-total")).toBe("0");
+    expect(res.headers.get("x-export-rows")).toBe("0");
+    expect(res.headers.get("x-export-truncated")).toBe("false");
+    expect(csv.trimEnd().split("\r\n")).toHaveLength(1);
+  });
+
+  it("defuses formula prefixes in exported project labels", async () => {
+    fake.table("token_sessions").push(
+      sessionRow({
+        session_id: "csv-formula",
+        project_key: "=SUM(1,2)",
+      }),
+    );
+    const res = await series(
+      "sessions",
+      sessionQuery({ format: "csv", q: "sum" }),
+    );
+    const csv = await res.text();
+
+    expect(csv).toContain(`"'=SUM(1,2)"`);
+  });
 });
 
 describe("series dispatch", () => {

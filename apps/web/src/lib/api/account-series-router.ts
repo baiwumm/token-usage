@@ -29,6 +29,11 @@ export async function withNegotiationCache(
   const response = await produce();
 
   if (response.status !== 200) return response;
+  // Non-JSON payloads (sessions CSV export, §2.7) keep their own headers:
+  // attachment disposition, `private, no-store`, and the X-Export-* counts.
+  if (!(response.headers.get("content-type") ?? "").includes("json")) {
+    return response;
+  }
 
   const body = await response.text();
   const etag = `"${sha256Hex(body).slice(0, 32)}"`;

@@ -184,8 +184,9 @@
 - 数据源：`account-sessions`。筛选条：时间范围为单一 `DateRangePicker`（弹层内置
   今天 / 7D / 30D / 90D 快捷按钮，活动预设高亮，点选关层；日历手动选取写 `custom`；
   控件形态与仪表盘一致，设备下拉同样复用 `DeviceFilterSelect`）、设备、来源；筛选条最
-  右侧是与采集记录同款的刷新图标按钮（`ArrowsRotateRight`，刷新时图标 `animate-spin`，
-  `Tooltip` 显示上次更新时间）；设备/来源选项来自响应的 `facets`，来源选项与触发器复显 `SourceIcon`
+  右侧依次是 CSV 导出图标按钮（`ArrowDownToLine`，导出当前筛选全集，2026-11-01 增量）与
+  采集记录同款的刷新图标按钮（`ArrowsRotateRight`，刷新时图标 `animate-spin`，
+  `Tooltip` 显示上次更新时间）；导出按钮在无结果或加载中禁用，导出中显示 `Spinner`；设备/来源选项来自响应的 `facets`，来源选项与触发器复显 `SourceIcon`
   品牌图标及 `sourceDisplayLabel`（与列表 `Chip` 同源，全部来源用 `Layers`）；设备/来源与分页偏移（`offset`）
   写入 URL；时间范围的预设（今天 / 7D / 30D / 90D）不写入 URL、加载不回显（2026-10-26
   裁定），自定义窗口——日历手选或热力格子跳转带来的 `from` / `to`——写入并回显，刷新与
@@ -203,8 +204,10 @@
   Logo + 规范化显示名）、项目、设备、时长、Token、积分（仅积分制来源上报，2026-10-31
   增量；窗口内无 credits 数据时整列自动隐藏）、成本、模型（前 3 个 `Chip` + `+N`）、
   「详情」操作列（表头「详情」、行内按钮「查看」，`variant="tertiary"`，2026-10-26 操作者
-  裁定）。v1 固定按
-  结束时间倒序；服务端分页默认 20/页（可选 10/20/50/100），页脚走 `TablePagination`；不做列排序。
+  裁定）。列表固定按结束时间倒序，不做列排序；服务端分页默认 20/页（可选 10/20/50/100），
+  页脚走 `TablePagination`。CSV 导出走当前筛选全集（非当前页）：10,000 行 / 约 4 MiB 双上限，
+  截断时 toast 提示「共 N 条，已导出前 M 条」，成功时提示导出条数；下载由 `fetch` + Blob
+  触发，以便读取 `X-Export-*` 响应头并处理 401。
 - 详情：行尾「查看」按钮打开 `Modal`（整行点击为增强，键盘焦点落在按钮上）；头部为来源
   （Logo `Chip`）、项目、设备三枚 `Chip`；meta 两列 结束时间（含相对时间小字）+ 时长；
   Token 拆分（input / cached / cache creation / output / reasoning /

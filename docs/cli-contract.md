@@ -231,7 +231,7 @@ Query：`from`、`to`（`YYYY-MM-DD`，缺省= 首日 / 调用方本地今天）
 | `heatmap` | `weeks`(1–104，默认 52)、`to`、`week_starts_on`(sun/mon)、`format=compact` | 完整：`{from,to,week_starts_on,active_days,streak_days:0,weeks:[[cell]],total_cost_usd}`；cell=`{day,total_tokens,billable_total_tokens,level(0–4 按最大计费日四分),models|null,sources|null}`；`sources` 为该日按来源的 token 映射（2026-10-25 增量，可选字段，老客户端忽略）。compact：`{format:"compact",from,to,week_starts_on,active_days,streak_days,max_value,model_names:[],days:[[day,total_tokens,[modelIdx,tokens,…]]]}` |
 | `model-breakdown` | `from`,`to` 必填 | `{from,to,days:0,sources:[{source,totals{…,total_cost_usd 字符串 6dp, credits},models:[{model,model_id,pricing,cost_source,totals}}]}],pricing:{model:"per-model",pricing_mode:"per_token_type",source:"litellm",effective_from}}` |
 | `devices` | `from`,`to` 必填 | `{from,to,devices:[{id,device_name,platform,created_at,total_tokens,default_device_name}](仅活跃设备，按用量降序),account_sources:[{source,total_tokens}]}` |
-| `sessions` | `from`,`to` 必填（ISO 瞬时，按 `ended_at` 落在 `[from,to)`）；`device_id`、`source`、`q`（项目标签子串）、`limit`(1–200，默认 50)、`offset` | `{from,to,total,limit,offset,totals:{sessions,total_tokens,billable_total_tokens,total_cost_usd,credits,duration_ms},facets:{sources:[{source,sessions}],devices:[{device_id,device_name,sessions}]},sessions:[{device_id,device_name,session_id,source,project_key,started_at,ended_at,duration_ms,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,credits,total_cost_usd,models:[{model,total_tokens,total_cost_usd,share}]}]}`；按 `ended_at` 倒序（同刻按 `source`、`session_id` 升序） |
+| `sessions` | `from`,`to` 必填（ISO 瞬时，按 `ended_at` 落在 `[from,to)`）；`device_id`、`source`、`q`（项目标签子串）、`limit`(1–200，默认 50)、`offset`、`format`（`json` 默认 / `csv`，见下） | `{from,to,total,limit,offset,totals:{sessions,total_tokens,billable_total_tokens,total_cost_usd,credits,duration_ms},facets:{sources:[{source,sessions}],devices:[{device_id,device_name,sessions}]},sessions:[{device_id,device_name,session_id,source,project_key,started_at,ended_at,duration_ms,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,credits,total_cost_usd,models:[{model,total_tokens,total_cost_usd,share}]}]}`；按 `ended_at` 倒序（同刻按 `source`、`session_id` 升序）；`format=csv` 时返回 CSV 附件（见下） |
 | `sync-runs` | `from`,`to` 必填（ISO 瞬时，按 `started_at` 落在 `[from,to)`）；`device_id`（UUID）、`trigger`、`result`（枚举同 §2.11）、`limit`(1–200，默认 50)、`offset` | `{from,to,total,limit,offset,totals:{runs,empty_runs,tokens_ingested,sessions_uploaded,duration_ms},runs:[{device_id,device_name,run_id,started_at,ended_at,duration_ms,trigger,result,error_code,empty,parsed_files,buckets_uploaded,tokens_ingested,sessions_uploaded,sessions_skipped,queue_bytes,cli_version,os}]}`；按 `started_at` 倒序（同刻按 `run_id` 升序） |
 
 聚合语义（移植时必须保持）：`source ∈ {cursor, trae-cn}` 是**账户级来源**——cursor 桶跨设备去重（同键取 total 最大/updated_at 最新/device_id 最小者），trae-cn 由会话状态聚合而来且忽略设备状态；带 `device_id` 过滤时账户级来源**整段剔除**；已吊销设备的机器级桶**不进入账户聚合**（行保留在库，重新配对后回来）；成本按读取时定价引擎计算（grok/cline 用 provider 上报值，未知模型/订阅/本地推理计 0）。
@@ -248,6 +248,21 @@ upsert 键的一部分，存储保持采集原串。
 Devices 序列语义（2026-10-28 增量）：`default_device_name` 是 §2.2 签发时写入 `token_devices.default_device_name` 的**创建期名称快照**（`<主机名> #<machine_id 前 8 位>`，含重名退避后缀），此后任何改名都不再更新它；该列可空，缺失时响应里为 `null`。设置页的「恢复默认名称」= 客户端把本字段原值作为 `device_name` 提交给 §2.8，**不新增写接口**；重名由 §2.8 的 `409 device_name_taken` 承担。
 
 Sessions 聚合语义（2026-10-25 新增）：仅设备级来源，`cursor` / `trae-cn` 永不出现；已吊销设备的会话行保留在库但**整段剔除**；`total` 是筛选全集计数，`totals` 是筛选全集汇总而非当前页；`billable_total_tokens` 为 `null` 时按 `total_tokens` 计入；`total_cost_usd` 读取时按定价引擎逐模型计算后求和（未知模型计 0），所有层级（`totals` / 会话 / 模型）均为固定 6 位小数字符串；`duration_ms = ended_at - started_at`（毫秒非负整数，`totals.duration_ms` 为筛选全集求和）；`models[].share = model.total_tokens / session.total_tokens`（0–1，保留 4 位小数；会话 total 为 0 时记 0）；跨窗口长会话按 `ended_at` 归属单一窗口，不按天切分（v1 无会话内桶）。`facets.sources` 基于 `from/to` + `device_id` + `q`（忽略 `source`），`facets.devices` 基于 `from/to` + `source` + `q`（忽略 `device_id`）；两者均剔除吊销设备与账户级来源，按 `sessions` 降序，供筛选下拉使用，不受 `limit` / `offset` 影响。参数：`from` / `to` 缺失或不可解析 → `400 {"error":"Missing from/to"}`；`from > to` → `400 {"error":"Invalid from/to"}`；窗口 >1095 天时把 `from` 钳制到 `to - 1095d`；`device_id` 非 UUID → `400 {"error":"Invalid device_id"}`；`source` trim + 转小写、≤100，`cursor` / `trae-cn` 按无结果处理（不 400）；`limit` 非数字按 50、钳制 1–200，`offset` 非数字或负数按 0；`q` trim、≤120、大小写不敏感子串，`%` / `_` / `\` 作为字面量转义。
+
+**Sessions CSV 导出（2026-11-01 增量，Dashboard 面）**：`format=csv` 时响应改为
+`text/csv; charset=utf-8` 附件（`Content-Disposition: attachment; filename="token-usage-sessions-<from YYYYMMDD>-<to YYYYMMDD>.csv"`），
+沿用同一筛选与 `ended_at` 倒序，**忽略 `limit` / `offset`**，导出筛选全集。上限为
+**10,000 行**与**响应体 4 MiB**，先到先截断；响应头 `X-Export-Total`（筛选全集条数）、
+`X-Export-Rows`（实际导出条数）、`X-Export-Truncated`（`true` / `false`）。CSV 以 UTF-8 BOM
+开头、CRLF 换行、RFC4180 引号转义；以 `= + - @` 或制表符开头的字符串单元格前置 `'`
+防公式注入。列固定为：`ended_at,started_at,source,project_key,device_name,duration_ms,
+input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,
+reasoning_output_tokens,total_tokens,billable_total_tokens,credits,total_cost_usd,models`；
+`billable_total_tokens` 为 `null` 时留空；`models` 是 `[{model,total_tokens,total_cost_usd}]`
+的 JSON 字符串。不包含 `session_id`、对话内容或路径。`cursor` / `trae-cn` 与空结果返回仅
+表头的 CSV；`from` / `to` / `device_id` 等参数错误仍返回 JSON 400，未授权仍返回 JSON 401；
+`format` 缺省或非 `csv` 时行为与旧版逐字一致。CSV 响应使用 `Cache-Control: private, no-store`，
+不参与 §2.7 的 ETag 协商。
 
 **计价口径注记（2026-10-27）**：sessions 每模型行不带计价时间上下文，定价引擎一律按**峰值价**计算——DeepSeek 的峰谷/周末半价在 sessions 视图不生效，同一笔用量 sessions 的成本因此**可能高于**仪表盘（hourly 按 `hour_start` 走 `isDeepSeekOffPeak`）。这是已接受的口径差异：会话行只有单一 `ended_at`，按其近似计价会引入跨峰谷长会话的另一种误差，v1 保持按峰值计。
 
@@ -363,7 +378,7 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
 8. CORS 行为、1 MiB 上限、`Cache-Control: no-store`、405/413 行为。
 9. ingest `sessions` 的 ≤200 条上限、字段白名单、`total = input + cached + cache_creation + output`、模型求和校验、账户级来源整条跳过、`project_key` 仅 basename、`session_id` 拒绝路径分隔符。
 10. `token_sessions` upsert 键 `(user_id, device_id, source, session_id)` 与 `ended_at` 严格 last-wins；旧/等值快照只计 `sessions_skipped`；请求内同键保留 `ended_at` 最大的一条。
-11. `account-sessions` 的 `[from,to)` 过滤、`ended_at` 倒序、`total`/`totals` 全集语义、吊销设备剔除、成本读取时计算、`total_cost_usd` 6dp、分页钳制。
+11. `account-sessions` 的 `[from,to)` 过滤、`ended_at` 倒序、`total`/`totals` 全集语义、吊销设备剔除、成本读取时计算、`total_cost_usd` 6dp、分页钳制；`format=csv` 的全集导出（忽略分页）、10,000 行 / 4 MiB 截断与 `X-Export-*` 头、BOM/CRLF/RFC4180、公式前缀防护。
 12. 旧 CLI 不携带 `sessions` 时请求与响应逐字不变；`sessions_upserted` / `sessions_skipped` 是可选追加字段。
 13. sync-report 的逐字段校验（`run_id` ≤128 且拒绝 `/`、`\` 与 Unicode Cc、`trigger`/`result`
     枚举、非负安全整数、`ended_at >= started_at`、可选字段长度上限）与单一稳定码

@@ -13,6 +13,7 @@
 // filter-bar.tsx the controls, summary-cards.tsx the totals row,
 // sessions-table.tsx the list, detail-modal.tsx the drill-down.
 
+import { toast } from "@heroui/react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -29,11 +30,13 @@ import { SessionsTable } from "./sessions-table";
 
 import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { useLocale } from "@/lib/copy/locale";
+import { formatMessage } from "@/lib/copy/message";
 import { SESSIONS_COPY } from "@/lib/copy/sessions";
 import { useUrlFilters } from "@/lib/dashboard/url-filters";
 import { loadable, type Loadable } from "@/lib/loadable";
 import {
   DashboardApiError,
+  exportSessionsCsv,
   fetchSessions,
   type SessionItem,
   type SessionsPayload,
@@ -65,6 +68,7 @@ export function SessionsClient() {
   const [knownDevices, setKnownDevices] = useState<Record<string, string>>({});
   const [detail, setDetail] = useState<SessionItem | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const requestId = useRef(0);
 
@@ -160,6 +164,64 @@ export function SessionsClient() {
     if (accessToken) void load(accessToken);
   }, [accessToken, load]);
 
+  const exportCsv = useCallback(async () => {
+    if (!accessToken || exporting) return;
+
+    setExporting(true);
+    try {
+      const result = await exportSessionsCsv(accessToken, {
+        fromIso: range.fromIso,
+        toIso: range.toIso,
+        deviceId: filters.deviceId || null,
+        source: filters.source || null,
+      });
+      const url = URL.createObjectURL(result.blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = result.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // Firefox needs the object URL alive until the download starts.
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      if (result.truncated) {
+        toast(
+          formatMessage(copy.exportTruncated, locale, {
+            total: result.total,
+            count: result.exported,
+          }),
+        );
+      } else {
+        toast.success(
+          formatMessage(copy.exported, locale, { count: result.exported }),
+        );
+      }
+    } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToLogin();
+
+        return;
+      }
+      toast(copy.exportFailed);
+    } finally {
+      setExporting(false);
+    }
+  }, [
+    accessToken,
+    copy.exportFailed,
+    copy.exportTruncated,
+    copy.exported,
+    exporting,
+    filters.deviceId,
+    filters.source,
+    locale,
+    range.fromIso,
+    range.toIso,
+    redirectToLogin,
+  ]);
+
   const hasNarrowingFilters =
     filters.range !== "30d" ||
     Boolean(filters.from) ||
@@ -212,8 +274,10 @@ export function SessionsClient() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 md:px-8">
       <SessionsFilterBar
+        canExport={(payload?.total ?? 0) > 0}
         copy={copy}
         deviceOptions={deviceOptions}
+        exporting={exporting}
         filters={filters}
         hasNarrowingFilters={hasNarrowingFilters}
         lastUpdatedAt={lastUpdatedAt}
@@ -225,6 +289,7 @@ export function SessionsClient() {
         timezone={timezone}
         onApply={applyFilters}
         onClear={clearFilters}
+        onExport={() => void exportCsv()}
         onRetry={retry}
       />
 

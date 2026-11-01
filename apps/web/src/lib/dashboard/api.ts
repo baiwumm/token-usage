@@ -511,6 +511,77 @@ export function fetchSessions(
   return callContract<SessionsPayload>("account-sessions", `?${query}`, token);
 }
 
+export interface SessionsCsvExport {
+  blob: Blob;
+  filename: string;
+  total: number;
+  exported: number;
+  truncated: boolean;
+}
+
+/**
+ * Downloads the full filtered sessions set (docs/cli-contract.md §2.7
+ * `format=csv`). `limit`/`offset` are intentionally omitted: the server caps
+ * the export at 10,000 rows / 4 MiB and reports the cut through headers.
+ */
+export async function exportSessionsCsv(
+  token: string,
+  params: {
+    fromIso: string;
+    toIso: string;
+    deviceId?: string | null;
+    source?: string | null;
+    q?: string | null;
+  },
+): Promise<SessionsCsvExport> {
+  const query = new URLSearchParams({
+    from: params.fromIso,
+    to: params.toIso,
+    format: "csv",
+  });
+
+  if (params.deviceId) query.set("device_id", params.deviceId);
+  if (params.source) query.set("source", params.source);
+  if (params.q) query.set("q", params.q);
+
+  const response = await fetch(
+    `/api/functions/token-usage-account-sessions?${query}`,
+    {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    },
+  );
+
+  if (response.status === 401) {
+    throw new DashboardApiError("unauthorized", 401);
+  }
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: string;
+    };
+
+    throw new DashboardApiError(
+      payload.error || `HTTP ${response.status}`,
+      response.status,
+    );
+  }
+
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1];
+  const count = (name: string) => {
+    const value = Number(response.headers.get(name));
+
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  };
+
+  return {
+    blob: await response.blob(),
+    filename: filename || "token-usage-sessions.csv",
+    total: count("x-export-total"),
+    exported: count("x-export-rows"),
+    truncated: response.headers.get("x-export-truncated") === "true",
+  };
+}
+
 // Device management (settings page, docs/cli-contract.md §2.7–2.9) and the
 // pairing approval (device page, §2.3) — same contract path, browser JWT.
 

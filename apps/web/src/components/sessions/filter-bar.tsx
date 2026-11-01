@@ -8,7 +8,7 @@ import type { Locale } from "@/lib/copy/locale";
 import type { SessionsCopy } from "@/lib/copy/sessions";
 import type { SessionsPayload } from "@/lib/dashboard/api";
 
-import { ArrowsRotateRight, Layers } from "@gravity-ui/icons";
+import { ArrowDownToLine, ArrowsRotateRight, Layers } from "@gravity-ui/icons";
 import {
   Button,
   DateField,
@@ -52,10 +52,13 @@ export function SessionsFilterBar({
   sourceOptions,
   loading,
   refreshing,
+  canExport,
+  exporting,
   lastUpdatedAt,
   hasNarrowingFilters,
   onApply,
   onClear,
+  onExport,
   onRetry,
 }: {
   copy: SessionsCopy;
@@ -69,10 +72,13 @@ export function SessionsFilterBar({
   sourceOptions: SessionsPayload["facets"]["sources"];
   loading: boolean;
   refreshing: boolean;
+  canExport: boolean;
+  exporting: boolean;
   lastUpdatedAt: number | null;
   hasNarrowingFilters: boolean;
   onApply: (patch: Partial<Filters>) => void;
   onClear: () => void;
+  onExport: () => void;
   onRetry: () => void;
 }) {
   const { formatDateTime } = useFormat();
@@ -254,6 +260,26 @@ export function SessionsFilterBar({
       ) : null}
 
       <div className="ml-auto flex items-center gap-1.5">
+        <Tooltip delay={0}>
+          <Button
+            isIconOnly
+            aria-label={copy.exportCsv}
+            isDisabled={!canExport || loading || exporting}
+            size="sm"
+            variant="tertiary"
+            onPress={onExport}
+          >
+            {exporting ? (
+              <Spinner size="sm" />
+            ) : (
+              <ArrowDownToLine aria-hidden="true" className="size-4" />
+            )}
+          </Button>
+          <Tooltip.Content showArrow placement="bottom">
+            <Tooltip.Arrow />
+            <Typography type="body-xs">{copy.exportCsv}</Typography>
+          </Tooltip.Content>
+        </Tooltip>
         <Tooltip delay={0}>
           <Button
             isIconOnly

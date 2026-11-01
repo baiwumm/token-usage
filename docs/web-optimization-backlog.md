@@ -5,10 +5,10 @@
 全部完成后可删除本文件或在标题标注"已清"。
 
 2026-11-01 复核：A / B / C / D 除 C6、D2、D7 外全部完成，未发现回退；新增 E1
-（Next.js 安全升级，同日完成）。C6 / D2 / D7 保持原明细与待办状态。
+（Next.js 安全升级，同日完成）。C6 / D7 保持原明细与待办状态；D2 同日按拍板收窄为
+CSV 导出并完成（列排序取消）。
 
-2026-11-01 操作者拍板：**E1 已完成**（本批）；剩余顺序 **D2 → D7 → C6**，C6 继续等
-数据量触发。
+2026-11-01 操作者拍板：**E1 / D2 已完成**；剩余顺序 **D7 → C6**，C6 继续等数据量触发。
 
 约定：动任何 §2.6/§2.7 冻结行为前，先改 `docs/cli-contract.md` 与 golden 测试 → 操作者确认 →
 再改实现（AGENTS 硬性约束 1）。每次提交前跑 `pnpm verify`，conventional commits +
@@ -128,10 +128,13 @@
       实现：cell 在传入 `onDaySelect` 时渲染为 button（hover 放大 + 焦点环）；
       sessions 的 `parseFilters` 接受 from/to 作为自定义窗口并回写地址栏（合法且顺序正确
       才采纳；预设仍不 round-trip——2026-10-28 修订 2026-10-26 裁定）。
-- [ ] D2 Sessions 表列排序 + 导出当前过滤结果 CSV。**保留待办**：排序要给
-      account-sessions 加 `order` 参数、CSV 要加 `format=csv`（§2.7 是 Dashboard 面
-      可演进，但仍是契约变更：文档回写 + golden + 前端 UI 三块），体量相当于半个
-      新功能，值得单独一批做并单独验收。
+- [x] D2 Sessions CSV 导出（2026-11-01 完成；操作者拍板**取消列排序**，只做导出）。
+      `account-sessions` 新增 `format=csv`（§2.7 已回写）：沿用筛选与 `ended_at` 倒序，
+      忽略 `limit`/`offset` 导出全集；10,000 行 + 4 MiB 双上限，`X-Export-Total` /
+      `X-Export-Rows` / `X-Export-Truncated` 回报截断；UTF-8 BOM、CRLF、RFC4180、
+      公式前缀防护；`models` 为 JSON 字符串。前端在刷新按钮左侧加导出按钮，`fetch` +
+      Blob 下载，成功/截断/失败均有 toast。golden 覆盖 CSV 头、分页忽略、账户级来源空表、
+      公式转义；`withNegotiationCache` 对非 JSON 响应放行，保留附件头与 `no-store`。
 - [x] D3 仪表盘自动刷新：5 分钟 interval + `visibilitychange` 暂停 +
       PanelOverlay 静默更新（切回可见立即刷新并重置计时；loadAll run-id 保证
       叠加刷新安全）。**2026-10-27 被设置页「数据刷新」取代**：两项默认关闭，

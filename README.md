@@ -44,7 +44,7 @@
 
 - **一个账户、多台设备**：桌面 / 笔记本各自的采集端独立配对、独立吊销，用量按账户聚合、按设备下钻
 - **数据自主**：每个部署实例绑定自己的 Supabase 项目，采集端只向配对实例上报，跨实例零共享
-- **可观测**：仪表盘 / Sessions 会话明细 / 采集运行记录 / 成就墙；积分（credits）作为独立维度展示，不混入 token 与成本
+- **可观测**：仪表盘 / Sessions 会话明细（支持按当前筛选导出 CSV）/ 采集运行记录 / 成就墙；积分（credits）作为独立维度展示，不混入 token 与成本
 - **契约先行**：CLI 采集契约两档制——采集面硬冻结、仪表盘面随 UI 演进（[`docs/cli-contract.md`](docs/cli-contract.md)）
 - **开源自部署**：Vercel free + Supabase free 即可跑通，见[部署指南](docs/deploy-guide.md)
 

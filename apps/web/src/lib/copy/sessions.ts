@@ -10,6 +10,10 @@ export interface SessionsCopy {
   sourceLabel: string;
   allSources: string;
   refresh: string;
+  exportCsv: string;
+  exported: string;
+  exportTruncated: string;
+  exportFailed: string;
   lastUpdated: string;
   lastUpdatedNone: string;
   clearFilters: string;
@@ -93,6 +97,10 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
     sourceLabel: "来源",
     allSources: "全部来源",
     refresh: "刷新",
+    exportCsv: "导出 CSV",
+    exported: "已导出 {count} 条会话",
+    exportTruncated: "共 {total} 条，已导出前 {count} 条；请缩小时间范围后重试",
+    exportFailed: "导出失败，请重试",
     lastUpdated: "上次更新 {time}",
     lastUpdatedNone: "尚未加载数据",
     clearFilters: "清除筛选",
@@ -175,6 +183,12 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
     sourceLabel: "Source",
     allSources: "All sources",
     refresh: "Refresh",
+    exportCsv: "Export CSV",
+    exported:
+      "{count, plural, one {# session exported} other {# sessions exported}}",
+    exportTruncated:
+      "{total, plural, one {# session matches} other {# sessions match}}; the first {count} were exported. Narrow the range and retry.",
+    exportFailed: "Export failed. Please retry.",
     lastUpdated: "Updated {time}",
     lastUpdatedNone: "No data loaded yet",
     clearFilters: "Clear filters",

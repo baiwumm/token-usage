@@ -4,12 +4,13 @@
 
 import type { Principal } from "./principal";
 
-import { jsonResponse } from "./http";
+import { CORS_HEADERS, jsonResponse } from "./http";
 import {
   loadAccountUsage,
   loadSessionRows,
   loadSyncRunRows,
 } from "./account-data";
+import { buildSessionsCsv, type SessionsCsvItem } from "./sessions-csv";
 
 import {
   boundRangeStart,
@@ -494,6 +495,36 @@ function toSessionWire(item: SessionWire & { endedMs: number }): SessionWire {
   };
 }
 
+function csvFilename(from: string, to: string): string {
+  const day = (iso: string) => iso.slice(0, 10).replaceAll("-", "");
+
+  return `token-usage-sessions-${day(from)}-${day(to)}.csv`;
+}
+
+function sessionsCsvResponse(
+  items: readonly SessionsCsvItem[],
+  from: string,
+  to: string,
+): Response {
+  const { csv, total, exported, truncated } = buildSessionsCsv(items);
+
+  return new Response(csv, {
+    status: 200,
+    headers: {
+      ...CORS_HEADERS,
+      "Content-Type": "text/csv; charset=utf-8",
+      // Export responses are per-user and must never be cached by a proxy.
+      "Cache-Control": "private, no-store",
+      "Content-Disposition": `attachment; filename="${csvFilename(from, to)}"`,
+      "Access-Control-Expose-Headers":
+        "Content-Disposition, X-Export-Total, X-Export-Rows, X-Export-Truncated",
+      "X-Export-Total": String(total),
+      "X-Export-Rows": String(exported),
+      "X-Export-Truncated": String(truncated),
+    },
+  });
+}
+
 async function sessions({ url, principal }: SeriesArgs) {
   const fromParam = url.searchParams.get("from") || "";
   const toParam = url.searchParams.get("to") || "";
@@ -541,6 +572,7 @@ async function sessions({ url, principal }: SeriesArgs) {
     offsetParam == null || offsetParam === "" ? 0 : Number(offsetParam);
   const offset =
     Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.trunc(offsetRaw) : 0;
+  const wantsCsv = url.searchParams.get("format") === "csv";
 
   const emptyPayload = {
     from,
@@ -563,7 +595,9 @@ async function sessions({ url, principal }: SeriesArgs) {
   // Account-level sources never appear in Sessions (§2.7): an explicit filter
   // for them is an empty result, not an error.
   if (source === "cursor" || source === "trae-cn") {
-    return jsonResponse(200, emptyPayload);
+    return wantsCsv
+      ? sessionsCsvResponse([], from, to)
+      : jsonResponse(200, emptyPayload);
   }
 
   const { sessions: rows, devices } = await loadSessionRows(
@@ -709,6 +743,8 @@ async function sessions({ url, principal }: SeriesArgs) {
             ? 1
             : 0),
     );
+
+  if (wantsCsv) return sessionsCsvResponse(filtered, from, to);
 
   let totalTokens = 0;
   let billableTokens = 0;

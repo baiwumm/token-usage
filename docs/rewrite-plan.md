@@ -254,8 +254,8 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 
 **最近一批交付（2026-10-31 ~ 11-01）**：Trae CN 本地库、桶级 / 会话级 credits、
 `credits_ingested` 遥测、模型大小写归一、wrapped canonical 来源、成就条进度与详情弹窗、
-Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）。来源接入的验收记录见
-`docs/sources-capture-plan.md`。
+Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）、Sessions CSV 导出（筛选全集，
+10,000 行 / 4 MiB 双上限）。来源接入的验收记录见 `docs/sources-capture-plan.md`。
 
 **测试与部署**：`pnpm verify` 全绿（lint 0 error + 5 条既有 `no-console` warning；
 web 31 files / 435 tests + build；CLI 76 tests）。CI 在 main 与 `cli-v*` tag 上运行；
@@ -265,7 +265,6 @@ web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 
 - C6 索引：`token_usage_hourly (user_id, source, hour_start)` 与 `token_device_tokens (user_id)`；
   当前数据量无感知，**保持待办**，等数据量触发。
-- D2 Sessions 表列排序 + 导出当前过滤结果 CSV（契约 + golden + UI，单独一批）。
 - D7 仪表盘刷新探针 `GET /api/app/dashboard-revision`（未开工）。
 
 **CLI 候选**（不阻塞当前版本，见 `docs/cli-release.md` §四）：
