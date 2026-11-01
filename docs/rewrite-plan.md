@@ -218,7 +218,7 @@ M5.6 上线后由新版 CLI 采集，旧 CLI 继续只报小时桶与 trae-cn �
 | 契约字段凭印象移植 | 本文发布前逐端点核对过源码；golden 测试双保险 |
 | 开发期测试数据混入新项目生产数据 | 测试专用用户/设备隔离标识；G1 切换前清理测试数据再导入真实数据；对账脚本只认真实用户 |
 | UI 范围失控（重写经典死法） | 功能清单以旧系统活功能为准封闭；新想法记 backlog 不进 v1 |
-| Vercel Hobby 函数超限 | 10 handler 固定配额，CI 里加函数计数检查；`account-sessions` 复用 catch-all，不新增函数 |
+| Vercel Hobby 函数超限 | Hobby 上限 12 个 serverless function/部署。当前已用满：11 个命名 route + `[...slug]` catch-all（account series），新增 reconcile 后为 12/12。**下一个端点不得再开新 route**——要么并入 catch-all，要么升级计划；`account-sessions` 一直复用 catch-all |
 | 依赖蔓延 | §4 预算制，装前报批 |
 | Sessions 真实数据依赖 M-CLI | 服务端与 UI 先用 fixture 打通契约；M-CLI 未上线前 `/sessions` 只显示「等待新版采集器」空态，不从小时桶推导或伪造会话；M5.6 验收拆成「契约/UI 绿」与「真实数据对账」两段 |
 | Sessions 隐私与载荷 | `session_id` 拒绝路径分隔符；`project_key` 仅 basename；只持久化白名单字段；200 条/32 模型上限，且受全局 1 MiB 体积上限（超限 413，CLI 分批）；golden 测试断言响应与表中无 prompt、正文、标题、绝对路径、resume command |
@@ -258,7 +258,7 @@ Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）、Sessions CSV 导�
 10,000 行 / 4 MiB 双上限）。来源接入的验收记录见 `docs/sources-capture-plan.md`。
 
 **测试与部署**：`pnpm verify` 全绿（lint 0 error + 5 条既有 `no-console` warning；
-web 32 files / 444 tests + build；CLI 111 tests）。CI 在 main 与 `cli-v*` tag 上运行；
+web 33 files / 455 tests + build；CLI 130 tests）。CI 在 main 与 `cli-v*` tag 上运行；
 web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 
 **Web 工程待办**：已清空，历史明细见 `docs/web-optimization-backlog.md`。
@@ -275,9 +275,12 @@ web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 附带交付（同批 CLI 加固，明细见 `docs/cli-release.md` §四）：`UsageError` 统一用户输入
 错误、命令表驱动 help、`tokenusage upload`、`--source` 严格校验、`sessions` 严格解析 +
 原子写、`--watch` 退避、调度重写、死模块清理、`files` 去掉 `test/`、`sync.log` 改 JSONL。
-对账命令（`calibrate` / `reconcile`）**仍未做**：按硬性约束 1，需先在
-`docs/cli-contract.md` §2 增补「按设备 + 日期读小时桶明细」端点与 golden 测试，经操作者
-确认后再实现。
+对账命令 `tokenusage reconcile` —— **已交付**（2026-11-01）：契约端点
+`GET /api/functions/token-usage-reconcile`（`docs/cli-contract.md` §2.13 + §3 条目 15，
+golden 测试 `apps/web/tests/contract/reconcile.test.ts`）与 CLI 命令
+（`packages/cli/src/commands/reconcile.js`）均已落地；只读，按基线（AGENTS 约束 8 的
+queue.jsonl last-wins）逐键比对，漂移退出码 1。⚠ 该端点占用最后一个 Vercel function
+槽位（12/12，见 §8 风险行），后续端点须复用 catch-all。
 
 **操作者拍板记录（2026-11-01）**：
 
@@ -295,5 +298,5 @@ web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm。
 6. **CLI 加固批** → 「按建议执行」：上游 `tokentracker-cli` / `jusage` 核对结论中的
    P0/P1/P2 全部落地（错误模型、命令表 help、`upload`、严格 `--source`、`sessions` 严格
    解析、watch 退避、`--integrations`、死参数移除、调度三平台、死模块清理、`files` 收紧、
-   JSONL 日志）。唯一未做项是对账命令 `calibrate` / `reconcile`——受硬性约束 1 限制，
-   必须先改契约文档与 golden 测试并经操作者确认，本批不动。
+   JSONL 日志）。当时未做的对账命令 `reconcile` 于同日第二批交付：契约文档 + golden
+   测试先行（§2.13），操作者放行后实现端点与 CLI 命令。

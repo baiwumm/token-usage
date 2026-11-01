@@ -6,8 +6,8 @@
 ## Unreleased
 
 对账上游 `tokentracker-cli` / `jusage` 后的加固批：统一错误模型、补齐帮助与
-`upload` 命令、参数严格校验、三平台原生调度，并清掉从未接线的本地服务模块。
-不发版（等下一个版本号确定）。
+`upload` / `reconcile` 命令、参数严格校验、三平台原生调度，并清掉从未接线的本地
+服务模块。不发版（等下一个版本号确定）。
 
 - **用户输入错误统一为 `UsageError`**：未知命令 / 未知参数 / 非法取值只打一行
   `Error: ...` 加 `Hint:`，退出码 2，不再刷堆栈；`--debug` 才展开。
@@ -41,12 +41,17 @@
   并补空值守卫。
 - **打包收紧**：`files` 去掉 `test/`；`test/packaging.test.js` 新增两条守卫——
   已退役模块不得回归、`src/` 内每个文件都必须能从 CLI 入口可达。
-- 测试 76 → 111 条（新增 `cli-dispatch` / `args-strict` / `scheduled-task` /
-  `queue-row-normalize` / `integration-gate`；后者锁定「选中才写工具配置」与
-  `upload` 未配对即拒绝的语义）。
-- **未做**：对账命令（`calibrate` / `reconcile`）需要新契约端点，先改
-  `docs/cli-contract.md` §2 与 golden 测试并经操作者确认（见
-  `docs/cli-release.md` §四）。
+- **新增 `tokenusage reconcile`**（只读对账）：把本地 `queue.jsonl` 的 last-wins
+  基线与云端**本设备**的桶明细按 `(hour_start, source, model)` 逐键比对，输出
+  `missing_on_server` / `server_only` / `mismatch` 三类漂移（mismatch 附逐字段
+  `local → cloud`），任一存在即退出码 1。窗口默认最近 7 天（`--days`，上限 366），
+  也可 `--from` / `--to` 指定 UTC 日历日（`--to` 含当天整天）；`--json` 输出结构化
+  明细。命令不上传、不改写队列、不动上传 offset，后端读取面为
+  `GET /api/functions/token-usage-reconcile`（契约 §2.13）。
+- 测试 76 → 130 条（新增 `cli-dispatch` / `args-strict` / `scheduled-task` /
+  `queue-row-normalize` / `integration-gate` / `reconcile`；`integration-gate` 锁定
+  「选中才写工具配置」与 `upload` 未配对即拒绝，`reconcile` 锁定窗口解析、last-wins
+  基线、漂移分类与退出码）。
 
 ## 0.3.0
 

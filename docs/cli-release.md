@@ -149,10 +149,20 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > 数据，共约 550 KB），`normalizeQueueRow` 抽到 `src/lib/queue-row-normalize.js`；
 > ⑪ `package.json` 的 `files` 去掉 `test/`；⑫ `autoLog` 落盘改 JSONL（`{ts,msg,...}`，
 > 仍 1 MiB 滚动一代，TTY 行保持人类可读）。
-> 测试：CLI 76 → 111 条（新增 `cli-dispatch` / `args-strict` / `scheduled-task` /
-> `queue-row-normalize` / `integration-gate`，并把「src 内零可达模块」写成 packaging 守卫）。
-> 对账命令（`calibrate` / `reconcile`）**未实现**：需要 CLI 面新端点（按设备 + 日期读小时桶
-> 明细），按硬性约束 1 必须先改 `docs/cli-contract.md` §2 与 golden 测试并经操作者确认。
+> 测试：CLI 76 → 130 条（新增 `cli-dispatch` / `args-strict` / `scheduled-task` /
+> `queue-row-normalize` / `integration-gate` / `reconcile`，并把「src 内零可达模块」写成
+> packaging 守卫）。
+> **对账命令 `reconcile`（2026-11-01 同批第二批交付）**：先按硬性约束 1 改契约——
+> `docs/cli-contract.md` §2.13（`GET /api/functions/token-usage-reconcile`，仅设备令牌、
+> `[from,to)` 半开窗口、366 天钳制、limit 1–2000、按 `hour_start → source → model` 升序、
+> 行原样返回不聚合不剔除账户级来源、无 `total_cost_usd`）与 §3 条目 15，golden 测试
+> `apps/web/tests/contract/reconcile.test.ts`（11 条）先行通过；随后实现端点
+> `apps/web/src/app/api/functions/token-usage-reconcile/route.ts` 与 CLI 命令
+> `packages/cli/src/commands/reconcile.js`（只读：本地 `queue.jsonl` last-wins 基线 per
+> `(hour_start, source, model)`，漂移分 `missing_on_server` / `server_only` / `mismatch`，
+> 有漂移退出码 1，`--json` 结构化输出）。已知残余：ingest 对**同一请求内**同键重放取
+> `total_tokens` 较大值，极端情况下云端可能保留较大值而本地已下调——此类键以 `mismatch`
+> 呈现供人工判断，命令本身永不写入。
 
 > **0.3.0（2026-11-01 已发 npm 并完成本机升级）**：新增 Trae CN 本地库扫描、Qoder
 > credits 维度（桶级 / 会话级 / sync-run `credits_ingested` 遥测）、Qoder 会话进入

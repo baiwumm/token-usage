@@ -34,6 +34,7 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 | `tokenusage device-login` | 设备流配对：输出 `user_code`，在站点 `/device` 页批准后本机拿到设备令牌 |
 | `tokenusage sync` | 解析本地 AI 工具日志 → 上报小时桶 + 会话元数据 |
 | `tokenusage upload` | 只刷本地队列，不扫描来源（`--drain` / `--force` 抬批次上限、`--json` 输出结构化结果） |
+| `tokenusage reconcile` | 只读对账：本地 `queue.jsonl` 的 last-wins 基线 vs 云端该设备的桶明细，按 `(hour_start, source, model)` 逐键比对，有漂移退出码 1 |
 | `tokenusage sync --watch` | 常驻模式，默认每 15 分钟增量一轮（`--interval <ms>` 可调，≥60000） |
 | `tokenusage sync --no-sessions` | 只上报小时桶，跳过会话元数据 |
 | `tokenusage sync --drain` | 补传模式：更大的批处理预算，适合首次接入/长期积压 |
@@ -57,6 +58,21 @@ tokenusage upload            # 刷队列（默认最多 5 批，每批 200 条�
 tokenusage upload --drain    # 大积压补传（最多 100 批）
 tokenusage upload --json     # 结构化结果，便于脚本消费
 ```
+
+对账（只读，不上传、不改队列、不动上传 offset）：
+
+```bash
+tokenusage reconcile                     # 最近 7 天
+tokenusage reconcile --days 30           # 最近 30 天（上限 366）
+tokenusage reconcile --from 2026-10-25 --to 2026-10-31   # UTC 日历日，--to 当天整天包含
+tokenusage reconcile --json              # 结构化漂移明细，供脚本/看板消费
+```
+
+- 基线就是 `sync` / `upload` 会发出的同一批行：整份 `queue.jsonl` 按
+  `(hour_start, source, model)` last-wins，读时同样经过 legacy 修正与 ingestion 形状归一。
+- 漂移分三类：`missing_on_server`（本地有、云端没有，通常是待补传）、`server_only`
+  （云端有、本地已无，队列被裁剪或换过机器身份）、`mismatch`（同键不同值，附逐字段
+  `local → cloud` 差异）。任一存在即以退出码 `1` 结束，便于 cron / CI 判定。
 
 ## `sync --watch`：常驻自动上报
 
