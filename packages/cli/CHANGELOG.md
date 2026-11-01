@@ -3,6 +3,17 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## 0.4.2
+
+2026-11-01。`init` 的调度摘要不再只写 `degraded: xml_rejected`：现在把被拒的第一行原因
+（如 `ERROR: Access is denied.`，超过 100 字符截断）一并打印，用户能据此判断是「需要
+管理员权限」还是「任务定义本身有问题」。
+
+- Windows：非提升 shell 下 `schtasks /Create /XML` 必然 `Access is denied`，降级路径照旧
+  每小时采集（隐藏窗口）；要启用 catch-up / retry / 无执行时限，需以管理员身份重跑
+  `tokenusage init`。
+- 单测覆盖：原因可见、超长命令输出截断（`test/scheduled-task.test.js`）。
+
 ## 0.4.1
 
 2026-11-01。修复 `tokenusage reconcile` 在真实队列上的误报：队列行写的是

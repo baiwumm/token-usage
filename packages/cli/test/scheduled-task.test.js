@@ -148,6 +148,30 @@ test("registration copy distinguishes success, degraded and unsupported", () => 
     "a fallback registration must not look clean",
   );
   assert.match(
+    formatScheduleRegistration({
+      registered: true,
+      label: TASK_NAME,
+      degraded: true,
+      reason: "xml_rejected",
+      detail: "ERROR: Access is denied.\r\n",
+    }),
+    /degraded: xml_rejected — ERROR: Access is denied\./,
+    "the rejection reason must be visible, not just the category",
+  );
+  const clipped = formatScheduleRegistration({
+    registered: true,
+    label: TASK_NAME,
+    degraded: true,
+    reason: "xml_rejected",
+    detail: `ERROR: ${"x".repeat(200)}`,
+  });
+  assert.match(
+    clipped,
+    /x…; no catch-up\/retry settings/,
+    "long command output is clipped to one line",
+  );
+  assert.ok(clipped.length < 200, "the summary row stays readable");
+  assert.match(
     formatScheduleRegistration({ registered: false, reason: "unsupported_platform", label: TASK_NAME }),
     /Unsupported platform/,
   );

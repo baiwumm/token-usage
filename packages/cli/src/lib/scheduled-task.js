@@ -637,12 +637,28 @@ function deleteAutoSyncSchedule({ home = os.homedir(), binDir, platform = proces
 }
 
 // One place for the init summary copy so Windows/macOS/Linux cannot drift.
+//
+// Degraded registrations carry the raw rejection in `detail`. On a normal
+// (non-elevated) Windows install `schtasks /Create /XML` always fails with
+// "Access is denied", so showing that first line lets the user tell "re-run as
+// administrator" apart from a genuinely malformed definition. Clip it to one
+// short line so the summary table stays readable.
+function scheduleDetailLine(value, max = 100) {
+  const line =
+    String(value ?? "")
+      .split(/\r?\n/)
+      .map((part) => part.trim())
+      .find(Boolean) ?? "";
+  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
+
 function formatScheduleRegistration(outcome) {
   if (!outcome) return "not registered";
   if (outcome.registered) {
     const when = "hourly, hidden window";
     if (outcome.degraded) {
-      return `${outcome.label}: ${when} (degraded: ${outcome.reason}; no catch-up/retry settings)`;
+      const why = scheduleDetailLine(outcome.detail);
+      return `${outcome.label}: ${when} (degraded: ${outcome.reason}${why ? ` — ${why}` : ""}; no catch-up/retry settings)`;
     }
     return `${outcome.label}: ${when} (pause/resume toggles it)`;
   }
