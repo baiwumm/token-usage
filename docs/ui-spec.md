@@ -65,12 +65,14 @@
 桌面自上而下；移动端单列：
 
 1. **筛选条**：时间范围为单一 `DateRangePicker`（弹层日历上方内置
-   今天 / 7D / 30D / 90D / 总计 快捷按钮（`ToggleButtonGroup`，单选、
-   `min-w-14` 最小宽度，活动预设高亮，点选关层）；在日历手动选取则写 `range=custom`
+   今天 / 7D / 30D / 总计 快捷按钮（`ToggleButtonGroup`，单选、
+   `min-w-14` 最小宽度，活动预设高亮，点选关层；2026-11-01 操作者裁定：去掉 90D）；
+   在日历手动选取则写 `range=custom`
    + 具体日键）、时区、设备。设备下拉与 Sessions 共用 `DeviceFilterSelect`，选项前置
    `Display` 图标，“全部设备”用 `Layers`；触发器复显同一图标，名称单行省略不换行。
    时间范围筛选仅存组件内状态（2026-10-26 操作者裁定）：不写入 URL、加载时不回显，
-   首帧把旧链接里的 `range` / `from` / `to` 清出地址栏，刷新回到默认近 30 天；
+   首帧把旧链接里的 `range` / `from` / `to` 清出地址栏，刷新回到默认「总计」
+   （2026-11-01 操作者裁定，原默认近 30 天；清空筛选同样回到「总计」）；
    URL 仅保留 `tz` / `device_id`；日期上限为仪表盘时区（`tz`）的今天，日历与日期输入
    均不接受未来日期；变更只重取数据，
    不整页刷新——各卡片保留旧内容并叠加模糊遮罩 + `Spinner`（仅首载无数据时出骨架屏，
@@ -80,21 +82,32 @@
    刷新按钮的 `Tooltip`（带箭头）显示上次更新时间（未加载时显示「尚未加载数据」）。仪表盘自动刷新
    默认关闭（2026-10-27 操作者裁定，设置页「数据刷新」可控）：定时与切回刷新均为静默
    更新（不叠加模糊遮罩），手动刷新仍带遮罩；「时」视图下手动刷新同时重取小时明细。
-   `from` / `to` 为所选时区的日键（`YYYY-MM-DD`），与契约的日粒度序列一致；「总计」以
-   2000-01-01 为起点（服务端按 MAX_RANGE_DAYS 钳制）。
+   **数据版本门**（2026-11-01 操作者批准，`docs/cli-contract.md` §2.14）：每次加载前先查
+   `GET /api/app/data-version`（最新非空采集运行的服务端 `created_at`），与缓存签名一致则
+   直接水合 sessionStorage 缓存（按 用户 + 范围/时区/设备 键，最多 4 组），**跳过七个重
+   请求**——进入页面与自动刷新在数据未变时近零成本；签名不一致或查询失败照常全量拉取
+   （fail-open），全量拉取成功且前后签名一致才回写缓存；手动「刷新」按钮永远绕过本门
+   （兜 reconcile / replay 盲区）。
 2. **总 Tokens 头卡**（独占一行、仪表盘首卡，参考上游 Broadsheet 视觉）：居中大号
-   Token 总数、计费 Token / 会话数 / 活跃天数 / 日均（30 天）四个紧凑指标、成本行
+   Token 总数、计费 Token / 会话数 / 活跃天数 / 日均（30 天）/ 单日峰值五个紧凑指标、成本行
    （存在未定价模型时加 `≥` 前缀 + ⓘ `Tooltip` 说明估算下限；行尾小字「全部时间」累计
    成本）、日期区间、按来源占比的堆叠色条、「全部 + 每来源」占比卡（`SourceIcon` 图标 +
    占比 `text-base` + 模型数；「全部」与每来源卡均可点击，打开模型明细
    `ModelListModal`——列 模型 / Token / 占比 / 成本，「全部」为跨来源同名模型合并，
-   明细桶只有逐模型 Token、无成本列时成本列自动隐藏）。
+   明细桶只有逐模型 Token、无成本列时成本列自动隐藏；数值列为定宽（Token `w-36`、
+   成本 `w-28`）并给整表 `min-w-[26rem]` 保底——按完整显示的 14 位数字定尺寸，窄视口
+   横向滚动而不是溢出到邻列（2026-11-02，Sessions 会话详情的模型表同款））。
    2026-10-26 二次精简（操作者裁定）：原 KPI 4 卡、成本卡与近期用量（rolling）卡全部
    移除——范围成本与全部时间成本在头卡，近期统计经筛选条可达，成本分析从 Top 模型
    「成本分析」按钮进入；口径：总 Token = `totals.total_tokens`，计费 =
    `totals.billable_total_tokens`，成本 = `totals.total_cost_usd`，会话数 =
    `totals.conversation_count`，活跃天数 = `days`，日均（30 天）=
-   `rolling.last_30d.avg_per_active_day`（计费 Token ÷ 活跃天）。大数一律走统一 format
+   `rolling.last_30d.avg_per_active_day`（计费 Token ÷ 活跃天），单日峰值（2026-11-01
+   操作者裁定新增）= 当前窗口逐日序列里 `total_tokens` 最大的一天（并列取最早一天，
+   `aggregate.ts` 的 `peakDay` 纯函数，值随日期小字展示；默认「总计」下即全历史峰值，
+   窄窗口为窗口内峰值，零新增请求）。五个 KPI 值一律走 `FlowNumber` 数字过渡
+   （2026-11-02 操作者裁定）；`FlowNumber` 挂载即从 0 滚动到位（骨架屏结束后的首次加载
+   与筛选刷新有同样的入场过渡），无法解析的文本回退纯文本。大数一律走统一 format
    provider，卡片内不自算格式。
    **成就条**（2026-10-30 P3，`components/dashboard/achievement-strip-section.tsx` +
    `achievement-strip.tsx`）：独占一行，放在**热力图之后、趋势之前**（2026-10-30 操作者
@@ -305,11 +318,18 @@
   覆盖「SSR 首屏就已 404、onError 收不到事件」的情况），页面不得出现空徽章位。颜色不是
   唯一信息，段位同时以文字显示。`prefers-reduced-motion` 下无动效。段位金属、渐变坡道与
   色相集中在 `achievement-tiers.ts`（`achievement-art.tsx` 与徽章组件共用一份）。
-- 详情：点击墙格打开 `Modal`（`achievement-dialog.tsx`）：头部为**可翻面的 3D 硬币**
+- 详情：点击墙格打开 `Modal`（`achievement-dialog.tsx`）：头部为**可拖拽翻面的 3D 硬币**
   （`achievement-coin.tsx`，176px；正面 = 位图徽章，背面 = 段位金属盘 + 段位名 +
-  达成日，未解锁显示「尚未解锁」+ 下一档阈值）。整枚硬币是原生 `button`，带 `aria-pressed`
-  与「翻面 / 翻回」`Tooltip`，点击与 Enter / Space 均可翻；弹窗关闭或切换成就时复位正面；
-  纯 CSS `perspective` + `rotateY`（不装 `motion`），`prefers-reduced-motion` 下无过渡。
+  达成日（单行不折行，2026-11-02 操作者裁定），未解锁显示「尚未解锁」+ 下一档阈值；
+  币缘堆叠环、机刻纹、双面高光扫掠与
+  地面投影，物理与视觉对齐上游 TokenTracker 的 `Badge3DCoin`）。2026-11-01 操作者裁定
+  （参考上游实现）：弹窗打开时硬币**入场整旋一周**落位，随后小幅怠速摆动（首次交互后
+  永久停止）；**水平拖拽 1:1 旋转**，松手按速度惯性甩动并弹簧吸附到最近一面（180° 整数倍，
+  永不停在侧面）；纯点击 / Enter / Space 仍翻面（`aria-pressed` 报告当前面），←/→ 方向键
+  ±30°；`touch-action: pan-y` 保移动端纵向滚动；`Tooltip` 提示「拖拽或点击翻面 / 翻回」。
+  弹窗关闭或切换成就时复位正面并重放入场。物理用 `motion/react`（2026-10-24 批准按需安装，
+  本次实际引入，见 `docs/rewrite-plan.md` §4）；`prefers-reduced-motion` 下无入场/摆动、
+  松手短 tween 落位，拖拽本身保留（用户驱动非装饰）。
   硬币下方为一句话描述 + 数据覆盖说明（Sessions 类与 sync 类成就注明「自 … 起统计」）；
   已解锁时在**弹窗正文最底部**显示 `fullWidth` 的「分享成就」按钮（先关详情再开分享弹窗，
   避免嵌套 Modal；2026-10-30 操作者裁定：从数值区上方移到底部并通栏），未解锁不显示。
@@ -388,7 +408,7 @@
 | 语言 | `Select` | 跟随系统 / 中文 / English；`system` 行内提示当前解析结果；写 locale cookie |
 | 货币 | `Select` | USD / EUR / GBP / CNY / JPY / HKD；下方 `Description` 显示 `1 USD = 6.6849 CNY`（非 USD）与“参考汇率 · as_of” |
 | 日期格式 | `Select` | 跟随语言（默认）/ `YYYY-MM-DD` / `MM/DD/YYYY` / `DD/MM/YYYY`；只改日期部分，时间仍按语言 12/24 小时制，图表月份标签保持语言格式 |
-| Token 显示 | `ToggleButtonGroup` | 紧凑 / 完整 |
+| Token 显示 | `ToggleButtonGroup` | 紧凑 / 完整（2026-11-01 操作者裁定：默认完整） |
 | 数字单位 | `ToggleButtonGroup` | K/M/B / 万/亿；仅紧凑模式生效，完整模式置灰并提示 |
 | 数字分组 | `ToggleButtonGroup` | 3 位 / 4 位；仅完整模式生效，紧凑模式置灰并提示 |
 

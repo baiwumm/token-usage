@@ -220,7 +220,7 @@ export function DashboardFilterBar({
           variant="ghost"
           onPress={() =>
             onApply({
-              range: "30d",
+              range: "all",
               from: "",
               to: "",
               tz: "",

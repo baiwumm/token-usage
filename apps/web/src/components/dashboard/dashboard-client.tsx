@@ -33,6 +33,14 @@ import { CostAnalysisModal } from "./cost-modal";
 import { DashboardBody } from "./dashboard-body";
 import { DashboardFilterBar } from "./filter-bar";
 import { buildDetailRows } from "./detail-rows";
+import { peakDay } from "./aggregate";
+import {
+  dashboardFilterCacheKey,
+  dashboardUserCacheKey,
+  readDashboardCache,
+  writeDashboardCache,
+  type DashboardPayloads,
+} from "./dashboard-data-cache";
 import { parseFilters, serializeFilters } from "./filters";
 import { buildShareInput } from "./share-input";
 
@@ -49,6 +57,7 @@ import {
   DashboardApiError,
   fetchDaily,
   fetchDashboard,
+  fetchDataVersion,
   fetchHeatmap,
   fetchHourly,
   fetchModelBreakdown,
@@ -163,7 +172,7 @@ export function DashboardClient() {
   const hourlySilentRef = useRef(false);
 
   const loadAll = useCallback(
-    async (token: string, options?: { silent?: boolean }) => {
+    async (token: string, options?: { silent?: boolean; force?: boolean }) => {
       // Keep the previous payloads mounted: only show the initial-load
       // skeleton; refreshes overlay the existing cards instead. Each slot
       // settles into place as its own response arrives, so one slow request
@@ -174,9 +183,40 @@ export function DashboardClient() {
       if (!silent) setRefreshing(true);
       lastAttemptAt.current = Date.now();
       const seq = ++loadSeq.current;
+
+      // Data-version gate (2026-11-01 operator plan): one cheap version read
+      // replaces the seven heavy fetches whenever no non-empty sync run has
+      // landed since the cached load. Manual refresh forces past the gate
+      // (covers the reconcile/replay blind spot); every gate failure fails
+      // open into the normal fetches.
+      const userKey = dashboardUserCacheKey(token);
+      const filterKey = dashboardFilterCacheKey(filters, timezone);
+      const beforeVersion = await fetchDataVersion().catch(() => null);
+
+      if (loadSeq.current !== seq) return;
+
+      if (!options?.force && beforeVersion != null) {
+        const cached = readDashboardCache(userKey, filterKey, beforeVersion);
+
+        if (cached) {
+          setSummaryState({ status: "ready", data: cached.summary });
+          setDashboardState({ status: "ready", data: cached.dashboard });
+          setDailyState({ status: "ready", data: cached.daily });
+          setMonthlyState({ status: "ready", data: cached.monthly });
+          setHeatmapState({ status: "ready", data: cached.heatmap });
+          setBreakdownState({ status: "ready", data: cached.breakdown });
+          setAchievementState({ status: "ready", data: cached.achievements });
+          setRefreshing(false);
+          setLastUpdatedAt(Date.now());
+
+          return;
+        }
+      }
+
       let pending = 7;
       let succeeded = 0;
       let redirected = false;
+      const collected = {} as Partial<DashboardPayloads>;
 
       const finishOne = () => {
         if (loadSeq.current !== seq) return;
@@ -184,18 +224,42 @@ export function DashboardClient() {
         // Always clear: a silent run may supersede an interrupted manual one.
         setRefreshing(false);
         if (succeeded > 0) setLastUpdatedAt(Date.now());
+        // A fully successful load is cacheable — but only when the change
+        // signal did not move while the fetches ran; otherwise the payloads
+        // are a pre/post-sync mix and must not be labelled with either.
+        if (succeeded < 7) return;
+        void (async () => {
+          const afterVersion = await fetchDataVersion().catch(() => null);
+
+          if (
+            loadSeq.current === seq &&
+            afterVersion != null &&
+            afterVersion === beforeVersion
+          ) {
+            writeDashboardCache(
+              userKey,
+              filterKey,
+              afterVersion,
+              collected as DashboardPayloads,
+            );
+          }
+        })();
       };
 
       const slot = <T,>(
         request: Promise<T>,
         setState: Dispatch<SetStateAction<Loadable<T>>>,
         select: (value: T) => T = (value) => value,
+        stash?: (value: T) => void,
       ) => {
         void request.then(
           (value) => {
             if (loadSeq.current !== seq) return;
+            const selected = select(value);
+
+            stash?.(selected);
             succeeded += 1;
-            setState({ status: "ready", data: select(value) });
+            setState({ status: "ready", data: selected });
             finishOne();
           },
           (reason: unknown) => {
@@ -227,6 +291,10 @@ export function DashboardClient() {
           deviceId: filters.deviceId || null,
         }),
         setSummaryState,
+        undefined,
+        (value) => {
+          collected.summary = value;
+        },
       );
       slot(
         fetchDashboard(token, {
@@ -236,6 +304,10 @@ export function DashboardClient() {
           rangeKey: filters.range,
         }),
         setDashboardState,
+        undefined,
+        (value) => {
+          collected.dashboard = value;
+        },
       );
       slot(
         fetchDaily(token, {
@@ -245,6 +317,10 @@ export function DashboardClient() {
           deviceId: filters.deviceId || null,
         }).then((point) => point.data),
         setDailyState,
+        undefined,
+        (value) => {
+          collected.daily = value;
+        },
       );
       slot(
         fetchMonthly(token, {
@@ -253,6 +329,10 @@ export function DashboardClient() {
           deviceId: filters.deviceId || null,
         }).then((point) => point.data),
         setMonthlyState,
+        undefined,
+        (value) => {
+          collected.monthly = value;
+        },
       );
       slot(
         fetchHeatmap(token, {
@@ -262,6 +342,10 @@ export function DashboardClient() {
           deviceId: filters.deviceId || null,
         }),
         setHeatmapState,
+        undefined,
+        (value) => {
+          collected.heatmap = value;
+        },
       );
       slot(
         fetchModelBreakdown(token, {
@@ -271,6 +355,10 @@ export function DashboardClient() {
           deviceId: filters.deviceId || null,
         }).then((payload) => payload.sources),
         setBreakdownState,
+        undefined,
+        (value) => {
+          collected.breakdown = value;
+        },
       );
       // Cookie-authenticated like /achievements itself (no bearer header).
       // The shared fetch reuses the unlock watcher's in-flight request when
@@ -282,11 +370,17 @@ export function DashboardClient() {
             : cause;
         }),
         setAchievementState,
+        undefined,
+        (value) => {
+          collected.achievements = value;
+        },
       );
     },
     [
       filters.deviceId,
+      filters.from,
       filters.range,
+      filters.to,
       range.fromDay,
       range.fromIso,
       range.toDay,
@@ -413,6 +507,9 @@ export function DashboardClient() {
     () => breakdownState.data ?? [],
     [breakdownState.data],
   );
+  // Hero KPI: the highest-usage day of the window (all-time peak under the
+  // default 总计 range). Read from the already-fetched daily series.
+  const peak = useMemo(() => peakDay(daily), [daily]);
   const heatmap = heatmapState.data;
   const activeDevices = useMemo(
     () => dashboard?.devices.filter((device) => device.active) ?? [],
@@ -460,7 +557,7 @@ export function DashboardClient() {
   const hasData = (summary?.totals.total_tokens ?? 0) > 0;
   const hasFilters =
     filters.deviceId !== "" ||
-    filters.range !== "30d" ||
+    filters.range !== "all" ||
     filters.tz !== "" ||
     filters.from !== "" ||
     filters.to !== "";
@@ -481,7 +578,9 @@ export function DashboardClient() {
   const retryAll = () => {
     if (!accessToken) return;
 
-    void loadAll(accessToken);
+    // Manual refresh forces past the data-version gate: it is also the
+    // escape hatch for changes the run table cannot see (reconcile, replays).
+    void loadAll(accessToken, { force: true });
     // loadAll never touches the hourly slot; the visible hourly tab must not
     // look stale after a manual refresh.
     if (detailView === "hourly") refreshHourly(false);
@@ -596,6 +695,7 @@ export function DashboardClient() {
         locale={locale}
         monthly={monthly}
         monthlyStatus={monthlyState.status}
+        peakDay={peak}
         range={range}
         rangePickerMax={rangePickerMax}
         refreshing={refreshing}
@@ -607,7 +707,7 @@ export function DashboardClient() {
         trendSelectedDay={hourlyDay}
         onClearFilters={() =>
           applyFilters({
-            range: "30d",
+            range: "all",
             from: "",
             to: "",
             tz: "",

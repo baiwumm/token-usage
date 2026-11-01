@@ -3,6 +3,7 @@ import type {
   AccountSummary,
   DashboardTotals,
   ModelBreakdownSource,
+  SeriesPoint,
 } from "@/lib/dashboard/api";
 
 import { PanelOverlay } from "./panel-overlay";
@@ -16,6 +17,7 @@ export function HeroSection({
   copy,
   fromDay,
   locale,
+  peakDay,
   refreshing,
   summary,
   toDay,
@@ -26,6 +28,7 @@ export function HeroSection({
   copy: DashboardCopy;
   fromDay: string;
   locale: "zh" | "en";
+  peakDay: SeriesPoint | null;
   refreshing: boolean;
   summary: AccountSummary;
   toDay: string;
@@ -40,6 +43,7 @@ export function HeroSection({
         copy={copy}
         fromDay={fromDay}
         locale={locale}
+        peakDay={peakDay}
         summary={summary}
         toDay={toDay}
       />

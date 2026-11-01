@@ -3,7 +3,7 @@
 // keeps raw collector source strings; display grouping happens here via
 // canonicalSource (Pi aliases merge, dsh → label).
 
-import type { ModelBreakdownSource } from "@/lib/dashboard/api";
+import type { ModelBreakdownSource, SeriesPoint } from "@/lib/dashboard/api";
 
 import { canonicalSource, sourceDisplayLabel } from "@/lib/sources";
 
@@ -108,4 +108,24 @@ export function canonicalTokenTotals(
   }
 
   return [...totals.entries()].sort((first, second) => second[1] - first[1]);
+}
+
+/**
+ * The single day with the most total tokens in a daily series (ties keep the
+ * earliest day, so the result is deterministic). Rows without a day key
+ * (monthly/hourly rows share the SeriesPoint shape) are ignored; null when
+ * the window has no daily rows. Pure client-side read — the daily series is
+ * already fetched for the trend/detail cards, so the peak costs no request.
+ */
+export function peakDay(points: SeriesPoint[]): SeriesPoint | null {
+  let best: SeriesPoint | null = null;
+
+  for (const point of points) {
+    if (!point.day) continue;
+    if (best == null || point.total_tokens > best.total_tokens) {
+      best = point;
+    }
+  }
+
+  return best;
 }

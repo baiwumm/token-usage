@@ -173,19 +173,19 @@ export function SessionDetailModal({
                       <Table.ScrollContainer>
                         <Table.Content
                           aria-label={copy.detail.modelsTitle}
-                          className="w-full table-fixed"
+                          className="w-full min-w-[26rem] table-fixed"
                         >
                           <Table.Header>
                             <Table.Column isRowHeader id="model">
                               {copy.detail.modelName}
                             </Table.Column>
-                            <Table.Column className="w-24 text-end" id="tokens">
+                            <Table.Column className="w-36 text-end" id="tokens">
                               {copy.detail.modelTokens}
                             </Table.Column>
                             <Table.Column className="w-16 text-end" id="share">
                               {copy.detail.modelShare}
                             </Table.Column>
-                            <Table.Column className="w-24 text-end" id="cost">
+                            <Table.Column className="w-28 text-end" id="cost">
                               {copy.detail.modelCost}
                             </Table.Column>
                           </Table.Header>

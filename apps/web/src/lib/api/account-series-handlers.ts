@@ -10,6 +10,7 @@ import {
   loadSessionRows,
   loadSyncRunRows,
 } from "./account-data";
+import { select } from "./supabase-rest";
 import { buildSessionsCsv, type SessionsCsvItem } from "./sessions-csv";
 
 import {
@@ -402,6 +403,31 @@ export async function syncRunsPayloadForUser(
 
 async function syncRuns({ url, principal }: SeriesArgs) {
   return syncRunsPayloadForUser(principal.userId, url.searchParams);
+}
+
+/**
+ * Data-version signal for the dashboard's cache gate (2026-11-01 operator
+ * plan): the created_at of the latest non-empty sync run. created_at is the
+ * server clock (clock_timestamp default), so device clock skew on
+ * started_at/ended_at can neither fake a change nor mask one; `empty` is the
+ * server-derived flag, so pure session/credit uploads count as changes too.
+ * null = no non-empty run yet (the client then simply never cache-hits).
+ */
+export async function dataVersionForUser(userId: string): Promise<Response> {
+  const rows = await select("token_sync_runs", {
+    select: "created_at",
+    filters: [
+      ["user_id", "eq", userId],
+      ["empty", "eq", false],
+    ],
+    order: "created_at.desc",
+    limit: 1,
+  });
+  const value = rows[0]?.created_at;
+
+  return jsonResponse(200, {
+    version: typeof value === "string" ? value : null,
+  });
 }
 
 interface SessionModelWire {

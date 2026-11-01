@@ -23,7 +23,8 @@ export interface FormatPreferences {
 
 export const DEFAULT_FORMAT_PREFERENCES: FormatPreferences = {
   currency: "USD",
-  tokenDisplay: "compact",
+  // Full digits by default (2026-11-01 operator call; was compact).
+  tokenDisplay: "full",
   tokenUnit: "kmb",
   tokenGrouping: 3,
   font: "maple",

@@ -64,23 +64,27 @@ export function ModelListModal({
                 <Table.ScrollContainer>
                   {/* table-fixed + fixed-width numeric columns keeps the
                         table at the dialog width: long model names truncate
-                        instead of stretching the table horizontally. */}
+                        instead of stretching the table horizontally. The
+                        numeric columns are sized for full-digit token counts
+                        (完整显示, the default) and min-w guards the sum — a
+                        narrower viewport scrolls horizontally instead of
+                        letting the number spill into the share column. */}
                   <Table.Content
                     aria-label={title}
-                    className="w-full table-fixed"
+                    className="w-full min-w-[26rem] table-fixed"
                   >
                     <Table.Header>
                       <Table.Column isRowHeader id="model">
                         {copy.cost.columnName}
                       </Table.Column>
-                      <Table.Column className="w-24 text-end" id="tokens">
+                      <Table.Column className="w-36 text-end" id="tokens">
                         {copy.cost.columnTokens}
                       </Table.Column>
                       <Table.Column className="w-16 text-end" id="share">
                         {copy.cost.columnShare}
                       </Table.Column>
                       {hasCost ? (
-                        <Table.Column className="w-24 text-end" id="cost">
+                        <Table.Column className="w-28 text-end" id="cost">
                           {copy.cost.columnCost}
                         </Table.Column>
                       ) : null}

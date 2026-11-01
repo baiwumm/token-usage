@@ -10,13 +10,12 @@ export type RangePreset = "today" | "7d" | "30d" | "90d" | "all";
 
 export type RangeKey = RangePreset | "custom";
 
-export const RANGE_PRESETS: RangePreset[] = [
-  "today",
-  "7d",
-  "30d",
-  "90d",
-  "all",
-];
+/**
+ * Dashboard picker presets. 90d stays in the shared preset math (Sessions and
+ * Sync runs still offer it) but the dashboard no longer lists it
+ * (2026-11-01 operator call).
+ */
+export const RANGE_PRESETS: RangePreset[] = ["today", "7d", "30d", "all"];
 
 export const PRESET_DAYS: Record<
   Exclude<RangePreset, "all" | "today">,
@@ -156,7 +155,9 @@ export function yearRange(year: number, timeZone: string): DashboardRange {
 
 /**
  * Window for a filter-bar selection. Custom ranges fall back to the 30-day
- * preset when either day key is invalid or the order is reversed.
+ * preset when either day key is invalid or the order is reversed (a
+ * shouldn't-happen guard shared by dashboard / Sessions / Sync runs; the
+ * dashboard's own default preset lives in its `parseFilters`).
  */
 export function rangeForSelection(
   key: RangeKey,

@@ -120,16 +120,20 @@ export const useFormatPreferenceStore = create<FormatPreferenceState>()(
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => legacyMigratingStorage),
-      version: 3,
+      version: 4,
       partialize: (state) => ({ preferences: state.preferences }),
-      // v2 adds preferences.font; v3 adds preferences.dateFormat. Re-sanitize
-      // so payloads persisted by older versions (without those fields) fall
-      // back to the defaults instead of undefined.
+      // v2 adds preferences.font; v3 adds preferences.dateFormat; v4 flips the
+      // token-display default compact → full (2026-11-01 operator call) and
+      // clears the stored value so existing installs fall back to the new
+      // default instead of keeping the old one.
       migrate: (persisted) => {
         const state = persisted as Partial<PersistedFormatState> | undefined;
 
         return {
-          preferences: sanitizePreferences(state?.preferences ?? {}),
+          preferences: sanitizePreferences({
+            ...state?.preferences,
+            tokenDisplay: undefined,
+          }),
         } satisfies PersistedFormatState;
       },
     },

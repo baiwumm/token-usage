@@ -7,7 +7,7 @@
 // ("—") or uses a non-Intl grouping convention (the 4-digit 万 grouping).
 
 import NumberFlow from "@number-flow/react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 /** Leading non-numeric prefix, numeric core (separators included), suffix. */
 const NUMERIC_TEXT_RE = /^([^\d]*?)(-?[\d,]+(?:\.\d+)?)([\s\S]*)$/;
@@ -46,6 +46,17 @@ export function FlowNumber({
     };
   }, [text]);
 
+  // Enter from zero on mount: cards that mount after the initial skeleton
+  // arrive with the final value already in hand, and NumberFlow only
+  // transitions when the value CHANGES — so the first render shows 0 and an
+  // effect commits the real value, giving first load the same roll-up that
+  // filter refreshes get (their cards stay mounted and animate on change).
+  const [entered, setEntered] = useState(false);
+
+  useEffect(() => {
+    setEntered(true);
+  }, []);
+
   if (!parsed) {
     return <span className={className}>{text}</span>;
   }
@@ -56,7 +67,7 @@ export function FlowNumber({
       format={parsed.format}
       prefix={parsed.prefix}
       suffix={parsed.suffix}
-      value={parsed.numeric}
+      value={entered ? parsed.numeric : 0}
     />
   );
 }

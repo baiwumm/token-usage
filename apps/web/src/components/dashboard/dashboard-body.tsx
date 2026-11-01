@@ -52,6 +52,7 @@ export function DashboardBody({
   locale,
   monthly,
   monthlyStatus,
+  peakDay,
   range,
   rangePickerMax,
   refreshing,
@@ -95,6 +96,8 @@ export function DashboardBody({
   locale: "zh" | "en";
   monthly: MonthlyPoint[];
   monthlyStatus: LoadStatus;
+  /** Highest-usage day of the window (hero KPI; null without daily rows). */
+  peakDay: SeriesPoint | null;
   range: DashboardRange;
   rangePickerMax: CalendarDate;
   refreshing: boolean;
@@ -139,6 +142,7 @@ export function DashboardBody({
               copy={copy}
               fromDay={range.fromDay}
               locale={locale}
+              peakDay={peakDay}
               refreshing={refreshing}
               summary={summary}
               toDay={range.toDay}

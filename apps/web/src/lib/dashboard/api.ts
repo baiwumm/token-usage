@@ -432,6 +432,24 @@ export function fetchModelBreakdown(
   );
 }
 
+/**
+ * GET /api/app/data-version (browser-session cookie auth): the created_at of
+ * the latest non-empty sync run — the dashboard cache gate's change signal.
+ * Any non-OK answer throws; the gate treats every failure as "version
+ * unknown" and fetches normally (fail-open).
+ */
+export async function fetchDataVersion(): Promise<string | null> {
+  const response = await fetch("/api/app/data-version");
+
+  if (!response.ok) {
+    throw new DashboardApiError(`HTTP ${response.status}`, response.status);
+  }
+
+  const payload = (await response.json()) as { version: string | null };
+
+  return typeof payload.version === "string" ? payload.version : null;
+}
+
 export interface SessionModel {
   model: string;
   total_tokens: number;

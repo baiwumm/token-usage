@@ -398,6 +398,21 @@ Query：`from`、`to`（ISO 瞬时，按 `hour_start ∈ [from,to)`）、`limit`
   客户端按末页 `buckets.length < limit` 判断翻页结束。
 - `Cache-Control: no-store`（§1.2 默认），无 ETag；`limit=0` 等非法值按上表钳制，不报错。
 
+### 2.14 `GET /api/app/data-version`（仅浏览器会话｜Dashboard 面，2026-11-01）
+
+> 仪表盘数据版本门的变更信号（2026-11-01 操作者批准的缓存方案，非 CLI 面、不参与 §3
+> 冻结；随 UI 版本演进，变更回写本文）。鉴权与 `/api/app/sync-runs` 同款（`@supabase/ssr`
+> 会话 cookie），无参数、无设备令牌路径。
+
+- 响应 `200 {"version": "<created_at ISO>" | null}`，`Cache-Control: no-store`。
+- `version` = `token_sync_runs` 中该用户**最新一条非空运行**（`empty = false`，服务端派生
+  标志）的 `created_at`（服务端 `clock_timestamp`，与设备时钟无关）；无符合行时为 `null`
+  （新账号，客户端视为永不命中缓存）。`order by created_at desc limit 1`，单条索引读。
+- 客户端契约（`dashboard-client` 的 loadAll 版本门）：version 与缓存一致 → 直接水合缓存
+  跳过七个重请求；不一致或查询失败 → 正常全量拉取（fail-open）。手动刷新绕过本门
+  （兜 reconcile / replay 这类不建 run 行的改数盲区）。payload 按
+  `user(JWT sub) + range/tz/device` 键缓存在 sessionStorage（上限 4 组筛选键）。
+
 ## 3. 冻结不变量清单（逐条对应契约测试）
 
 适用范围：涉及 §2.6–2.10 的条目（6、7 的字段形态与聚合规则，含 `sessions` series）属

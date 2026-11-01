@@ -16,7 +16,7 @@ export interface Filters {
 // only tz / device_id persist and every load starts at the default window.
 export function parseFilters(params: URLSearchParams): Filters {
   return {
-    range: "30d",
+    range: "all",
     from: "",
     to: "",
     tz: params.get("tz") ?? "",

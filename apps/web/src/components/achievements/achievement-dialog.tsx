@@ -104,7 +104,7 @@ export function AchievementDialog({
                     background: `radial-gradient(55% 100% at 50% 0%, hsl(${hue} 88% 62% / 0.22), transparent 72%)`,
                   }}
                 />
-                <div className="relative">
+                <div className="relative mb-3">
                   <AchievementCoin
                     locale={locale}
                     open={open && progress != null}

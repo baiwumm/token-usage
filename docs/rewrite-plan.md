@@ -131,7 +131,7 @@ models:[{model,total_tokens,total_cost_usd,share}]}]}`；
 
 ## 4. 依赖预算（新依赖装前必须经操作者批准）
 
-运行时：`@supabase/supabase-js`、`@supabase/ssr`、`@gravity-ui/icons`（HeroUI v3 官方示例同款）、`recharts`（2026-10-24 经操作者批准加入，替代原“图表手写 SVG”决策）、`intl-messageformat`（2026-10-25 经操作者批准启用，ICU 复数/插值；此前已在依赖中但未使用）、`@number-flow/react`（2026-10-25 操作者 UI 调整轮加入，数字滚动过渡）、`@internationalized/date`（HeroUI `DateRangePicker` 配套，见下文）。`html-to-image` 与 `motion` 只保留预算位、**当前未安装**：分享卡最终用 Canvas 2D（`html-to-image` 在本栈挂起），动效全部用 CSS。动画优先 CSS（零依赖）；除此之外一律先问；任何新依赖统一选用当前**最流行、最新的稳定版本**（lockfile 锁定）。UI 一律 HeroUI 内置组件优先（项目 Skill `heroui-react` 为准），内置覆盖不了才自研。
+运行时：`@supabase/supabase-js`、`@supabase/ssr`、`@gravity-ui/icons`（HeroUI v3 官方示例同款）、`recharts`（2026-10-24 经操作者批准加入，替代原“图表手写 SVG”决策）、`intl-messageformat`（2026-10-25 经操作者批准启用，ICU 复数/插值；此前已在依赖中但未使用）、`@number-flow/react`（2026-10-25 操作者 UI 调整轮加入，数字滚动过渡）、`@internationalized/date`（HeroUI `DateRangePicker` 配套，见下文）、`motion`（v14，2026-10-24 操作者批准按需安装，2026-11-01 成就硬币拖拽翻转实际引入：入场旋转 / 惯性甩动弹簧 / reduced-motion 分级，纯 CSS 无法表达松手物理）。`html-to-image` 只保留预算位、**当前未安装**：分享卡最终用 Canvas 2D（在本栈挂起）。除上列已批准项外，动画优先 CSS（零依赖）；除此之外一律先问；任何新依赖统一选用当前**最流行、最新的稳定版本**（lockfile 锁定）。UI 一律 HeroUI 内置组件优先（项目 Skill `heroui-react` 为准），内置覆盖不了才自研。
 
 2026-10-25 增量：A / B / 外观设置不新增依赖。2026-10-25 第二轮增量（操作者指令隐含批准）：`zustand`（v5，显示偏好持久化——外观/格式偏好的 localStorage 读写统一收编为 zustand persist store）、`react-easy-crop`（v6，与 better-admin 头像裁剪方案一致，设置-头像裁剪上传用）。货币换算用内置汇率表（USD/EUR/GBP/
 CNY/JPY/HKD，`as_of` 2026-10-25，USD 基准；具体数值为实现常量）+ 可选

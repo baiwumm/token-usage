@@ -10,6 +10,7 @@ import type {
   AccountSummary,
   DashboardTotals,
   ModelBreakdownSource,
+  SeriesPoint,
 } from "@/lib/dashboard/api";
 
 import { CircleInfo, Layers } from "@gravity-ui/icons";
@@ -33,6 +34,7 @@ export function TotalTokensHero({
   locale,
   fromDay,
   toDay,
+  peakDay,
   budgetExceeded,
 }: {
   allTime: DashboardTotals | null;
@@ -42,6 +44,8 @@ export function TotalTokensHero({
   locale: "zh" | "en";
   fromDay: string;
   toDay: string;
+  /** Highest-usage day of the window (client-side read from the daily series). */
+  peakDay: SeriesPoint | null;
   /** Monthly budget from settings is crossed — the cost line turns danger. */
   budgetExceeded?: boolean;
 }) {
@@ -101,28 +105,49 @@ export function TotalTokensHero({
         <div className="text-muted flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs">
           <span className="flex items-center gap-1.5">
             {copy.cards.billableTokens}
-            <span className="text-foreground font-medium tabular-nums">
-              {formatTokens(summary.totals.billable_total_tokens)}
-            </span>
+            <FlowNumber
+              className="text-foreground font-medium tabular-nums"
+              text={formatTokens(summary.totals.billable_total_tokens)}
+            />
           </span>
           <span className="flex items-center gap-1.5">
             {copy.cards.conversations}
-            <span className="text-foreground font-medium tabular-nums">
-              {formatNumber(summary.totals.conversation_count)}
-            </span>
+            <FlowNumber
+              className="text-foreground font-medium tabular-nums"
+              text={formatNumber(summary.totals.conversation_count)}
+            />
           </span>
           <span className="flex items-center gap-1.5">
             {copy.cards.activeDays}
-            <span className="text-foreground font-medium tabular-nums">
-              {formatNumber(summary.days)}
-            </span>
+            <FlowNumber
+              className="text-foreground font-medium tabular-nums"
+              text={formatNumber(summary.days)}
+            />
           </span>
           <span className="flex items-center gap-1.5">
             {copy.cards.avgPerActiveDay}
-            <span className="text-foreground font-medium tabular-nums">
-              {formatTokens(summary.rolling.last_30d.avg_per_active_day ?? 0)}
-            </span>
+            <FlowNumber
+              className="text-foreground font-medium tabular-nums"
+              text={formatTokens(
+                summary.rolling.last_30d.avg_per_active_day ?? 0,
+              )}
+            />
           </span>
+          {peakDay && peakDay.day ? (
+            <span className="flex items-center gap-1.5">
+              {copy.cards.peakDay}
+              <FlowNumber
+                className="text-foreground font-medium tabular-nums"
+                text={formatTokens(peakDay.total_tokens)}
+              />
+              <span className="text-muted tabular-nums">
+                {formatDate(`${peakDay.day}T12:00:00Z`, {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </span>
+          ) : null}
         </div>
         <div className="flex items-center gap-1.5">
           <Typography

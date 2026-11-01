@@ -13,13 +13,14 @@ export interface DashboardCopy {
   refresh: string;
   lastUpdated: string;
   lastUpdatedNone: string;
-  ranges: Record<"today" | "7d" | "30d" | "90d" | "all" | "custom", string>;
+  ranges: Record<"today" | "7d" | "30d" | "all" | "custom", string>;
   cards: {
     totalTokens: string;
     billableTokens: string;
     conversations: string;
     activeDays: string;
     avgPerActiveDay: string;
+    peakDay: string;
     allTimeSuffix: string;
     heroAll: string;
     heroModelsCount: string;
@@ -150,7 +151,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       today: "今天",
       "7d": "7 天",
       "30d": "30 天",
-      "90d": "90 天",
       all: "总计",
       custom: "自定义",
     },
@@ -160,6 +160,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       conversations: "会话数",
       activeDays: "活跃天数",
       avgPerActiveDay: "日均（30 天）",
+      peakDay: "单日峰值",
       allTimeSuffix: "全部时间",
       heroAll: "全部",
       heroModelsCount: "{count, plural, other {# 个模型}}",
@@ -291,7 +292,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       today: "Today",
       "7d": "7d",
       "30d": "30d",
-      "90d": "90d",
       all: "All time",
       custom: "Custom",
     },
@@ -301,6 +301,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       conversations: "Conversations",
       activeDays: "Active days",
       avgPerActiveDay: "Daily avg (30d)",
+      peakDay: "Peak day",
       allTimeSuffix: "all time",
       heroAll: "All",
       heroModelsCount: "{count, plural, one {# model} other {# models}}",
