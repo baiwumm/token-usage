@@ -164,6 +164,39 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > `total_tokens` 较大值，极端情况下云端可能保留较大值而本地已下调——此类键以 `mismatch`
 > 呈现供人工判断，命令本身永不写入。
 
+> **0.4.3（2026-11-01 已发 npm 并完成本机升级）**：两处只有真机首跑才暴露的问题收口。
+> ① 调度降级原因改取子进程输出（`stderr` / `stdout` 优先，`error.message` 末位），修掉
+> 0.4.2「首行仍是 `Command failed: schtasks …` 命令回显」的遗留；由此追出第二层——中文
+> Windows 的 `schtasks` 按控制台代码页（936/GBK）写字节，Node 按 UTF-8 解出
+> `����: �ܾ����ʡ�`。现在用 `chcp.com` 取活动代码页（932/936/949/950），回退
+> `TextDecoder` 重解，解不通才回退原 UTF-8 文本，65001 与单字节页直出
+> （`src/lib/scheduled-task.js` 的 `consoleEncoding` / `decodeStream` / `errorText`）。
+> ② `reconcile` 把 `queue.state.json` 偏移之后的桶记为 `pending`：它们从未上传，云端只
+> 可能持有更早的值，不再算 `missing_on_server` / `mismatch`、不再触发退出码 1；`--json`
+> 新增 `upload_offset` / `counts.pending` / `pending[]`，真实漂移仍退出 1
+> （`src/commands/reconcile.js`）。
+> 同批关闭「待查观测」：用 `node:sqlite` 只读探针核对 `~/.zcode/cli/db/db.sqlite`，10:30Z
+> 窗口 `rows 97 / rawInput 46,855,920 / cacheRead 46,779,776 / rawOutput 47,616 /
+> cacheWrite 0`，其 disjoint 口径 `76,144 + 46,779,776 + 47,616 = 46,903,536` 与队列
+> last-wins 行（conv 97）逐位一致 ⇒ 同键多行是「累计重入队」（`enqueueTouchedBuckets` 把
+> 桶累计总量整行入队），last-wins 取最后一行即正确总量，不是重复计数，无需改动。
+> 发版：commit `22364be` → tag `cli-v0.4.3` → release run 41312131772 全绿（workflow 内
+> `pnpm verify`：web 33 files / 455 tests + build；CLI 138 tests；lint 0 error / 5 warning），
+> `npm publish --provenance` 成功（111 files / 764.7 kB、unpacked 3.2 MB，sigstore
+> logIndex 3631387482），GitHub Release 正文取 CHANGELOG 的 0.4.3 段；publish 后 registry
+> 有十余分钟延迟（`npm view` 读缓存会滞后，核对用 `--prefer-online`），解析到后
+> `dist-tags.latest` 为 0.4.3。
+> 本机验收（`npm i -g tokenusage-cli@0.4.3` → `tokenusage --version` v0.4.3 →
+> `tokenusage init --yes --no-integrations --no-open`）：`~/.tokenusage/tracker/app`
+> `.runtime-ready` 为 0.4.3（13:41Z），调度摘要显示可读的
+> `degraded: xml_rejected — 错误: 拒绝访问。`（乱码已消失），首采 5,847,588,241 tokens /
+> 13 providers；`reconcile --days 7` OK 100/100、退出码 0；`reconcile --days 1 --json` 含
+> `upload_offset 230844` / `counts.pending 0` / `pending []`；`pause` →
+> `TokenUsageSync disabled.`、`resume` → enabled（真实 `schtasks /Change`）、`upload` 报
+> 队列已清空、`doctor` 14 ok / 0 warn / 0 fail、计划任务 Ready 且 `Last Result: 0`。
+> 剩余待办只剩两条（另一台采集机升级、macOS/Linux 调度真机验证），见
+> `docs/rewrite-plan.md` §10。
+
 > **0.4.2（2026-11-01 已发 npm 并完成本机升级）**：`init` 的调度摘要显示降级原因
 > ——`degraded: xml_rejected — <被拒文本首行>`（裁到一行），不再只报类别：非提升 shell
 > 下用户能直接区分「改以管理员再跑一次 `init`」与「任务定义本身写错」。发版：commit
