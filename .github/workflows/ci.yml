@@ -50,7 +50,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $smokeHome | Out-Null
           $env:USERPROFILE = $smokeHome
           $env:HOME = $smokeHome
-          $output = node packages/cli/bin/tokenusage.js init --yes --dry-run --no-auth --no-integrations --no-open --base-url https://example.invalid --anon-key anon_0123456789abcdef0123456789abcdef01234567 2>&1 | Out-String
+          $output = node packages/cli/bin/tokenusage.js init --yes --dry-run --no-integrations --no-open --base-url https://example.invalid --anon-key anon_0123456789abcdef0123456789abcdef01234567 2>&1 | Out-String
           $code = $LASTEXITCODE
           Write-Host $output
           if ($code -ne 0) { throw "init --dry-run exited $code" }
