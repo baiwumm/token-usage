@@ -84,8 +84,13 @@ const {
 } = require("../lib/rollout");
 const { resolveRuntimeConfig, DEFAULT_BASE_URL, DEFAULT_DASHBOARD_URL, normalizeInstanceBaseUrl, assertInsforgeRuntime,
   clearDeviceIdentity, resetInstanceState } = require("../lib/runtime-config");
-const { registerWindowsScheduledTask, TASK_NAME, cliEntryPath } = require("../lib/scheduled-task");
+const {
+  cliEntryPath,
+  registerAutoSyncSchedule,
+  formatScheduleRegistration,
+} = require("../lib/scheduled-task");
 const { runtimeReadyMarkerPath } = require("../lib/runtime-entry");
+const { UsageError, unknownOptionError } = require("../lib/cli-errors");
 const {
   BOLD,
   DIM,
@@ -94,6 +99,7 @@ const {
   color,
   isInteractive,
   promptMenu,
+  promptMultiSelect,
   createSpinner,
 } = require("../lib/cli-ui");
 const { renderLocalReport, renderAuthTransition, renderSuccessBox } = require("../lib/init-flow");
@@ -172,6 +178,89 @@ const SUPPORTED_PROVIDERS = [
   "Command Code",
 ];
 
+// Hook-writing integrations only. These modify another tool's config, so they
+// are the ones a user may want to opt out of one by one (`--integrations` or
+// the interactive picker). Passive readers are read-only: they are detected and
+// reported but never gated, because there is nothing to opt out of.
+const SELECTABLE_INTEGRATIONS = [
+  { id: "codex", label: "Codex CLI" },
+  { id: "astudio", label: "AStudio" },
+  { id: "claude", label: "Claude" },
+  { id: "codebuddy", label: "CodeBuddy" },
+  { id: "workbuddy", label: "WorkBuddy" },
+  { id: "workbuddy-ai", label: "WorkBuddy AI" },
+  { id: "gemini", label: "Gemini" },
+  { id: "opencode", label: "Opencode Plugin" },
+  { id: "openclaw", label: "OpenClaw Session Plugin" },
+  { id: "grok", label: "Grok Build" },
+  { id: "omp", label: "oh-my-pi" },
+  { id: "every-code", label: "Every Code" },
+];
+
+const SELECTABLE_INTEGRATION_IDS = SELECTABLE_INTEGRATIONS.map((entry) => entry.id);
+
+// "null" means no explicit selection (configure everything detected). A Set
+// means only the listed ids may write to tool configs.
+function resolveIntegrationSelection(value) {
+  if (value == null) return null;
+  return new Set(value);
+}
+
+function integrationLabel(id) {
+  return (SELECTABLE_INTEGRATIONS.find((entry) => entry.id === id) || { label: id }).label;
+}
+
+function notSelectedItem(id) {
+  return { label: integrationLabel(id), status: "skipped", detail: "Not selected (--integrations)" };
+}
+
+// Interactive picker: only offer integrations whose config actually exists on
+// this machine, so nobody toggles a tool they do not have. Returns null
+// (configure everything) when the picker is unavailable.
+async function pickIntegrationsInteractively({ home, trackerDir, notifyPath }) {
+  const detected = await detectSelectableIntegrations({ home, trackerDir, notifyPath });
+  if (detected.length === 0) return null;
+  const chosen = await promptMultiSelect({
+    message: "? Which tools should Token Usage configure? (space toggles, Enter confirms)",
+    options: detected.map((id) => ({ id, label: integrationLabel(id) })),
+    defaultSelected: detected,
+  });
+  const ids = chosen.filter((id) => SELECTABLE_INTEGRATION_IDS.includes(id));
+  process.stdout.write(
+    ids.length === 0
+      ? "No tool configs selected — switching to --no-integrations semantics.\n"
+      : `Configuring: ${ids.map(integrationLabel).join(", ")}\n`,
+  );
+  return new Set(ids);
+}
+
+async function detectSelectableIntegrations({ home, trackerDir, notifyPath }) {
+  const context = buildIntegrationTargets({ home, trackerDir, notifyPath });
+  const detected = [];
+  const hasFile = async (target) => (await probeFile(target)).exists;
+  const hasDir = async (target) => isDir(target);
+
+  if (await hasFile(context.codexConfigPath)) detected.push("codex");
+  if (await hasFile(context.acodeConfigPath)) detected.push("astudio");
+  if (await hasDir(context.claudeDir)) detected.push("claude");
+  if (await hasDir(context.codebuddyDir)) detected.push("codebuddy");
+  if (await hasDir(context.workbuddyDir)) detected.push("workbuddy");
+  if (await hasDir(context.workbuddyAiDir)) detected.push("workbuddy-ai");
+  if (await hasDir(context.geminiConfigDir)) detected.push("gemini");
+  if (await hasDir(context.opencodeConfigDir)) detected.push("opencode");
+  if (await hasFile(context.codeConfigPath)) detected.push("every-code");
+  const openclawState = await probeOpenclawSessionPluginState({
+    home,
+    trackerDir,
+    env: process.env,
+  }).catch(() => null);
+  if (openclawState && !openclawState.skippedReason) detected.push("openclaw");
+  const grokState = await probeGrokHookState({ home, trackerDir, env: process.env }).catch(() => null);
+  if (grokState?.hasGrokInstall) detected.push("grok");
+  if (resolveOmpAgentDir(process.env)) detected.push("omp");
+  return detected;
+}
+
 async function cmdInit(argv, options = {}) {
   const opts = parseArgs(argv);
   const home = options.home || os.homedir();
@@ -181,7 +270,6 @@ async function cmdInit(argv, options = {}) {
 
   const configPath = path.join(trackerDir, "config.json");
   const notifyOriginalPath = path.join(trackerDir, "codex_notify_original.json");
-  const linkCodeStatePath = path.join(trackerDir, "link_code_state.json");
 
   const existingConfig = await readJson(configPath);
   const runtime = resolveRuntimeConfig({
@@ -213,7 +301,12 @@ async function cmdInit(argv, options = {}) {
       process.stdout.write("Setup cancelled.\n");
       return;
     }
+    if (opts.integrationSelection == null) {
+      opts.integrationSelection = await pickIntegrationsInteractively({ home, trackerDir, notifyPath });
+    }
   }
+
+  const integrationSelection = opts.integrationSelection;
 
   if (opts.dryRun) {
     const preview = await buildDryRunSummary({
@@ -222,6 +315,7 @@ async function cmdInit(argv, options = {}) {
       trackerDir,
       notifyPath,
       runtime,
+      integrationSelection,
     });
     renderLocalReport({ summary: preview.summary, isDryRun: true });
     renderAccountNotLinked({ context: "dry-run" });
@@ -239,12 +333,12 @@ async function cmdInit(argv, options = {}) {
       binDir,
       configPath,
       notifyOriginalPath,
-      linkCodeStatePath,
       notifyPath,
       appDir,
       trackerBinPath,
       runtime,
       existingConfig,
+      integrationSelection,
     });
   } catch (err) {
     spinner.stop();
@@ -341,17 +435,7 @@ function renderAccountNotLinked({ context } = {}) {
   renderLocalSuccess();
 }
 
-function shouldUseBrowserAuth({ deviceToken, opts }) {
-  if (deviceToken) return false;
-  if (opts.noAuth) return false;
-  if (opts.linkCode) return false;
-  if (opts.email || opts.password) return false;
-  return true;
-}
-
-async function buildDryRunSummary({ opts, home, trackerDir, notifyPath, runtime }) {
-  const deviceToken = runtime?.deviceToken || null;
-  const pendingBrowserAuth = shouldUseBrowserAuth({ deviceToken, opts });
+async function buildDryRunSummary({ opts, home, trackerDir, notifyPath, integrationSelection = null }) {
   if (opts.noIntegrations) {
     return {
       summary: [{
@@ -359,13 +443,11 @@ async function buildDryRunSummary({ opts, home, trackerDir, notifyPath, runtime 
         status: "skipped",
         detail: "Skipped (--no-integrations); tool configs stay untouched",
       }],
-      pendingBrowserAuth,
-      deviceToken,
     };
   }
   const context = buildIntegrationTargets({ home, trackerDir, notifyPath });
-  const summary = await previewIntegrations({ context });
-  return { summary, pendingBrowserAuth, deviceToken };
+  const summary = await previewIntegrations({ context, integrationSelection });
+  return { summary };
 }
 
 async function runSetup({
@@ -375,19 +457,18 @@ async function runSetup({
   binDir,
   configPath,
   notifyOriginalPath,
-  linkCodeStatePath,
   notifyPath,
   appDir,
   trackerBinPath,
   runtime,
   existingConfig,
+  integrationSelection = null,
 }) {
   await ensureDir(trackerDir);
   await ensureDir(binDir);
   let deviceToken = runtime?.deviceToken || null;
   let deviceId = existingConfig?.deviceId || null;
   const installedAt = existingConfig?.installedAt || new Date().toISOString();
-  let pendingBrowserAuth = false;
 
   const runtimeCopy = await installLocalTrackerApp({ appDir });
 
@@ -442,6 +523,7 @@ async function runSetup({
         notifyPath,
         notifyOriginalPath,
         dryRun: Boolean(opts.dryRun),
+        integrationSelection,
       });
 
   if (runtimeCopy.ok === false) {
@@ -455,40 +537,37 @@ async function runSetup({
     summary.push({ label: "Runtime copy", status: "skipped", detail });
   }
 
-  // Windows scheduled task takeover (0.2.0): hourly auto sync behind a hidden
-  // VBS runner — no conhost flash, no shell redirect (sync self-logs to the
-  // rolling logs/sync.log). Best-effort; pause/resume toggle this task.
+  // Auto-sync schedule takeover: hourly auto sync behind a hidden runner —
+  // Task Scheduler on Windows (VBS, no conhost flash), launchd on macOS and a
+  // systemd --user timer on Linux (both via a generated /bin/sh launcher). No
+  // shell redirect: sync self-logs into the rolling logs/sync.log. Best-effort;
+  // pause/resume toggle the registered schedule.
   if (opts.noTask) {
     summary.push({
-      label: "Scheduled task",
+      label: "Scheduled sync",
       status: "skipped",
       detail: "Skipped (--no-task); auto syncs stay manual",
     });
   } else {
-    // The VBS targets the package's bin entry (scheduled-task.js owns that
-    // path): pointing it at src/cli.js makes the hidden task a no-op. The
-    // runtime copy refresh below is also the task's fallback, so an nvm switch
-    // (which drops the version-specific npm prefix) does not kill collection —
-    // but only a copy with its readiness marker counts as usable.
+    // The generated runner targets the package's bin entry (scheduled-task.js
+    // owns that path): pointing it at src/cli.js makes the hidden run a no-op.
+    // The runtime copy refresh below is also the runner's fallback, so an nvm
+    // switch (which drops the version-specific npm prefix) does not kill
+    // collection — but only a copy with its readiness marker counts as usable.
     const fallbackCliJs =
       runtimeCopy.ok === true && fssync.existsSync(runtimeReadyMarkerPath(appDir))
         ? trackerBinPath
         : undefined;
-    const taskOutcome = registerWindowsScheduledTask({ binDir, fallbackCliJs });
+    const scheduleOutcome = registerAutoSyncSchedule({ binDir, home, fallbackCliJs });
     summary.push({
-      label: "Scheduled task",
-      status: taskOutcome.registered ? "installed" : "skipped",
-      detail: taskOutcome.registered
-        ? `${TASK_NAME}: hourly, hidden window (pause/resume toggles it)`
-        : taskOutcome.reason === "not_windows"
-          ? "Windows-only; use cron/launchd + `tokenusage pause` elsewhere"
-          : `Not registered: ${taskOutcome.reason}`,
+      label: "Scheduled sync",
+      status: scheduleOutcome.registered ? "installed" : "skipped",
+      detail: formatScheduleRegistration(scheduleOutcome),
     });
   }
 
   return {
     summary,
-    pendingBrowserAuth,
     deviceToken,
     deviceId,
     installedAt,
@@ -750,14 +829,20 @@ async function applyIntegrationSetup({
   notifyPath,
   notifyOriginalPath,
   dryRun = false,
+  integrationSelection = null,
 }) {
   const context = buildIntegrationTargets({ home, trackerDir, notifyPath });
   context.notifyOriginalPath = notifyOriginalPath;
 
+  const selection = resolveIntegrationSelection(integrationSelection);
+  const want = (id) => selection === null || selection.has(id);
+
   const summary = [];
 
-  const codexProbe = await probeFile(context.codexConfigPath);
-  if (codexProbe.exists) {
+  const codexProbe = want("codex") ? await probeFile(context.codexConfigPath) : { exists: false };
+  if (!want("codex")) {
+    summary.push(notSelectedItem("codex"));
+  } else if (codexProbe.exists) {
     const currentNotify = await readCodexNotify(context.codexConfigPath);
     const result = await upsertCodexNotify({
       codexConfigPath: context.codexConfigPath,
@@ -774,8 +859,10 @@ async function applyIntegrationSetup({
     summary.push({ label: "Codex CLI", status: "skipped", detail: renderSkipDetail(codexProbe) });
   }
 
-  const acodeProbe = await probeFile(context.acodeConfigPath);
-  if (acodeProbe.exists) {
+  const acodeProbe = want("astudio") ? await probeFile(context.acodeConfigPath) : { exists: false };
+  if (!want("astudio")) {
+    summary.push(notSelectedItem("astudio"));
+  } else if (acodeProbe.exists) {
     const currentNotify = await readAcodeNotify(context.acodeConfigPath);
     const result = await upsertAcodeNotify({
       acodeConfigPath: context.acodeConfigPath,
@@ -792,8 +879,10 @@ async function applyIntegrationSetup({
     summary.push({ label: "AStudio", status: "skipped", detail: renderSkipDetail(acodeProbe) });
   }
 
-  const claudeDirExists = await isDir(context.claudeDir);
-  if (claudeDirExists) {
+  const claudeDirExists = want("claude") && await isDir(context.claudeDir);
+  if (!want("claude")) {
+    summary.push(notSelectedItem("claude"));
+  } else if (claudeDirExists) {
     await upsertClaudeUsageHooks({
       settingsPath: context.claudeSettingsPath,
       hookCommand: context.claudeHookCommand,
@@ -803,8 +892,10 @@ async function applyIntegrationSetup({
     summary.push({ label: "Claude", status: "skipped", detail: "Config not found" });
   }
 
-  const geminiConfigExists = await isDir(context.geminiConfigDir);
-  if (geminiConfigExists) {
+  const geminiConfigExists = want("gemini") && await isDir(context.geminiConfigDir);
+  if (!want("gemini")) {
+    summary.push(notSelectedItem("gemini"));
+  } else if (geminiConfigExists) {
     await upsertGeminiHook({
       settingsPath: context.geminiSettingsPath,
       hookCommand: context.geminiHookCommand,
@@ -814,18 +905,22 @@ async function applyIntegrationSetup({
     summary.push({ label: "Gemini", status: "skipped", detail: "Config not found" });
   }
 
-  const opencodeResult = await upsertOpencodePlugin({
-    configDir: context.opencodeConfigDir,
-    notifyPath,
-  });
-  if (opencodeResult?.skippedReason === "config-missing") {
-    summary.push({ label: "Opencode Plugin", status: "skipped", detail: "Config not found" });
+  if (!want("opencode")) {
+    summary.push(notSelectedItem("opencode"));
   } else {
-    summary.push({
-      label: "Opencode Plugin",
-      status: opencodeResult?.changed ? "installed" : "set",
-      detail: "Plugin installed",
+    const opencodeResult = await upsertOpencodePlugin({
+      configDir: context.opencodeConfigDir,
+      notifyPath,
     });
+    if (opencodeResult?.skippedReason === "config-missing") {
+      summary.push({ label: "Opencode Plugin", status: "skipped", detail: "Config not found" });
+    } else {
+      summary.push({
+        label: "Opencode Plugin",
+        status: opencodeResult?.changed ? "installed" : "set",
+        detail: "Plugin installed",
+      });
+    }
   }
 
   // Cursor (API-based, no hooks needed)
@@ -862,39 +957,43 @@ async function applyIntegrationSetup({
   // oh-my-pi: passive session scan always works; also install an optional
   // notify extension so turn_end triggers sync --source omp near-real-time.
   {
-    const fssyncLocal = require("node:fs");
-    const ompAgentDir = resolveOmpAgentDir(process.env);
-    const ompSessions = ompAgentDir && fssyncLocal.existsSync(path.join(ompAgentDir, "sessions"));
-    if (ompAgentDir && (ompSessions || fssyncLocal.existsSync(ompAgentDir))) {
-      if (dryRun) {
-        const probe = await probeOmpHookState({ home, trackerDir, env: process.env });
-        summary.push({
-          label: "oh-my-pi",
-          status: "detected",
-          detail: probe.configured
-            ? "Notify extension already installed (passive scan still runs)"
-            : "Will install notify extension + keep passive scan",
-        });
-      } else {
-        const result = await upsertOmpHook({ home, trackerDir, env: process.env });
-        if (result.written) {
-          summary.push({
-            label: "oh-my-pi",
-            status: "installed",
-            detail: `Notify extension → ${result.extensionPath} (passive scan still runs)`,
-          });
-        } else if (result.skippedReason === "unmanaged-extension-present") {
-          summary.push({
-            label: "oh-my-pi",
-            status: "skipped",
-            detail: "Existing unmanaged tokenusage-notify extension left untouched",
-          });
-        } else {
+    if (!want("omp")) {
+      summary.push(notSelectedItem("omp"));
+    } else {
+      const fssyncLocal = require("node:fs");
+      const ompAgentDir = resolveOmpAgentDir(process.env);
+      const ompSessions = ompAgentDir && fssyncLocal.existsSync(path.join(ompAgentDir, "sessions"));
+      if (ompAgentDir && (ompSessions || fssyncLocal.existsSync(ompAgentDir))) {
+        if (dryRun) {
+          const probe = await probeOmpHookState({ home, trackerDir, env: process.env });
           summary.push({
             label: "oh-my-pi",
             status: "detected",
-            detail: "Passive reader (notify extension not written)",
+            detail: probe.configured
+              ? "Notify extension already installed (passive scan still runs)"
+              : "Will install notify extension + keep passive scan",
           });
+        } else {
+          const result = await upsertOmpHook({ home, trackerDir, env: process.env });
+          if (result.written) {
+            summary.push({
+              label: "oh-my-pi",
+              status: "installed",
+              detail: `Notify extension → ${result.extensionPath} (passive scan still runs)`,
+            });
+          } else if (result.skippedReason === "unmanaged-extension-present") {
+            summary.push({
+              label: "oh-my-pi",
+              status: "skipped",
+              detail: "Existing unmanaged tokenusage-notify extension left untouched",
+            });
+          } else {
+            summary.push({
+              label: "oh-my-pi",
+              status: "detected",
+              detail: "Passive reader (notify extension not written)",
+            });
+          }
         }
       }
     }
@@ -980,6 +1079,9 @@ async function applyIntegrationSetup({
 
   // Grok Build (xAI): SessionEnd hook in ~/.grok/hooks/ + handler in ~/.tokenusage/bin/
   {
+    if (!want("grok")) {
+      summary.push(notSelectedItem("grok"));
+    } else {
     try {
       const grokState = await probeGrokHookState({ home, trackerDir, env: process.env });
       if (grokState.hasGrokInstall) {
@@ -992,6 +1094,7 @@ async function applyIntegrationSetup({
       }
     } catch (err) {
       summary.push({ label: "Grok Build", status: "error", detail: String(err?.message || err) });
+    }
     }
   }
 
@@ -1114,8 +1217,10 @@ async function applyIntegrationSetup({
   // CodeBuddy: Claude-Code fork. Install the SessionEnd hook so finished
   // sessions trigger notify.cjs → tracker sync; passive scan still runs as a
   // safety net for sessions that don't fire SessionEnd cleanly.
-  const codebuddyDirExists = await isDir(context.codebuddyDir);
-  if (codebuddyDirExists) {
+  const codebuddyDirExists = want("codebuddy") && await isDir(context.codebuddyDir);
+  if (!want("codebuddy")) {
+    summary.push(notSelectedItem("codebuddy"));
+  } else if (codebuddyDirExists) {
     await upsertClaudeHook({
       settingsPath: context.codebuddySettingsPath,
       hookCommand: context.codebuddyHookCommand,
@@ -1127,8 +1232,10 @@ async function applyIntegrationSetup({
 
   // WorkBuddy: sibling Claude-Code fork. Same SessionEnd hook → notify.cjs →
   // tracker sync; passive scan still runs as a safety net.
-  const workbuddyDirExists = await isDir(context.workbuddyDir);
-  if (workbuddyDirExists) {
+  const workbuddyDirExists = want("workbuddy") && await isDir(context.workbuddyDir);
+  if (!want("workbuddy")) {
+    summary.push(notSelectedItem("workbuddy"));
+  } else if (workbuddyDirExists) {
     await upsertClaudeHook({
       settingsPath: context.workbuddySettingsPath,
       hookCommand: context.workbuddyHookCommand,
@@ -1139,8 +1246,10 @@ async function applyIntegrationSetup({
   }
 
   // WorkBuddy AI: international build, same hook schema, sibling home.
-  const workbuddyAiDirExists = await isDir(context.workbuddyAiDir);
-  if (workbuddyAiDirExists) {
+  const workbuddyAiDirExists = want("workbuddy-ai") && await isDir(context.workbuddyAiDir);
+  if (!want("workbuddy-ai")) {
+    summary.push(notSelectedItem("workbuddy-ai"));
+  } else if (workbuddyAiDirExists) {
     await upsertClaudeHook({
       settingsPath: context.workbuddyAiSettingsPath,
       hookCommand: context.workbuddyAiHookCommand,
@@ -1150,18 +1259,20 @@ async function applyIntegrationSetup({
     summary.push({ label: "WorkBuddy AI", status: "skipped", detail: "Config not found" });
   }
 
-  const openclawBefore = await probeOpenclawSessionPluginState({
-    home,
-    trackerDir,
-    env: process.env,
-  });
-  const openclawInstall = await installOpenclawSessionPlugin({
-    home,
-    trackerDir,
-    packageName: "tokenusage-cli",
-    env: process.env,
-  });
-  if (openclawInstall?.skippedReason === "openclaw-cli-missing") {
+  const openclawBefore = want("openclaw")
+    ? await probeOpenclawSessionPluginState({ home, trackerDir, env: process.env })
+    : null;
+  const openclawInstall = want("openclaw")
+    ? await installOpenclawSessionPlugin({
+        home,
+        trackerDir,
+        packageName: "tokenusage-cli",
+        env: process.env,
+      })
+    : null;
+  if (!want("openclaw")) {
+    summary.push(notSelectedItem("openclaw"));
+  } else if (openclawInstall?.skippedReason === "openclaw-cli-missing") {
     summary.push({
       label: "OpenClaw Session Plugin",
       status: "skipped",
@@ -1197,7 +1308,11 @@ async function applyIntegrationSetup({
     });
   }
 
-  const legacyHookState = await probeOpenclawHookState({ home, trackerDir, env: process.env });
+  // Legacy command-hook cleanup only runs when OpenClaw is selected: opting
+  // out must not rewrite that tool's config.
+  const legacyHookState = want("openclaw")
+    ? await probeOpenclawHookState({ home, trackerDir, env: process.env })
+    : null;
   if (legacyHookState?.configured || legacyHookState?.linked || legacyHookState?.enabled) {
     await removeOpenclawHookConfig({ home, trackerDir, env: process.env });
     summary.push({
@@ -1207,8 +1322,10 @@ async function applyIntegrationSetup({
     });
   }
 
-  const codeProbe = await probeFile(context.codeConfigPath);
-  if (codeProbe.exists) {
+  const codeProbe = want("every-code") ? await probeFile(context.codeConfigPath) : { exists: false };
+  if (!want("every-code")) {
+    summary.push(notSelectedItem("every-code"));
+  } else if (codeProbe.exists) {
     const currentNotify = await readEveryCodeNotify(context.codeConfigPath);
     const result = await upsertEveryCodeNotify({
       codeConfigPath: context.codeConfigPath,
@@ -1228,12 +1345,16 @@ async function applyIntegrationSetup({
   return summary;
 }
 
-async function previewIntegrations({ context }) {
+async function previewIntegrations({ context, integrationSelection = null }) {
   const summary = [];
   const home = os.homedir();
+  const selection = resolveIntegrationSelection(integrationSelection);
+  const want = (id) => selection === null || selection.has(id);
 
-  const codexProbe = await probeFile(context.codexConfigPath);
-  if (codexProbe.exists) {
+  const codexProbe = want("codex") ? await probeFile(context.codexConfigPath) : { exists: false };
+  if (!want("codex")) {
+    summary.push(notSelectedItem("codex"));
+  } else if (codexProbe.exists) {
     const existing = await readCodexNotify(context.codexConfigPath);
     const matches = arraysEqual(existing, context.notifyCmd);
     summary.push({
@@ -1245,8 +1366,10 @@ async function previewIntegrations({ context }) {
     summary.push({ label: "Codex CLI", status: "skipped", detail: renderSkipDetail(codexProbe) });
   }
 
-  const acodeProbe = await probeFile(context.acodeConfigPath);
-  if (acodeProbe.exists) {
+  const acodeProbe = want("astudio") ? await probeFile(context.acodeConfigPath) : { exists: false };
+  if (!want("astudio")) {
+    summary.push(notSelectedItem("astudio"));
+  } else if (acodeProbe.exists) {
     const existing = await readAcodeNotify(context.acodeConfigPath);
     const matches = arraysEqual(existing, context.acodeNotifyCmd);
     summary.push({
@@ -1258,8 +1381,10 @@ async function previewIntegrations({ context }) {
     summary.push({ label: "AStudio", status: "skipped", detail: renderSkipDetail(acodeProbe) });
   }
 
-  const claudeDirExists = await isDir(context.claudeDir);
-  if (claudeDirExists) {
+  const claudeDirExists = want("claude") && await isDir(context.claudeDir);
+  if (!want("claude")) {
+    summary.push(notSelectedItem("claude"));
+  } else if (claudeDirExists) {
     const configured = await areClaudeUsageHooksConfigured({
       settingsPath: context.claudeSettingsPath,
       hookCommand: context.claudeHookCommand,
@@ -1273,8 +1398,10 @@ async function previewIntegrations({ context }) {
     summary.push({ label: "Claude", status: "skipped", detail: "Config not found" });
   }
 
-  const codebuddyDirExists = await isDir(context.codebuddyDir);
-  if (codebuddyDirExists) {
+  const codebuddyDirExists = want("codebuddy") && await isDir(context.codebuddyDir);
+  if (!want("codebuddy")) {
+    summary.push(notSelectedItem("codebuddy"));
+  } else if (codebuddyDirExists) {
     const configured = await isClaudeHookConfigured({
       settingsPath: context.codebuddySettingsPath,
       hookCommand: context.codebuddyHookCommand,
@@ -1288,8 +1415,10 @@ async function previewIntegrations({ context }) {
     summary.push({ label: "CodeBuddy", status: "skipped", detail: "Config not found" });
   }
 
-  const workbuddyDirExists = await isDir(context.workbuddyDir);
-  if (workbuddyDirExists) {
+  const workbuddyDirExists = want("workbuddy") && await isDir(context.workbuddyDir);
+  if (!want("workbuddy")) {
+    summary.push(notSelectedItem("workbuddy"));
+  } else if (workbuddyDirExists) {
     const configured = await isClaudeHookConfigured({
       settingsPath: context.workbuddySettingsPath,
       hookCommand: context.workbuddyHookCommand,
@@ -1303,8 +1432,10 @@ async function previewIntegrations({ context }) {
     summary.push({ label: "WorkBuddy", status: "skipped", detail: "Config not found" });
   }
 
-  const workbuddyAiDirExists = await isDir(context.workbuddyAiDir);
-  if (workbuddyAiDirExists) {
+  const workbuddyAiDirExists = want("workbuddy-ai") && await isDir(context.workbuddyAiDir);
+  if (!want("workbuddy-ai")) {
+    summary.push(notSelectedItem("workbuddy-ai"));
+  } else if (workbuddyAiDirExists) {
     const configured = await isClaudeHookConfigured({
       settingsPath: context.workbuddyAiSettingsPath,
       hookCommand: context.workbuddyAiHookCommand,
@@ -1318,8 +1449,10 @@ async function previewIntegrations({ context }) {
     summary.push({ label: "WorkBuddy AI", status: "skipped", detail: "Config not found" });
   }
 
-  const geminiConfigExists = await isDir(context.geminiConfigDir);
-  if (geminiConfigExists) {
+  const geminiConfigExists = want("gemini") && await isDir(context.geminiConfigDir);
+  if (!want("gemini")) {
+    summary.push(notSelectedItem("gemini"));
+  } else if (geminiConfigExists) {
     const configured = await isGeminiHookConfigured({
       settingsPath: context.geminiSettingsPath,
       hookCommand: context.geminiHookCommand,
@@ -1333,25 +1466,33 @@ async function previewIntegrations({ context }) {
     summary.push({ label: "Gemini", status: "skipped", detail: "Config not found" });
   }
 
-  const opencodeDirExists = await isDir(context.opencodeConfigDir);
-  const installed = await isOpencodePluginInstalled({ configDir: context.opencodeConfigDir });
-  const opencodeDetail = installed
-    ? "Plugin already installed"
-    : opencodeDirExists
-      ? "Will install plugin"
-      : "Will create config and install plugin";
-  summary.push({
-    label: "Opencode Plugin",
-    status: "installed",
-    detail: opencodeDetail,
-  });
+  if (!want("opencode")) {
+    summary.push(notSelectedItem("opencode"));
+  } else {
+    const opencodeDirExists = await isDir(context.opencodeConfigDir);
+    const installed = await isOpencodePluginInstalled({ configDir: context.opencodeConfigDir });
+    const opencodeDetail = installed
+      ? "Plugin already installed"
+      : opencodeDirExists
+        ? "Will install plugin"
+        : "Will create config and install plugin";
+    summary.push({
+      label: "Opencode Plugin",
+      status: "installed",
+      detail: opencodeDetail,
+    });
+  }
 
-  const openclawState = await probeOpenclawSessionPluginState({
-    home,
-    trackerDir: context.trackerDir,
-    env: process.env,
-  });
-  if (openclawState?.skippedReason === "openclaw-config-missing") {
+  const openclawState = want("openclaw")
+    ? await probeOpenclawSessionPluginState({
+        home,
+        trackerDir: context.trackerDir,
+        env: process.env,
+      })
+    : null;
+  if (!want("openclaw")) {
+    summary.push(notSelectedItem("openclaw"));
+  } else if (openclawState?.skippedReason === "openclaw-config-missing") {
     summary.push({
       label: "OpenClaw Session Plugin",
       status: "skipped",
@@ -1388,8 +1529,10 @@ async function previewIntegrations({ context }) {
     });
   }
 
-  const codeProbe = await probeFile(context.codeConfigPath);
-  if (codeProbe.exists) {
+  const codeProbe = want("every-code") ? await probeFile(context.codeConfigPath) : { exists: false };
+  if (!want("every-code")) {
+    summary.push(notSelectedItem("every-code"));
+  } else if (codeProbe.exists) {
     const existing = await readEveryCodeNotify(context.codeConfigPath);
     const matches = arraysEqual(existing, context.codeNotifyCmd);
     summary.push({
@@ -1475,23 +1618,60 @@ function containsNestedTokenUsageNotify(cmd, expectedNotify) {
   return false;
 }
 
+// Flags from the browser sign-in era (device-flow pairing replaced it in
+// 0.2.x). They used to parse silently into fields nobody read, so a user
+// following an old blog post got an interactive init instead of an error —
+// they now fail with a pointer at the replacement.
+const REMOVED_AUTH_FLAGS = ["--email", "--password", "--device-name", "--link-code", "--no-auth"];
+
+// `--integrations all|none|<id,...>`: "all" (or an absent flag) keeps the
+// original configure-everything-detected behavior (null selection); "none" is
+// exactly --no-integrations; a list configures only those tools and reports
+// the rest as skipped instead of touching their configs.
+function parseIntegrationsFlag(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    throw new UsageError("--integrations requires a value", {
+      code: "INTEGRATIONS_MISSING",
+      hint: `Use all, none, or a comma-separated list of ids: ${SELECTABLE_INTEGRATION_IDS.join(", ")}`,
+    });
+  }
+  const normalized = raw.toLowerCase();
+  if (normalized === "all") return null;
+  if (normalized === "none") return new Set();
+  const ids = normalized
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (ids.length === 0) {
+    throw new UsageError(`Unknown --integrations value: ${raw}`, {
+      code: "INTEGRATIONS_UNKNOWN",
+      hint: `Available ids: ${SELECTABLE_INTEGRATION_IDS.join(", ")}`,
+    });
+  }
+  const unknown = ids.filter((id) => !SELECTABLE_INTEGRATION_IDS.includes(id));
+  if (unknown.length > 0) {
+    throw new UsageError(`Unknown integration id${unknown.length > 1 ? "s" : ""}: ${unknown.join(", ")}`, {
+      code: "INTEGRATIONS_UNKNOWN",
+      hint: `Available ids: ${SELECTABLE_INTEGRATION_IDS.join(", ")}`,
+    });
+  }
+  return new Set(ids);
+}
+
 function parseArgs(argv) {
   const out = {
     baseUrl: null,
     dashboardUrl: null,
     anonKey: null,
     anonKeyFile: null,
-    email: null,
-    password: null,
-    deviceName: null,
-    linkCode: null,
-    noAuth: false,
     noOpen: false,
     yes: false,
     dryRun: false,
     runReport: null,
     noTask: false,
     noIntegrations: false,
+    integrationSelection: null,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -1500,20 +1680,24 @@ function parseArgs(argv) {
     else if (a === "--dashboard-url") out.dashboardUrl = argv[++i] || null;
     else if (a === "--anon-key") out.anonKey = argv[++i] || null;
     else if (a === "--anon-key-file") out.anonKeyFile = argv[++i] || null;
-    else if (a === "--email") out.email = argv[++i] || null;
-    else if (a === "--password") out.password = argv[++i] || null;
-    else if (a === "--device-name") out.deviceName = argv[++i] || null;
-    else if (a === "--link-code") out.linkCode = argv[++i] || null;
     else if (a === "--run-report") out.runReport = normalizeRunReportFlag(argv[++i]);
     else if (a.startsWith("--run-report=")) out.runReport = normalizeRunReportFlag(a.slice("--run-report=".length));
+    else if (a === "--integrations") out.integrationSelection = parseIntegrationsFlag(argv[++i]);
+    else if (a.startsWith("--integrations=")) out.integrationSelection = parseIntegrationsFlag(a.slice("--integrations=".length));
     else if (a === "--no-task") out.noTask = true;
     else if (a === "--no-integrations") out.noIntegrations = true;
-    else if (a === "--no-auth") out.noAuth = true;
     else if (a === "--no-open") out.noOpen = true;
     else if (a === "--yes") out.yes = true;
     else if (a === "--dry-run") out.dryRun = true;
-    else throw new Error(`Unknown option: ${a}`);
+    else if (REMOVED_AUTH_FLAGS.includes(a.split("=")[0])) {
+      throw new UsageError(`${a.split("=")[0]} was removed: browser sign-in is gone.`, {
+        code: "FLAG_REMOVED",
+        hint: "Pair this machine with `tokenusage device-login` (or just run `tokenusage init`).",
+      });
+    }
+    else throw unknownOptionError(a, "init");
   }
+  if (out.noIntegrations) out.integrationSelection = new Set();
   return out;
 }
 
@@ -1529,7 +1713,10 @@ function normalizeRunReportFlag(value) {
   const normalized = String(value ?? "").trim().toLowerCase();
   if (normalized === "on" || normalized === "true" || normalized === "1") return true;
   if (normalized === "off" || normalized === "false" || normalized === "0") return false;
-  throw new Error(`Unknown value for --run-report: ${value} (use on|off)`);
+  throw new UsageError(`Unknown value for --run-report: ${value} (use on|off)`, {
+    code: "RUN_REPORT_INVALID",
+    hint: "`--run-report=off` disables the per-run telemetry POST; `on` (the default) keeps it.",
+  });
 }
 
 function normalizePlatform(value) {
@@ -2338,6 +2525,9 @@ function containsSequence(haystack, needle) {
 
 module.exports = {
   cmdInit,
+  parseArgs,
+  parseIntegrationsFlag,
+  SELECTABLE_INTEGRATIONS,
   buildNotifyHandler,
   installLocalTrackerApp,
   repairCodexNotifyIntegration,

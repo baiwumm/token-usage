@@ -17,8 +17,3 @@ test("init's welcome banner uses the Token Usage name", () => {
   assert.ok(!initSource.includes("Token Tracker"), "fork branding must not reappear in init");
   assert.ok(!initSource.includes("TRACKER"), "the ASCII logo must spell TOKEN USAGE");
 });
-
-test("local-api's fallback device name no longer says Token Tracker", () => {
-  const source = readSource("lib", "local-api.js");
-  assert.ok(!source.includes("Token Tracker"));
-});

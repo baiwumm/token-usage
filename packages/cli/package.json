@@ -27,7 +27,6 @@
   "files": [
     "bin/",
     "src/",
-    "test/",
     "CHANGELOG.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",

@@ -125,6 +125,98 @@ async function promptMenu({ message, options, defaultIndex = 0 }) {
   });
 }
 
+// Multi-select menu for `init --integrations` prompting. Space toggles the
+// highlighted row, Enter confirms, `a` selects all and `n` clears — the same
+// key vocabulary as the single-select menu so both feel like one component.
+// Returns the selected ids; non-interactive callers get the defaults.
+async function promptMultiSelect({ message, options, defaultSelected = [] }) {
+  const safeOptions = Array.isArray(options) ? options : [];
+  if (safeOptions.length === 0) return [];
+  if (!isInteractive()) {
+    const defaults = safeOptions.filter((option) => defaultSelected.includes(option.id));
+    return (defaults.length ? defaults : safeOptions).map((option) => option.id);
+  }
+
+  const selected = new Set(defaultSelected.filter((id) => safeOptions.some((option) => option.id === id)));
+  if (selected.size === 0) for (const option of safeOptions) selected.add(option.id);
+
+  const maxIndex = safeOptions.length - 1;
+  let currentIndex = 0;
+  const linesCount = safeOptions.length + 2;
+
+  const renderLines = () => {
+    const lines = [message];
+    safeOptions.forEach((option, idx) => {
+      const cursor = idx === currentIndex ? ">" : " ";
+      const mark = selected.has(option.id) ? "[x]" : "[ ]";
+      lines.push(`${cursor} ${mark} ${option.label}`);
+    });
+    lines.push(`${DIM}${selected.size}/${safeOptions.length} selected — space toggles, a=all, n=none${RESET}`);
+    process.stdout.write(lines.join("\n"));
+  };
+
+  const rerender = () => {
+    for (let i = 0; i < linesCount; i += 1) {
+      process.stdout.write("\x1b[2K");
+      if (i < linesCount - 1) process.stdout.write("\x1b[1A");
+    }
+    process.stdout.write("\r");
+    renderLines();
+  };
+
+  renderLines();
+
+  return await new Promise((resolve) => {
+    const cleanup = () => {
+      process.stdin.off("keypress", onKeypress);
+      if (process.stdin.isTTY) process.stdin.setRawMode(false);
+      process.stdin.pause();
+      process.stdout.write("\n");
+    };
+
+    const finish = () => {
+      cleanup();
+      resolve(safeOptions.filter((option) => selected.has(option.id)).map((option) => option.id));
+    };
+
+    const onKeypress = (str, key = {}) => {
+      if (key.ctrl && key.name === "c") return finish();
+      if (key.name === "up" || str === "k") {
+        currentIndex = currentIndex === 0 ? maxIndex : currentIndex - 1;
+        rerender();
+        return;
+      }
+      if (key.name === "down" || str === "j") {
+        currentIndex = currentIndex === maxIndex ? 0 : currentIndex + 1;
+        rerender();
+        return;
+      }
+      if (key.name === "space" || str === " ") {
+        const id = safeOptions[currentIndex].id;
+        if (selected.has(id)) selected.delete(id);
+        else selected.add(id);
+        rerender();
+        return;
+      }
+      if (key.name === "return") return finish();
+      if (str === "a") {
+        for (const option of safeOptions) selected.add(option.id);
+        rerender();
+        return;
+      }
+      if (str === "n") {
+        selected.clear();
+        rerender();
+      }
+    };
+
+    readline.emitKeypressEvents(process.stdin);
+    if (process.stdin.isTTY) process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.on("keypress", onKeypress);
+  });
+}
+
 function createSpinner({ text, intervalMs = 80 }) {
   let frame = 0;
   let timer = null;
@@ -179,6 +271,7 @@ module.exports = {
   renderBox,
   isInteractive,
   promptMenu,
+  promptMultiSelect,
   promptEnter,
   createSpinner,
   formatSummaryLine,

@@ -42,8 +42,20 @@ if (applyResult && applyResult.unprotected === true) {
   process.exit(1);
 }
 
+const { isUsageError } = require('../src/lib/cli-errors');
+
 run(argv).catch((err) => {
-  console.error(err?.stack || String(err));
+  // Usage errors are the user's input, not a crash: message + hint, exit 2.
+  // Everything else prints a single readable line and points at --debug —
+  // dumping a stack for `tokenusage bogus` or `sync --help` made every typo
+  // look like an internal failure.
+  const usage = isUsageError(err);
+  if (debug) console.error(err?.stack || String(err));
+  else console.error(`Error: ${err?.message || String(err)}`);
+  if (err?.hint) console.error(`Hint: ${err.hint}`);
+  if (!debug && !usage) {
+    console.error('Re-run with --debug to see the full stack trace.');
+  }
   if (debug) {
     if (typeof err?.status === 'number') {
       console.error(`Status: ${err.status}`);
@@ -59,5 +71,5 @@ run(argv).catch((err) => {
       console.error(`Next actions: ${err.nextActions.trim()}`);
     }
   }
-  process.exitCode = 1;
+  process.exitCode = usage ? (Number.isInteger(err?.exitCode) ? err.exitCode : 2) : 1;
 });

@@ -76,9 +76,9 @@ async function cmdDeviceLogin(argv = [], options = {}) {
   const baseUrl = runtime.baseUrl;
 
   const clientInfo = `${os.platform()}-${os.arch()} ${os.hostname()}`;
-  // Same machineId the local API serves to the dashboard — both login paths
-  // must resolve to the SAME cloud device row for this machine.
-  const { getOrCreateMachineId } = require("../lib/local-api");
+  // Same machineId sync uploads with — both paths must resolve to the SAME
+  // cloud device row for this machine.
+  const { getOrCreateMachineId } = require("../lib/machine-id");
   const machineId = getOrCreateMachineId(path.join(trackerDir, "queue.jsonl"));
   process.stdout.write(`Requesting device code from ${baseUrl}...\n`);
   const authResp = await authorize({ baseUrl, clientInfo, machineId, anonKey: runtime.anonKey, timeoutMs: runtime.httpTimeoutMs });

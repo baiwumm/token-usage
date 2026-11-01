@@ -169,6 +169,8 @@ const {
 } = require("../lib/upload-throttle");
 const { compactPendingQueue, iterateQueueLines, sessionSnapshotMs } = require("../lib/upload-queue");
 const { sanitizeBucketForUpload } = require("../lib/ingest-sanitize");
+const { normalizeQueueRow } = require("../lib/queue-row-normalize");
+const { UsageError, unknownOptionError } = require("../lib/cli-errors");
 const AUTO_UPLOAD_CONFIG = {
   intervalMs: 15 * 60_000,
   batchSize: 200,
@@ -450,8 +452,10 @@ function sleep(ms) {
 // run owns a real terminal; piped hook consumers (stdio ignored) stay quiet.
 // Auto-flavored runs ALSO append to the rolling <trackerDir>/logs/sync.log
 // (0.2.0): the scheduled task registration no longer depends on a `>>`
-// redirect, and TTY-less runs keep a durable trail. Rotation keeps one
-// 1 MiB generation (sync.log.1) plus the live file.
+// redirect, and TTY-less runs keep a durable trail. The file is JSONL
+// (`{ts,msg,...fields}` one per line) so a support request can be diffed, grepped
+// by field or fed to a log viewer; the TTY line stays human-readable. Rotation
+// keeps one 1 MiB generation (sync.log.1) plus the live file.
 const AUTO_LOG_MAX_BYTES = 1_048_576;
 let autoLogSinkPath = null;
 
@@ -459,10 +463,11 @@ function setAutoLogSink(filePath) {
   autoLogSinkPath = filePath;
 }
 
-function autoLog(message) {
-  const stamp = new Date().toISOString().replace("T", " ").slice(0, 19);
-  const line = `[${stamp}] ${message}\n`;
-  if (process.stdout.isTTY) process.stdout.write(line);
+function autoLog(message, fields = null) {
+  const stamp = new Date().toISOString();
+  if (process.stdout.isTTY) {
+    process.stdout.write(`[${stamp.replace("T", " ").slice(0, 19)}] ${message}\n`);
+  }
   if (autoLogSinkPath) {
     try {
       try {
@@ -472,7 +477,8 @@ function autoLog(message) {
         }
       } catch { /* no live file yet */ }
       fssync.mkdirSync(path.dirname(autoLogSinkPath), { recursive: true });
-      fssync.appendFileSync(autoLogSinkPath, line);
+      const record = { ts: stamp, msg: message, ...(fields || {}) };
+      fssync.appendFileSync(autoLogSinkPath, `${JSON.stringify(record)}\n`);
     } catch { /* logging must never break a sync */ }
   }
 }
@@ -3781,7 +3787,11 @@ async function cmdSync(argv, context = {}) {
         if (!opts.auto) {
           process.stderr.write(`Upload error: ${e?.message || e}\n`);
         } else {
-          autoLog(`Upload error: ${e?.message || e}`);
+          autoLog(`Upload error: ${e?.message || e}`, {
+            phase: "upload",
+            error: String(e?.message || e),
+            status: Number.isInteger(e?.status) ? e.status : null,
+          });
         }
         // `sync --drain` is the readiness boundary for first-time cloud view:
         // callers must not treat a swallowed upload failure as a completed
@@ -3845,6 +3855,11 @@ async function cmdSync(argv, context = {}) {
             `Session upload error (hourly buckets are unaffected): ${
               sessionError?.message || sessionError
             }`,
+            {
+              phase: "session-upload",
+              error: String(sessionError?.message || sessionError),
+              status: Number.isInteger(sessionError?.status) ? sessionError.status : null,
+            },
           );
         }
         if (opts.drain) throw sessionError;
@@ -3908,6 +3923,15 @@ async function cmdSync(argv, context = {}) {
             ? `uploaded ${uploadResult.inserted}, skipped ${uploadResult.skipped}` +
               (pendingBytes > 0 ? `, pending ${formatBytes(pendingBytes)}` : ", queue drained")
             : "upload skipped (no device token)"),
+        {
+          phase: "finished",
+          parsed_files: totalParsed,
+          buckets: totalBuckets,
+          inserted: uploadResult.inserted,
+          skipped: uploadResult.skipped,
+          pending_bytes: pendingBytes,
+          uploaded: Boolean(runtime.deviceToken),
+        },
       );
     }
 
@@ -3964,17 +3988,17 @@ function parseArgs(argv) {
     else if (a === "--from-openclaw") out.fromOpenclaw = true;
     else if (a === "--from-scheduled") out.fromScheduled = true;
     else if (a === "--source") {
-      out.source = normalizeSyncSource(argv[i + 1]);
+      out.source = parseSyncSourceArg(argv[i + 1], "--source");
       i += 1;
     }
-    else if (a.startsWith("--source=")) out.source = normalizeSyncSource(a.slice("--source=".length));
+    else if (a.startsWith("--source=")) out.source = parseSyncSourceArg(a.slice("--source=".length), "--source=");
     else if (a === "--drain") out.drain = true;
     else if (a === "--wait-for-lock") out.waitForLock = true;
     else if (a === "--background" || a === "--lightweight") out.background = true;
     else if (a === "--publish-account") out.publishAccount = true;
     else if (a === "--all-local-sources") out.allLocalSources = true;
     else if (a === "--repair-grok") out.repairGrok = true;
-    else throw new Error(`Unknown option: ${a}`);
+    else throw unknownOptionError(a, "sync");
   }
   return out;
 }
@@ -3993,6 +4017,33 @@ function normalizeSyncSource(value) {
   if (!normalized) return null;
   const aliased = AUTO_SYNC_SOURCE_ALIASES.get(normalized) || normalized;
   return AUTO_SYNC_SOURCES.has(aliased) ? aliased : null;
+}
+
+// Help/list text for `--source`, generated from the registries above so the
+// documented ids cannot drift from what sync actually scans.
+function formatSyncSourceList() {
+  return Array.from(AUTO_SYNC_SOURCES).sort().join(", ");
+}
+
+// CLI-facing `--source`: a typo used to fall back to null, which quietly
+// degraded to a full 46-source scan — the opposite of "only scan this one".
+// Failing loudly is the only safe behavior; the error lists valid ids.
+function parseSyncSourceArg(value, flag = "--source") {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (!raw) {
+    throw new UsageError(`${flag} requires a provider id`, {
+      code: "SOURCE_MISSING",
+      hint: `Available ids: ${formatSyncSourceList()}`,
+    });
+  }
+  const resolved = normalizeSyncSource(raw);
+  if (!resolved) {
+    throw new UsageError(`Unknown --source value: ${raw}`, {
+      code: "SOURCE_UNKNOWN",
+      hint: `Available ids: ${formatSyncSourceList()}`,
+    });
+  }
+  return resolved;
 }
 
 function isCodexColdScanAuditDue(
@@ -4058,6 +4109,9 @@ module.exports = {
   acquireSyncLock,
   readQueueBatch,
   drainQueueToCloud,
+  normalizeSyncSource,
+  parseSyncSourceArg,
+  formatSyncSourceList,
   zcodeRowTotals,
   buildZcodeRestorationRow,
   migrateCursorUnknownBuckets,
@@ -4797,12 +4851,12 @@ async function readQueueBatch(queuePath, startOffset, maxBuckets) {
       const model = (typeof bucket?.model === "string" ? bucket.model.trim() : "") || "unknown";
       bucket.source = source;
       bucket.model = model;
-      // Apply the same legacy-row corrections every local reader applies
-      // (local-api readQueueData / project queue / wrapped aggregator). Without
+      // Apply the same legacy-row corrections every local reader applies (the
+      // project queue and the wrapped aggregator use this module too). Without
       // this the cloud permanently kept the RAW legacy values — e.g. old Codex
       // rows whose input_tokens still include cached tokens (6-7x inflated) —
-      // while the local dashboard showed corrected numbers.
-      bucket = require("../lib/local-api").normalizeQueueRow(bucket);
+      // while local readers showed corrected numbers.
+      bucket = normalizeQueueRow(bucket);
       // Contract-shape coercion, poison-row drop (see lib/ingest-sanitize.js):
       // a fractional Grok counter or a negative OpenCode repair delta would
       // otherwise 400 the whole ingest batch and stall the queue.
