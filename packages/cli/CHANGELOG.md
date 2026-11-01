@@ -3,11 +3,11 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
-## Unreleased
+## 0.4.0
 
-对账上游 `tokentracker-cli` / `jusage` 后的加固批：统一错误模型、补齐帮助与
-`upload` / `reconcile` 命令、参数严格校验、三平台原生调度，并清掉从未接线的本地
-服务模块。不发版（等下一个版本号确定）。
+2026-11-01。错误提示更友好（一行 `Error:` + `Hint:` 且不再刷堆栈），帮助信息改为
+命令表驱动，新增 `upload` / `reconcile` 两条命令，`init` 可按工具挑选要接管的集成，
+自动采集在 macOS / Linux 也改用系统原生调度；包内不再携带从未接线的本地服务模块。
 
 - **用户输入错误统一为 `UsageError`**：未知命令 / 未知参数 / 非法取值只打一行
   `Error: ...` 加 `Hint:`，退出码 2，不再刷堆栈；`--debug` 才展开。
