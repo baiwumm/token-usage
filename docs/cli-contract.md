@@ -3,7 +3,7 @@
 本文件是 Token Usage 后端的 HTTP 接口规范，分两档：
 
 - **CLI 面（硬冻结）**：device-flow-authorize / device-flow-poll / device-flow-grant /
-  ingest / public-config / device-rename / device-revoke / sync-report。消费者是采集端 CLI——已配对的
+  ingest / public-config / device-rename / device-revoke / sync-report / reconcile。消费者是采集端 CLI——已配对的
   钉版 `tokentracker-cli@1.4.x` 把绝对 URL 存在本地 `config.json` 里，**不能随服务端升级而
   更新**，因此这一档的路径、字段名、语义一经发布即冻结。
 - **Dashboard 面（可演进）**：account-summary、account-\<series\> ×8（含 `sessions` 与
@@ -362,6 +362,42 @@ Query：`from`、`to`（ISO 瞬时，按 `started_at ∈ [from,to)`）、`device
 - `credits_ingested`（2026-10-31 增量）：§2.11 可选遥测字段的读取面透传（行级与 `totals`
   求和，6 位小数）；旧 CLI 的运行行为 0。
 
+### 2.13 `GET /api/functions/token-usage-reconcile`（仅设备令牌｜CLI 面）
+
+> 2026-11-01 新增（`tokenusage reconcile` 的读取面）：采集端把本地 `queue.jsonl` 的 last-wins
+> 基线与云端该设备的桶明细逐键比对（基线定义见 AGENTS 硬性约束 8）。只读，只回**令牌所属
+> 设备**自己的行——这是"这台机器上报过什么"的对账视角，因此不复用账户聚合：不跨设备去重、
+> 不剔除账户级来源、不计成本。
+
+Query：`from`、`to`（ISO 瞬时，按 `hour_start ∈ [from,to)`）、`limit`(1–2000，默认 1000)、
+`offset`(≥0)。
+
+- 错误：`400 {"error":"Missing from/to"}`（缺失或不可解析）｜`400 {"error":"Invalid from/to"}`
+  （`from > to`）；窗口 > 366 天时把 `from` 钳制到 `to - 366d`；`limit` 非数字按 1000、
+  钳制 1–2000；`offset` 非数字或负数按 0。
+- 鉴权走 §1.4 的**设备令牌路径**：JWT 不接受（`401`），未知/已吊销令牌 `401`，
+  令牌对应设备已吊销 `403 {"error":"Device is revoked"}`；不提供 `device_id` 参数
+  （设备恒为令牌所属设备）。
+- 成功 `200`：
+
+```json
+{
+  "from": "...", "to": "...", "device_id": "...", "limit": 1000, "offset": 0,
+  "buckets": [ { "hour_start", "source", "model",
+                 "input_tokens", "cached_input_tokens", "cache_creation_input_tokens",
+                 "output_tokens", "reasoning_output_tokens", "total_tokens",
+                 "billable_total_tokens", "conversations", "credits" } ]
+}
+```
+
+- 排序：`hour_start` 升序 → `source` 升序 → `model` 升序，作为稳定分页依据。
+- 行**原样返回**：不聚合、不去重（同一键每设备至多一行，upsert 语义已保证）、不剔除
+  `cursor` / `trae-cn`（它们同样是本设备上报的行）。`billable_total_tokens` 可 `null`，
+  `credits` 为 6 位小数数字（缺省 0），`conversations` 缺省 0。
+- **不返回** `total_cost_usd`（成本是读取时派生，不参与对账），也不返回窗口总行数：
+  客户端按末页 `buckets.length < limit` 判断翻页结束。
+- `Cache-Control: no-store`（§1.2 默认），无 ETag；`limit=0` 等非法值按上表钳制，不报错。
+
 ## 3. 冻结不变量清单（逐条对应契约测试）
 
 适用范围：涉及 §2.6–2.10 的条目（6、7 的字段形态与聚合规则，含 `sessions` series）属
@@ -388,6 +424,10 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
 14. `account-sync-runs` 的 `[from,to)` 过滤、366 天窗口钳制、`started_at` 倒序（同刻按
     `run_id` 升序）、`total`/`totals` 全集语义、吊销设备剔除、`trigger`/`result` 非法值
     按无结果处理、分页钳制（limit 1–200）。
+15. reconcile：`[from,to)` 过滤（按 `hour_start`）、366 天窗口钳制、`hour_start → source →
+    model` 升序分页（limit 1–2000）、设备令牌专用鉴权（JWT `401`、吊销设备 `403`、不接受
+    `device_id` 参数）、只回本设备行且**不聚合 / 不剔除账户级来源**、响应字段白名单
+    （不含 `total_cost_usd`，`credits` 6 位小数、`billable_total_tokens` 可空）。
 
 > §2.11 / §2.12 已于 2026-10-27 随 0.2.0 实现转正式：golden 测试
 > `tests/contract/sync-runs.test.ts` 覆盖两端点（校验、幂等重放、空跑派生、筛选分页、

@@ -71,6 +71,7 @@ test("the command table lists every user-facing command", () => {
     "init",
     "sync",
     "upload",
+    "reconcile",
     "pause",
     "resume",
     "status",

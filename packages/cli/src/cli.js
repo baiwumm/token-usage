@@ -14,6 +14,7 @@ const { UsageError } = require("./lib/cli-errors");
 const { cmdInit } = require("./commands/init");
 const { cmdSync, formatSyncSourceList } = require("./commands/sync");
 const { cmdUpload } = require("./commands/upload");
+const { cmdReconcile } = require("./commands/reconcile");
 const { cmdStatus } = require("./commands/status");
 const { cmdDiagnostics } = require("./commands/diagnostics");
 const { cmdDoctor } = require("./commands/doctor");
@@ -114,6 +115,28 @@ const COMMANDS = [
     notes: [
       "Uses the same sync.lock, queue offset and ingest path as `sync`, so the",
       "last-wins reconciliation baseline is unaffected.",
+    ],
+  },
+  {
+    name: "reconcile",
+    summary: "Compare the local queue baseline against this device's cloud rows",
+    run: (argv) => cmdReconcile(argv),
+    usage: [
+      "tokenusage reconcile [options]",
+      "",
+      "Options:",
+      "  --days <n>                  Window length in days (default 7, max 366)",
+      "  --from <YYYY-MM-DD|ISO>     Window start (inclusive, UTC)",
+      "  --to <YYYY-MM-DD|ISO>       Window end; a bare date includes the whole day",
+      "  --limit <n>                 Rows per page (1–2000, default 1000)",
+      "  --json                      Machine-readable summary",
+    ],
+    notes: [
+      "Read-only: the command never uploads, rewrites the queue or moves the",
+      "upload offset. Drift is reported per (hour_start, source, model) key as",
+      "missing_on_server / server_only / mismatch, and exits 1 when any exists.",
+      "The baseline is the same last-wins reading of queue.jsonl that `sync`/`upload`",
+      "send, so a fully uploaded queue should report OK.",
     ],
   },
   {
