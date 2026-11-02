@@ -6,29 +6,19 @@
 
 import { NextResponse } from "next/server";
 
-import { select } from "@/lib/api/supabase-rest";
 import {
+  findBadgeOwner,
   loadBadgeData,
-  normalizeBadgeAllowlist,
   normalizeBadgeProject,
 } from "@/lib/badge/data";
 import { parseBadgeParams } from "@/lib/badge/params";
 import { renderBadgeSvg, renderFallbackBadge } from "@/lib/badge/render";
-import { sha256Hex } from "@/lib/device-codes";
 
 export const dynamic = "force-dynamic";
 
 const SVG_CONTENT_TYPE = "image/svg+xml; charset=utf-8";
 const SVG_SUCCESS_CACHE =
   "public, max-age=300, s-maxage=600, stale-while-revalidate=1800";
-
-type BadgeRow = {
-  user_id: string;
-  enabled: boolean;
-  display_name: string | null;
-  timezone: string | null;
-  allowed_projects: unknown;
-};
 
 function svgResponse(svg: string, cacheControl: string): NextResponse {
   return new NextResponse(svg, {
@@ -57,14 +47,9 @@ export async function GET(request: Request) {
   if (!params.ok) return fallback("bad request");
 
   try {
-    const rows = await select("token_public_badges", {
-      select: "user_id,enabled,display_name,timezone,allowed_projects",
-      filters: [["token_hash", "eq", sha256Hex(params.token)]],
-      limit: 1,
-    });
-    const row = rows[0] as BadgeRow | undefined;
+    const owner = await findBadgeOwner(params.token);
 
-    if (!row) return fallback("badge unavailable");
+    if (!owner) return fallback("badge unavailable");
 
     let project: string | null = null;
 
@@ -73,22 +58,16 @@ export async function GET(request: Request) {
     // is currently disabled. Exact match after normalization on both sides.
     if (params.scope === "repo") {
       project = normalizeBadgeProject(params.project);
-      if (
-        !project ||
-        !normalizeBadgeAllowlist(row.allowed_projects).includes(project)
-      ) {
+      if (!project || !owner.allowedProjects.includes(project)) {
         return fallback("unknown project");
       }
     }
 
-    if (!row.enabled) return fallback("badge disabled");
+    if (!owner.enabled) return fallback("badge disabled");
 
     const data = await loadBadgeData(
-      row.user_id,
-      {
-        displayName: String(row.display_name ?? ""),
-        timezone: String(row.timezone ?? "UTC"),
-      },
+      owner.userId,
+      { displayName: owner.displayName, timezone: owner.timezone },
       params.scope,
       project,
       params.range,

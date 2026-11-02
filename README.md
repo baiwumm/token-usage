@@ -36,6 +36,17 @@
   🤖 <a href="AGENTS.md">开发规范</a>
 </p>
 
+<p align="center">
+  <a href="https://token-usage.baiwumm.com/u/tu_badge_JTYz-Anbuv5AfcW8rOaoNNeB472Dqsw-">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://token-usage.baiwumm.com/api/badge?token=tu_badge_JTYz-Anbuv5AfcW8rOaoNNeB472Dqsw-&style=panel&theme=dark">
+      <img src="https://token-usage.baiwumm.com/api/badge?token=tu_badge_JTYz-Anbuv5AfcW8rOaoNNeB472Dqsw-&style=panel&theme=light" alt="Token Usage badge" width="600">
+    </picture>
+  </a>
+  <br />
+  <sub>作者本人的实时用量——由本项目的<a href="docs/badge.md">公开徽章</a>渲染，点击查看公开页</sub>
+</p>
+
 > [!NOTE]
 > 独立社区项目，与任何上游项目无隶属关系；代码来源与第三方许可见
 > [`LICENSE`](./LICENSE) 与 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。
@@ -97,6 +108,7 @@ M-CLI 采集端（`tokenusage-cli`，当前 0.3.0）→ M6 数据迁移与切换
 | [`docs/ui-spec.md`](docs/ui-spec.md) | UI 规范：Design Tokens、组件规则、三态与响应式 |
 | [`docs/rewrite-plan.md`](docs/rewrite-plan.md) | 计划：表结构、里程碑、数据迁移、当前状态与剩余事项 |
 | [`docs/achievements-plan.md`](docs/achievements-plan.md) | 成就系统：18 条 × 5 档、阈值校准、实施与验收记录 |
+| [`docs/badge.md`](docs/badge.md) | 公开徽章与公开页：SVG 端点、令牌、口径、Settings 配置面 |
 | [`docs/sources-capture-audit.md`](docs/sources-capture-audit.md) | 来源采集机制：双平面原则、账户级来源、缺口审计 |
 | [`docs/sources-capture-plan.md`](docs/sources-capture-plan.md) | 来源接入任务：Trae CN、credits 全链路、Sessions credits |
 | [`docs/cli-release.md`](docs/cli-release.md) | CLI 发版手册：tag 流水线、版本升级与实测记录 |

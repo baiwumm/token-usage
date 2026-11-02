@@ -6,12 +6,17 @@
 // http:// string allowed — a namespace identifier, never fetched, without
 // which browsers refuse to decode the standalone image.
 //
-// Number formatting is the badge's fixed server-side默认 (§4.5): compact KMB
-// with two decimals (golden-pinned "18.48B"; lib/format's preference-aware
-// formatter is full-digits + 1-decimal, so the badge pins its own) and
-// en-US dollars under $10k with cents, whole dollars from $10k.
+// Numbers go through ./format — the badge's fixed server-side defaults
+// (§4.5), shared with the /u page so both always agree.
 
 import type { BadgeData, BadgeTheme, RenderOptions } from "./types";
+
+import {
+  formatBadgeCost,
+  formatBadgeCount,
+  formatBadgeShare,
+  formatBadgeTokens,
+} from "./format";
 
 interface Palette {
   bg0: string;
@@ -156,58 +161,6 @@ function textEl(
 }
 
 // ---------------------------------------------------------------------------
-// Fixed-default number formatting (§4.5).
-// ---------------------------------------------------------------------------
-
-const costFormatter = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-const wholeFormatter = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 0,
-});
-
-function formatBadgeCost(value: number): string {
-  const safe = Number.isFinite(value) ? value : 0;
-
-  return `$${(Math.abs(safe) >= 10_000 ? wholeFormatter : costFormatter).format(
-    safe,
-  )}`;
-}
-
-function formatBadgeTokens(value: number): string {
-  const safe = Number.isFinite(value) ? value : 0;
-  const abs = Math.abs(safe);
-
-  if (abs < 1000) return String(Math.round(safe));
-
-  const units: Array<[size: number, suffix: string]> = [
-    [1e12, "T"],
-    [1e9, "B"],
-    [1e6, "M"],
-    [1e3, "K"],
-  ];
-
-  for (const [size, suffix] of units) {
-    if (abs < size) continue;
-    const scaled = Math.round((safe / size) * 100) / 100;
-
-    // 999,999 reads 1000.0K → promote to the next unit instead.
-    if (Math.abs(scaled) >= 1000) continue;
-
-    return `${scaled.toFixed(2).replace(/\.?0+$/, "")}${suffix}`;
-  }
-
-  return String(Math.round(safe));
-}
-
-function percentLabel(share: number): string {
-  const clamped = Number.isFinite(share) ? Math.min(1, Math.max(0, share)) : 0;
-
-  return `${Math.round(clamped * 100)}%`;
-}
-
-// ---------------------------------------------------------------------------
 // SVG fragments.
 // ---------------------------------------------------------------------------
 
@@ -283,7 +236,7 @@ function rightBlock(data: BadgeData, paint: Paint): string {
     data.scope === "user"
       ? data.sources.slice(0, 2).map((source) => ({
           name: source.label,
-          detail: percentLabel(source.share),
+          detail: formatBadgeShare(source.share),
           share: source.share,
         }))
       : data.models.slice(0, 2).map((model) => ({
@@ -361,7 +314,7 @@ function renderPanel(
     statSlot(
       330,
       "ACTIVE DAYS",
-      String(Math.max(0, Math.round(data.totals.activeDays || 0))),
+      formatBadgeCount(data.totals.activeDays),
       paint,
     ) +
     rightBlock(data, paint) +

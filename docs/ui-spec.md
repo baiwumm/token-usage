@@ -463,6 +463,21 @@
   或 Esc 会让明文永久丢失。
 - 复制统一 `navigator.clipboard.writeText`，成功 `toast.success`，失败普通 `toast` 提示手动选择。
 
+### 公开页（`/u/<token>`，徽章点击落地）
+
+规范见 `docs/badge.md` §6。公开页面、无 AppShell（同 `/login`）、`noindex`；主题跟随系统
+（无明暗切换入口），文案随访客语言，数字沿用徽章的固定口径（`lib/badge/format.ts`，与
+README 里的 SVG 一致，不受访客本地偏好影响）。自上而下：
+
+- 抬头：`TOKEN USAGE` 眉题（accent）+ 显示名（空则「AI 编码用量」）+「AI 编码用量 · 全部时间」
+- 三张 KPI `Card`（总 Tokens / 成本 / 活跃天数），成本下注「按读时定价估算」；`sm` 以上三列
+- 「近 30 天」卡：30 根 CSS 柱（`bg-accent`，`role="img"` + 汇总 aria-label），不引图表库
+- 「来源占比」与「主要模型」两卡并排（`md` 以上）：`SourceIcon` + 名称 + 数值，来源行带
+  `Meter`（同仪表盘 TopModels 写法）
+- 「仓库」区：白名单仓库各一张卡（tokens / 成本 / 活跃天数），上方口径说明
+- 页脚隐私声明（只公开聚合数字）
+- 375px 纵向堆叠，页面无横向滚动
+
 ## 数字、货币与时间格式
 
 - 唯一入口是统一 format provider（`useFormat`）；Dashboard、Sessions、Wrapped、Settings、

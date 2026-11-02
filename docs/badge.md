@@ -251,6 +251,11 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   service-role，不走 `/api/app`
 - 令牌查无或 `enabled=false` → `notFound()`（404）
 - 页面客户端代码放 `components/u/`（`<页名>-body.tsx` 等，按 AGENTS.md 命名规范）
+- 实现（2026-11-02 P4）：令牌→所有者查找 `findBadgeOwner`（`lib/badge/data.ts`）由
+  `/api/badge` 与本页共用，`generateMetadata` 与页面经 React `cache` 共享一次查找；数字
+  走 `lib/badge/format.ts`（与 SVG 同一固定口径），文案随访客语言
+  （`lib/copy/public-page.ts`）。页面正文不渲染令牌；令牌只以 URL 段的形式出现在
+  Next.js 的 RSC 路由状态里——即访客本就持有的请求 URL，动态段路由的固有行为
 
 ## §7 Settings 配置面
 

@@ -18,7 +18,9 @@ import type { RestRow } from "@/lib/api/supabase-rest";
 import type { BadgeData, BadgeModel, BadgeRange, BadgeSource } from "./types";
 
 import { loadAccountUsage, loadSessionRows } from "@/lib/api/account-data";
+import { select } from "@/lib/api/supabase-rest";
 import { rowCost, zonedDayKey } from "@/lib/account/series";
+import { sha256Hex } from "@/lib/device-codes";
 import { normalizeProjectKey } from "@/lib/ingest/normalize";
 import { ModelDisplayName, modelGroupKey } from "@/lib/model-names";
 import { computeRowCost } from "@/lib/pricing";
@@ -387,6 +389,38 @@ export function normalizeBadgeTimezone(value: unknown): string {
 }
 
 const MAX_KNOWN_PROJECTS = 200;
+
+export type BadgeOwner = {
+  userId: string;
+  enabled: boolean;
+  displayName: string;
+  timezone: string;
+  allowedProjects: string[];
+};
+
+// Public token → owner, matched by SHA-256 (§3.2) — shared by /api/badge and
+// the /u page. Null when no row carries that hash; the result never echoes
+// the token or its hash.
+export async function findBadgeOwner(
+  token: string,
+): Promise<BadgeOwner | null> {
+  const rows = await select("token_public_badges", {
+    select: "user_id,enabled,display_name,timezone,allowed_projects",
+    filters: [["token_hash", "eq", sha256Hex(token)]],
+    limit: 1,
+  });
+  const row = rows[0];
+
+  if (!row) return null;
+
+  return {
+    userId: String(row.user_id),
+    enabled: row.enabled === true,
+    displayName: String(row.display_name ?? ""),
+    timezone: normalizeBadgeTimezone(row.timezone),
+    allowedProjects: normalizeBadgeAllowlist(row.allowed_projects),
+  };
+}
 
 // Settings allowlist source (§7.2): the distinct non-empty project_keys of the
 // owner's sessions, busiest first — a projection of data the Sessions page
