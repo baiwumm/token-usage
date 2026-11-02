@@ -3,6 +3,7 @@
 // Read-only cost analysis modal, opened from the cost KPI or the Top models
 // "view all" action (docs/ui-spec.md 仪表盘 7). All amounts are computed at
 // read time by the pricing engine; unpriced models are called out explicitly.
+// Both tabs render the shared BreakdownTable shell.
 
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 import type { ModelBreakdownSource, SeriesPoint } from "@/lib/dashboard/api";
@@ -11,6 +12,7 @@ import { Chip, Modal, Tabs, Typography } from "@heroui/react";
 import { useMemo } from "react";
 
 import { canonicalSourceRows, mergeModelsAcrossSources } from "./aggregate";
+import { BreakdownTable } from "./breakdown-table";
 
 import { CostTrendChart } from "@/components/charts";
 import { SourceIcon } from "@/components/source-icon";
@@ -33,7 +35,7 @@ export function CostAnalysisModal({
   totalCostUsd: number;
   copy: DashboardCopy;
 }) {
-  const { formatTokens, formatCost, formatPercent } = useFormat();
+  const { formatTokens, formatCost } = useFormat();
 
   // One row per model name across sources, cost-ranked.
   const models = useMemo(
@@ -66,6 +68,10 @@ export function CostAnalysisModal({
         .slice()
         .sort((first, second) => second.totalCost - first.totalCost),
     [sources],
+  );
+  const sourceTotalTokens = sourceRows.reduce(
+    (sum, entry) => sum + entry.totalTokens,
+    0,
   );
 
   return (
@@ -148,55 +154,41 @@ export function CostAnalysisModal({
                     {copy.cost.noData}
                   </Typography>
                 ) : (
-                  <div className="flex flex-col">
-                    <div className="text-muted grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-3 border-b pb-2 text-xs">
-                      <span>{copy.cost.columnName}</span>
-                      <span className="text-end">{copy.cost.columnTokens}</span>
-                      <span className="text-end">{copy.cost.columnShare}</span>
-                      <span className="text-end">{copy.cost.columnCost}</span>
-                    </div>
-                    {models.map((entry) => (
-                      <div
-                        key={entry.model}
-                        className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-baseline gap-3 border-b py-2 text-sm last:border-b-0"
-                      >
-                        <span className="flex min-w-0 flex-col">
-                          <span className="flex min-w-0 items-center gap-1.5">
-                            <SourceIcon
-                              label={entry.model}
-                              size={14}
-                              source={entry.sources[0]}
-                            />
-                            <span className="truncate font-medium">
-                              {entry.model}
-                            </span>
-                          </span>
-                          <span className="text-muted truncate text-xs">
-                            {[
-                              ...new Set(
-                                entry.sources.map((source) =>
-                                  sourceDisplayLabel(source),
-                                ),
-                              ),
-                            ].join(", ")}
-                          </span>
-                        </span>
-                        <span className="tabular-nums">
-                          {formatTokens(entry.totals.total_tokens)}
-                        </span>
-                        <span className="text-foreground/60 tabular-nums">
-                          {formatPercent(
-                            totalTokens > 0
-                              ? entry.totals.total_tokens / totalTokens
-                              : 0,
-                          )}
-                        </span>
-                        <span className="tabular-nums">
-                          {formatCost(entry.totals.total_cost_usd)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <BreakdownTable
+                    ariaLabel={copy.cost.byModel}
+                    labels={{
+                      name: copy.cost.columnName,
+                      tokens: copy.cost.columnTokens,
+                      share: copy.cost.columnShare,
+                      cost: copy.cost.columnCost,
+                      credits: copy.detail.columnCredits,
+                    }}
+                    minClassName="min-w-[30rem]"
+                    rows={models.map((entry) => ({
+                      id: entry.model,
+                      label: entry.model,
+                      icon: (
+                        <SourceIcon
+                          label={entry.model}
+                          size={14}
+                          source={entry.sources[0]}
+                        />
+                      ),
+                      sublabel: [
+                        ...new Set(
+                          entry.sources.map((source) =>
+                            sourceDisplayLabel(source),
+                          ),
+                        ),
+                      ].join(", "),
+                      tokens: entry.totals.total_tokens,
+                      share:
+                        totalTokens > 0
+                          ? entry.totals.total_tokens / totalTokens
+                          : undefined,
+                      cost: entry.totals.total_cost_usd,
+                    }))}
+                  />
                 )}
               </Tabs.Panel>
 
@@ -206,32 +198,27 @@ export function CostAnalysisModal({
                     {copy.cost.noData}
                   </Typography>
                 ) : (
-                  <div className="flex flex-col">
-                    <div className="text-muted grid grid-cols-[minmax(0,1fr)_auto_auto] gap-3 border-b pb-2 text-xs">
-                      <span>{copy.cost.columnName}</span>
-                      <span className="text-end">{copy.cost.columnTokens}</span>
-                      <span className="text-end">{copy.cost.columnCost}</span>
-                    </div>
-                    {sourceRows.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-baseline gap-3 border-b py-2 text-sm last:border-b-0"
-                      >
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <SourceIcon label={entry.id} size={14} />
-                          <span className="truncate font-medium">
-                            {entry.label}
-                          </span>
-                        </span>
-                        <span className="tabular-nums">
-                          {formatTokens(entry.totalTokens)}
-                        </span>
-                        <span className="tabular-nums">
-                          {formatCost(entry.totalCost)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <BreakdownTable
+                    ariaLabel={copy.cost.bySource}
+                    labels={{
+                      name: copy.cost.columnName,
+                      tokens: copy.cost.columnTokens,
+                      share: copy.cost.columnShare,
+                      cost: copy.cost.columnCost,
+                      credits: copy.detail.columnCredits,
+                    }}
+                    rows={sourceRows.map((entry) => ({
+                      id: entry.id,
+                      label: entry.label,
+                      icon: <SourceIcon label={entry.id} size={14} />,
+                      tokens: entry.totalTokens,
+                      share:
+                        sourceTotalTokens > 0
+                          ? entry.totalTokens / sourceTotalTokens
+                          : undefined,
+                      cost: entry.totalCost,
+                    }))}
+                  />
                 )}
               </Tabs.Panel>
             </Tabs>

@@ -134,7 +134,14 @@
 4. **趋势**：日/月切换（`Tabs`）+ 指标切换（Token / 成本），recharts；范围跟随筛选条。
 5. **双栏**：Top 模型（`SourceIcon`、名称、Token、占比 `Meter`、成本，前 8 条 +
    「成本分析」按钮打开成本分析 Modal）；来源卡（`SourceIcon`、占比 + 成本，随设备筛选，
-   取 `model-breakdown`）。
+   取 `model-breakdown`）。来源卡本身（2026-11-02）为左侧甜甜圈 + 右侧前 5 行
+   「来源 / Token / 占比」三列栅格：来源名单行截断省略，Token 与占比列常量宽
+   `whitespace-nowrap`，长数字/长名称换行不再发生（数字列极端长度也以省略号收口）；
+   行可点击隐藏/显示（隐藏来源从甜甜圈与占比分母中剔除）。甜甜圈尺寸随卡片自适应
+   （`size-48 sm:size-52`，替代原固定 176px），内孔 64%，中心总 Token 单行
+   `whitespace-nowrap` 收口，完整位数不再压到环上（2026-11-02）。「查看全部（N）」打开
+   `Table` 形式的全量来源表（列：来源 / Token / 占比 / 积分——仅范围内有 credits 时
+   显示该列），行首来源名可点击隐藏/显示，与卡内行同一开关。
    两卡下方为**积分消耗卡**（2026-10-31）：逐来源列出上报了 credits 的积分用量与占比
    （仅积分制来源如 Qoder 会携带；范围内无 credits 数据时整卡隐藏）——积分是独立维度，
    **永不并入 Token、计费 Token 或成本口径**。模型列表按 model 的小写折叠键聚合
@@ -148,14 +155,30 @@
    看不清的深色标（如黑底 ChatGPT 形状的 codex 新标），放同扩展名的
    `<name>-dark.<ext>`（如 `codex-dark.svg`）并把浅色文件名加进 `sources.ts` 的
    `DARK_LOGO_FILES`，渲染层自动叠双图按 `.dark` 切换；未登记的 `-dark` 文件不生效。
+   名称/Token/占比/成本/积分这类明细表壳统一为 `components/dashboard/breakdown-table.tsx`
+   （`BreakdownTable`，2026-11-02）：名称列单行截断（完整值在 `title`）、Token `w-36`、
+   占比 `w-16`、成本与积分 `w-24`，数值列 `whitespace-nowrap` 不换行；成本/积分列按
+   行数据是否携带自动出现（无则整列隐藏）；来源详情弹窗、「查看全部」来源表、成本分析
+   两个 Tab 与 `ModelListModal` 共用同一表壳，行内名称单元格可按调用方覆盖（来源表用它
+   做隐藏/显示开关），新增同类明细表不再手写 `Table` 壳。
 6. **设备卡**（独占一行）：名称/平台/最后上报/Token/成本，取 `dashboard.devices`，
    仅活跃设备且不随设备筛选收窄；点击设备卡把 `device_id` 写入筛选条。
-7. **明细**：`Tabs` 日 / 时 / 月；`Table` 列（时间、Token、计费 Token、成本、会话、
+7. **明细**：`Tabs` 日 / 时 / 月；`Table` 列（时间、Token、输入、缓存、输出、成本、会话、
    模型数、积分——仅窗口内有 credit 上报才显示该列，2026-10-31 增量）；列头排序、`Pagination`（默认 10/页，可选 10/20/50/100）；时视图先选日期（默认今天）；时区
    切换即时重算日/时，月视图按契约固定 UTC；空窗口显示空态；模型数列可点击（桶内
    `models` 非空时），打开该桶的模型明细 Modal（同 `ModelListModal`）。
+   「计费 Token」列于 2026-11-02 移除（操作者裁定）：读侧对未上报 billable 的行按
+   `total_tokens` 计入、常用来源本身 `billable = total`，该列与 Token 重复；且
+   输入 + 缓存 + 输出 = Token 已是库层约束，计费是唯一不参与该恒等式的列。聚合口径
+   仍保留在头卡「计费 Tokens」KPI（`summary.totals.billable_total_tokens`），
+   `SeriesPoint.billable_total_tokens` 与热力图分级不受影响。
 8. **成本分析**：从 Top 模型「成本分析」按钮打开 `Modal`；`Tabs` 按模型 / 按来源；
-   总成本、日成本趋势、未定价模型提示；只读，不提供导出。
+   总成本、日成本趋势、未定价模型提示；只读，不提供导出。两个 Tab 内容均为 `Table`
+   （2026-11-02，取代手写栅格，共用 `BreakdownTable` 表壳）：按模型 = 模型
+   （第二行来源小字）/ Token / 占比 / 成本，按来源 = 来源 / Token / 占比 / 成本；
+   `table-fixed` + 定宽数值列（Token `w-36`、
+   占比 `w-16`、成本 `w-24`）与整表 `min-w-[26rem]`、`min-w-[30rem]` 保底，名称截断、
+   数值列 `whitespace-nowrap` 不换行，窄视口横向滚动。
 9. **分享卡片**：共享 `ShareCardButton`（`components/share-card-button.tsx`，`NodesRight` 图标 +
    `Tooltip`，打开 `ShareCardDialog`）——仪表盘放在筛选条右侧，`/wrapped` 放在页头右侧（2026-10-30
    操作者裁定：wrapped 从页内面板改为与仪表盘同一入口与交互）。`ShareCardDialog`

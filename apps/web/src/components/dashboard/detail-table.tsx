@@ -35,7 +35,6 @@ export interface DetailRow {
   input: number;
   cached: number;
   output: number;
-  billable: number;
   cost: number;
   conversations: number;
   models: number;
@@ -149,13 +148,6 @@ function DetailTableImpl({
         sortable: true,
         className: "text-foreground/70 tabular-nums",
         cell: (row) => formatTokens(row.output),
-      },
-      {
-        id: "billable",
-        header: copy.detail.columnBillable,
-        sortable: true,
-        className: "tabular-nums",
-        cell: (row) => formatTokens(row.billable),
       },
       {
         id: "cost",

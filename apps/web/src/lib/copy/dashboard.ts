@@ -84,7 +84,6 @@ export interface DashboardCopy {
     columnInput: string;
     columnCached: string;
     columnOutput: string;
-    columnBillable: string;
     columnCost: string;
     columnConversations: string;
     columnModels: string;
@@ -226,7 +225,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnInput: "输入",
       columnCached: "缓存",
       columnOutput: "输出",
-      columnBillable: "计费 Token",
       columnCost: "成本",
       columnConversations: "会话",
       columnModels: "模型数",
@@ -370,7 +368,6 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       columnInput: "Input",
       columnCached: "Cache",
       columnOutput: "Output",
-      columnBillable: "Billable",
       columnCost: "Cost",
       columnConversations: "Conversations",
       columnModels: "Models",

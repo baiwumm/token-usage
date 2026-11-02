@@ -1,7 +1,7 @@
 "use client";
 
 // Source mix panel: a donut of the canonical sources with click-to-toggle
-// distribution rows (juejin 工具分布 style) and a full-list modal.
+// distribution rows (juejin 工具分布 style) and a full-list table modal.
 
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 import type { ModelBreakdownSource } from "@/lib/dashboard/api";
@@ -10,6 +10,7 @@ import { Button, Card, Modal, Typography } from "@heroui/react";
 import { useMemo, useState } from "react";
 
 import { canonicalSourceRows } from "./aggregate";
+import { BreakdownTable } from "./breakdown-table";
 
 import { DonutChart } from "@/components/mini-charts";
 import { SourceIcon } from "@/components/source-icon";
@@ -24,7 +25,7 @@ export function SourcePanel({
   sources: ModelBreakdownSource[];
   copy: DashboardCopy;
 }) {
-  const { formatTokens, formatPercent, formatCredits } = useFormat();
+  const { formatTokens, formatPercent } = useFormat();
   const [locale] = useLocale();
   // Click-to-toggle distribution (juejin 工具分布 style): hidden canonical
   // sources drop out of the donut, the share denominator recomputes, and the
@@ -51,18 +52,24 @@ export function SourcePanel({
     });
   };
 
+  const shareOf = (row: (typeof rows)[number]) =>
+    visibleTotal > 0 && !hidden.has(row.id)
+      ? row.totalTokens / visibleTotal
+      : 0;
+
+  // Compact rows: the label truncates first, while the token and share
+  // columns stay on one line (long full-digit token counts ellipsize instead
+  // of wrapping into a second row).
   const renderRows = (list: typeof rows) => (
     <div className="flex flex-col gap-1.5">
       {list.map((row) => {
         const isHidden = hidden.has(row.id);
-        const share =
-          visibleTotal > 0 && !isHidden ? row.totalTokens / visibleTotal : 0;
 
         return (
           <button
             key={row.id}
             aria-pressed={!isHidden}
-            className={`flex w-full items-center justify-between gap-2 rounded-lg px-1 py-0.5 text-sm transition-opacity ${
+            className={`grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg px-1 py-0.5 text-start text-sm transition-opacity ${
               isHidden ? "text-muted opacity-40" : "hover:bg-default/60"
             }`}
             type="button"
@@ -74,12 +81,11 @@ export function SourcePanel({
                 {row.label}
               </span>
             </span>
-            <span className="text-foreground/60 tabular-nums text-xs">
+            <span className="text-foreground/60 tabular-nums truncate text-xs">
               {formatTokens(row.totalTokens)}
-              {row.totalCredits > 0
-                ? ` · ${formatCredits(row.totalCredits)} ${copy.panels.creditsUnit}`
-                : ""}{" "}
-              · {isHidden ? "—" : formatPercent(share)}
+            </span>
+            <span className="text-foreground/60 tabular-nums w-12 text-end whitespace-nowrap text-xs">
+              {isHidden ? "—" : formatPercent(shareOf(row))}
             </span>
           </button>
         );
@@ -93,7 +99,7 @@ export function SourcePanel({
         <Card.Title>{copy.panels.sourcesTitle}</Card.Title>
         <Card.Description>{copy.panels.sourcesHint}</Card.Description>
       </Card.Header>
-      <Card.Content className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+      <Card.Content className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
         {rows.length === 0 ? (
           <Typography color="muted" type="body-sm">
             —
@@ -101,8 +107,12 @@ export function SourcePanel({
         ) : (
           <>
             <DonutChart
+              // The ring grows with the card instead of staying at 176px,
+              // which left the panel looking empty and squeezed the center
+              // total against the ring.
               centerLabel={copy.cards.totalTokens}
               centerValue={formatTokens(visibleTotal)}
+              className="size-48 sm:size-52"
               entries={visible.map((row) => ({
                 name: row.label,
                 value: row.totalTokens,
@@ -133,16 +143,57 @@ export function SourcePanel({
               ) : null}
             </div>
             <Modal.Backdrop isOpen={allOpen} onOpenChange={setAllOpen}>
-              <Modal.Container>
-                <Modal.Dialog>
+              <Modal.Container scroll="inside" size="lg">
+                <Modal.Dialog className="max-h-[85vh]">
                   <Modal.CloseTrigger aria-label={copy.cost.close} />
                   <Modal.Header>
                     <Modal.Heading>{copy.panels.sourcesTitle}</Modal.Heading>
                   </Modal.Header>
                   <Modal.Body>
-                    <div className="max-h-[60vh] overflow-y-auto">
-                      {renderRows(rows)}
-                    </div>
+                    <BreakdownTable
+                      ariaLabel={copy.panels.sourcesTitle}
+                      labels={{
+                        name: copy.cost.columnName,
+                        tokens: copy.panels.columnTokens,
+                        share: copy.panels.columnShare,
+                        cost: copy.cost.columnCost,
+                        credits: copy.detail.columnCredits,
+                      }}
+                      renderLabel={(row) => {
+                        const isHidden = hidden.has(row.id);
+
+                        return (
+                          <button
+                            aria-pressed={!isHidden}
+                            className={`flex min-w-0 cursor-pointer items-center gap-1.5 text-start transition-opacity ${
+                              isHidden ? "opacity-40" : ""
+                            }`}
+                            title={row.label}
+                            type="button"
+                            onClick={() => toggle(row.id)}
+                          >
+                            <SourceIcon label={row.id} size={14} />
+                            <span
+                              className={`truncate font-medium ${
+                                isHidden ? "line-through" : ""
+                              }`}
+                            >
+                              {row.label}
+                            </span>
+                          </button>
+                        );
+                      }}
+                      rows={rows.map((row) => ({
+                        id: row.id,
+                        label: row.label,
+                        tokens: row.totalTokens,
+                        // A hidden source leaves the denominator, so its share
+                        // is meaningless until it is shown again (em dash).
+                        share: hidden.has(row.id) ? undefined : shareOf(row),
+                        credits:
+                          row.totalCredits > 0 ? row.totalCredits : undefined,
+                      }))}
+                    />
                   </Modal.Body>
                 </Modal.Dialog>
               </Modal.Container>

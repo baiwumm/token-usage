@@ -3,14 +3,16 @@
 // Shared "models of X" modal: lists one bucket's or one source's models with
 // their token share. Rows come in as { model, tokens, cost? }; sorted by
 // tokens descending. Used by the hero source chips and the detail table's
-// model count column (docs/ui-spec.md 仪表盘).
+// model count column (docs/ui-spec.md 仪表盘), rendering the shared
+// BreakdownTable shell.
 
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 
-import { Modal, Table, Typography } from "@heroui/react";
+import { Modal, Typography } from "@heroui/react";
+
+import { BreakdownTable } from "./breakdown-table";
 
 import { SourceIcon } from "@/components/source-icon";
-import { useFormat } from "@/lib/format/format";
 
 export interface ModelListRow {
   model: string;
@@ -36,13 +38,10 @@ export function ModelListModal({
   rows: ModelListRow[];
   copy: DashboardCopy;
 }) {
-  const { formatTokens, formatCost, formatPercent } = useFormat();
   const total = rows.reduce((sum, row) => sum + row.tokens, 0);
   const sorted = [...rows].sort(
     (first, second) => second.tokens - first.tokens,
   );
-  // The cost column only appears when the caller actually has cost data.
-  const hasCost = rows.some((row) => row.cost != null);
 
   return (
     <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
@@ -60,72 +59,31 @@ export function ModelListModal({
                 {copy.cost.noData}
               </Typography>
             ) : (
-              <Table>
-                <Table.ScrollContainer>
-                  {/* table-fixed + fixed-width numeric columns keeps the
-                        table at the dialog width: long model names truncate
-                        instead of stretching the table horizontally. The
-                        numeric columns are sized for full-digit token counts
-                        (完整显示, the default) and min-w guards the sum — a
-                        narrower viewport scrolls horizontally instead of
-                        letting the number spill into the share column. */}
-                  <Table.Content
-                    aria-label={title}
-                    className="w-full min-w-[26rem] table-fixed"
-                  >
-                    <Table.Header>
-                      <Table.Column isRowHeader id="model">
-                        {copy.cost.columnName}
-                      </Table.Column>
-                      <Table.Column className="w-36 text-end" id="tokens">
-                        {copy.cost.columnTokens}
-                      </Table.Column>
-                      <Table.Column className="w-16 text-end" id="share">
-                        {copy.cost.columnShare}
-                      </Table.Column>
-                      {hasCost ? (
-                        <Table.Column className="w-28 text-end" id="cost">
-                          {copy.cost.columnCost}
-                        </Table.Column>
-                      ) : null}
-                    </Table.Header>
-                    <Table.Body>
-                      {sorted.map((row) => (
-                        <Table.Row key={row.model} id={row.model}>
-                          <Table.Cell>
-                            <span
-                              className="flex min-w-0 items-center gap-1.5"
-                              title={row.model}
-                            >
-                              <SourceIcon
-                                label={row.model}
-                                size={14}
-                                source={row.source}
-                              />
-                              <span className="truncate font-medium">
-                                {row.model}
-                              </span>
-                            </span>
-                          </Table.Cell>
-                          <Table.Cell className="whitespace-nowrap text-end tabular-nums">
-                            {formatTokens(row.tokens)}
-                          </Table.Cell>
-                          <Table.Cell className="text-muted whitespace-nowrap text-end tabular-nums">
-                            {total > 0
-                              ? formatPercent(row.tokens / total)
-                              : "—"}
-                          </Table.Cell>
-                          {hasCost ? (
-                            <Table.Cell className="whitespace-nowrap text-end tabular-nums">
-                              {row.cost != null ? formatCost(row.cost) : "—"}
-                            </Table.Cell>
-                          ) : null}
-                        </Table.Row>
-                      ))}
-                    </Table.Body>
-                  </Table.Content>
-                </Table.ScrollContainer>
-              </Table>
+              <BreakdownTable
+                ariaLabel={title}
+                labels={{
+                  name: copy.cost.columnName,
+                  tokens: copy.cost.columnTokens,
+                  share: copy.cost.columnShare,
+                  cost: copy.cost.columnCost,
+                  credits: copy.detail.columnCredits,
+                }}
+                rows={sorted.map((row) => ({
+                  id: row.model,
+                  label: row.model,
+                  icon: (
+                    <SourceIcon
+                      label={row.model}
+                      size={14}
+                      source={row.source}
+                    />
+                  ),
+                  tokens: row.tokens,
+                  share: total > 0 ? row.tokens / total : undefined,
+                  // Cost stays hidden unless the caller has it at all.
+                  cost: row.cost ?? undefined,
+                }))}
+              />
             )}
           </Modal.Body>
         </Modal.Dialog>
