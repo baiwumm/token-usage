@@ -18,7 +18,7 @@ import type { RestRow } from "@/lib/api/supabase-rest";
 import type { BadgeData, BadgeModel, BadgeRange, BadgeSource } from "./types";
 
 import { loadAccountUsage, loadSessionRows } from "@/lib/api/account-data";
-import { select } from "@/lib/api/supabase-rest";
+import { secretKey, select, supabaseUrl } from "@/lib/api/supabase-rest";
 import { rowCost, zonedDayKey } from "@/lib/account/series";
 import { sha256Hex } from "@/lib/device-codes";
 import { normalizeProjectKey } from "@/lib/ingest/normalize";
@@ -32,6 +32,12 @@ const TOP_MODELS = 5;
 const TOP_SOURCES = 5;
 const ALL_RANGE_FLOOR = "2000-01-01T00:00:00.000Z";
 const TTL_MS = 10_000;
+// §5.2: avatars are inlined into the SVG, so they are cached far longer than
+// the aggregates — a new upload shows up within this window.
+const AVATAR_TTL_MS = 5 * 60_000;
+const MAX_AVATAR_BYTES = 512 * 1024;
+const AVATAR_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const AVATAR_BUCKET_PATH = "/storage/v1/object/public/avatars/";
 
 export type BadgeOwnerConfig = {
   displayName: string;
@@ -243,6 +249,9 @@ async function buildBadgeData(
 ): Promise<BadgeData> {
   const now = new Date();
   const timeZone = config.timezone || "UTC";
+  // Loaded once per build: both scopes render the same owner avatar, and the
+  // renderer stays a pure function of the returned data.
+  const avatarDataUri = await loadBadgeAvatar(userId);
 
   if (scope === "repo") {
     const toIso = new Date(now.getTime() + DAY_MS).toISOString();
@@ -270,6 +279,7 @@ async function buildBadgeData(
       },
       sources: buildSources(agg),
       models: buildModels(agg),
+      avatarDataUri,
       series: buildSeries(agg, timeZone, now),
     };
   }
@@ -317,12 +327,14 @@ function badgeCacheDisabled(): boolean {
 export function invalidateBadgeData(userId?: string): void {
   if (userId == null) {
     cache.clear();
+    avatarCache.clear();
 
     return;
   }
   for (const key of [...cache.keys()]) {
     if (key.startsWith(`badge|${userId}|`)) cache.delete(key);
   }
+  avatarCache.delete(userId);
 }
 
 export function loadBadgeData(
@@ -444,4 +456,96 @@ export async function loadKnownProjects(userId: string): Promise<string[]> {
     .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
     .slice(0, MAX_KNOWN_PROJECTS)
     .map(([key]) => key);
+}
+
+// ---------------------------------------------------------------------------
+// Owner avatar (§5.2, 2026-11-02).
+//
+// The badge is served inside <img>, where an SVG may not load external
+// resources, so the picture must travel in the bytes as a data: URI. The URL
+// comes from the owner's auth metadata, but the fetch is constrained to the
+// deployment's own public avatars bucket (never a user-chosen host, so this
+// cannot be turned into an SSRF probe) and the bytes are validated by type and
+// size before inlining. Any failure degrades to the initials circle.
+// ---------------------------------------------------------------------------
+
+const avatarCache = new Map<
+  string,
+  { expiresAt: number; value: Promise<string | null> }
+>();
+
+async function readAvatarUrl(userId: string): Promise<string | null> {
+  const response = await fetch(
+    `${supabaseUrl()}/auth/v1/admin/users/${encodeURIComponent(userId)}`,
+    {
+      headers: { apikey: secretKey(), Authorization: `Bearer ${secretKey()}` },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) return null;
+  const body = (await response.json()) as {
+    user_metadata?: { avatar_url?: unknown };
+  };
+  const url = body.user_metadata?.avatar_url;
+
+  return typeof url === "string" && url ? url : null;
+}
+
+function avatarUrlAllowed(value: string): boolean {
+  try {
+    const target = new URL(value);
+    const base = new URL(supabaseUrl());
+
+    return (
+      target.host === base.host &&
+      target.pathname.startsWith(AVATAR_BUCKET_PATH)
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function fetchAvatarDataUri(userId: string): Promise<string | null> {
+  try {
+    const url = await readAvatarUrl(userId);
+
+    if (!url || !avatarUrlAllowed(url)) return null;
+
+    const response = await fetch(url, { cache: "no-store" });
+
+    if (!response.ok) return null;
+
+    const type = (response.headers.get("content-type") || "")
+      .split(";")[0]
+      .trim()
+      .toLowerCase();
+
+    if (!AVATAR_TYPES.has(type)) return null;
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+
+    if (bytes.byteLength === 0 || bytes.byteLength > MAX_AVATAR_BYTES) {
+      return null;
+    }
+
+    return `data:${type};base64,${bytes.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+// Single-flight per owner: a badge storm on a cold cache fetches the avatar
+// once, and a failed load is not pinned for the whole TTL window.
+export function loadBadgeAvatar(userId: string): Promise<string | null> {
+  const now = Date.now();
+  const hit = avatarCache.get(userId);
+
+  if (hit && hit.expiresAt > now) return hit.value;
+
+  const value = fetchAvatarDataUri(userId);
+
+  avatarCache.set(userId, { expiresAt: now + AVATAR_TTL_MS, value });
+
+  return value;
 }

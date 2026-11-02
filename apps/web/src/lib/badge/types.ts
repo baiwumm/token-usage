@@ -27,6 +27,12 @@ export interface BadgeData {
   scope: "user" | "repo";
   project: string | null; // repo 时为展示用 project_key（归一后、展示截断前原值）
   displayName: string; // 行内快照；空串由渲染器回退（§5.2）
+  /**
+   * Owner avatar as an inline `data:` URI (§5.2, 2026-11-02). The SVG is
+   * served inside <img>, where external references are blocked, so the image
+   * must travel in the bytes; absent → initials circle.
+   */
+  avatarDataUri?: string | null;
   range: BadgeRange;
   totals: BadgeTotals;
   sources: BadgeSource[]; // tokens 降序

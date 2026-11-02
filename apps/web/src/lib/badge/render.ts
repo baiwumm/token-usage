@@ -9,6 +9,7 @@
 // Numbers go through ./format — the badge's fixed server-side defaults
 // (§4.5), shared with the /u page so both always agree.
 
+import type { BadgeMark } from "./marks";
 import type { BadgeData, BadgeTheme, RenderOptions } from "./types";
 
 import {
@@ -17,6 +18,9 @@ import {
   formatBadgeShare,
   formatBadgeTokens,
 } from "./format";
+import { SOURCE_MARKS } from "./marks";
+
+import { modelLogoFile, sourceLogoFile } from "@/lib/sources";
 
 interface Palette {
   bg0: string;
@@ -55,21 +59,27 @@ const AUTO_STYLE =
   ".c-as{stroke:#4f46e5}.c-tr{fill:rgba(15,23,42,.12)}.c-bg{fill:#ffffff}" +
   ".c-bd{stroke:rgba(15,23,42,.10)}" +
   ".c-b0{stop-color:#ffffff}.c-b1{stop-color:#ffffff}" +
+  ".c-lg-d{display:none}.c-lg-l{display:inline}" +
   "@media (prefers-color-scheme: dark){.c-t{fill:#f5f6fa}" +
   ".c-m{fill:rgba(245,246,250,.55)}.c-a{fill:#7c8cff}.c-as{stroke:#7c8cff}" +
   ".c-tr{fill:rgba(255,255,255,.12)}.c-bg{fill:#161a2e}" +
   ".c-bd{stroke:rgba(255,255,255,.08)}" +
-  ".c-b0{stop-color:#0d0f1a}.c-b1{stop-color:#161a2e}}</style>";
+  ".c-b0{stop-color:#0d0f1a}.c-b1{stop-color:#161a2e}" +
+  ".c-lg-d{display:inline}.c-lg-l{display:none}}</style>";
 
 const FONT_STACK =
   "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-type Paint = { kind: "inline"; p: Palette } | { kind: "class" };
+type Paint = { kind: "inline"; p: Palette; dark: boolean } | { kind: "class" };
 
 function paintFor(theme: BadgeTheme): Paint {
   if (theme === "auto") return { kind: "class" };
 
-  return { kind: "inline", p: theme === "light" ? LIGHT : DARK };
+  return {
+    kind: "inline",
+    p: theme === "light" ? LIGHT : DARK,
+    dark: theme !== "light",
+  };
 }
 
 type PaintToken = "text" | "muted" | "accent" | "track" | "bg";
@@ -168,13 +178,114 @@ function svgOpen(width: number, height: number): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" font-family="${FONT_STACK}">`;
 }
 
-function gradientDef(paint: Paint): string {
+function defsBlock(paint: Paint, extra = ""): string {
   const stops =
     paint.kind === "class"
       ? '<stop offset="0" class="c-b0"/><stop offset="1" class="c-b1"/>'
       : `<stop offset="0" stop-color="${paint.p.bg0}"/><stop offset="1" stop-color="${paint.p.bg1}"/>`;
 
-  return `<defs><linearGradient id="bu-bg" x1="0" y1="0" x2="0" y2="1">${stops}</linearGradient></defs>`;
+  return `<defs><linearGradient id="bu-bg" x1="0" y1="0" x2="0" y2="1">${stops}</linearGradient>${extra}</defs>`;
+}
+
+// ---------------------------------------------------------------------------
+// Marks and avatar (§5.2, 2026-11-02).
+// ---------------------------------------------------------------------------
+
+// The product mark ships as two assets: public/logo.svg (black tile + white
+// glyph, for light backgrounds) and public/logo-dark.svg (inverted, for dark
+// backgrounds). Both are inlined as geometry with their own fills — painting
+// the glyph with the palette accent read almost invisible on the dark card
+// (operator report, 2026-11-02). theme=auto embeds both and flips them with
+// the same media query that drives the palette.
+const PRODUCT_LOGO = {
+  light: { tile: "#0A0A0A", glyph: "#FFFFFF" },
+  dark: { tile: "#FFFFFF", glyph: "#0A0A0B" },
+} as const;
+
+function productLogoBox(tile: string, glyph: string): string {
+  return (
+    `<rect width="360" height="360" rx="80" ry="80" fill="${tile}"/>` +
+    `<rect x="118" y="106" width="124" height="40" rx="12" fill="${glyph}"/>` +
+    `<rect x="159" y="146" width="42" height="108" rx="12" fill="${glyph}"/>` +
+    `<rect x="210" y="222" width="32" height="32" rx="8" fill="${glyph}"/>`
+  );
+}
+
+function productLogoAt(
+  x: number,
+  y: number,
+  size: number,
+  variant: { tile: string; glyph: string },
+): string {
+  const scale = (size / 360).toFixed(4);
+
+  return `<g transform="translate(${x} ${y}) scale(${scale})">${productLogoBox(variant.tile, variant.glyph)}</g>`;
+}
+
+function productMark(x: number, y: number, size: number, paint: Paint): string {
+  if (paint.kind === "inline") {
+    return productLogoAt(
+      x,
+      y,
+      size,
+      paint.dark ? PRODUCT_LOGO.dark : PRODUCT_LOGO.light,
+    );
+  }
+
+  return (
+    `<g class="c-lg-l">${productLogoAt(x, y, size, PRODUCT_LOGO.light)}</g>` +
+    `<g class="c-lg-d">${productLogoAt(x, y, size, PRODUCT_LOGO.dark)}</g>`
+  );
+}
+
+function markFromFile(file: string | null): BadgeMark | null {
+  if (!file) return null;
+  const stem = file
+    .replace(/^\/brand-logos\//, "")
+    .replace(/\.(svg|png)$/i, "");
+
+  return SOURCE_MARKS[stem] ?? null;
+}
+
+// Draws a mark in a fixed square box; the geometry keeps its source viewBox
+// and is scaled/offset here, so no per-logo layout data leaks into the caller.
+function drawMark(
+  mark: BadgeMark,
+  x: number,
+  y: number,
+  size: number,
+  paint: Paint,
+): string {
+  const [vx, vy, vw, vh] = mark.viewBox;
+  const scale = size / Math.max(vw, vh);
+  const dx = x - vx * scale + (size - vw * scale) / 2;
+  const dy = y - vy * scale + (size - vh * scale) / 2;
+
+  return `<g transform="translate(${dx.toFixed(2)} ${dy.toFixed(2)}) scale(${scale.toFixed(4)})" ${fillAttr(paint, "text")}>${mark.shapes.join("")}</g>`;
+}
+
+const AVATAR = { cx: 44, cy: 46, r: 18, x: 26, y: 28, size: 36 };
+
+function avatarDefs(data: BadgeData): string {
+  return data.avatarDataUri
+    ? `<clipPath id="bu-av"><circle cx="${AVATAR.cx}" cy="${AVATAR.cy}" r="${AVATAR.r}"/></clipPath>`
+    : "";
+}
+
+// Owner avatar next to the name. The image travels inline as a data: URI
+// (an <img>-embedded SVG cannot fetch external resources). No avatar means no
+// avatar block at all — the name simply starts at the card margin (operator
+// call 2026-11-02; the initials placeholder is gone).
+function avatarBlock(data: BadgeData): string {
+  if (!data.avatarDataUri) return "";
+
+  return `<image x="${AVATAR.x}" y="${AVATAR.y}" width="${AVATAR.size}" height="${AVATAR.size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#bu-av)" href="${data.avatarDataUri}"/>`;
+}
+
+// §5.6: restrained entrance — translate only (never opacity), so a renderer
+// that freezes at t=0 still shows every element; share bars animate width.
+function reveal(delay: number, rise = 5): string {
+  return `<animateTransform attributeName="transform" type="translate" from="0 ${rise}" to="0 0" dur="0.9s" begin="${delay}s" fill="freeze"/>`;
 }
 
 function canvasRects(paint: Paint, width: number, height: number): string {
@@ -221,55 +332,69 @@ function statSlot(
   label: string,
   value: string,
   paint: Paint,
+  delay: number,
 ): string {
   return (
+    `<g>${reveal(delay)}` +
     textEl(x, 120, 10, fillAttr(paint, "muted"), label, { spacing: 1 }) +
-    textEl(x, 150, 24, fillAttr(paint, "text"), value, { weight: 700 })
+    textEl(x, 150, 24, fillAttr(paint, "text"), value, { weight: 700 }) +
+    "</g>"
   );
 }
 
-// §5.2: the bottom-right block switches on scope — user gets TOP SOURCES with
-// share bars, repo gets TOP MODELS with token counts.
+// §5.2: the bottom-right block switches on scope — user gets the TOP SOURCE
+// with a share bar, repo gets the TOP MODEL with its token count. One row only
+// (2026-11-02 operator call) and the row carries the vendor mark.
 function rightBlock(data: BadgeData, paint: Paint): string {
   const header = data.scope === "user" ? "TOP SOURCES" : "TOP MODELS";
-  const rows =
-    data.scope === "user"
-      ? data.sources.slice(0, 2).map((source) => ({
-          name: source.label,
-          detail: formatBadgeShare(source.share),
-          share: source.share,
-        }))
-      : data.models.slice(0, 2).map((model) => ({
-          name: model.label,
-          detail: formatBadgeTokens(model.tokens),
-          share: null,
-        }));
+  const source = data.scope === "user" ? data.sources[0] : undefined;
+  const model = data.scope === "repo" ? data.models[0] : undefined;
+  const name = source?.label ?? model?.label ?? "";
 
-  let out = textEl(452, 112, 10, fillAttr(paint, "muted"), header, {
+  // The header baseline matches the three left-hand stat labels (y=120) and
+  // the row baseline matches their values (y=150), so the block reads as one
+  // row of aligned columns (operator call 2026-11-02).
+  let out = textEl(452, 120, 10, fillAttr(paint, "muted"), header, {
     spacing: 1,
   });
 
-  if (rows.length === 0) {
-    return out + textEl(452, 132, 11, fillAttr(paint, "muted"), "—");
+  if (!name) {
+    return out + textEl(452, 150, 11, fillAttr(paint, "muted"), "—");
   }
 
-  rows.forEach((row, index) => {
-    const baseline = 132 + index * 30;
-    const name = truncateByWidth(row.name, 11, 88);
+  const mark = markFromFile(
+    source ? sourceLogoFile(source.key) : modelLogoFile(model?.key ?? ""),
+  );
+  const detail = source
+    ? formatBadgeShare(source.share)
+    : formatBadgeTokens(model?.tokens ?? 0);
+  const nameX = mark ? 470 : 452;
 
-    out += textEl(452, baseline, 11, fillAttr(paint, "text"), name);
-    out += textEl(576, baseline, 10, fillAttr(paint, "muted"), row.detail, {
-      anchor: "end",
-    });
-    if (row.share != null) {
-      out += `<rect x="452" y="${baseline + 6}" width="90" height="4" rx="2" ${fillAttr(paint, "track")}/>`;
-      const filled = Math.round(90 * Math.min(1, Math.max(0, row.share ?? 0)));
-
-      if (filled > 0) {
-        out += `<rect x="452" y="${baseline + 6}" width="${filled}" height="4" rx="2" ${fillAttr(paint, "accent")}/>`;
-      }
-    }
+  if (mark) out += drawMark(mark, 452, 140, 12, paint);
+  out += textEl(
+    nameX,
+    150,
+    11,
+    fillAttr(paint, "text"),
+    truncateByWidth(name, 11, mark ? 70 : 88),
+  );
+  out += textEl(576, 150, 10, fillAttr(paint, "muted"), detail, {
+    anchor: "end",
   });
+
+  if (source) {
+    const barX = mark ? 470 : 452;
+    const barWidth = mark ? 72 : 90;
+
+    out += `<rect x="${barX}" y="157" width="${barWidth}" height="4" rx="2" ${fillAttr(paint, "track")}/>`;
+    const filled = Math.round(
+      barWidth * Math.min(1, Math.max(0, source.share ?? 0)),
+    );
+
+    if (filled > 0) {
+      out += `<rect x="${barX}" y="157" width="${filled}" height="4" rx="2" ${fillAttr(paint, "accent")}><animate attributeName="width" from="0" to="${filled}" dur="1.1s" begin="0.15s" fill="freeze"/></rect>`;
+    }
+  }
 
   return out;
 }
@@ -286,17 +411,34 @@ function renderPanel(
     ? sparklinePolyline(data.series, 456, 48, 120, 28, paint)
     : null;
   const styleBlock = paint.kind === "class" ? AUTO_STYLE : "";
+  // Without an avatar the left column starts at the card margin; with one the
+  // text shifts right and gets a narrower title budget.
+  const nameX = data.avatarDataUri ? 74 : 24;
+  const titleMax = data.avatarDataUri ? 360 : 410;
 
   return (
     svgOpen(600, 176) +
     styleBlock +
-    gradientDef(paint) +
+    defsBlock(paint, avatarDefs(data)) +
     canvasRects(paint, 600, 176) +
-    textEl(24, 44, 18, fillAttr(paint, "text"), title, { weight: 700 }) +
-    textEl(24, 64, 10, fillAttr(paint, "muted"), subtitle, { spacing: 1.5 }) +
+    `<g>${reveal(0, 4)}` +
+    avatarBlock(data) +
+    textEl(
+      nameX,
+      44,
+      18,
+      fillAttr(paint, "text"),
+      truncateByWidth(title, 18, titleMax),
+      {
+        weight: 700,
+      },
+    ) +
+    textEl(nameX, 64, 10, fillAttr(paint, "muted"), subtitle, {
+      spacing: 1.5,
+    }) +
     (data.scope === "repo" && data.project
       ? textEl(
-          24,
+          nameX,
           84,
           12,
           fillAttr(paint, "accent"),
@@ -304,33 +446,45 @@ function renderPanel(
           { weight: 600 },
         )
       : "") +
+    "</g>" +
+    productMark(460, 20, 16, paint) +
     textEl(576, 32, 10, fillAttr(paint, "accent"), "TOKEN USAGE", {
       anchor: "end",
       spacing: 2,
     }) +
     (sparkline ?? "") +
-    statSlot(24, "TOKENS", formatBadgeTokens(data.totals.tokens), paint) +
-    statSlot(180, "COST", formatBadgeCost(data.totals.costUsd), paint) +
+    statSlot(24, "TOKENS", formatBadgeTokens(data.totals.tokens), paint, 0.05) +
+    statSlot(180, "COST", formatBadgeCost(data.totals.costUsd), paint, 0.1) +
     statSlot(
       330,
       "ACTIVE DAYS",
       formatBadgeCount(data.totals.activeDays),
       paint,
+      0.15,
     ) +
     rightBlock(data, paint) +
     "</svg>"
   );
 }
 
-// §5.3: single-line 20px double-segment badge; segment fills derive from the
-// palette (accent left; right = opaque bg with the track wash on top, so the
-// chip stays legible on any page background) — no new colors. The clip keeps
-// the outer corners round and the seam square.
+// §5.3: single-line 20px double-segment badge. The brand segment is a fixed
+// black plate carrying the product mark and the uppercase name in white
+// (operator call 2026-11-02) — black/white reads the same on any page, so it
+// does not follow the theme; the value segment keeps the palette (opaque bg
+// with the track wash on top) so the numbers stay legible on both themes. The
+// clip keeps the outer corners round and the seam square.
+const COMPACT_PAD = 6;
+const COMPACT_BRAND_BG = "#0A0A0A";
+const COMPACT_LOGO_SIZE = 14;
+const COMPACT_LABEL = "TOKEN USAGE";
+
 function renderCompact(data: BadgeData, theme: BadgeTheme): string {
   const paint = paintFor(theme);
   const right = `${formatBadgeTokens(data.totals.tokens)} · ${formatBadgeCost(data.totals.costUsd)}`;
-  const leftWidth = Math.ceil(textWidth("token usage", 11)) + 16;
-  const rightWidth = Math.ceil(textWidth(right, 11)) + 16;
+  const labelX = COMPACT_PAD + COMPACT_LOGO_SIZE + 5;
+  const leftWidth =
+    labelX + Math.ceil(textWidth(COMPACT_LABEL, 10)) + COMPACT_PAD;
+  const rightWidth = Math.ceil(textWidth(right, 11)) + COMPACT_PAD * 2;
   const width = leftWidth + rightWidth;
   const styleBlock = paint.kind === "class" ? AUTO_STYLE : "";
 
@@ -339,12 +493,15 @@ function renderCompact(data: BadgeData, theme: BadgeTheme): string {
     styleBlock +
     `<defs><clipPath id="bu-clip"><rect width="${width}" height="20" rx="3"/></clipPath></defs>` +
     '<g clip-path="url(#bu-clip)">' +
-    `<rect width="${leftWidth}" height="20" ${fillAttr(paint, "accent")}/>` +
+    `<rect width="${leftWidth}" height="20" fill="${COMPACT_BRAND_BG}"/>` +
     `<rect x="${leftWidth}" width="${rightWidth}" height="20" ${fillAttr(paint, "bg")}/>` +
     `<rect x="${leftWidth}" width="${rightWidth}" height="20" ${fillAttr(paint, "track")}/>` +
     "</g>" +
-    textEl(8, 14, 11, 'fill="#ffffff"', "token usage") +
-    textEl(leftWidth + 6, 14, 11, fillAttr(paint, "text"), right) +
+    // The plate is black, so it takes the dark-theme asset (white tile +
+    // dark glyph) — the same variant the panel badge uses on dark cards.
+    productLogoAt(COMPACT_PAD, 3, COMPACT_LOGO_SIZE, PRODUCT_LOGO.dark) +
+    textEl(labelX, 14, 10, 'fill="#ffffff"', COMPACT_LABEL, { weight: 600 }) +
+    textEl(leftWidth + COMPACT_PAD, 14, 11, fillAttr(paint, "text"), right) +
     "</svg>"
   );
 }

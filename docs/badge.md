@@ -180,6 +180,7 @@ export interface BadgeData {
   scope: "user" | "repo";
   project: string | null;      // repo 时为展示用 project_key（已截断前原值）
   displayName: string;         // 行内快照；空串由渲染器回退（§5.2）
+  avatarDataUri?: string | null; // 头像内联 data: URI（§5.2，2026-11-02）；缺失 → 首字母圆
   range: BadgeRange;
   totals: BadgeTotals;
   sources: BadgeSource[];      // tokens 降序
@@ -203,22 +204,50 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   解码独立的 image/svg+xml（实测 0×0 破图；2026-11-02 操作者裁定，golden 精确豁免该串）
 - 字体栈（GitHub camo 禁外链字体，只能系统字体）：
   `-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`
+- 头像与标记（2026-11-02）只能以两种内联形态出现：几何图形（`<path>` / `<rect>` /
+  `<circle>` / `<polygon>`，品牌标与来源标）与 `data:` URI 图片（头像）。两者都不发起网络
+  请求，输出仍不得含 `http(s)://`（xmlns 声明例外）
 - 文本宽度用实现内固定字宽表估算（同字符集 → 同宽度，纯函数确定）
 
 ### §5.2 style=panel（默认，上游同款布局）
 
-- 画布 600×176、圆角 12；左上标题 = `displayName`，空串回退 `AI Coding Usage`
-  （**绝不**回退 email）；其下副标题 `TOTAL USAGE · ALL TIME / 30 DAYS`
+- 画布 600×176、圆角 12
+- 左上：**头像 + 标题**。头像仅在本人上传过头像时出现（36px 圆，图为内联 `data:` URI）；
+  未上传则不画任何占位圆（首字母圆已按 2026-11-02 操作者裁定取消），标题回到卡片左边距
+  x=24。有头像时标题 x=74、最大宽 360；无头像时最大宽 410，超出以省略号收口。标题
+  （`displayName`）空串回退 `AI Coding Usage`（**绝不**回退 email）；标题下副标题
+  `TOTAL USAGE · ALL TIME / 30 DAYS`；repo 徽章在副标题下加项目名。头像下方**不放**品牌名
+  （品牌只在右上角出现）
 - 左下三列：`TOKENS` / `COST` / `ACTIVE DAYS`（标签 10px 大写、55% 透明度；
   数值 24px 700）
-- 右下区块**按 scope 切换**：`scope=user` 显示 `TOP SOURCES` 前 2 行（来源名 +
-  占比条 90×4 圆角）；`scope=repo` 显示 `TOP MODELS` 前 2 行（拍板需求"主要模型"）
-- 右上品牌字 `TOKEN USAGE`（固定文案、不带域名——自部署域名各异）
+- 右上：**品牌标 + 品牌名**——品牌标 16px，取对应主题的资产：light 用 `public/logo.svg`
+  （黑底白字形），dark 用 `public/logo-dark.svg`（白底黑字，2026-11-02：原实现用 accent 描
+  单色字形，在深色卡上几乎不可见）；`theme=auto` 同时内嵌两版，靠 `.c-lg-l` / `.c-lg-d`
+  类与同一 `prefers-color-scheme` 媒体查询切换。品牌名 `TOKEN USAGE`（10px 大写、字距 2、
+  右对齐、不带域名——自部署域名各异）
+- 右下区块**按 scope 切换**：`scope=user` 显示 `TOP SOURCES` **前 1 行**（来源标 12px +
+  来源名 + 占比 + 占比条 72×4 圆角）；`scope=repo` 显示 `TOP MODELS` **前 1 行**
+  （模型标 + 模型名 + token 数）。无数据时显示 `—`（2026-11-02 操作者裁定：2 行改 1 行并补标；
+  标来自 `lib/badge/marks.ts`，由 `public/brand-logos/*.svg` 生成单色几何，随主题取 text 色）
+- **列对齐**（2026-11-02）：`TOP SOURCES` / `TOP MODELS` 标题基线 = 左侧三个标签基线
+  （y=120）；行名基线 = 三个数值基线（y=150），占比条 y=157——右侧不再自成一个错位的块
+- **头像加载**（2026-11-02）：`lib/badge/data.ts` 用 service-role 读 `auth.users` 的
+  `user_metadata.avatar_url`，仅允许本部署 host 且路径落于 `/storage/v1/object/public/avatars/`
+  的地址（防 SSRF），类型限 PNG/JPEG/WebP、≤512 KB，内联为 `data:` URI；单飞缓存 5 分钟，
+  `invalidateBadgeData` 一并失效；任何失败（缺头像、超大、非白名单、非图片）回退首字母圆
 
 ### §5.3 style=compact
 
-- 单行高 20 双段徽章：`token usage ▏18.48B · $1,318.40`；11px、radius 3；
-  段底色取色板 track/text 派生，不新增色板
+- 单行高 20 双段徽章：左段品牌板 + 右段数值（`TOKEN USAGE ▏18.48B · $1,318.40`）；
+  radius 3
+- **品牌段（2026-11-02 操作者裁定）**：固定黑底 `#0A0A0A` + 白字大写 `TOKEN USAGE`
+  （10px 600）+ 品牌标 14px。底板是黑的，所以标取 **dark 资产**（`logo-dark.svg`：
+  白底圆角块 + 深色字形，与面板徽章在深色主题下同款）——不取 light 资产的黑色版
+  （会与黑底融成一片、只剩字形）。黑白在任意页面背景都可读，因此**不随主题变化**；
+  段宽 = 内边距 6 + 标 14 + 间隙 5 + 文本宽 + 6
+- **数值段**：保留主题调色板（不透明 bg + track 叠层 + text 色），保证深浅主题下的数字可读；
+  11px、左右内边距 6
+- 无新增色板 token（品牌板是固定常量，不进 `--` 变量）
 
 ### §5.4 style=sparkline
 
@@ -239,6 +268,17 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 - `theme=auto`：同一 SVG 内嵌 `<style>` + `@media (prefers-color-scheme: dark)`
   切换上述 token（跟随系统而非 GitHub 主题设置）；README 要精确跟随 GitHub 主题
   用 §7.4 的 picture 双主题片段
+
+### §5.6 入场动效（2026-11-02）
+
+- 只用 **SMIL**（`<animate>` / `<animateTransform>`），无脚本、无 CSS 动画：`<img>` 里的
+  SVG 会播放 SMIL，而脚本在静态图片模式下被禁用
+- 三处：标题区（头像 + 名称 + 副标题）整体上移 4px 归位（0.9s）；三个指标列各上移 5px
+  （延迟 0.05 / 0.1 / 0.15s）；来源占比条宽度 0 → 实际值（1.1s，延迟 0.15s）
+- 只用 `translate` 与 `width`，**不用 opacity**：静态渲染器（邮件、部分客户端）在 t=0
+  冻结时仍能看到全部内容；`fill="freeze"` 保证终态
+- 不读 `prefers-reduced-motion`（`<img>` 语境拿不到媒体查询上下文），因此幅度刻意克制
+- 不引入随机或 `Date.now()`，字节级快照保持稳定；单枚徽章约 +300B
 
 ## §6 公开页 /u/\<token\>
 
@@ -326,6 +366,11 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   成本期望由 `$1,318.40` 改为同一 fixture 的读时定价结果 `$111,721`；fixture 补播种
   一台活跃设备（canonicalRows 只保留活跃设备）。仓库徽章与 `knownProjects` 同步按
   Sessions 页可见性过滤（活跃设备、排除账户级来源）
+- P5 增量（2026-11-02，操作者裁定）：④ 单行 TOP SOURCES/TOP MODELS + 来源/模型标、
+  双主题品牌标、头像（内联 `data:` URI，未上传则完全不画）与 §5.6 入场动效。
+  `tests/unit/badge-svg.test.ts` 新增「单行 + 标」「头像内联 / 无头像不画」「品牌标随主题」
+  「SMIL 无脚本」用例，字节级快照随实现重录（操operator 过目）；compact 品牌段同期改为
+  黑底白字大写 + 品牌标（§5.3）
 
 ## §10 实施阶段
 
@@ -334,6 +379,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 | P2 服务端 | 迁移 + 参数层 + 渲染器 + 数据层 + 两个端点 | `supabase/migrations/20261101000000_token_public_badges.sql`；`src/lib/badge/{types,params,data,render}.ts`；`src/app/api/badge/route.ts`；`src/app/api/app/badge/route.ts` |
 | P3 Settings | 配置卡片 + ui-spec 增补 | `src/components/settings/badge-card.tsx` |
 | P4 公开页 | `/u/[token]` + 自家 README 挂徽章 | `src/app/u/[token]/page.tsx`；`src/components/u/*` |
+| P5 徽章视觉（2026-11-02） | 头像 + 品牌标 + 单行来源（含来源标） | `src/lib/badge/render.ts`；`src/lib/badge/marks.ts`（由品牌标生成）；`src/lib/badge/data.ts`（头像加载） |
 
 - 随 P2 在 AGENTS.md 文档地图增补 `docs/badge.md` 行
 - 零新依赖；除 §3.1 迁移外无其他表结构变更（此前评估曾称"零迁移"，为存令牌与
