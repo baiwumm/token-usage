@@ -27,7 +27,7 @@ TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写�
 | 16 | 退役 | **2026-10-29 已执行**（操作者直接退役，跳过观察期与备份）：旧 Supabase 项目、旧 Vercel 项目、`tokentracker.baiwumm.com` 域名 DNS、旧仓库全部删除（G2/G3；旧仓库原 Archive 方案作废） |
 | 17 | 契约分档 | 2026-10-23 评审增补：两档制——CLI 面（7 端点）硬冻结；Dashboard 面（account-*×7 + dashboard）可演进、消费者仅新 UI，v1 复用现有形状，变更回写契约并同步 golden 测试与前端 |
 | 18 | 分支与门禁 | 直推 main；本地 `pnpm verify` + GitHub Actions CI 兜底（test 自 M1 接入）；`.vscode/` 入库 |
-| 19 | 官方域名 | 2026-10-24 注册 **token-usage.cc**（腾讯云，.cc 可备案）——开源项目官方站：落地页、文档（`docs.` 子域）、可选 demo 实例；操作者自部署实例仍为 `token-usage.baiwumm.com`，与官方站相互独立。命名注意：tokenusage.org 为同类 Rust 工具，无横杠的 tokenusage 域名/品牌一律避开 |
+| 19 | 官方域名 | 2026-10-24 注册 **token-usage.cc**（腾讯云，.cc 可备案）——开源项目官方站：落地页、文档（`docs.` 子域）、可选 demo 实例；操作者自部署实例仍为 `token-usage.baiwumm.com`，与官方站相互独立。命名注意：tokenusage.org 为同类 Rust 工具，无横杠的 tokenusage 域名/品牌一律避开。2026-11-02：本应用托管迁至 EdgeOne Makers（见 §10），token-usage.cc 落地页启动时同样首选该平台 |
 | 20 | 上游基础功能 | 2026-10-25 操作者指令：先按上游 TokenTracker 的基础功能对齐——**A. Dashboard 核心 + 外观设置**，**B. Sessions**。不做上游全量复刻；Limits / Skills / Cloud / Leaderboard / Pet / Widgets / IP check 仍排除；Achievements 于 2026-10-30 移入范围（M7，账号级、读时计算，不移植上游云端成就，见 §5 与 `docs/achievements-plan.md`） |
 | 21 | Dashboard A | 上游 Dashboard 的信息架构（rolling stats、Top 模型、趋势、热力图、模型/来源/设备、日/时/月明细、成本分析）全部复用现有 Dashboard 面契约；不新增表/端点，不改 CLI；HeroUI 重做，图表继续 recharts |
 | 22 | Sessions B | 设备级会话明细：新增 `token_sessions`（`models` JSONB）、ingest 可选 `sessions` 数组、`account-sessions` series；只收用量元数据（source/session_id/时间/项目标签/token/模型），不收 prompt/正文/绝对路径/resume command/标题；成本读取时算；账户级来源（cursor/trae-cn）不进 Sessions v1；旧 CLI 不传 sessions 时行为不变 |
@@ -218,7 +218,7 @@ M5.6 上线后由新版 CLI 采集，旧 CLI 继续只报小时桶与 trae-cn �
 | 契约字段凭印象移植 | 本文发布前逐端点核对过源码；golden 测试双保险 |
 | 开发期测试数据混入新项目生产数据 | 测试专用用户/设备隔离标识；G1 切换前清理测试数据再导入真实数据；对账脚本只认真实用户 |
 | UI 范围失控（重写经典死法） | 功能清单以旧系统活功能为准封闭；新想法记 backlog 不进 v1 |
-| Vercel Hobby 函数超限 | Hobby 上限 12 个 serverless function/部署。当前已用满：11 个命名 route + `[...slug]` catch-all（account series），新增 reconcile 后为 12/12。**下一个端点不得再开新 route**——要么并入 catch-all，要么升级计划；`account-sessions` 一直复用 catch-all |
+| Vercel Hobby 函数超限 | ~~Hobby 上限 12 个 serverless function/部署~~ **2026-11-02 已解除**：托管迁至 EdgeOne Makers（见 §10），该上限不再适用。历史记录：当时已用满 12/12（11 个命名 route + `[...slug]` catch-all），`account-sessions` 等复用 catch-all 的结构保留——新端点仍优先复用 catch-all，不轻易开新 route |
 | 依赖蔓延 | §4 预算制，装前报批 |
 | Sessions 真实数据依赖 M-CLI | 服务端与 UI 先用 fixture 打通契约；M-CLI 未上线前 `/sessions` 只显示「等待新版采集器」空态，不从小时桶推导或伪造会话；M5.6 验收拆成「契约/UI 绿」与「真实数据对账」两段 |
 | Sessions 隐私与载荷 | `session_id` 拒绝路径分隔符；`project_key` 仅 basename；只持久化白名单字段；200 条/32 模型上限，且受全局 1 MiB 体积上限（超限 413，CLI 分批）；golden 测试断言响应与表中无 prompt、正文、标题、绝对路径、resume command |
@@ -264,7 +264,15 @@ Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）、Sessions CSV 导�
 
 **测试与部署**：`pnpm verify` 全绿（lint 0 error + 5 条既有 `no-console` warning；
 web 33 files / 455 tests + build；CLI 138 tests）。CI 在 main 与 `cli-v*` tag 上运行；
-web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm（0.4.3 发版 run 41312131772 全绿）。
+CLI 由 `release-cli.yml` 发 npm（0.4.3 发版 run 41312131772 全绿）。
+**托管迁移（2026-11-02，操作者发起）**：web 由 Vercel 迁至 EdgeOne Makers——面向大陆
+访客加速（`baiwumm.com` 已备案、DNS 在腾讯云，加速区域「全球可用区（含中国大陆）」）。
+代码侧：旧路径别名由 `next.config.mjs` rewrites 迁入 `src/proxy.ts`（EdgeOne 不执行
+next.config 的 rewrites，契约 §1.5 行为冻结不变，`alias-server` golden 原样通过）；新增
+`apps/web/edgeone.json` 钉 monorepo 构建（根目录 `apps/web`、`npx pnpm@12.11.2` 安装与
+构建、Node 24、输出 `.next`）；`edgeone makers build` 本地预检通过。域名不变，Supabase
+Auth 回调与 `TOKEN_USAGE_DASHBOARD_URL` 无需改动。当时遗留的「Vercel Hobby 12 函数上限」
+风险随之解除（后续新端点仍优先复用 catch-all）。
 0.4.2 期间 CI 的 Windows `init` smoke 曾连挂三次（仍在传 0.4.0 删掉的 `--no-auth`，见
 `docs/cli-release.md` §四），commit `c6d7b68` 去掉该参数后转绿。
 

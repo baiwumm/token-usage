@@ -204,3 +204,67 @@ describe("contract gate stays frozen under the page guard", () => {
 		expectNext(await proxy(guardRequest("/api/functions/token-usage-ingest")));
 	});
 });
+
+// The legacy alias moved from next.config rewrites into the proxy on
+// 2026-11-02 (EdgeOne Makers ignores next.config rewrites). These pin the
+// routing decision; tests/contract/alias-server.test.ts still proves the
+// end-to-end responses stay byte-identical.
+describe("legacy tokentracker-* alias (docs/cli-contract.md §1.5)", () => {
+	function rewriteTarget(response: Response): string | null {
+		return response.headers.get("x-middleware-rewrite");
+	}
+
+	it("rewrites GET to the canonical slug and keeps the query string", async () => {
+		const response = await proxy(
+			guardRequest("/api/functions/tokentracker-public-config?probe=1"),
+		);
+
+		expect(rewriteTarget(response)).toBe(
+			"http://localhost/api/functions/token-usage-public-config?probe=1",
+		);
+	});
+
+	it("rewrites POST and the account-series slugs the same way", async () => {
+		const ingest = await proxy(
+			guardRequest("/api/functions/tokentracker-ingest", [], "POST"),
+		);
+		const series = await proxy(
+			guardRequest("/api/functions/tokentracker-account-daily"),
+		);
+
+		expect(rewriteTarget(ingest)).toBe(
+			"http://localhost/api/functions/token-usage-ingest",
+		);
+		expect(rewriteTarget(series)).toBe(
+			"http://localhost/api/functions/token-usage-account-daily",
+		);
+	});
+
+	it("runs the gate first: OPTIONS and 405 answer on the legacy path itself", async () => {
+		const preflight = await proxy(
+			guardRequest("/api/functions/tokentracker-ingest", [], "OPTIONS"),
+		);
+		const patch = await proxy(
+			guardRequest("/api/functions/tokentracker-ingest", [], "PATCH"),
+		);
+
+		expect(preflight.status).toBe(204);
+		expect(patch.status).toBe(405);
+		expect(rewriteTarget(preflight)).toBeNull();
+		expect(rewriteTarget(patch)).toBeNull();
+	});
+
+	it("matches a single path segment only, like the old :slug rule", async () => {
+		expectNext(await proxy(guardRequest("/api/functions/tokentracker-a/b")));
+		expectNext(await proxy(guardRequest("/api/functions/tokentracker-")));
+	});
+
+	it("leaves canonical paths alone", async () => {
+		const response = await proxy(
+			guardRequest("/api/functions/token-usage-public-config"),
+		);
+
+		expectNext(response);
+		expect(rewriteTarget(response)).toBeNull();
+	});
+});

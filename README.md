@@ -22,8 +22,8 @@
 </p>
 
 <p align="center">
-  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbaiwumm%2Ftoken-usage&project-name=token-usage&repository-name=token-usage">
-    <img src="https://vercel.com/button" alt="Deploy with Vercel" />
+  <a href="https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2Fbaiwumm%2Ftoken-usage&project-name=token-usage&root-directory=apps%2Fweb&install-command=npx%20--yes%20pnpm%4012.11.2%20install%20--frozen-lockfile%20--filter%20%40token-usage%2Fweb&build-command=npx%20--yes%20pnpm%4012.11.2%20run%20build&output-directory=.next&env=NEXT_PUBLIC_SUPABASE_URL%2CNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY%2CSUPABASE_SECRET_KEY%2CTOKEN_USAGE_DASHBOARD_URL&env-description=Supabase%20Project%20URL%20%2F%20Publishable%20key%20%2F%20Secret%20key%2C%20and%20the%20deployment%20origin&env-link=https%3A%2F%2Fgithub.com%2Fbaiwumm%2Ftoken-usage%2Fblob%2Fmain%2Fdocs%2Fdeploy-guide.md">
+    <img src="https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg" alt="使用 EdgeOne Makers 部署" />
   </a>
 </p>
 
@@ -57,7 +57,7 @@
 - **数据自主**：每个部署实例绑定自己的 Supabase 项目，采集端只向配对实例上报，跨实例零共享
 - **可观测**：仪表盘 / Sessions 会话明细（支持按当前筛选导出 CSV）/ 采集运行记录 / 成就墙；积分（credits）作为独立维度展示，不混入 token 与成本
 - **契约先行**：CLI 采集契约两档制——采集面硬冻结、仪表盘面随 UI 演进（[`docs/cli-contract.md`](docs/cli-contract.md)）
-- **开源自部署**：Vercel free + Supabase free 即可跑通，见[部署指南](docs/deploy-guide.md)
+- **开源自部署**：EdgeOne Makers 免费版 + Supabase free 即可跑通（已备案域名可加速中国大陆访问；代码不绑定平台，Vercel 等同样可部署），见[部署指南](docs/deploy-guide.md)
 
 ## 🧱 技术栈
 
@@ -113,7 +113,7 @@ M-CLI 采集端（`tokenusage-cli`，当前 0.3.0）→ M6 数据迁移与切换
 | [`docs/sources-capture-plan.md`](docs/sources-capture-plan.md) | 来源接入任务：Trae CN、credits 全链路、Sessions credits |
 | [`docs/cli-release.md`](docs/cli-release.md) | CLI 发版手册：tag 流水线、版本升级与实测记录 |
 | [`docs/web-optimization-backlog.md`](docs/web-optimization-backlog.md) | Web 端优化历史清单（2026-11-01 已清） |
-| [`docs/deploy-guide.md`](docs/deploy-guide.md) | 部署指南：Supabase + Vercel 从零跑通 |
+| [`docs/deploy-guide.md`](docs/deploy-guide.md) | 部署指南：Supabase + EdgeOne Makers 从零跑通 |
 | [`docs/launch-runbook.md`](docs/launch-runbook.md) | 发布手册：部署顺序、冒烟清单、回滚 |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 第三方资产与许可登记（品牌图标、字体、定价快照、代码来源） |
 
@@ -127,7 +127,7 @@ independent community project; code provenance and third-party licenses live in
 [`LICENSE`](./LICENSE) and [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
 
 - **Stack**: Next.js 16 (App Router) · React 19 · HeroUI 3 · Tailwind CSS 4 · Supabase (Auth + Postgres, RLS denies all client roles) · pnpm workspace
-- **Deploy**: Supabase (free tier) + Vercel (Hobby) is enough — see the [English-friendly deploy guide](docs/deploy-guide.md) (Chinese, step by step) or use the Deploy button above
+- **Deploy**: Supabase (free tier) + EdgeOne Makers (free plan, with mainland China acceleration for ICP-filed domains) is enough — see the [deploy guide](docs/deploy-guide.md) (Chinese, step by step) or use the Deploy button above. The code is host-agnostic, so Vercel and similar platforms work too
 - **Pairing**: the collector CLI prints a `XXXX-XXXX` code and opens `/device?user_code=...`; you approve it after signing in, and reporting starts immediately
 - **CLI contract**: two-tier — the collector-facing API is frozen, the dashboard API evolves with the UI ([`docs/cli-contract.md`](docs/cli-contract.md))
 

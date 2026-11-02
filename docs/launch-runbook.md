@@ -7,17 +7,20 @@
 
 清单以 `docs/rewrite-plan.md` §9 为准：`NEXT_PUBLIC_SUPABASE_URL` 与
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 是浏览器可见的公开值，`SUPABASE_SECRET_KEY` 等
-其余变量为 server-only；在 Vercel 项目的 Production 与 Preview 各配一份。
+其余变量为 server-only；在 EdgeOne Makers 项目设置 → 环境变量里配齐。`NEXT_PUBLIC_*` 在
+构建期内联进前端，改动后须重新部署才生效。
 
 ## 部署顺序
 
-0. 本地开发：`.env.local` 由操作者提供（或 `vercel env pull`）；开发用测试专用用户与设备
-   （操作者经 service-role 创建），生产数据零触碰。
+0. 本地开发：`.env.local` 由操作者提供（或 `edgeone makers link` 后 `edgeone makers env pull`）；
+   开发用测试专用用户与设备（操作者经 service-role 创建），生产数据零触碰。
 1. 新建**独立的 Supabase 项目**（与旧系统项目分离），跑 `supabase/migrations` 建表；
-   本仓库导入为新 Vercel 项目，绑定域名 `token-usage.baiwumm.com`，按 §9 配齐环境变量
-   （Supabase 三项指向新项目）。**升级已有部署时**，按文件名顺序补齐新增迁移；新版
-   ingest 会写 `credits` 列，必须先应用 `20261031000000` / `20261031000001` /
-   `20261031000003` 再部署新代码。
+   本仓库导入 EdgeOne Makers 项目（根目录 `apps/web`，构建配置见 `apps/web/edgeone.json`，
+   加速区域「全球可用区（含中国大陆）」），绑定域名 `token-usage.baiwumm.com`，按 §9 配齐
+   环境变量（Supabase 三项指向新项目）。步骤细节见 `docs/deploy-guide.md` 第 4 步。
+   **升级已有部署时**，按文件名顺序补齐新增迁移；新版 ingest 会写 `credits` 列，必须先
+   应用 `20261031000000` / `20261031000001` / `20261031000003` 再部署新代码。
+   （2026-10-26 首发时托管在 Vercel，2026-11-02 迁至 EdgeOne Makers，见下文「托管迁移」。）
 2. 在新域名跑下方冒烟清单，全绿（含旧路径别名）。
 3. 【G1 闸门——操作者放行】采集机逐台把 base URL 改为
    `https://token-usage.baiwumm.com/api`。
@@ -34,9 +37,30 @@
 
 - `/` 返回 200；`/device` 可达且能提交配对码；
 - CLI 全链路：`authorize` → `/device` 批准 → `poll` 拿到令牌 → `ingest` 一批 → 200；
-- 旧路径别名：`GET /api/functions/tokentracker-public-config` 经 rewrite 返回与规范路径相同的结果；
+- 旧路径别名：`GET /api/functions/tokentracker-public-config` 经 `src/proxy.ts` 改写返回与规范路径相同的结果；
 - 仪表盘数值与 `queue.jsonl` last-wins 对账一致；
+- 公开徽章：`/api/badge?token=…` 返回 `image/svg+xml`，`/u/<token>` 可达；未知令牌分别回兜底卡与 404；
 - 浏览器网络面板零 Supabase 直连请求。
+
+## 托管迁移：Vercel → EdgeOne Makers（2026-11-02）
+
+背景：面向中国大陆访客加速；`baiwumm.com` 已备案、DNS 在腾讯云。代码侧已完成（旧路径
+别名由 `next.config.mjs` rewrites 迁入 `src/proxy.ts`——EdgeOne 不执行 next.config 的
+rewrites；新增 `apps/web/edgeone.json`）；`edgeone makers build` 本地预检通过（SSR 云函数
+约 30 MB、中间件边缘函数约 0.5 MB，均在上限内）。操作者切换步骤：
+
+1. Vercel 项目已暂停（操作者，2026-11-02），保留不删，作为回滚路径。
+2. EdgeOne Makers 控制台导入 GitHub 仓库：分支 `main`、根目录 `apps/web`、加速区域
+   「全球可用区（含中国大陆）」；环境变量四项（取值同 Vercel / 本机 `.env.local`）先于
+   首次构建填好。
+3. 首次部署后先用预设域名（`*.edgeone.cool`，大陆访问带 `eo_token`）跑一遍冒烟清单。
+4. 绑定自定义域名 `token-usage.baiwumm.com`：控制台添加域名 → 腾讯云 DNS 把
+   `token-usage` 的 CNAME 从 Vercel 改为 EdgeOne 给出的值 → 申请免费证书。域名不变，
+   Supabase Auth 的 Site URL / Redirect URLs 与 `TOKEN_USAGE_DASHBOARD_URL` 均无需改。
+5. 在正式域名再跑一遍冒烟清单；在 EdgeOne Web 防护里给 `/api/functions/*` 配 429 速率
+   规则（`docs/cli-contract.md` §1.6）。
+
+回滚：恢复 Vercel 项目并把 CNAME 指回 Vercel（`proxy.ts` 别名在 Vercel 上同样生效）。
 
 ## 新 CLI 迁移（M-CLI，tokenusage-cli）
 
@@ -98,8 +122,8 @@
 
 ## 自动发版
 
-- GitHub Actions 跑 `pnpm verify` 作为合并门禁；Vercel Git 集成负责构建：
-  每次 push 自动生成 Preview，main 产出 Production。
+- GitHub Actions 跑 `pnpm verify` 作为合并门禁；EdgeOne Makers Git 集成负责构建：
+  推送到部署分支 `main` 即自动部署（2026-11-02 前为 Vercel Git 集成）。
 - CLI 已接入 tag 触发流水线：`.github/workflows/release-cli.yml` 在 `cli-v*` tag 上
   校验版本与 main 祖先、跑 `pnpm verify`、`npm publish --provenance` 并生成 GitHub
-  Release；操作步骤见 `docs/cli-release.md`。web 端仍由 Vercel 部署，不发 npm 版本。
+  Release；操作步骤见 `docs/cli-release.md`。web 端由 EdgeOne Makers 部署，不发 npm 版本。

@@ -6,9 +6,10 @@
 // 1. Contract gate (M1, behavior frozen): for every /api/functions/* request,
 //    OPTIONS answers 204 with the CORS headers, and everything besides GET
 //    and POST — HEAD included, matching the reference handlers' method checks
-//    — gets the JSON 405 envelope. Requests arriving through the legacy
-//    tokentracker-* rewrites pass through here too. The gate never consults
-//    the session: CLI traffic follows the contract's own auth rules.
+//    — gets the JSON 405 envelope. GET/POST on a legacy tokentracker-* path
+//    then rewrites to its canonical token-usage-* handler (§1.5). The gate
+//    never consults the session: CLI traffic follows the contract's own auth
+//    rules.
 // 2. Page guard (M2): protected pages redirect unauthenticated browsers to
 //    /login, carrying the original path + query in ?next= (the pairing link's
 //    ?user_code= must survive the hop — docs/requirements.md 路由约定,
@@ -23,6 +24,29 @@ import { LOGIN_PATH } from "@/lib/auth/next-path";
 import { CORS_HEADERS } from "@/lib/api/http";
 
 const CONTRACT_API_PREFIX = "/api/functions/";
+const LEGACY_ALIAS_PREFIX = `${CONTRACT_API_PREFIX}tokentracker-`;
+const CANONICAL_PREFIX = `${CONTRACT_API_PREFIX}token-usage-`;
+
+// Legacy path alias (docs/cli-contract.md §1.5, frozen): the pinned
+// tokentracker-cli 1.4.x hardcodes the old tokentracker-* slugs. Only that one
+// path segment is renamed; method, body, headers and query reach the
+// canonical handler unchanged. It lives here instead of next.config rewrites
+// because EdgeOne Makers ignores those (2026-11-02), and a proxy rewrite
+// behaves the same on every host. Like the old `:slug` rule it matches a
+// single segment — deeper paths fall through to routing untouched.
+function legacyAliasTarget(request: NextRequest): URL | null {
+  const { pathname } = request.nextUrl;
+
+  if (!pathname.startsWith(LEGACY_ALIAS_PREFIX)) return null;
+  const slug = pathname.slice(LEGACY_ALIAS_PREFIX.length);
+
+  if (!slug || slug.includes("/")) return null;
+  const target = request.nextUrl.clone();
+
+  target.pathname = `${CANONICAL_PREFIX}${slug}`;
+
+  return target;
+}
 
 // Protected pages per docs/requirements.md 范围表 (2026-10-24 二次修订):
 // the dashboard IS / — everything except /login, /auth/callback and the CLI
@@ -64,7 +88,9 @@ export async function proxy(request: NextRequest) {
       });
     }
 
-    return NextResponse.next();
+    const alias = legacyAliasTarget(request);
+
+    return alias ? NextResponse.rewrite(alias) : NextResponse.next();
   }
 
   if (!isProtectedPage(pathname)) return NextResponse.next();

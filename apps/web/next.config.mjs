@@ -1,28 +1,13 @@
 /** @type {import('next').NextConfig} */
 
-// Legacy path alias for the pinned collector CLI (tokentracker-cli@1.4.x):
-// its functionUrlFor() hardcodes the old `tokentracker-*` slugs, so the old
-// paths keep serving identical behavior via rewrite. Frozen until every
-// collector has migrated; see docs/cli-contract.md §1.5.
-const legacyApiRewrites = [
-  {
-    source: "/api/functions/tokentracker-account-:series",
-    destination: "/api/functions/token-usage-account-:series",
-  },
-  {
-    source: "/api/functions/tokentracker-:slug",
-    destination: "/api/functions/token-usage-:slug",
-  },
-];
-
+// No rewrites/redirects here: EdgeOne Makers ignores them, so the legacy
+// tokentracker-* path alias (docs/cli-contract.md §1.5) lives in src/proxy.ts,
+// where it behaves the same on every host.
 const nextConfig = {
 	// Tests that boot their own server (tests/contract/alias-server.test.ts)
 	// set NEXT_DIST_DIR so two dev instances on this tree never contend for
 	// the same build directory. Unset in every other environment.
 	distDir: process.env.NEXT_DIST_DIR || ".next",
-	async rewrites() {
-		return legacyApiRewrites;
-	},
 	experimental: {
 		// Barrel packages imported by name across many client components; the
 		// optimizer rewrites them to per-symbol modules.

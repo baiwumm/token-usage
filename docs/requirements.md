@@ -29,7 +29,7 @@
 | 配对 | `/device` | 页面批准 CLI 配对码 |
 | CLI API | `/api/functions/token-usage-*` | CLI 面 8 端点 + Dashboard 面 10 端点（`docs/cli-contract.md` §2） |
 | 产品落地页 | token-usage.cc | **独立建站**（不在本应用内）：产品介绍、自部署入口（部署指南 / GitHub）、登录入口；**2026-11-01 拍板延后**，等 web / 桌面端 / CLI 功能全部完成后启动 |
-| 开源自部署 | — | 中文部署指南、迁移脚本、Deploy to Vercel 按钮 |
+| 开源自部署 | — | 中文部署指南、迁移脚本、Deploy 按钮（EdgeOne Makers 为主，其他平台通用） |
 
 路由约定（2026-10-24 二次修订）：仪表盘挂 `/` 且**需要登录**；**除 `/login`、`/auth/callback`
 与 CLI API 外，所有页面未登录一律重定向到登录页**，重定向须保留原始路径与查询参数
@@ -38,8 +38,9 @@
 设置分区用 `/settings?section=appearance|account|devices` 深链，不新增顶层路由。
 产品落地页不在本应用内，使用 **token-usage.cc** 独立域名创建（开源自部署介绍站，与本
 应用部署域相互独立）；启动时机见上表（2026-11-01 拍板延后至 web / 桌面端 / CLI 功能
-全部完成）。CLI API 走 `docs/cli-contract.md` 自身的公开/鉴权规则，不受页面
-守卫影响。路由表变更需回写本表。
+全部完成）。本应用部署在 EdgeOne Makers（2026-11-02 起，原 Vercel；加速区域「全球可用区
+（含中国大陆）」），自定义域名部署属平台配置，不构成本应用的需求约束。CLI API 走
+`docs/cli-contract.md` 自身的公开/鉴权规则，不受页面守卫影响。路由表变更需回写本表。
 
 ## 边界（v1 不做什么）
 

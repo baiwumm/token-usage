@@ -1,0 +1,6 @@
+{
+  "installCommand": "npx --yes pnpm@12.11.2 install --frozen-lockfile --filter @token-usage/web",
+  "buildCommand": "npx --yes pnpm@12.11.2 run build",
+  "outputDirectory": ".next",
+  "nodeVersion": "24.18.0"
+}
