@@ -31,10 +31,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-# edgeone makers CLI: local link/auth state (.edgeone/auth.json, .edgeone/.token
-# are credentials) and `edgeone makers build` output — never commit
-.edgeone/
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts

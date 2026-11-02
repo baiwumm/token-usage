@@ -65,20 +65,15 @@
 ### 1.5 旧路径别名（冻结）
 
 `/api/functions/tokentracker-<slug>` 与规范路径行为逐字相同（含错误响应格式），由
-`apps/web/src/proxy.ts`（Next.js 16 中间件）把 `tokentracker-` 段前缀改写为 `token-usage-`
-实现（只改写单个路径段，查询参数原样保留），本身属于契约：只要仍有钉版 CLI 1.4.x 的
-采集机存在，别名就永久保留。2026-11-02 实现位置由 `next.config.mjs` 的 rewrites 迁入
-proxy（操作者确认）：EdgeOne Makers 不支持 next.config 的 rewrites/redirects，改由
-中间件实现后 EdgeOne、Vercel 与本地行为一致；行为不变，由 `tests/contract/alias-server.test.ts`
-逐字比对守护。别名只供已部署采集机使用，新集成一律使用规范路径。自有 `tokenusage-cli`
+`next.config.mjs` 的 rewrites 实现，本身属于契约：只要仍有钉版 CLI 1.4.x 的采集机存在，
+别名就永久保留。别名只供已部署采集机使用，新集成一律使用规范路径。自有 `tokenusage-cli`
 全量替代旧 CLI 后，别名可退役；移除属破坏性变更，需操作者确认并清点采集机。
 
 ### 1.6 限流与滥用边界（部署侧，2026-10-27 裁定）
 
 代码层**不做**速率限制：本服务部署在 serverless 平台，多实例下进程内计数器不成立。
-限流与滥用防护由**部署平台**承担（如 EdgeOne 的 Web 防护 / 速率限制规则；部署在 Vercel
-时为 Vercel Firewall），属于部署配置而非本契约；公网部署应至少对 `/api/functions/*`
-配置基础的 429 速率规则。
+限流与滥用防护由**部署平台**承担（如 Vercel Firewall 的速率规则），属于部署配置而非
+本契约；公网部署应至少对 `/api/functions/*` 配置基础的 429 速率规则。
 
 已评估并接受的风险：device-flow `user_code` 猜解——字母表 32 字符 × 8 位（≈1.1×10¹²
 组合）、配对码 15 分钟过期、批准需账户持有人在 `/device` 交互确认，暴力猜解在过期窗口
@@ -225,7 +220,7 @@ Query：`from`、`to`（`YYYY-MM-DD`，缺省= 首日 / 调用方本地今天）
 
 八个只读序列。前六个共享一套时区上下文参数（`tz` / `tz_offset_minutes`）与 `device_id` 过滤；
 `sessions` 与 `sync-runs` 使用绝对瞬时窗口，不需要 `tz`。Next.js 实现为**一个**动态路由
-（对齐当时的 Vercel Hobby 12 函数上限；2026-11-02 迁至 EdgeOne Makers 后该上限不再适用，结构保留）：`app/api/functions/[...slug]/route.ts` catch-all 承接
+（对齐 Vercel Hobby 12 函数上限）：`app/api/functions/[...slug]/route.ts` catch-all 承接
 `token-usage-account-<series>` slug（App Router 的动态段必须独占整段，`token-usage-account-[series]` 形式的"半动态段"目录不成立），静态兄弟路由优先解析不受影响；series 既可来自路径也可来自 `?series=`。未知 series → `404 {"error":"Unknown account series: ...","series":[...]}`。
 
 | series | 参数 | 响应顶层 |
@@ -344,7 +339,7 @@ Query：`range`(≤20 字符，默认 `"custom"`)、`from`、`to`（ISO 时间�
 ### 2.12 `GET /api/functions/token-usage-account-sync-runs`（设备令牌或 JWT｜Dashboard 面）
 
 > §2.11 的读取面，作为 §2.7 catch-all 的**第 8 个 series**（不新增函数数目，对齐
-> 当时 Vercel 12 函数上限的既有约束）；分页与全集语义对齐 `sessions` series。
+> Vercel 12 函数上限的既有约束）；分页与全集语义对齐 `sessions` series。
 
 Query：`from`、`to`（ISO 瞬时，按 `started_at ∈ [from,to)`）、`device_id`（可选，UUID）、`trigger`（可选，枚举同 §2.11）、`result`（可选，枚举同 §2.11）、`limit`(1–200，默认 50)、`offset`(≥0)。
 
