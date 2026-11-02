@@ -76,6 +76,7 @@ JSON）永不包含 session 明细、提示词、正文、绝对路径、email�
 create table if not exists public.token_public_badges (
   user_id uuid primary key references auth.users(id) on delete cascade,
   token_hash text unique check (token_hash is null or char_length(token_hash) = 64),
+  token_last4 text check (token_last4 is null or char_length(token_last4) = 4),
   enabled boolean not null default false,
   display_name text not null default '' check (char_length(display_name) <= 80),
   timezone text not null default 'UTC' check (char_length(timezone) between 1 and 64),
@@ -88,7 +89,10 @@ create table if not exists public.token_public_badges (
 ```
 
 - RLS enabled 零 policy + 仅 `service_role`（与 `token_*` 表同姿态，浏览器零直连）
-- `token_hash` 可空：`null` = 未生成或已吊销；PG unique 允许多个 NULL
+- `token_hash` 可空：`null` = 未生成；PG unique 允许多个 NULL
+- `token_last4` 是生成时落库的明文末 4 位，仅供 §7.1 GET 的 `tokenLast4` 展示；
+  sha256 不可逆、末 4 位无法从哈希还原，必须随生成持久化（2026-11-02 P2 实施修订，
+  由 contract golden 钉定）
 - `display_name` 是**会话快照**（§7.1 写入），公开渲染不回查 auth，也绝不回退到 email
 - `allowed_projects` 元素级校验（每项 ≤120 字符、过 `normalizeProjectKey`）在应用层
   完成（PG CHECK 不能含子查询）
@@ -96,10 +100,12 @@ create table if not exists public.token_public_badges (
 ### §3.2 令牌
 
 - 格式：`tu_badge_` + 32 字符 base64url（24 字节 CSPRNG）；前缀便于密钥扫描
-- 服务端只存 `sha256(token)` hex（64 位小写）；明文只在生成响应里出现一次，之后
-  不可再取
-- 重置 = 覆盖 `token_hash`（旧令牌即刻失效，相当于轮换 + 吊销一体）
-- 吊销 = `token_hash` 置 `null` 且 `enabled=false`
+- 服务端只存 `sha256(token)` hex（64 位小写）+ 明文末 4 位（`token_last4`，§3.1）；
+  明文只在生成响应里出现一次，之后不可再取
+- 重置 = 覆盖 `token_hash`（旧令牌即刻失效，相当于轮换；公开端呈现 `badge unavailable`）
+- 吊销（§7.1 DELETE）= `enabled=false`，哈希与末 4 位保留——公开端按 §2.3 呈现
+  `badge disabled`，重新启用无需重发令牌（2026-11-02 P2 实施修订：golden 的 DELETE
+  用例要求吊销后仍渲染 `badge disabled`，哈希置空将呈现 `badge unavailable`，与断言冲突）
 - 令牌出现在 URL 查询里 → 会进各级访问日志：这是公开徽章的设计前提（令牌只控制
   聚合数字的公开），泄露面 = 重置即换锁
 
@@ -188,7 +194,9 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   `Date.now()` / `Math.random()` 等不确定源——同一输入字节级相同（golden 快照稳定）
 - 全部动态文本过 XML 转义；project_key 展示截断 ≤24 字符加 `…`
 - 输出永不包含：原始令牌、token_hash、user_id、绝对路径、email、`<script`、
-  外链资源（`http://` / `https://` 引用）
+  外链资源（`http://` / `https://` 引用）；唯一例外是根元素的 SVG 命名空间声明
+  `xmlns="http://www.w3.org/2000/svg"`——它是标识符、不发起请求，缺了它浏览器拒绝
+  解码独立的 image/svg+xml（实测 0×0 破图；2026-11-02 操作者裁定，golden 精确豁免该串）
 - 字体栈（GitHub camo 禁外链字体，只能系统字体）：
   `-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`
 - 文本宽度用实现内固定字宽表估算（同字符集 → 同宽度，纯函数确定）
@@ -249,7 +257,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 | `GET` | 返回 `{enabled, timezone, allowedProjects, hasToken, tokenLast4}`（永不回明文） |
 | `POST {action:"generate"}` | 生成/重置令牌：写 `token_hash`、`enabled=true`、`display_name` 快照（取会话 `user_metadata.display_name`，缺省空串），响应**一次性**携带明文 token |
 | `PUT` | 更新 `{enabled?, timezone?, allowedProjects?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项报 `400`；timezone 按 `parseTzContext` 约定归一 |
-| `DELETE` | 吊销：`token_hash=null` 且 `enabled=false` |
+| `DELETE` | 吊销：`enabled=false`（哈希与末 4 位保留，公开端呈现 `badge disabled`，§3.2） |
 
 - 无会话 → `401 {error:"Unauthorized"}`；非法体 → `400 {error}`；一律 `no-store`
 
@@ -293,6 +301,10 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 - canonical fixtures（附录 A）是单测与实现的共同输入；契约测试经 FakeSupabase
   播种 `token_public_badges` / `token_usage_hourly` / `token_sessions`
+- P2 落地修订（2026-11-02，操作者逐条批准）：① 转义用例期望值补上漏写的 `&amp;`
+  （`'a<b>&"c'` 的正确转义为 `a&lt;b&gt;&amp;&quot;c`）；② 外链断言精确豁免 SVG
+  命名空间声明（§5.1）。测试基建同步：FakeSupabase 注册 `token_public_badges`，
+  契约 fixture 补 `token_last4`（§3.1）；其余断言原样
 
 ## §10 实施阶段
 

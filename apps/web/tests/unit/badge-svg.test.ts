@@ -139,7 +139,7 @@ describe.skipIf(!render)("badge svg renderer (docs/badge.md §5)", () => {
       { style: "panel", theme: "dark" },
     );
 
-    expect(svg).toContain("&lt;b&gt;&quot;c");
+    expect(svg).toContain("&lt;b&gt;&amp;&quot;c");
     expect(svg).not.toContain("<b>");
   });
 
@@ -160,7 +160,10 @@ describe.skipIf(!render)("badge svg renderer (docs/badge.md §5)", () => {
       for (const theme of ["dark", "light", "auto"] as const) {
         const svg = renderA(style, theme);
         expect(svg).not.toContain("<script");
-        expect(svg).not.toContain("http://");
+        // The SVG namespace declaration is an identifier that is never
+        // fetched — without it browsers refuse to decode the image (operator
+        // call 2026-11-02); any other http:// reference is still forbidden.
+        expect(svg.replace('xmlns="http://www.w3.org/2000/svg"', "")).not.toContain("http://");
         expect(svg).not.toContain("https://");
         expect(svg).not.toContain("NaN");
         expect(svg).not.toContain("undefined");

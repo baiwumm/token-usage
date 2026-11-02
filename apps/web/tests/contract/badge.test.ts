@@ -74,6 +74,7 @@ function seedBadgeScenario(): void {
   fake.table("token_public_badges").push({
     user_id: USER_ID,
     token_hash: BADGE_HASH,
+    token_last4: BADGE_TOKEN.slice(-4),
     enabled: true,
     display_name: "Ming Wei",
     timezone: "Asia/Shanghai",
