@@ -7,6 +7,11 @@
 // its SHA-256 hash plus the last four characters for the settings display.
 // DELETE disables (hash kept, §3.2) so the public badge reads
 // "badge disabled"; only a generate rotates the hash away.
+//
+// GET ?preview=1 renders the owner's badge SVG from the session instead of
+// the token (§7.3) — the settings page never holds the plaintext after the
+// one-time reveal. It lives on this route so the deployment keeps the same
+// function count.
 
 import { randomBytes } from "node:crypto";
 
@@ -19,10 +24,14 @@ import { select, update, upsert } from "@/lib/api/supabase-rest";
 import { authConfig } from "@/lib/auth/config";
 import {
   invalidateBadgeData,
+  loadBadgeData,
+  loadKnownProjects,
   normalizeBadgeAllowlist,
   normalizeBadgeProject,
   normalizeBadgeTimezone,
 } from "@/lib/badge/data";
+import { parseBadgeParams } from "@/lib/badge/params";
+import { renderBadgeSvg, renderFallbackBadge } from "@/lib/badge/render";
 import { sha256Hex } from "@/lib/device-codes";
 
 const TABLE = "token_public_badges";
@@ -84,13 +93,15 @@ type BadgeRow = {
   token_hash: string | null;
   token_last4: string | null;
   enabled: boolean | null;
+  display_name: string | null;
   timezone: string | null;
   allowed_projects: unknown;
 };
 
 async function loadRow(userId: string): Promise<BadgeRow | undefined> {
   const rows = await select(TABLE, {
-    select: "token_hash,token_last4,enabled,timezone,allowed_projects",
+    select:
+      "token_hash,token_last4,enabled,display_name,timezone,allowed_projects",
     filters: [["user_id", "eq", userId]],
     limit: 1,
   });
@@ -119,19 +130,91 @@ async function readJson(request: NextRequest): Promise<unknown> {
 }
 
 // Storage failures answer one generic envelope; details stay server-side.
-function unavailable(error: unknown): NextResponse {
+function logError(error: unknown): void {
   console.error(error);
+}
+
+function unavailable(error: unknown): NextResponse {
+  logError(error);
 
   return jsonError(503, "Badge config unavailable");
 }
 
-export async function GET() {
+function svgResponse(svg: string): NextResponse {
+  return new NextResponse(svg, {
+    status: 200,
+    headers: {
+      "Content-Type": "image/svg+xml; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+// §7.3 owner preview: the same params, loader and renderer as the public
+// endpoint, authenticated by the session. Renders regardless of the enabled
+// flag so a style can be chosen before going public; the allowlist still
+// applies to repo previews.
+async function previewResponse(
+  session: { userId: string; displayName: string },
+  search: URLSearchParams,
+): Promise<NextResponse> {
+  const query = new URLSearchParams(search);
+
+  query.set("token", "preview");
+  const params = parseBadgeParams(query);
+
+  if (!params.ok) return svgResponse(renderFallbackBadge("bad request"));
+
+  try {
+    const row = await loadRow(session.userId);
+    let project: string | null = null;
+
+    if (params.scope === "repo") {
+      project = normalizeBadgeProject(params.project);
+      if (
+        !project ||
+        !normalizeBadgeAllowlist(row?.allowed_projects).includes(project)
+      ) {
+        return svgResponse(renderFallbackBadge("unknown project"));
+      }
+    }
+    const data = await loadBadgeData(
+      session.userId,
+      {
+        displayName: row?.display_name || session.displayName,
+        timezone: normalizeBadgeTimezone(row?.timezone),
+      },
+      params.scope,
+      project,
+      params.range,
+    );
+
+    return svgResponse(
+      renderBadgeSvg(data, { style: params.style, theme: params.theme }),
+    );
+  } catch (error) {
+    logError(error);
+
+    return svgResponse(renderFallbackBadge("badge unavailable"));
+  }
+}
+
+export async function GET(request: NextRequest) {
   const session = await authenticate();
 
   if ("response" in session) return session.response;
 
+  const search = request.nextUrl.searchParams;
+
+  if (search.get("preview") === "1") return previewResponse(session, search);
+
   try {
-    return jsonResponse(200, configPayload(await loadRow(session.userId)));
+    const [row, knownProjects] = await Promise.all([
+      loadRow(session.userId),
+      loadKnownProjects(session.userId),
+    ]);
+
+    return jsonResponse(200, { ...configPayload(row), knownProjects });
   } catch (error) {
     return unavailable(error);
   }

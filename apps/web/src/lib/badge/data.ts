@@ -1,21 +1,24 @@
 // Aggregation for the public badge and the /u page (docs/badge.md §4).
 //
-// Account badges sum the RAW token_usage_hourly rows (§4.1: totals are sums
-// of total_tokens / total_cost_usd — the golden pins stored costs, not
-// read-time pricing). Repo badges read token_sessions (§4.2) and price
-// per-model entries through the shared pricing engine, matching the
-// dashboard's session-detail treatment. Both loads reuse the dashboard's
-// single-flighted snapshot loaders — no second full-pull path exists.
+// The badge shows what the dashboard shows. Account badges aggregate the
+// account snapshot's canonicalRows (active devices only, Cursor deduped,
+// Trae CN from session states) and cost each row with rowCost — the
+// dashboard's read-time pricing, which only trusts stored costs for
+// grok/cline (2026-11-02 operator call: stored costs are 0 for collector
+// rows). Repo badges read the sessions the Sessions page would list and price
+// their per-model entries through the same engine. Both loads reuse the
+// dashboard's single-flighted snapshot loaders — no second full-pull path.
 //
 // A small single-flight sits on top keyed by (user, scope, project, range)
 // per §8; style/theme only affect rendering. Config mutations from
 // /api/app/badge call invalidateBadgeData. Tests opt out via the shared
 // TOKEN_USAGE_USAGE_CACHE=off convention.
 
+import type { RestRow } from "@/lib/api/supabase-rest";
 import type { BadgeData, BadgeModel, BadgeRange, BadgeSource } from "./types";
 
 import { loadAccountUsage, loadSessionRows } from "@/lib/api/account-data";
-import { zonedDayKey } from "@/lib/account/series";
+import { rowCost, zonedDayKey } from "@/lib/account/series";
 import { normalizeProjectKey } from "@/lib/ingest/normalize";
 import { ModelDisplayName, modelGroupKey } from "@/lib/model-names";
 import { computeRowCost } from "@/lib/pricing";
@@ -102,9 +105,8 @@ function aggregateHourly(
     const tokens = n0(row.total_tokens);
 
     agg.tokens += tokens;
-    // §4.1: stored provider-reported costs summed verbatim (golden-pinned);
-    // read-time pricing stays the repo badge's job.
-    agg.costUsd += n0(row.total_cost_usd);
+    // Dashboard parity: the same per-row read-time cost summarizeRows uses.
+    agg.costUsd += rowCost(row);
     const source = String(row.source ?? "").trim() || "unknown";
 
     agg.sourceTokens.set(source, (agg.sourceTokens.get(source) ?? 0) + tokens);
@@ -113,6 +115,26 @@ function aggregateHourly(
   }
 
   return agg;
+}
+
+// The sessions the Sessions page would list (docs/cli-contract.md §2.7 read
+// face): active devices only, account-level sources never.
+function visibleSessions(sessions: RestRow[], devices: RestRow[]): RestRow[] {
+  const active = new Set(
+    devices
+      .filter((device) => !device.revoked_at)
+      .map((device) => String(device.id)),
+  );
+
+  return sessions.filter((row) => {
+    const source = String(row.source ?? "");
+
+    return (
+      active.has(String(row.device_id ?? "")) &&
+      source !== "cursor" &&
+      source !== "trae-cn"
+    );
+  });
 }
 
 // §4.2: repo cost is priced per model entry through the shared engine — the
@@ -226,10 +248,12 @@ async function buildBadgeData(
       range === "30d"
         ? new Date(now.getTime() - SERIES_DAYS * DAY_MS).toISOString()
         : ALL_RANGE_FLOOR;
-    const { sessions } = await loadSessionRows(userId, fromIso, toIso);
+    const { sessions, devices } = await loadSessionRows(userId, fromIso, toIso);
     // §4.2: exact match on the normalized project_key; empty-keyed historical
     // sessions can never equal a requested name, so they drop out here.
-    const rows = sessions.filter((row) => row.project_key === project);
+    const rows = visibleSessions(sessions, devices).filter(
+      (row) => row.project_key === project,
+    );
     const agg = aggregateSessions(rows, timeZone);
 
     return {
@@ -249,15 +273,16 @@ async function buildBadgeData(
   }
 
   const usage = await loadAccountUsage(userId);
-  // §4.1 reads the raw hourly table; §4.4's 30d window is a rolling cutoff
-  // from the request instant (cache-TTL drift is an implementation detail).
+  // §4.1 dashboard parity: the snapshot's canonical rows. §4.4's 30d window
+  // is a rolling cutoff from the request instant (cache-TTL drift is an
+  // implementation detail).
   const cutoffMs = now.getTime() - SERIES_DAYS * DAY_MS;
   const rows =
     range === "30d"
-      ? usage.hourly.filter(
+      ? usage.canonicalRows.filter(
           (row) => Date.parse(String(row.hour_start ?? "")) >= cutoffMs,
         )
-      : usage.hourly;
+      : usage.canonicalRows;
   const agg = aggregateHourly(rows, timeZone);
 
   return {
@@ -359,4 +384,30 @@ export function normalizeBadgeTimezone(value: unknown): string {
   } catch {
     return "UTC";
   }
+}
+
+const MAX_KNOWN_PROJECTS = 200;
+
+// Settings allowlist source (§7.2): the distinct non-empty project_keys of the
+// owner's sessions, busiest first — a projection of data the Sessions page
+// already shows, through the same single-flighted loader.
+export async function loadKnownProjects(userId: string): Promise<string[]> {
+  const toIso = new Date(Date.now() + DAY_MS).toISOString();
+  const { sessions, devices } = await loadSessionRows(
+    userId,
+    ALL_RANGE_FLOOR,
+    toIso,
+  );
+  const totals = new Map<string, number>();
+
+  for (const row of visibleSessions(sessions, devices)) {
+    const key = typeof row.project_key === "string" ? row.project_key : "";
+
+    if (key) totals.set(key, (totals.get(key) ?? 0) + n0(row.total_tokens));
+  }
+
+  return [...totals.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .slice(0, MAX_KNOWN_PROJECTS)
+    .map(([key]) => key);
 }

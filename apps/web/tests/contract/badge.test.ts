@@ -83,8 +83,25 @@ function seedBadgeScenario(): void {
     updated_at: "2026-10-01T00:00:00.000Z",
   });
 
+  // The badge reads the dashboard's canonical rows, which keep active
+  // devices only — the usage below belongs to this paired machine.
+  fake.table("token_devices").push({
+    id: DEVICE_A,
+    user_id: USER_ID,
+    device_name: "PC One #aaaa1111",
+    platform: "cli-device-flow",
+    machine_id: "machine-aaaa-1111",
+    machine_cluster_id: "machine-aaaa-1111",
+    default_device_name: "PC One #aaaa1111",
+    revoked_at: null,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  });
+
   // Two distinct owner-timezone days (2026-10-01 / 2026-10-03 in +08:00),
-  // total 18,480,200,000 tokens → "18.48B"; cost 1318.40 → "$1,318.40".
+  // total 18,480,200,000 tokens → "18.48B". Cost is the dashboard's read-time
+  // pricing (2026-11-02 operator call), not the stored column: gpt-5.2-codex
+  // at $1.75/M in + $14/M out → $111,720 + $1.2075 → "$111,721".
   fake.table("token_usage_hourly").push(
     {
       user_id: USER_ID,
@@ -194,7 +211,7 @@ describe.skipIf(!badgeRoute)("GET /api/badge (docs/badge.md §2)", () => {
     expect(svg).toContain("Ming Wei");
     expect(svg).toContain("TOKENS");
     expect(svg).toContain("18.48B");
-    expect(svg).toContain("$1,318.40");
+    expect(svg).toContain("$111,721");
   });
 
   it("degrades to fallback SVGs with no-store per §2.3", async () => {

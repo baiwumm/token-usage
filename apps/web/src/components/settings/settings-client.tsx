@@ -21,6 +21,7 @@ import { AppearancePanel } from "./appearance-panel";
 import { DataRefreshCard } from "./data-refresh-card";
 import { PreferencesFooter } from "./preferences-footer";
 import { AvatarCard } from "./avatar-card";
+import { BadgeCard } from "./badge-card";
 import { BudgetCard } from "./budget-card";
 import {
   RenameDeviceDialog,
@@ -284,6 +285,7 @@ export function SettingsClient() {
           <AvatarCard />
           <BudgetCard />
           <PasswordCard />
+          <BadgeCard />
         </div>
       ) : null}
       {section === "appearance" ? (

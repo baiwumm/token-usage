@@ -123,7 +123,11 @@ create table if not exists public.token_public_badges (
 
 ### §4.1 account 徽章（scope=user）
 
-- 源表 `token_usage_hourly`（`user_id` eq）：汇总 `total_tokens`、`total_cost_usd`
+- 与仪表盘同口径（2026-11-02 P3 实测修订，操作者裁定）：数据取账户快照的
+  `canonicalRows`（仅活跃设备、Cursor 跨设备去重、Trae CN 取会话态），tokens 汇总
+  `total_tokens`；成本逐行 `rowCost`（`lib/pricing` 读时定价，仅 grok/cline 采信正的
+  上报成本）。原文「汇总存储列 `total_cost_usd`」作废：采集端上报行的存储成本恒为 0，
+  实测真实账户徽章会永远显示 `$0.00`
 - TOP 来源：按 `source` 聚合 `total_tokens` 降序取前 2 + 占比（panel 右下）
 - TOP 模型：按 `model` 聚合降序 ≤5（公开页展示，徽章不展示）
 - **复用** `lib/api/account-data.ts` 的快照单飞加载，不新增第二条全量拉取路径
@@ -254,30 +258,38 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 | 方法 | 行为 |
 |---|---|
-| `GET` | 返回 `{enabled, timezone, allowedProjects, hasToken, tokenLast4}`（永不回明文） |
-| `POST {action:"generate"}` | 生成/重置令牌：写 `token_hash`、`enabled=true`、`display_name` 快照（取会话 `user_metadata.display_name`，缺省空串），响应**一次性**携带明文 token |
+| `GET` | 返回 `{enabled, timezone, allowedProjects, hasToken, tokenLast4, knownProjects}`（永不回明文）；`knownProjects` 是本人 `token_sessions` 去重的非空 project_key（按 tokens 降序，≤200），白名单多选的数据源（§7.2） |
+| `GET ?preview=1&style=…&theme=…&range=…&scope=…&project=…` | 本人预览（§7.3）：会话鉴权代替令牌，参数/加载器/渲染器与 `/api/badge` 同源，返回 SVG（`no-store`）；不看 `enabled`（未公开也可预览），repo 预览仍校验白名单 |
+| `POST {action:"generate"}` | 生成/重置令牌：写 `token_hash`、`token_last4`、`enabled=true`、`display_name` 快照（取会话 `user_metadata.display_name`，缺省空串），响应**一次性**携带明文 token |
 | `PUT` | 更新 `{enabled?, timezone?, allowedProjects?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项报 `400`；timezone 按 `parseTzContext` 约定归一 |
 | `DELETE` | 吊销：`enabled=false`（哈希与末 4 位保留，公开端呈现 `badge disabled`，§3.2） |
 
 - 无会话 → `401 {error:"Unauthorized"}`；非法体 → `400 {error}`；一律 `no-store`
+- 预览挂在同一路由（与 `/api/app/achievements` 的 POST 同理：不增加部署函数数）
 
 ### §7.2 Settings 卡片 `components/settings/badge-card.tsx`
 
 - 开关；令牌生成/重置（二次确认 + 明文只显示一次 + 复制）；白名单多选（数据源：
-  仪表盘既有 project 列表投影）；时区只读展示（浏览器时区，保存时随 PUT）
+  §7.1 `knownProjects`——Sessions 已展示数据的投影，白名单里已不在会话中的项仍列出以便移除）；
+  时区只读展示（浏览器时区，保存时随 PUT）
 - 细则遵循 `docs/ui-spec.md`（HeroUI 复合结构 + 语义文本组件）；随 P3 在 ui-spec
   增补对应小节
 
 ### §7.3 预览
 
-- 卡内实时 `<img src="/api/badge?...">`（附 cache-busting 查询参数绕浏览器缓存），
-  风格/主题/范围切换即换参
+- 卡内实时 `<img src="/api/app/badge?preview=1&…">`（附 cache-busting 查询参数绕浏览器
+  缓存），风格/主题/范围/对象切换即换参。2026-11-02 P3 实施修订：原写 `/api/badge?token=…`，
+  但明文令牌只在生成时出现一次，页面刷新后无从构造公开 URL，故改用会话鉴权预览分支（§7.1）
 
 ### §7.4 README 片段复制（两版都给）
 
 - 单主题：`<a href="<origin>/u/<token>"><img src="<origin>/api/badge?token=…&style=…&theme=…" alt="…"></a>`
-- 双主题（picture + `#gh-dark-mode-only` / `#gh-light-mode-only` 片段）
+- 双主题：`<picture>` + `<source media="(prefers-color-scheme: dark)">`（GitHub 现行推荐
+  写法，README 里的 prefers-color-scheme 跟随访客的 GitHub 主题设置；`#gh-*-mode-only`
+  片段为其旧式替代，不再输出）
 - `<origin>` 用部署自身 origin（自部署各自填）
+- 令牌只在生成/重置后的一次性揭示弹窗里填入片段；此后卡片内的片段以
+  `YOUR_BADGE_TOKEN` 占位，由操作者替换为自己保存的令牌（遗失则重置）
 
 ## §8 缓存与滥用面
 
@@ -305,6 +317,10 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   （`'a<b>&"c'` 的正确转义为 `a&lt;b&gt;&amp;&quot;c`）；② 外链断言精确豁免 SVG
   命名空间声明（§5.1）。测试基建同步：FakeSupabase 注册 `token_public_badges`，
   契约 fixture 补 `token_last4`（§3.1）；其余断言原样
+- P3 修订（2026-11-02，操作者批准）：③ 账户徽章改仪表盘口径（§4.1），契约用例的
+  成本期望由 `$1,318.40` 改为同一 fixture 的读时定价结果 `$111,721`；fixture 补播种
+  一台活跃设备（canonicalRows 只保留活跃设备）。仓库徽章与 `knownProjects` 同步按
+  Sessions 页可见性过滤（活跃设备、排除账户级来源）
 
 ## §10 实施阶段
 

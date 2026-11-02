@@ -444,6 +444,25 @@
 
 恢复默认与吊销的文案都只承诺对设备名/令牌的影响，必须写明已上报用量不受影响。
 
+账户分区最底部为「公开徽章」卡（2026-11-02 P3，规范见 `docs/badge.md` §7）：自取数
+（`/api/app/badge`，cookie 会话），Loading 骨架 / Error 走共享 `SectionError` 重试。
+行结构沿用外观卡：短控件用 `Row`（label + `Description` 左、控件右），长内容（白名单、
+预览、README 片段）用卡内 `Block`（label + 说明在上、全宽内容在下），分隔节奏一致：
+
+| 行 | 控件 | 选项 / 行为 |
+|---|---|---|
+| 公开展示 | `Switch`（拇指 Check / Xmark，同数据刷新卡） | 未生成令牌时禁用并提示先生成；切换即 PUT（带浏览器时区） |
+| 访问令牌 | 文本「已生成 · 末四位 xxxx」+ 按钮 | 无令牌：主按钮「生成令牌」；有令牌：「重置令牌」→ `AlertDialog`（`status="warning"`，确认按钮 `variant="danger"`），正文写明旧链接立即失效、已上报用量不受影响 |
+| 仓库白名单 | 多选 `Select`（`selectionMode="multiple"`）+「保存白名单」 | 选项 = `knownProjects` ∪ 已在白名单的项；有改动才可保存，>32 项禁用；下方两行说明：三项口径缺口（账户级来源不计、无项目名会话不计、同名合并）与「活跃天数按 {时区} 折算」 |
+| 预览 | 四组 `ToggleButtonGroup size="sm"`（风格 / 主题 / 范围 / 对象）+ 仓库单选 `Select` | 预览图走会话预览分支，切换即换参；白名单为空时「仓库」置灰并提示；600px 面板在卡内横向滚动容器里，不外溢页面 |
+| README 片段 | `ToggleButtonGroup`（单主题 / 跟随 GitHub 明暗）+ 只读 `TextArea` + 复制 | 按当前预览参数生成，令牌以 `YOUR_BADGE_TOKEN` 占位 |
+
+- 生成/重置成功后弹「保存你的徽章令牌」`Modal`（`size="lg"`）：`Alert status="warning"` 写明
+  只显示这一次；只读令牌框 + 图标复制按钮；下方是已填好真实令牌的同款片段区。该弹窗
+  `isDismissable={false}` + `isKeyboardDismissDisabled`，只能点「我已保存」关闭——误触背景
+  或 Esc 会让明文永久丢失。
+- 复制统一 `navigator.clipboard.writeText`，成功 `toast.success`，失败普通 `toast` 提示手动选择。
+
 ## 数字、货币与时间格式
 
 - 唯一入口是统一 format provider（`useFormat`）；Dashboard、Sessions、Wrapped、Settings、
