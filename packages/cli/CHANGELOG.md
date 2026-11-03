@@ -27,7 +27,8 @@
 - **Cursor / Kimi / Grok 限额卡新增磁盘缓存回退**：请求超时或 5xx 时展示最近一次成功
   读数（卡片标 `stale` + 原 `cached_at`），不再整卡空白。缓存文件各为
   `cursor/kimi/grok-usage-limits-cache.json`（`~/.tokenusage/tracker/`，0600 原子写、
-  7 天 TTL、只在成功时写、reset_at 已过期的窗口自动丢弃）；身份指纹绑定（cursor=规范
+  **12h TTL**（与 DeepSeek 余额卡同口径——额度/余额类读数一天内就会过时）、只在成功时写、
+  reset_at 已过期的窗口自动丢弃）；身份指纹绑定（cursor=规范
   userId、kimi=profile 标识、grok=JWT sub），换号不串用；凭据类错误（401/403/过期）
   不回退、原样上面板。与既有 claude/codex/opencodeGo 缓存及 deepseek 余额卡同口径。
 - 单测：`pricing-parity`（CLI/web 两份定价数据逐字节一致守卫）、`pricing-meta`、

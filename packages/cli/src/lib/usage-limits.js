@@ -138,21 +138,23 @@ const OPENCODE_GO_LOCAL_ESTIMATE_CACHE_MAX_AGE_MS = 60 * 60 * 1000;
 // Cursor's web summary (cursor.com) and Grok Bot RPCs (api2.cursor.sh) both traverse
 // proxied routes where a timeout or 5xx previously blanked the card until the next
 // poll. Persist the last successful windows so a blip serves stale bars instead
-// (mirrors Claude / Codex / OpenCode Go).
+// (mirrors Claude / Codex / OpenCode Go). TTL is 12h, aligned with the DeepSeek
+// balance cache: quota/balance readings age meaningfully within a day, so a
+// week-old fallback would mislead more than it helps (aligned 2026-11-03).
 const CURSOR_LIMITS_CACHE_FILE = "cursor-usage-limits-cache.json";
-const CURSOR_LIMITS_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const CURSOR_LIMITS_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 // The Kimi coding API (api.kimi.com / api.kimi.ai) is another proxied route where
 // a timeout or 5xx previously blanked the card until the next poll. Persist the
 // last successful windows so a blip serves stale bars instead
-// (mirrors Cursor / Codex / OpenCode Go).
+// (mirrors Cursor / Codex / OpenCode Go). TTL 12h — see the cursor note above.
 const KIMI_LIMITS_CACHE_FILE = "kimi-usage-limits-cache.json";
-const KIMI_LIMITS_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const KIMI_LIMITS_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 // Grok Build's billing proxy (cli-chat-proxy.grok.com) sits behind the same kind of
 // proxied routes where a timeout or 5xx previously blanked the card until the next
 // poll. Persist the last successful windows so a blip serves stale bars instead
-// (mirrors Claude / Codex / Cursor).
+// (mirrors Claude / Codex / Cursor). TTL 12h — see the cursor note above.
 const GROK_LIMITS_CACHE_FILE = "grok-usage-limits-cache.json";
-const GROK_LIMITS_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const GROK_LIMITS_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 // A 429 from the usage endpoint carries a long `retry-after` (often 20+ minutes). Persist
 // the cooldown so every surface — this process, the menu bar app's embedded server, a later
 // restart — stops calling until it expires. Hammering during the cooldown just renews the
