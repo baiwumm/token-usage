@@ -48,6 +48,7 @@ const {
 } = require("../lib/openclaw-session-plugin");
 const { resolveTrackerPaths } = require("../lib/tracker-paths");
 const { resolveDeviceTokenPresence } = require("../lib/cloud-device-token");
+const { getPricingMeta } = require("../lib/pricing");
 const {
   isCollectionPaused,
   isRunReportEnabled,
@@ -1281,6 +1282,9 @@ async function cmdStatus(argv = []) {
           }
         : {}),
       subscriptions,
+      // Pricing data provenance + staleness, so a $0 cost row can be triaged
+      // as "not collected" vs "not priced" from `status --json` alone.
+      pricing: getPricingMeta(),
     };
 
     if (opts.json) {

@@ -41,10 +41,12 @@ const DEEPSEEK_TIME_PRICED_MODELS = [
 // ensurePricingLoaded() (e.g. tests, vite mock startup, edge functions) still
 // get LiteLLM-backed pricing instead of all-zero. ensurePricingLoaded() will
 // later upgrade this to fresh disk cache or upstream data.
+let seedMeta = null;
 function loadSeedSync() {
   try {
     const raw = fs.readFileSync(SEED_SNAPSHOT_PATH, "utf8");
     const parsed = JSON.parse(raw);
+    seedMeta = parsed._meta && typeof parsed._meta === "object" ? parsed._meta : null;
     delete parsed._meta;
     return parsed;
   } catch (e) {
@@ -107,6 +109,19 @@ function resetPricingForTests() {
 
 function getPricingRevision() {
   return state.revision;
+}
+
+// Read-only snapshot of where pricing data came from and how stale it is.
+// Surfaced by `status --json` so a $0 cost can be triaged as "not collected"
+// vs "not priced" without digging into cache files (docs/upstream-comparison-plan.md §1 A3).
+function getPricingMeta() {
+  return {
+    source: state.source,
+    seed_generated_at: seedMeta && typeof seedMeta.generated_at === "string" ? seedMeta.generated_at : null,
+    litellm_models: Object.keys(state.litellmPerMillionMap).length,
+    curated_exact: Object.keys(curatedOverrides.exact || {}).length,
+    curated_fuzzy: Array.isArray(curatedOverrides.fuzzy) ? curatedOverrides.fuzzy.length : 0,
+  };
 }
 
 function getModelPricing(model, opts = {}) {
@@ -366,6 +381,7 @@ const MODEL_PRICING = curatedOverrides.exact;
 module.exports = {
   ensurePricingLoaded,
   getPricingRevision,
+  getPricingMeta,
   getModelPricing,
   getModelPricingInfo,
   getRowPricing,
