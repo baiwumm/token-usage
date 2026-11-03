@@ -165,3 +165,24 @@ local API（`test/packaging.test.js` 有「the retired local API stays deleted�
 属功能缺失而非实现 bug，符合「只加测试」范围外，故转入 §4 新候选（limits 磁盘缓存回退，
 待拍板）。本轮 CLI 测试增量改由 A1 parity / A3 pricing-meta / B3+C2 pricing-coverage /
 B2 deepseek 承担。
+
+**缺口官价核实（2026-11-03，当日已落地，commit `863e81d`）**：
+- `u2-flash`（dsh 来源桶，7 天 7.87M tokens，其中缓存命中 6.91M）= 云知声 Unisound
+  U2-Flash。官价已核实：<https://maas.unisound.com/docs/price/overview> 与模型广场页
+  （2026-10-12 更新）——输入 ¥1 / 缓存命中 ¥0.2 / 输出 ¥2 每 MTok（按量付费档；
+  另有 U Plan 订阅档，若实际走订阅则参考价会高估，与 grok/kimi/zcode 订阅制来源的
+  估算口径一致）。落地条目：`{"input":0.14,"output":0.28,"cache_read":0.03}`
+  （7.2 汇率、两位小数，同 iFlytek 先例）。此前三家（本仓库两份 + LiteLLM/models.dev
+  系）均未收录：该模型 2026-09-15 才发布，Unisound 不在两个目录内。
+- `step-5-preview`（pi-stepfun 来源桶，7 天 2.18M tokens，其中缓存命中 2.01M）= 阶跃星辰
+  Step 5 Preview。官价已核实：国际站 <https://platform.stepfun.ai/docs/en/guides/pricing/details>
+  $1.00 / $0.10（缓存命中）/ $2.70 每 MTok；国内站 ¥7 / ¥0.70 / ¥20（缓存命中价
+  2026-10-14 起由 ¥0.35 调至 ¥0.70）。**更正**：该模型在 web 端自 2026-10-22 起已由
+  `selfhost-overrides.json` 覆盖（同价），真实缺口仅在 CLI 侧与「curated 为价格源」的
+  归属；本轮按设计把它从 selfhost **提升为 curated 正式条目**（沿用官价与
+  cache_write=input 口径），selfhost exact 表随之清空，web provenance 测试改由
+  source_exact 的 `opencode/big-pickle` 承担。juejin 虽有该模型但转录值偏离官价
+  4–10%，未采用。
+- 落地后实测（同窗口平移约 1 小时，桶数 102→105）：token 覆盖 **100.0%**
+  （368.7M/368.7M），桶覆盖 96.2%（101/105）；残留 unpriced 仅 `dfmodel`
+  （qoder-cn credits-only 零 token 桶 ×4，设计内无害）。
