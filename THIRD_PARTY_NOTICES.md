@@ -37,10 +37,15 @@ xAI Grok、TRAE、Zed、Qoder、Kiro、MiniMax、腾讯混元、NVIDIA Nemotron 
 
 ## 定价数据
 
-`apps/web/src/lib/pricing/seed-snapshot.json` 是 vendored 的
-[LiteLLM](https://github.com/BerriAI/litellm)（MIT）公开价格快照，仅用于本地成本估算；
-`curated-overrides.json` / `selfhost-overrides.json` 是人工校准值，来源在各条 `note` 中注明。
-价格仅供估算，请以厂商账单为准。
+`apps/web/src/lib/pricing/seed-snapshot.json` 与
+`packages/cli/src/lib/pricing/seed-snapshot.json` 是 vendored 的
+[LiteLLM](https://github.com/BerriAI/litellm)（MIT）公开价格快照，仅用于本地成本估算。
+两份 `curated-overrides.json`（web 与 CLI，内容保持一致）以人工校准值为主；其中
+volcengine / xiaomi / meta(muse) / alibaba-cn / moonshotai-cn 五组共 69 条 exact 条目
+（2026-11-03 导入）取自 [juejin-usage](https://github.com/juejin-cn/juejin-usage)
+（MIT，Copyright (c) juejin-cn）commit `f72ca4d` 的
+`packages/core/src/pricing/pricing.json`（models.dev 官方渠道价格集），各条 `note`
+中注明来源。其余条目来源在各条 `note` 中注明。价格仅供估算，请以厂商账单为准。
 
 ## 设计参考
 
