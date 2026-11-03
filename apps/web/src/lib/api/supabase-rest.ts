@@ -123,28 +123,47 @@ function toSupabaseError(error: PostgrestError): SupabaseError {
 
 type Filter = [string, string, unknown];
 
-function applyFilters(query: any, filters: Filter[]): any {
+// Minimal structural view of the postgrest-js builders this module uses.
+// postgrest's own generic builder types are pathological under tsc (TS2589 on
+// instantiation with the concrete schema generics), so the helpers work against
+// this small fluent interface instead of the concrete builder type. Method
+// syntax keeps parameter bivariance; runtime behavior is unchanged.
+interface FilterChainable {
+  eq(column: string, value: unknown): FilterChainable;
+  neq(column: string, value: unknown): FilterChainable;
+  gt(column: string, value: unknown): FilterChainable;
+  gte(column: string, value: unknown): FilterChainable;
+  lt(column: string, value: unknown): FilterChainable;
+  is(column: string, value: unknown): FilterChainable;
+  order(column: string, options: { ascending?: boolean }): FilterChainable;
+}
+
+function applyFilters<C extends FilterChainable>(
+  query: C,
+  filters: Filter[],
+): C {
   let result = query;
 
   for (const [column, operator, value] of filters) {
+    // postgrest builders return `this` at runtime, so the C casts are sound.
     switch (operator) {
       case "eq":
-        result = result.eq(column, value as string);
+        result = result.eq(column, value) as C;
         break;
       case "neq":
-        result = result.neq(column, value as string);
+        result = result.neq(column, value) as C;
         break;
       case "gt":
-        result = result.gt(column, value as string);
+        result = result.gt(column, value) as C;
         break;
       case "gte":
-        result = result.gte(column, value as string);
+        result = result.gte(column, value) as C;
         break;
       case "lt":
-        result = result.lt(column, value as string);
+        result = result.lt(column, value) as C;
         break;
       case "is":
-        result = result.is(column, value === "null" ? null : (value as string));
+        result = result.is(column, value === "null" ? null : value) as C;
         break;
       default:
         throw new SupabaseError(
@@ -157,17 +176,29 @@ function applyFilters(query: any, filters: Filter[]): any {
   return result;
 }
 
-function applyOrder(query: any, order: string | null): any {
+function applyOrder<C extends FilterChainable>(
+  query: C,
+  order: string | null,
+): C {
   if (!order) return query;
   let result = query;
 
   for (const part of order.split(",")) {
     const [column, direction] = part.split(".");
 
-    result = result.order(column, { ascending: direction !== "desc" });
+    result = result.order(column, { ascending: direction !== "desc" }) as C;
   }
 
   return result;
+}
+
+// The select chain beyond filtering/ordering: limit/range plus awaitability.
+// Used only at module boundaries via a bounded cast — postgrest's concrete
+// generics explode tsc (TS2589) if threaded through the helpers.
+interface SelectChain extends FilterChainable {
+  limit(count: number): SelectChain;
+  range(from: number, to: number): SelectChain;
+  then: AwaitableQuery["then"];
 }
 
 export interface SelectOptions {
@@ -190,7 +221,10 @@ export async function select(
     offset = null,
   } = options;
   let query = applyOrder(
-    applyFilters(adminClient().from(table).select(columns), filters),
+    applyFilters(
+      adminClient().from(table).select(columns) as unknown as SelectChain,
+      filters,
+    ),
     order,
   );
 
@@ -207,13 +241,20 @@ export async function select(
 
   if (error) throw toSupabaseError(error);
 
-  return Array.isArray(data) ? (data as RestRow[]) : [];
+  return Array.isArray(data) ? (data as unknown as RestRow[]) : [];
 }
 
 // Await a builder whose `.select()` chaining differs by `returning`; the two
 // chains have incompatible generic shapes, so the branch happens before await.
+type AwaitableQuery = PromiseLike<{
+  data: unknown;
+  error: PostgrestError | null;
+}>;
 
-async function runQuery(pending: any, returning: boolean): Promise<RestRow[]> {
+async function runQuery(
+  pending: AwaitableQuery,
+  returning: boolean,
+): Promise<RestRow[]> {
   const { data, error } = await pending;
 
   if (error) throw toSupabaseError(error);
@@ -262,7 +303,14 @@ export async function update(
     filters,
   );
 
-  return runQuery(returning ? builder.select() : builder, returning);
+  // Bounded boundary casts (see SelectChain note): the filtered chain is the
+  // postgrest update builder, which is awaitable and regains .select().
+  return runQuery(
+    returning
+      ? (builder as unknown as { select(): AwaitableQuery }).select()
+      : (builder as unknown as AwaitableQuery),
+    returning,
+  );
 }
 
 export async function rpc(name: string, args: RestRow = {}): Promise<unknown> {
