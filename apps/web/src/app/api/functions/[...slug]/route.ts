@@ -7,8 +7,7 @@
 // (a [param] folder must own the whole segment). A catch-all under
 // /api/functions/ therefore dispatches the account-<series> family by slug,
 // while every static sibling route keeps winning resolution for its own path.
-// Legacy tokentracker-account-* rewrites land here with the rewritten slug and
-// behave identically. The series may also be forced via ?series=.
+// The series may also be forced via ?series=.
 
 import { methodNotAllowedResponse, preflightResponse } from "@/lib/api/http";
 import { handleFunctionsGet } from "@/lib/api/account-series-router";

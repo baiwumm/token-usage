@@ -313,9 +313,10 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` �
    （2026-11-01 完成）。
 3. **`token-usage.cc` 官方落地页** → **延后**，等 web、桌面端与 CLI 端功能全部完成后
    再启动；在那之前不排期、不改 requirements 的「v1 范围」表述（仍属规划内，只是后置）。
-4. **旧 `tokentracker-*` 路径别名** → **暂不退役**。`tokentracker-cli` npm 近一月下载
-   约 1.7 万次，无法排除外部钉版客户端；别名保留成本接近零，等正式废弃公告与观察期
-   后再议（契约 §1.5 继续有效）。
+4. **旧 `tokentracker-*` 路径别名** → ~~暂不退役~~ **已修订（2026-11-03 拍板：执行退役）**。
+   两条 rewrite 已删，旧路径 GET→404 / 写动词→405、均无处理器（contract 测试
+   `legacy-alias-removed.test.ts` 守护），退役记录见 `docs/cli-contract.md` §1.5。
+   原决策依据（npm 下载量）经复核为上游包数据、与本部署别名流量无直接关系。
 5. **CLI 候选** → 原结论「`init` 逐工具集成选择下个版本不做、macOS / Linux 原生调度单独
    评估」**由本条修订作废**：两项**随本版开发**（2026-11-01 当日交付，见上「CLI 候选」）。
 6. **CLI 加固批** → 「按建议执行」：上游 `tokentracker-cli` / `jusage` 核对结论中的

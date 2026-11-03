@@ -6,9 +6,8 @@
 // 1. Contract gate (M1, behavior frozen): for every /api/functions/* request,
 //    OPTIONS answers 204 with the CORS headers, and everything besides GET
 //    and POST — HEAD included, matching the reference handlers' method checks
-//    — gets the JSON 405 envelope. Requests arriving through the legacy
-//    tokentracker-* rewrites pass through here too. The gate never consults
-//    the session: CLI traffic follows the contract's own auth rules.
+//    — gets the JSON 405 envelope. The gate never consults the session: CLI
+//    traffic follows the contract's own auth rules.
 // 2. Page guard (M2): protected pages redirect unauthenticated browsers to
 //    /login, carrying the original path + query in ?next= (the pairing link's
 //    ?user_code= must survive the hop — docs/requirements.md 路由约定,

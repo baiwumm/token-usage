@@ -1,8 +1,7 @@
 // Series resolution + dispatch for the /api/functions/[...slug] dynamic route.
 // Kept here so the contract tests can exercise it through a bracket-free
 // module path; the route file itself is a thin re-export, and the real route
-// (plus the legacy tokentracker-* alias rewrite) is covered by the
-// server-level contract test.
+// is covered by the server-level contract test.
 
 import { errorResponse, getBearer, jsonResponse, CORS_HEADERS } from "./http";
 import { assertConfigured } from "./supabase-rest";

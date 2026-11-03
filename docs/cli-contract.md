@@ -26,9 +26,10 @@
 - 规范路径是 **`/api/functions/token-usage-<slug>`**，route handler 挂载于
   `app/api/functions/token-usage-<slug>/route.ts`（八个 account series 共用一个
   `[...slug]` catch-all，见 §2.7）。
-- 钉版 CLI 1.4.x 的 slug 硬编码为旧名 `tokentracker-*`：旧路径
-  `/api/functions/tokentracker-<slug>` 由 `next.config.mjs` rewrites **永久别名**到规范路径
-  （见 §1.5），行为逐字一致。
+- 旧路径 `/api/functions/tokentracker-<slug>` 的别名已于 **2026-11-03 退役**（破坏性
+  变更，见 §1.5）：GET 落到路由层 404，写动词落到 `[...slug]` catch-all 的冻结 405
+  信封——两者都无处理器、均为有声失败。钉版旧 CLI（tokentracker-cli@1.4.x）
+  需升级到 `tokenusage-cli` 并改用规范路径。
 - 配对页路径 **`/device`** 也是契约的一部分（CLI 打印并打开 `/device?user_code=XXXX-XXXX`）。
 
 ### 1.2 CORS 与通用行为
@@ -62,12 +63,23 @@
 
 标注"设备令牌专用"的端点跳过第 2 步；标注"设备令牌或 JWT"的端点两者皆可。**设备令牌只能操作自己那台设备**（`device_id` 不匹配 → `403`），JWT 可操作本账户任意设备。
 
-### 1.5 旧路径别名（冻结）
+### 1.5 旧路径别名（**已于 2026-11-03 退役**）
 
-`/api/functions/tokentracker-<slug>` 与规范路径行为逐字相同（含错误响应格式），由
-`next.config.mjs` 的 rewrites 实现，本身属于契约：只要仍有钉版 CLI 1.4.x 的采集机存在，
-别名就永久保留。别名只供已部署采集机使用，新集成一律使用规范路径。自有 `tokenusage-cli`
-全量替代旧 CLI 后，别名可退役；移除属破坏性变更，需操作者确认并清点采集机。
+历史形态：钉版 `tokentracker-cli@1.4.x` 把 slug 硬编码为旧名 `tokentracker-*`，本契约曾由
+`next.config.mjs` 的 rewrites 把 `/api/functions/tokentracker-<slug>` 逐字别名到规范路径。
+
+**退役记录（破坏性变更，操作者 2026-11-03 拍板执行）**：
+- 两条 rewrite（`tokentracker-account-:series`、`tokentracker-:slug`）已从
+  `next.config.mjs` 移除；旧路径 **GET → 404**（路由无匹配），**POST 等写动词 → 405**
+  （`/api/functions/*` 的 catch-all 只服务 account-series 族，其余 slug 的写请求由
+  冻结的 405 信封拒绝——同样无处理器）。contract 测试
+  `tests/contract/legacy-alias-removed.test.ts` 守护，防复活。
+- 影响面：仅指向本后端（生产实例或自托管副本）的钉版旧 CLI。失败是**有声**的——上传
+  报 404/405，本地 `queue.jsonl` 数据保留，升级 `tokenusage-cli` 后随下次 sync 补传，不丢历史。
+- 上游 npm 包 `tokentracker-cli` 属上游作者持续发布的资产，与本契约无关，本仓库不做
+  也不做任何停发动作。
+- 前置清点：旧托管域名已于 2026-10-29 注销，本机两台采集机均已迁移到
+  `tokenusage-cli`；操作者据此确认无存活依赖。
 
 ### 1.6 限流与滥用边界（部署侧，2026-10-27 裁定）
 
@@ -419,7 +431,8 @@ Query：`from`、`to`（ISO 瞬时，按 `hour_start ∈ [from,to)`）、`limit`
 Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）；其余条目为 CLI 面硬冻结
 （§2.4 的 `sessions` ingest 校验与 upsert 语义属于 CLI 面）。
 
-1. 规范路径（`token-usage-*`）与旧路径别名（`tokentracker-*`，§1.5）行为逐字一致，`/device` 页面可达。
+1. 规范路径（`token-usage-*`）行为逐字一致，`/device` 页面可达；旧 `tokentracker-*`
+   路径已退役（§1.5）：GET 返回 404，写动词返回 405，均无处理器。
 2. ingest 的桶粒度 last-wins upsert 键与请求内"取 total 最大"去重。
 3. `user_code` 字母表与 `XXXX-XXXX` 形态；`device_code` 64 位 hex；900 秒 / 5 秒。
 4. 令牌只存 sha256，明文仅签发响应一次；吊销即时生效。
@@ -464,8 +477,7 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
   以 0 为缺省（独立维度，不参与 token/成本聚合）。
 - Sessions 的隐私白名单（不存 prompt、正文、标题、绝对路径、resume command）属于契约，
   不得以"调试字段"或"未来扩展"为名放宽；新增会话字段必须先回写本文并过隐私评审。
-- 规范路径命名为 `token-usage-*`；旧 `tokentracker-*` 路径经 §1.5 别名永久保留。
-  未来发布新 CLI 时，新契约挂到 `/api/v2/...` 新路径，届时两族旧路径照旧保留。
+- 规范路径命名为 `token-usage-*`；旧 `tokentracker-*` 路径别名已于 2026-11-03 退役
+  （§1.5）。未来发布新 CLI 时，新契约挂到 `/api/v2/...` 新路径。
 - 冻结语义与客户端归属挂钩：自有 `tokenusage-cli` 上线后，本契约按「CLI 版本 ↔ 服务端
-  版本」配对演进——服务端变更随新 CLI 版本发布，客户端与服务端同步升级；升级前两族
-  旧路径行为保持不变。
+  版本」配对演进——服务端变更随新 CLI 版本发布，客户端与服务端同步升级。

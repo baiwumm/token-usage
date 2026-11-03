@@ -1,7 +1,9 @@
-// Ingest payload normalization — ports the pure validators from
-// api/functions/tokentracker-ingest.js, quirks included (null coerces to 0
-// through Number(), numeric strings are accepted, boolean true counts as 1).
-// docs/cli-contract.md §2.4 freezes the accepted shapes.
+// Ingest payload normalization — ports the pure validators from the old
+// system's api/functions/tokentracker-ingest.js (historical source, kept as a
+// migration fact per AGENTS.md rule 10; the path alias was retired 2026-11-03),
+// quirks included (null coerces to 0 through Number(), numeric strings are
+// accepted, boolean true counts as 1). docs/cli-contract.md §2.4 freezes the
+// accepted shapes.
 
 export const TOKEN_KEYS = [
   "input_tokens",

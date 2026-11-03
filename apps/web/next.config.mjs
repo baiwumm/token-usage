@@ -1,28 +1,14 @@
 /** @type {import('next').NextConfig} */
 
-// Legacy path alias for the pinned collector CLI (tokentracker-cli@1.4.x):
-// its functionUrlFor() hardcodes the old `tokentracker-*` slugs, so the old
-// paths keep serving identical behavior via rewrite. Frozen until every
-// collector has migrated; see docs/cli-contract.md §1.5.
-const legacyApiRewrites = [
-  {
-    source: "/api/functions/tokentracker-account-:series",
-    destination: "/api/functions/token-usage-account-:series",
-  },
-  {
-    source: "/api/functions/tokentracker-:slug",
-    destination: "/api/functions/token-usage-:slug",
-  },
-];
-
+// 2026-11-03: the legacy `tokentracker-*` path aliases were RETIRED (breaking
+// change, decided by the operator; record in docs/cli-contract.md §1.5).
+// Old paths now get no handler: GET falls through routing to 404, write verbs
+// hit the catch-all's frozen 405 envelope.
 const nextConfig = {
-	// Tests that boot their own server (tests/contract/alias-server.test.ts)
+	// Tests that boot their own server (tests/contract/legacy-alias-removed.test.ts)
 	// set NEXT_DIST_DIR so two dev instances on this tree never contend for
 	// the same build directory. Unset in every other environment.
 	distDir: process.env.NEXT_DIST_DIR || ".next",
-	async rewrites() {
-		return legacyApiRewrites;
-	},
 	experimental: {
 		// Barrel packages imported by name across many client components; the
 		// optimizer rewrites them to per-symbol modules.

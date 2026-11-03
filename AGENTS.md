@@ -51,7 +51,7 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 ## 硬性约束
 
 1. 契约层的路径、字段、错误码以 `docs/cli-contract.md` §2–3 为唯一规范；旧路径别名
-   （`tokentracker-*`，§1.5）行为冻结。变更顺序：先改契约文档与 golden 测试 → 操作者确认 →
+   （`tokentracker-*`）已于 2026-11-03 退役（§1.5 退役记录）。变更顺序：先改契约文档与 golden 测试 → 操作者确认 →
    再改实现（实现位于 `apps/web/src/app/api/functions/`）。仪表盘自有接口走 `/api/app/*`。
 2. 运行时依赖以 `docs/rewrite-plan.md` §4 预算为准；新增依赖先报操作者批准，获准后同步
    修订预算文档，并选当前最流行、最新的稳定版本（lockfile 锁定）。图表用 recharts；
@@ -74,7 +74,8 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 8. 采集对账基线 = 本地 `queue.jsonl` 的 last-wins 总数；`token_usage_hourly` 的 upsert 键
    见 `docs/rewrite-plan.md` §3，语义跨版本保持不变。
 9. 内部命名统一 `token-usage` / `TOKEN_USAGE_*` / Token Usage；`tokentracker` 前缀仅允许
-   出现在旧路径别名（`next.config.mjs` rewrites）与 `docs/cli-contract.md` §1.5。
+   出现在历史记录与迁移事实中（`docs/cli-contract.md` §1.5 退役记录、旧域名/旧表名等
+   规则 10 条目）；对外路径与配置一律 `token-usage` 命名空间。
 10. 上游署名只出现在根 `LICENSE`、根 `THIRD_PARTY_NOTICES.md` 与 `packages/cli/` 的
    `LICENSE` / `THIRD_PARTY_NOTICES.md`；README、docs 与 UI 文案不重复罗列上游名，只指向
    上述文件。旧系统历史记录（`tokentracker.baiwumm.com`、`~/.tokentracker`、`tokentracker_*`
