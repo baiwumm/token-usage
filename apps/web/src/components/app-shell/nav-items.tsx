@@ -9,7 +9,7 @@ import {
   Medal,
   Tachometer,
 } from "@gravity-ui/icons";
-import { Chip } from "@heroui/react";
+import { Chip, cn } from "@heroui/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -44,7 +44,7 @@ export function NavItems({
   return (
     <nav
       aria-label={copy.menu}
-      className={`flex flex-col gap-0.5 ${collapsed ? "items-center" : ""}`}
+      className={cn("flex flex-col gap-0.5", collapsed && "items-center")}
     >
       {NAV_ITEMS.map((item) => {
         const active =
@@ -60,24 +60,25 @@ export function NavItems({
             key={item.href}
             aria-current={active ? "page" : undefined}
             aria-label={collapsed ? label : undefined}
-            className={`${NAV_ITEM_BASE} ${
-              collapsed ? "w-9 justify-center" : "px-2.5"
-            } ${
+            className={cn(
+              NAV_ITEM_BASE,
+              collapsed ? "w-9 justify-center" : "px-2.5",
               active
                 ? "bg-surface text-surface-foreground font-medium"
-                : "text-foreground/65 hover:bg-default hover:text-foreground"
-            }`}
+                : "text-foreground/65 hover:bg-default hover:text-foreground",
+            )}
             href={item.href}
             title={collapsed ? label : undefined}
             onClick={onNavigate}
           >
             <Icon
               aria-hidden="true"
-              className={`size-4.5 shrink-0 ${
+              className={cn(
+                "size-4.5 shrink-0",
                 active
                   ? "text-foreground"
-                  : "text-muted group-hover:text-foreground"
-              }`}
+                  : "text-muted group-hover:text-foreground",
+              )}
             />
             {collapsed ? null : <span className="truncate">{label}</span>}
             {!collapsed && showBadge ? (

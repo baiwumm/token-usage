@@ -5,7 +5,7 @@
 // row, the device panel and the detail table; mirror those shells so the cards
 // settle into place without a layout jump (docs/ui-spec.md 状态与可访问性).
 
-import { Card, Skeleton } from "@heroui/react";
+import { Card, Skeleton, cn } from "@heroui/react";
 
 function PanelHeader({
   title,
@@ -19,13 +19,13 @@ function PanelHeader({
   return (
     <Card.Header className="flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
       <div className="flex flex-col gap-1">
-        <Skeleton className={`h-5 rounded-full ${title}`} />
+        <Skeleton className={cn("h-5 rounded-full", title)} />
         {description ? (
-          <Skeleton className={`h-3 rounded-full ${description}`} />
+          <Skeleton className={cn("h-3 rounded-full", description)} />
         ) : null}
       </div>
       {trailing ? (
-        <Skeleton className={`h-8 rounded-full ${trailing}`} />
+        <Skeleton className={cn("h-8 rounded-full", trailing)} />
       ) : null}
     </Card.Header>
   );

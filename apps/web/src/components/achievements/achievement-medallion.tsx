@@ -18,6 +18,7 @@
 // normalised to the same on-screen size).
 
 import { Lock } from "@gravity-ui/icons";
+import { cn } from "@heroui/react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { AchievementArt } from "./achievement-art";
@@ -70,7 +71,7 @@ export function AchievementMedallion({
 
   return (
     <div
-      className={`relative aspect-square shrink-0 ${className ?? "size-24"}`}
+      className={cn("relative aspect-square shrink-0", className ?? "size-24")}
     >
       {/* Unlocked badges keep a faint hue aura behind the metal ring. */}
       {unlocked ? (

@@ -7,7 +7,7 @@ import type { CheckStatus } from "./checks";
 import type { StatusCopy } from "@/lib/copy/service-status";
 
 import { Database, Link, ShieldCheck } from "@gravity-ui/icons";
-import { Card, Typography } from "@heroui/react";
+import { Card, Typography, cn } from "@heroui/react";
 
 export function FactsCard({
   projectUrl,
@@ -67,7 +67,7 @@ export function FactsCard({
               {fact.label}
             </Typography>
             <Typography
-              className={`min-w-0 flex-1 break-all ${fact.tone}`.trim()}
+              className={cn("min-w-0 flex-1 break-all", fact.tone)}
               type="body-sm"
             >
               {fact.value}

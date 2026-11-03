@@ -7,7 +7,7 @@ import {
   ChevronsExpandVertical,
   Gear,
 } from "@gravity-ui/icons";
-import { Avatar, Dropdown, Label, Popover, Separator } from "@heroui/react";
+import { Avatar, Dropdown, Label, Popover, Separator, cn } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { type Key } from "react";
 
@@ -71,13 +71,14 @@ export function SidebarProfile({
   };
 
   return (
-    <div className={`px-2 pt-1 pb-2 ${collapsed ? "flex justify-center" : ""}`}>
+    <div className={cn("px-2 pt-1 pb-2", collapsed && "flex justify-center")}>
       <Dropdown>
         <Dropdown.Trigger
           aria-label={collapsed ? displayName : undefined}
-          className={`hover:bg-default flex items-center gap-2.5 rounded-3xl p-2 text-start transition-colors ${
-            collapsed ? "justify-center" : "w-full"
-          }`}
+          className={cn(
+            "hover:bg-default flex items-center gap-2.5 rounded-3xl p-2 text-start transition-colors",
+            collapsed ? "justify-center" : "w-full",
+          )}
         >
           <ProfileAvatar
             displayName={displayName}

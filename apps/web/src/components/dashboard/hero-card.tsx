@@ -14,7 +14,7 @@ import type {
 } from "@/lib/dashboard/api";
 
 import { CircleInfo, Layers } from "@gravity-ui/icons";
-import { Button, Card, Tooltip, Typography } from "@heroui/react";
+import { Button, Card, Tooltip, Typography, cn } from "@heroui/react";
 import { useMemo, useState } from "react";
 
 import { canonicalSourceRows, mergeModelsAcrossSources } from "./aggregate";
@@ -151,7 +151,10 @@ export function TotalTokensHero({
         </div>
         <div className="flex items-center gap-1.5">
           <Typography
-            className={`tabular-nums ${budgetExceeded ? "text-danger" : "text-success"}`}
+            className={cn(
+              "tabular-nums",
+              budgetExceeded ? "text-danger" : "text-success",
+            )}
             type="body-sm"
           >
             {hasUnpriced ? "≥ " : ""}

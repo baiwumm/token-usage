@@ -17,6 +17,11 @@
 - 选取顺序：HeroUI 内置（75+，`node scripts/list_components.mjs` 查清单）→ HeroUI 组合 →
   自研；自研组件沿用主题变量与 tailwind-variants。
 - HeroUI 组件的交互回调统一 `onPress`；原生 `onClick` 仅用于非 HeroUI 元素。
+- 类名拼接统一 `cn`：凡 className 需要条件分支或多来源拼接，一律
+  `import { cn } from "@heroui/react"`（HeroUI 对 tailwind-variants `cn` 的重导出，即
+  `twMerge(clsx(...))`：自动滤掉 falsy 段、按 tailwind-merge 合并冲突类），不写模板字符串
+  `` `a ${cond}` ``、`+` 拼接或 `.trim()` 补丁；纯静态类名保持字面量，不必包 `cn`
+  （2026-11-03 操作者指令）。
 - 复合结构优先：提供复合 anatomy 的组件（Card、TextField、Modal、Table、Tabs 等）一律使用
   其复合结构（如 `Card.Header / Card.Title / Card.Description / Card.Content / Card.Footer`），
   不手写等价 DOM 包裹（2026-10-24 操作者指令）。

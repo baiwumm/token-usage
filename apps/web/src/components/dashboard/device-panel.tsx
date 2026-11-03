@@ -7,7 +7,7 @@ import type { DashboardCopy } from "@/lib/copy/dashboard";
 import type { DashboardDevice } from "@/lib/dashboard/api";
 
 import { ListUl } from "@gravity-ui/icons";
-import { Button, Card, Chip, Typography } from "@heroui/react";
+import { Button, Card, Chip, Typography, cn } from "@heroui/react";
 
 import { FlowNumber } from "@/components/flow-number";
 import { useFormat } from "@/lib/format/format";
@@ -56,9 +56,10 @@ export function DevicePanel({
               <Button
                 key={device.device_id}
                 aria-pressed={selected}
-                className={`h-auto w-full justify-start rounded-3xl px-3 py-2.5 text-start ${
-                  selected ? "bg-default" : ""
-                }`}
+                className={cn(
+                  "h-auto w-full justify-start rounded-3xl px-3 py-2.5 text-start",
+                  selected && "bg-default",
+                )}
                 variant="ghost"
                 onPress={() =>
                   onSelectDevice(selected ? null : device.device_id)

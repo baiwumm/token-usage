@@ -8,7 +8,7 @@
 
 import type { ReactNode } from "react";
 
-import { Table } from "@heroui/react";
+import { Table, cn } from "@heroui/react";
 
 import { useFormat } from "@/lib/format/format";
 
@@ -60,7 +60,7 @@ export function BreakdownTable({
       <Table.ScrollContainer>
         <Table.Content
           aria-label={ariaLabel}
-          className={`w-full table-fixed ${minClassName}`}
+          className={cn("w-full table-fixed", minClassName)}
         >
           <Table.Header>
             <Table.Column isRowHeader id="name">

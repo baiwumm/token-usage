@@ -4,12 +4,15 @@
 // skeleton mirrors HeroUI card radius (min(32px, --radius-3xl)) so loading
 // blocks match the layout they stand in for.
 
-import { Button, Skeleton, Typography } from "@heroui/react";
+import { Button, Skeleton, Typography, cn } from "@heroui/react";
 
 export function SectionSkeleton({ className }: { className?: string }) {
   return (
     <Skeleton
-      className={`rounded-[min(32px,var(--radius-3xl))] ${className ?? "h-40 w-full"}`}
+      className={cn(
+        "rounded-[min(32px,var(--radius-3xl))]",
+        className ?? "h-40 w-full",
+      )}
     />
   );
 }

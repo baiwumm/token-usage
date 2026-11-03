@@ -8,7 +8,7 @@ import type { SyncRunsCopy } from "@/lib/copy/sync-runs";
 import type { SyncRunsPayload } from "@/lib/dashboard/api";
 
 import { Clock, ClockArrowRotateLeft } from "@gravity-ui/icons";
-import { Card, Skeleton, Typography } from "@heroui/react";
+import { Card, Skeleton, Typography, cn } from "@heroui/react";
 
 import { FlowNumber } from "@/components/flow-number";
 import { formatMessage } from "@/lib/copy/message";
@@ -110,8 +110,8 @@ export function SummaryCardsSkeleton({ copy }: { copy: SyncRunsCopy }) {
             <card.icon aria-hidden="true" className="text-accent/70 size-4" />
           </Card.Header>
           <Card.Content className="gap-2">
-            <Skeleton className={`h-7 ${card.value} rounded-full`} />
-            <Skeleton className={`h-3 ${card.caption} rounded-full`} />
+            <Skeleton className={cn("h-7 rounded-full", card.value)} />
+            <Skeleton className={cn("h-3 rounded-full", card.caption)} />
           </Card.Content>
         </Card>
       ))}

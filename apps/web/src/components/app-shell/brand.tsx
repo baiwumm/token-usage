@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Typography } from "@heroui/react";
+import { Typography, cn } from "@heroui/react";
 
 import { NAV_COPY } from "@/lib/copy/nav";
 import { useLocale } from "@/lib/copy/locale";
@@ -15,9 +15,10 @@ export function Brand({ collapsed }: { collapsed: boolean }) {
     <div className="flex h-16 shrink-0 items-center px-3">
       <Link
         aria-label="Token Usage"
-        className={`hover:bg-default flex min-w-0 items-center gap-2.5 rounded-3xl p-1 transition-colors ${
-          collapsed ? "w-full justify-center" : "w-full"
-        }`}
+        className={cn(
+          "hover:bg-default flex min-w-0 items-center gap-2.5 rounded-3xl p-1 transition-colors",
+          collapsed ? "w-full justify-center" : "w-full",
+        )}
         href="/"
       >
         <span aria-hidden="true" className="grid size-8 shrink-0 select-none">

@@ -7,6 +7,8 @@
 // The label is decorative chrome: the tier is also carried by text, so colour
 // is never the only channel.
 
+import { cn } from "@heroui/react";
+
 import { tierGradient, tierRamp } from "./achievement-tiers";
 
 export function TierBadge({
@@ -25,9 +27,11 @@ export function TierBadge({
 
   return (
     <span
-      className={`inline-flex items-center rounded-full font-semibold whitespace-nowrap ${
-        size === "md" ? "px-2.5 py-1 text-xs" : "px-2 py-0.5 text-[11px]"
-      } ${className ?? ""}`}
+      className={cn(
+        "inline-flex items-center rounded-full font-semibold whitespace-nowrap",
+        size === "md" ? "px-2.5 py-1 text-xs" : "px-2 py-0.5 text-[11px]",
+        className,
+      )}
       style={{
         background: tierGradient(tier),
         color: ramp.ink,

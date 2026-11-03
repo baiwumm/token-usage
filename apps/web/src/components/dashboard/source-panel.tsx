@@ -6,7 +6,7 @@
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 import type { ModelBreakdownSource } from "@/lib/dashboard/api";
 
-import { Button, Card, Modal, Typography } from "@heroui/react";
+import { Button, Card, Modal, Typography, cn } from "@heroui/react";
 import { useMemo, useState } from "react";
 
 import { canonicalSourceRows } from "./aggregate";
@@ -69,15 +69,16 @@ export function SourcePanel({
           <button
             key={row.id}
             aria-pressed={!isHidden}
-            className={`grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg px-1 py-0.5 text-start text-sm transition-opacity ${
-              isHidden ? "text-muted opacity-40" : "hover:bg-default/60"
-            }`}
+            className={cn(
+              "grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg px-1 py-0.5 text-start text-sm transition-opacity",
+              isHidden ? "text-muted opacity-40" : "hover:bg-default/60",
+            )}
             type="button"
             onClick={() => toggle(row.id)}
           >
             <span className="flex min-w-0 items-center gap-2">
               <SourceIcon label={row.id} size={14} />
-              <span className={`truncate ${isHidden ? "line-through" : ""}`}>
+              <span className={cn("truncate", isHidden && "line-through")}>
                 {row.label}
               </span>
             </span>
@@ -165,18 +166,20 @@ export function SourcePanel({
                         return (
                           <button
                             aria-pressed={!isHidden}
-                            className={`flex min-w-0 cursor-pointer items-center gap-1.5 text-start transition-opacity ${
-                              isHidden ? "opacity-40" : ""
-                            }`}
+                            className={cn(
+                              "flex min-w-0 cursor-pointer items-center gap-1.5 text-start transition-opacity",
+                              isHidden && "opacity-40",
+                            )}
                             title={row.label}
                             type="button"
                             onClick={() => toggle(row.id)}
                           >
                             <SourceIcon label={row.id} size={14} />
                             <span
-                              className={`truncate font-medium ${
-                                isHidden ? "line-through" : ""
-                              }`}
+                              className={cn(
+                                "truncate font-medium",
+                                isHidden && "line-through",
+                              )}
                             >
                               {row.label}
                             </span>

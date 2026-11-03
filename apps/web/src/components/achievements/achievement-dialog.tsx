@@ -13,7 +13,7 @@ import type { AchievementProgress } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
 
 import { ArrowRightFromSquare } from "@gravity-ui/icons";
-import { Button, Modal, Tooltip, Typography } from "@heroui/react";
+import { Button, Modal, Tooltip, Typography, cn } from "@heroui/react";
 
 import { AchievementCoin } from "./achievement-coin";
 import { TierBadge } from "./achievement-tier-badge";
@@ -266,11 +266,11 @@ export function AchievementDialog({
                       return (
                         <li
                           key={tier.key}
-                          className={`flex items-center gap-3 rounded-xl px-2 py-1.5 ${
-                            tier.tier === progress.tier
-                              ? "bg-surface-secondary"
-                              : ""
-                          }`}
+                          className={cn(
+                            "flex items-center gap-3 rounded-xl px-2 py-1.5",
+                            tier.tier === progress.tier &&
+                              "bg-surface-secondary",
+                          )}
                         >
                           <Tooltip delay={0}>
                             <span className="shrink-0">
@@ -301,9 +301,10 @@ export function AchievementDialog({
                             </Tooltip.Content>
                           </Tooltip>
                           <span
-                            className={`flex-1 text-sm tabular-nums ${
-                              reached ? "" : "text-muted"
-                            }`}
+                            className={cn(
+                              "flex-1 text-sm tabular-nums",
+                              !reached && "text-muted",
+                            )}
                           >
                             {unitLabel(progress.thresholds[tier.tier - 1])}
                           </span>

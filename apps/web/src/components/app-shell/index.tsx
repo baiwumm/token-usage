@@ -7,6 +7,7 @@
 //
 // The CLI API and /login stay outside this shell.
 
+import { cn } from "@heroui/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
@@ -99,9 +100,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       />
 
       <div
-        className={`flex min-h-screen flex-col transition-[padding] duration-200 ${
-          collapsed ? "lg:pl-19" : "lg:pl-66"
-        }`}
+        className={cn(
+          "flex min-h-screen flex-col transition-[padding] duration-200",
+          collapsed ? "lg:pl-19" : "lg:pl-66",
+        )}
       >
         <TopBar
           collapsed={collapsed}

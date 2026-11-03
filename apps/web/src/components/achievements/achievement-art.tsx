@@ -27,6 +27,7 @@ import {
   Star,
   Tachometer,
 } from "@gravity-ui/icons";
+import { cn } from "@heroui/react";
 import { useId, type ComponentType, type SVGProps } from "react";
 
 import { achievementHue, tierRingStops } from "./achievement-tiers";
@@ -89,7 +90,7 @@ export function AchievementArt({
 
   return (
     <div
-      className={`relative aspect-square shrink-0 ${className ?? "size-24"}`}
+      className={cn("relative aspect-square shrink-0", className ?? "size-24")}
     >
       <svg aria-hidden="true" className="size-full" viewBox="0 0 120 120">
         <defs>
@@ -225,7 +226,10 @@ export function AchievementArt({
       <span className="absolute inset-0 grid place-items-center">
         <Glyph
           aria-hidden="true"
-          className={`h-[38%] w-[38%] ${unlocked ? "text-white/95" : "text-white/45"}`}
+          className={cn(
+            "h-[38%] w-[38%]",
+            unlocked ? "text-white/95" : "text-white/45",
+          )}
           style={{
             filter: unlocked
               ? `drop-shadow(0 2px 6px hsl(${accent} 90% 45% / 0.55))`

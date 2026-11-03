@@ -4,6 +4,7 @@
 // chart for source/model distribution (recharts 3.x). Tooltips format through
 // the shared format provider.
 
+import { cn } from "@heroui/react";
 import {
   Area,
   AreaChart,
@@ -78,7 +79,7 @@ export function DonutChart({
   const { formatTokens } = useFormat();
 
   return (
-    <div className={`relative shrink-0 ${className}`}>
+    <div className={cn("relative shrink-0", className)}>
       <ResponsiveContainer height="100%" width="100%">
         <PieChart>
           <Pie
