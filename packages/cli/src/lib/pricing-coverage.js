@@ -69,10 +69,13 @@ async function readLastWinsBuckets({ queuePath, fromMs, toMs }) {
 
 // "Covered" = priced or known-free (subscription/local); "unpriced" = the
 // pricing engine has no entry for the model at all (the $0 that matters).
+// Zero-token unpriced buckets (e.g. qoder-cn credits-only rows) are counted
+// separately: they carry no cost error, so they must not crowd top_unpriced.
 function analyzePricingCoverage(buckets) {
   let coveredBuckets = 0;
   let coveredTokens = 0;
   let totalTokens = 0;
+  let zeroTokenUnpricedBuckets = 0;
   const unpricedByModel = new Map();
   for (const bucket of buckets) {
     const info = getModelPricingInfo(bucket.model, { source: bucket.source });
@@ -81,6 +84,10 @@ function analyzePricingCoverage(buckets) {
     if (covered) {
       coveredBuckets += 1;
       coveredTokens += bucket.total_tokens;
+      continue;
+    }
+    if (bucket.total_tokens === 0) {
+      zeroTokenUnpricedBuckets += 1;
       continue;
     }
     const entry = unpricedByModel.get(bucket.model) || {
@@ -103,10 +110,12 @@ function analyzePricingCoverage(buckets) {
       buckets: entry.buckets,
       sources: [...entry.sources].sort(),
     }));
+  const actionableUnpriced = [...unpricedByModel.values()].reduce((sum, entry) => sum + entry.buckets, 0);
   return {
     buckets: buckets.length,
     covered_buckets: coveredBuckets,
-    unpriced_buckets: buckets.length - coveredBuckets,
+    unpriced_buckets: actionableUnpriced,
+    zero_token_unpriced_buckets: zeroTokenUnpricedBuckets,
     bucket_coverage: buckets.length ? coveredBuckets / buckets.length : 1,
     total_tokens: totalTokens,
     covered_tokens: coveredTokens,

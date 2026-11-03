@@ -58,6 +58,9 @@ test("coverage counts priced/free as covered and ranks unpriced models by tokens
     bucket({ hour: h1, source: "dsh", model: "unknown", total: 50 }),
     bucket({ hour: h0, source: "lmstudio", model: "local-gguf", total: 10 }),
     bucket({ hour: h0, source: "zcode", model: "fictional-model-xyz-999", total: 200 }),
+    // Zero-token unpriced buckets (credits-only rows) are counted separately
+    // and must not appear in top_unpriced.
+    bucket({ hour: h0, source: "qoder-cn", model: "dfmodel", total: 0 }),
     // Out-of-window and control rows must not be counted.
     bucket({ hour: old, source: "codex", model: "gpt-4o", total: 5000 }),
     { kind: "account_session_state", source: "trae-cn", session_id: "s1" },
@@ -65,15 +68,20 @@ test("coverage counts priced/free as covered and ranks unpriced models by tokens
 
   const report = await collectPricingCoverage({ queuePath, days: 7, now: () => new Date(now) });
   const { coverage } = report;
-  assert.equal(coverage.buckets, 5, "old + control rows excluded");
+  assert.equal(coverage.buckets, 6, "old + control rows excluded");
   assert.equal(coverage.covered_buckets, 2, "gpt-4o priced + lmstudio local-free");
-  assert.equal(coverage.unpriced_buckets, 3);
+  assert.equal(coverage.unpriced_buckets, 3, "only token-bearing unpriced buckets are actionable");
+  assert.equal(coverage.zero_token_unpriced_buckets, 1, "dfmodel zero-token bucket counted separately");
   assert.equal(coverage.total_tokens, 1260);
   assert.equal(coverage.covered_tokens, 910);
   assert.ok(Math.abs(coverage.token_coverage - 910 / 1260) < 1e-9);
   assert.equal(coverage.top_unpriced[0].model, "fictional-model-xyz-999");
   assert.equal(coverage.top_unpriced[0].total_tokens, 200);
   assert.deepEqual(coverage.top_unpriced[0].sources, ["zcode"]);
+  assert.ok(
+    !coverage.top_unpriced.some((entry) => entry.model === "dfmodel"),
+    "zero-token unpriced models stay out of top_unpriced",
+  );
 });
 
 test("unknown alignment preview attributes only same-source same-hour dominants", async (t) => {
