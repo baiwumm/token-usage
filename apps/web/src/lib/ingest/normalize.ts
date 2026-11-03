@@ -27,6 +27,9 @@ export type NormalizedBucket = {
     conversations: number;
     total_cost_usd: number;
     credits: number;
+    // Contract v2 (2026-11-03): null = unattributed (stored as '' in
+    // token_usage_hourly, whose PK column cannot be NULL).
+    project_key: string | null;
   };
 
 export type NormalizedSessionState = {
@@ -97,6 +100,13 @@ export function normalizeBucket(raw: unknown): NormalizedBucket | null {
       : nonNegativeInteger(record.billable_total_tokens);
 
   if (billable === null && record.billable_total_tokens != null) return null;
+  // Contract v2: project_key must be a string when present (null/absent =
+  // unattributed); anything else invalidates the whole batch, like any other
+  // malformed bucket field. The cleanup itself is the session rules verbatim
+  // (normalizeProjectKey, hoisted function declaration below).
+  if (record.project_key != null && typeof record.project_key !== "string") {
+    return null;
+  }
   const cost = Number(record.total_cost_usd);
 
   return {
@@ -111,6 +121,7 @@ export function normalizeBucket(raw: unknown): NormalizedBucket | null {
         ? Math.min(cost, MAX_BUCKET_COST_USD)
         : 0,
     credits: normalizeCredits(record.credits),
+    project_key: normalizeProjectKey(record.project_key),
   };
 }
 
@@ -352,7 +363,8 @@ export function dedupeBuckets(buckets: NormalizedBucket[]): NormalizedBucket[] {
   const bucketMap = new Map<string, NormalizedBucket>();
 
   for (const bucket of buckets) {
-    const key = `${bucket.hour_start}|${bucket.source}|${bucket.model}`;
+    // contract v2: project_key is part of the identity ('' = unattributed).
+    const key = `${bucket.hour_start}|${bucket.source}|${bucket.model}|${bucket.project_key ?? ""}`;
     const previous = bucketMap.get(key);
 
     if (!previous || bucket.total_tokens > previous.total_tokens) {

@@ -161,9 +161,11 @@ function resolveWindow(opts, nowMs) {
   return { fromMs: clampedFrom, toMs, clamped: clampedFrom !== effectiveFrom };
 }
 
-function bucketKey(hourMs, source, model) {
-  // JSON over a delimiter: model names may contain `|`.
-  return JSON.stringify([new Date(hourMs).toISOString(), source, model]);
+function bucketKey(hourMs, source, model, project = "") {
+  // JSON over a delimiter: model names may contain `|`. contract v2
+  // (2026-11-03): project_key joins the identity; '' = unattributed (rows
+  // from a pre-v2 server have no project_key at all and land here too).
+  return JSON.stringify([new Date(hourMs).toISOString(), source, model, project]);
 }
 
 // Local baseline: every usage row in queue.jsonl, normalized/sanitized exactly
@@ -206,7 +208,8 @@ async function collectBuckets({ queuePath, fromMs, toMs, start = 0 }) {
       });
       const sanitized = sanitizeBucketForUpload(row);
       if (!sanitized) continue;
-      buckets.set(bucketKey(hourMs, source, model), sanitized);
+      const project = typeof sanitized.project_key === "string" ? sanitized.project_key.trim() : "";
+      buckets.set(bucketKey(hourMs, source, model, project), sanitized);
     }
   } finally {
     await handle.close();
@@ -283,7 +286,9 @@ async function fetchServerBuckets({ baseUrl, anonKey, deviceToken, from, to, lim
       if (!Number.isFinite(hourMs)) continue;
       const source = String(row.source);
       const model = String(row.model);
-      buckets.set(bucketKey(hourMs, source, model), row);
+      // Pre-v2 servers omit project_key entirely; treat as unattributed ('').
+      const project = typeof row.project_key === "string" ? row.project_key : "";
+      buckets.set(bucketKey(hourMs, source, model, project), row);
     }
     if (rows.length < pageSize) break;
     offset += rows.length;

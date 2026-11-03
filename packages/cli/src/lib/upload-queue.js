@@ -56,7 +56,10 @@ function snapshotKey(bytes) {
   if (Object.hasOwn(row, "kind") || typeof row.hour_start !== "string" || !Number.isFinite(Date.parse(row.hour_start))) return null;
   const source = (typeof row.source === "string" ? row.source.trim().toLowerCase() : "") || "codex";
   const model = (typeof row.model === "string" ? row.model.trim() : "") || "unknown";
-  return { key: JSON.stringify(["hourly", source, model, row.hour_start]), verifiedMs: null };
+  // contract v2 (2026-11-03): project_key joins the last-wins identity;
+  // rows without it collapse onto the unattributed ('') bucket as before.
+  const project = typeof row.project_key === "string" ? row.project_key.trim() : "";
+  return { key: JSON.stringify(["hourly", source, model, project, row.hour_start]), verifiedMs: null };
 }
 
 // Caller holds sync.lock. Only rewrite pending snapshots; uploaded history and

@@ -163,9 +163,12 @@ export async function POST(request: Request) {
           user_id: tokenRow.user_id,
           device_id: tokenRow.device_id,
           ...bucket,
+          // contract v2: the PK column is NOT NULL DEFAULT '' — the
+          // unattributed form is the empty string, not NULL.
+          project_key: bucket.project_key ?? "",
           updated_at: now,
         })),
-        "user_id,device_id,hour_start,source,model",
+        "user_id,device_id,hour_start,source,model,project_key",
         { returning: false },
       );
     }

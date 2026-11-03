@@ -30,6 +30,7 @@ const BUCKET_COLUMNS = [
   "hour_start",
   "source",
   "model",
+  "project_key",
   "input_tokens",
   "cached_input_tokens",
   "cache_creation_input_tokens",
@@ -155,6 +156,8 @@ export async function GET(request: Request) {
       hour_start: new Date(String(row.hour_start)).toISOString(),
       source: String(row.source),
       model: String(row.model),
+      // contract v2 (2026-11-03): additive field; '' = unattributed.
+      project_key: String(row.project_key ?? ""),
       input_tokens: numberOrZero(row.input_tokens),
       cached_input_tokens: numberOrZero(row.cached_input_tokens),
       cache_creation_input_tokens: numberOrZero(

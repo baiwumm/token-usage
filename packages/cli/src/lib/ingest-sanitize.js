@@ -44,6 +44,15 @@ function sanitizeBucketForUpload(bucket) {
   } else {
     delete sanitized.credits;
   }
+  // project_key (contract v2, 2026-11-03): optional pass-through, string only
+  // (anything else is a producer bug — drop the field, not the row); the
+  // server applies the basename/control-char cleanup. Trimmed-empty is
+  // dropped so unattributed rows keep the old wire shape.
+  if (typeof bucket.project_key === "string" && bucket.project_key.trim()) {
+    sanitized.project_key = bucket.project_key;
+  } else {
+    delete sanitized.project_key;
+  }
   return sanitized;
 }
 
