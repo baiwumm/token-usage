@@ -11,6 +11,7 @@ export type PageSeoKey =
   | "login"
   | "settings"
   | "sessions"
+  | "projects"
   | "sync-runs"
   | "service-status"
   | "device"
@@ -84,6 +85,10 @@ export const PAGE_SEO_COPY: Record<Locale, Record<PageSeoKey, PageSeoCopy>> = {
       title: NAV_COPY.zh.sessions,
       description: "浏览 AI 编码会话的 token 用量、模型与项目明细。",
     },
+    projects: {
+      title: NAV_COPY.zh.projects,
+      description: "按项目聚合 AI 编码会话的 token 用量、费用与日峰值。",
+    },
     "sync-runs": {
       title: NAV_COPY.zh.syncRuns,
       description: "查看采集器每轮运行的记录：触发方式、结果、耗时与上报量。",
@@ -125,6 +130,11 @@ export const PAGE_SEO_COPY: Record<Locale, Record<PageSeoKey, PageSeoCopy>> = {
       title: NAV_COPY.en.sessions,
       description:
         "Browse token usage, models and projects for your AI coding sessions.",
+    },
+    projects: {
+      title: NAV_COPY.en.projects,
+      description:
+        "Per-project token usage, cost and daily peaks from your AI coding sessions.",
     },
     "sync-runs": {
       title: NAV_COPY.en.syncRuns,

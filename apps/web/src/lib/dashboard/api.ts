@@ -695,8 +695,8 @@ export interface SyncRunsPayload {
   runs: SyncRunItem[];
 }
 
-async function callApp<T>(query: string): Promise<T> {
-  const response = await fetch(`/api/app/sync-runs${query}`);
+async function callApp<T>(path: string, query: string): Promise<T> {
+  const response = await fetch(`/api/app/${path}${query}`);
 
   if (response.status === 401) {
     throw new DashboardApiError("unauthorized", 401);
@@ -735,5 +735,54 @@ export function fetchSyncRuns(params: {
   if (params.limit != null) query.set("limit", String(params.limit));
   if (params.offset != null) query.set("offset", String(params.offset));
 
-  return callApp<SyncRunsPayload>(`?${query}`);
+  return callApp<SyncRunsPayload>("sync-runs", `?${query}`);
+}
+
+// Projects (/projects, docs/projects-page-plan.md 批次 1) — the dashboard's
+// own aggregation over token_sessions, cookie-auth like sync-runs.
+
+export interface ProjectItem {
+  project_key: string | null;
+  name: string | null;
+  total_tokens: number;
+  total_cost_usd: string;
+  session_count: number;
+  day_peak: { date: string; total_tokens: number } | null;
+  last_active: string | null;
+}
+
+export interface ProjectsPayload {
+  from: string;
+  to: string;
+  days: number;
+  total: number;
+  limit: number;
+  offset: number;
+  totals: {
+    attributed_tokens: number;
+    unattributed_tokens: number;
+    unattributed_sessions: number;
+  };
+  projects: ProjectItem[];
+}
+
+export function fetchProjects(params: {
+  fromDay: string;
+  toDay: string;
+  tz?: string;
+  sort?: "tokens" | "cost";
+  limit?: number;
+  offset?: number;
+}): Promise<ProjectsPayload> {
+  const query = new URLSearchParams({
+    from: params.fromDay,
+    to: params.toDay,
+  });
+
+  if (params.tz) query.set("tz", params.tz);
+  if (params.sort) query.set("sort", params.sort);
+  if (params.limit != null) query.set("limit", String(params.limit));
+  if (params.offset != null) query.set("offset", String(params.offset));
+
+  return callApp<ProjectsPayload>("projects", `?${query}`);
 }

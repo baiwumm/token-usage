@@ -4,6 +4,7 @@
 export interface NavCopy {
   dashboard: string;
   sessions: string;
+  projects: string;
   syncRuns: string;
   settings: string;
   wrapped: string;
@@ -40,6 +41,7 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
   zh: {
     dashboard: "仪表盘",
     sessions: "Sessions",
+    projects: "项目",
     syncRuns: "采集记录",
     settings: "账户设置",
     wrapped: "年度回顾",
@@ -74,6 +76,7 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
   en: {
     dashboard: "Dashboard",
     sessions: "Sessions",
+    projects: "Projects",
     syncRuns: "Sync runs",
     settings: "Account settings",
     wrapped: "Wrapped",
@@ -111,6 +114,7 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
 export const NAV_ITEMS = [
   { href: "/", key: "dashboard" },
   { href: "/sessions", key: "sessions" },
+  { href: "/projects", key: "projects" },
   { href: "/sync-runs", key: "syncRuns" },
   { href: "/wrapped", key: "wrapped", badge: true },
   { href: "/achievements", key: "achievements" },

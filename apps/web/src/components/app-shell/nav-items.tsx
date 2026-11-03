@@ -4,6 +4,7 @@ import {
   Calendar,
   ClockArrowRotateLeft,
   Display,
+  Folder,
   Gear,
   ListUl,
   Medal,
@@ -19,6 +20,7 @@ import { useLocale } from "@/lib/copy/locale";
 const NAV_ICONS = {
   dashboard: Display,
   sessions: ListUl,
+  projects: Folder,
   syncRuns: ClockArrowRotateLeft,
   wrapped: Calendar,
   achievements: Medal,

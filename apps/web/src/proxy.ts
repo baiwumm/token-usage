@@ -29,6 +29,7 @@ const CONTRACT_API_PREFIX = "/api/functions/";
 const PROTECTED_PAGES = [
   "/",
   "/sessions",
+  "/projects",
   "/sync-runs",
   "/settings",
   "/wrapped",
@@ -122,6 +123,7 @@ export const config = {
     "/api/functions/:path*",
     "/",
     "/sessions/:path*",
+    "/projects/:path*",
     "/sync-runs/:path*",
     "/settings/:path*",
     "/wrapped/:path*",
