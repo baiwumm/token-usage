@@ -12,13 +12,12 @@ import type { DashboardRange } from "@/lib/dashboard/ranges";
 import { Card, Tabs } from "@heroui/react";
 import { useMemo, useState } from "react";
 
-import { PanelOverlay } from "./panel-overlay";
-
 import {
   TrendChart,
   type TrendMetric,
   type TrendPoint,
 } from "@/components/charts";
+import { PanelOverlay } from "@/components/panel-overlay";
 import { SectionError } from "@/components/section-states";
 import { useFormat } from "@/lib/format/format";
 

@@ -256,6 +256,34 @@ describe.skipIf(!badgeRoute)("GET /api/badge (docs/badge.md §2)", () => {
     expect(svg).not.toContain("other-repo");
   });
 
+  it("inlines the owner avatar on both scopes (§5.2)", async () => {
+    const { GET } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
+    const png = Buffer.from("89504e470d0a1a0a", "hex");
+
+    fake.adminUsers.set(USER_ID, {
+      user_metadata: {
+        avatar_url: `${fake.url}/storage/v1/object/public/avatars/owner.png`,
+      },
+    });
+    fake.storageObjects.set("owner.png", { type: "image/png", body: png });
+
+    // The account badge carried no avatar until 2026-11-03: the user branch
+    // returned the aggregates without `avatarDataUri`.
+    const account = await GET(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`));
+
+    expect(await account.text()).toContain(
+      `href="data:image/png;base64,${png.toString("base64")}"`,
+    );
+
+    const repo = await GET(
+      new Request(
+        `${BADGE_URL}?token=${BADGE_TOKEN}&scope=repo&project=token-usage`,
+      ),
+    );
+
+    expect(await repo.text()).toContain("data:image/png;base64,");
+  });
+
   it("answers POST with the 405 envelope and OPTIONS with 204 (§2.2)", async () => {
     const { POST, OPTIONS } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
 

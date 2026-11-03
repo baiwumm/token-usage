@@ -6,8 +6,9 @@ import type {
   SeriesPoint,
 } from "@/lib/dashboard/api";
 
-import { PanelOverlay } from "./panel-overlay";
 import { TotalTokensHero } from "./hero-card";
+
+import { PanelOverlay } from "@/components/panel-overlay";
 
 /** Hero card slot: the range total, wrapped in the refresh overlay. */
 export function HeroSection({

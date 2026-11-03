@@ -13,10 +13,10 @@ import { Button, Card } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { PanelOverlay } from "./panel-overlay";
 import { AchievementStrip } from "./achievement-strip";
 
 import { AchievementDetail } from "@/components/achievements/achievement-detail";
+import { PanelOverlay } from "@/components/panel-overlay";
 import { SectionError, SectionSkeleton } from "@/components/section-states";
 import { nearestUnlocks, recentUnlocks } from "@/lib/achievements/highlights";
 import { useProfile } from "@/lib/auth/profile";

@@ -167,6 +167,10 @@ export class FakeSupabase {
   refreshTokens = new Map<string, AuthUserRecord>();
   otpChallenges = new Map<string, OtpChallenge>();
   issuedSessions: IssuedSession[] = [];
+  // Admin user metadata (the badge avatar loader reads user_metadata) and the
+  // public storage objects it may inline (docs/badge.md §5.2).
+  adminUsers = new Map<string, { user_metadata: Record<string, unknown> }>();
+  storageObjects = new Map<string, { type: string; body: Buffer }>();
   // Most recent magic-link request, exposed so tests can play the role of the
   // email body (the auth code the user would click).
   lastOtp: OtpChallenge | null = null;
@@ -183,6 +187,8 @@ export class FakeSupabase {
     this.otpChallenges.clear();
     this.issuedSessions = [];
     this.lastOtp = null;
+    this.adminUsers.clear();
+    this.storageObjects.clear();
   }
 
   async listen(): Promise<string> {
@@ -429,6 +435,32 @@ export class FakeSupabase {
 
     if (path === "/auth/v1/token" && req.method === "POST") {
       return this.handleTokenGrant(url.searchParams.get("grant_type") || "", req, res);
+    }
+
+    const adminUserMatch = path.match(/^\/auth\/v1\/admin\/users\/([^/]+)$/);
+
+    if (adminUserMatch && req.method === "GET") {
+      const id = decodeURIComponent(adminUserMatch[1]);
+      const record = this.adminUsers.get(id);
+
+      if (!record) return this.json(res, 404, { message: "User not found" });
+      return this.json(res, 200, { id, user_metadata: record.user_metadata });
+    }
+
+    const storageMatch = path.match(
+      /^\/storage\/v1\/object\/public\/avatars\/([^/]+)$/,
+    );
+
+    if (storageMatch && req.method === "GET") {
+      const object = this.storageObjects.get(
+        decodeURIComponent(storageMatch[1]),
+      );
+
+      if (!object) return this.json(res, 404, { message: "Object not found" });
+      res.statusCode = 200;
+      res.setHeader("Content-Type", object.type);
+      res.end(object.body);
+      return;
     }
 
     const restMatch = path.match(/^\/rest\/v1\/([^/]+)$/);

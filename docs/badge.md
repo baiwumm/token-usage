@@ -224,7 +224,9 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   （黑底白字形），dark 用 `public/logo-dark.svg`（白底黑字，2026-11-02：原实现用 accent 描
   单色字形，在深色卡上几乎不可见）；`theme=auto` 同时内嵌两版，靠 `.c-lg-l` / `.c-lg-d`
   类与同一 `prefers-color-scheme` 媒体查询切换。品牌名 `TOKEN USAGE`（10px 大写、字距 2、
-  右对齐、不带域名——自部署域名各异）
+  右对齐）；品牌名下方一行项目站点 `token-usage.cc`（9px、muted、字距 0.5、右对齐，
+  2026-11-03 操作者裁定）。站点是**固定文本**，不取请求 host：自部署域名各异，而 host
+  进渲染会破坏字节级确定性（§5.1）；compact 单行版不画（§5.3）
 - 右下区块**按 scope 切换**：`scope=user` 显示 `TOP SOURCES` **前 1 行**（来源标 12px +
   来源名 + 占比 + 占比条 72×4 圆角）；`scope=repo` 显示 `TOP MODELS` **前 1 行**
   （模型标 + 模型名 + token 数）。无数据时显示 `—`（2026-11-02 操作者裁定：2 行改 1 行并补标；
@@ -234,7 +236,9 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 - **头像加载**（2026-11-02）：`lib/badge/data.ts` 用 service-role 读 `auth.users` 的
   `user_metadata.avatar_url`，仅允许本部署 host 且路径落于 `/storage/v1/object/public/avatars/`
   的地址（防 SSRF），类型限 PNG/JPEG/WebP、≤512 KB，内联为 `data:` URI；单飞缓存 5 分钟，
-  `invalidateBadgeData` 一并失效；任何失败（缺头像、超大、非白名单、非图片）回退首字母圆
+  `invalidateBadgeData` 一并失效；任何失败（缺头像、超大、非白名单、非图片）回退首字母圆。
+  account 与 repo 两个 scope 渲染同一张头像（2026-11-03 修复：账户分支曾漏传
+  `avatarDataUri`，导致只有仓库徽章显示头像）
 
 ### §5.3 style=compact
 
@@ -252,7 +256,8 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 ### §5.4 style=sparkline
 
 - panel 基础上右上区域加 120×28 折线（`series` 归一化 polyline，仅描边 2px 不填充；
-  `series` 空时退化为 panel）
+  `series` 空时退化为 panel）；折线位于品牌区下方（x=456、y=56，2026-11-03 随站点行下移
+  8px，避免与 `token-usage.cc` 相撞）
 
 ### §5.5 theme 色板
 
@@ -325,6 +330,9 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 - 卡内实时 `<img src="/api/app/badge?preview=1&…">`（附 cache-busting 查询参数绕浏览器
   缓存），风格/主题/范围/对象切换即换参。2026-11-02 P3 实施修订：原写 `/api/badge?token=…`，
   但明文令牌只在生成时出现一次，页面刷新后无从构造公开 URL，故改用会话鉴权预览分支（§7.1）
+- 换参后到新图解码完成之间，预览容器盖一层半透明遮罩 + `Spinner`（共享
+  `PanelOverlay`，容器 `aria-busy`）：切换时不会先看到上一张图（2026-11-03 操作者裁定）。
+  `onLoad` / `onError` 都解除遮罩，加载失败也不会卡住转圈
 
 ### §7.4 README 片段复制（两版都给）
 
@@ -353,8 +361,8 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 | 文件 | 覆盖 |
 |---|---|
 | `tests/unit/badge-params.test.ts` | §2.1 参数默认值/非法值矩阵、§2.3 bad_request 分类 |
-| `tests/unit/badge-svg.test.ts` | §5 渲染器：确定性、XML 转义、截断、隐私不变量（无 script/外链/NaN）、scope 切换区块、auto 媒体查询、零态渲染；字节级快照（`toMatchSnapshot`）在 P2 实现时随操作者过目落盘 |
-| `tests/contract/badge.test.ts` | §2.2 响应头矩阵、§2.3 降级矩阵、方法守卫、隐私清扫（响应不含令牌/哈希/user_id）、§7.1 配置端点守卫与形状 |
+| `tests/unit/badge-svg.test.ts` | §5 渲染器：确定性、XML 转义、截断、隐私不变量（无 script/外链/NaN）、scope 切换区块、auto 媒体查询、零态渲染、品牌区站点行存在且 compact 不含（P6）；字节级快照（`toMatchSnapshot`）在 P2 实现时随操作者过目落盘 |
+| `tests/contract/badge.test.ts` | §2.2 响应头矩阵、§2.3 降级矩阵、方法守卫、隐私清扫（响应不含令牌/哈希/user_id）、§7.1 配置端点守卫与形状、两个 scope 都内联头像（P6） |
 
 - canonical fixtures（附录 A）是单测与实现的共同输入；契约测试经 FakeSupabase
   播种 `token_public_badges` / `token_usage_hourly` / `token_sessions`
@@ -371,6 +379,12 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   `tests/unit/badge-svg.test.ts` 新增「单行 + 标」「头像内联 / 无头像不画」「品牌标随主题」
   「SMIL 无脚本」用例，字节级快照随实现重录（操operator 过目）；compact 品牌段同期改为
   黑底白字大写 + 品牌标（§5.3）
+- P6 增量（2026-11-03，操作者裁定）：⑤ panel 品牌区加项目站点行、sparkline 下移 8px
+  （§5.2 / §5.4），`tests/unit/badge-svg.test.ts` 断言站点行存在且 compact 不含，字节级
+  快照重录（操作者过目）；⑥ 修复账户徽章不显示头像（§5.2，账户分支漏传
+  `avatarDataUri`），契约测试新增「两个 scope 都内联头像」用例，FakeSupabase 补
+  `/auth/v1/admin/users/:id` 与公开头像存储对象两条读路径；⑦ 预览换参加载遮罩（§7.3，
+  `PanelOverlay` 自 `components/dashboard/` 提为跨页共享）
 
 ## §10 实施阶段
 
@@ -380,6 +394,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 | P3 Settings | 配置卡片 + ui-spec 增补 | `src/components/settings/badge-card.tsx` |
 | P4 公开页 | `/u/[token]` + 自家 README 挂徽章 | `src/app/u/[token]/page.tsx`；`src/components/u/*` |
 | P5 徽章视觉（2026-11-02） | 头像 + 品牌标 + 单行来源（含来源标） | `src/lib/badge/render.ts`；`src/lib/badge/marks.ts`（由品牌标生成）；`src/lib/badge/data.ts`（头像加载） |
+| P6 徽章细化（2026-11-03） | 品牌区站点行 + 预览加载遮罩 + 账户头像修复 | `src/lib/badge/render.ts`；`src/lib/badge/data.ts`；`src/components/panel-overlay.tsx`（自 dashboard 提为跨页共享）；`src/components/settings/badge-card.tsx` |
 
 - 随 P2 在 AGENTS.md 文档地图增补 `docs/badge.md` 行
 - 零新依赖；除 §3.1 迁移外无其他表结构变更（此前评估曾称"零迁移"，为存令牌与

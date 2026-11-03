@@ -89,6 +89,8 @@ describe.skipIf(!render)("badge svg renderer (docs/badge.md §5)", () => {
     expect(svg).toContain("TOP SOURCES");
     expect(svg).toContain("Codex");
     expect(svg).toContain("100%");
+    // The brand lockup carries the project site under the name (§5.2).
+    expect(svg).toContain("token-usage.cc");
   });
 
   it("panel (repo) switches the right block to TOP MODELS and shows the project (§5.2)", () => {
@@ -167,6 +169,8 @@ describe.skipIf(!render)("badge svg renderer (docs/badge.md §5)", () => {
     expect(svg).toContain('fill="#0A0A0B"');
     expect(svg).toContain("18.48B");
     expect(svg).toContain("$1,318.40");
+    // The 20px single line has no room for the site line (§5.2/§5.3).
+    expect(svg).not.toContain("token-usage.cc");
   });
 
   it("sparkline embeds a polyline of the daily series (§5.4)", () => {

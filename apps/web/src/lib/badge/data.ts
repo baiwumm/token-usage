@@ -309,6 +309,10 @@ async function buildBadgeData(
     },
     sources: buildSources(agg),
     models: buildModels(agg),
+    // Both scopes render the same owner avatar (§5.2). The account branch used
+    // to drop it, so only repo badges showed the picture (operator report
+    // 2026-11-03).
+    avatarDataUri,
     series: buildSeries(agg, timeZone, now),
   };
 }
@@ -536,8 +540,12 @@ async function fetchAvatarDataUri(userId: string): Promise<string | null> {
 }
 
 // Single-flight per owner: a badge storm on a cold cache fetches the avatar
-// once, and a failed load is not pinned for the whole TTL window.
+// once, and a failed load is not pinned for the whole TTL window. Tests turn
+// the cache off with the same switch the aggregates use, so a reseeded fixture
+// never inherits the previous avatar.
 export function loadBadgeAvatar(userId: string): Promise<string | null> {
+  if (badgeCacheDisabled()) return fetchAvatarDataUri(userId);
+
   const now = Date.now();
   const hit = avatarCache.get(userId);
 

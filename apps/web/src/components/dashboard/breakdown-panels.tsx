@@ -7,10 +7,10 @@ import { useMemo } from "react";
 
 import { canonicalSourceRows } from "./aggregate";
 import { CreditsCard } from "./credits-card";
-import { PanelOverlay } from "./panel-overlay";
 import { SourcePanel } from "./source-panel";
 import { TopModels } from "./top-models-panel";
 
+import { PanelOverlay } from "@/components/panel-overlay";
 import { SectionError, SectionSkeleton } from "@/components/section-states";
 
 /**

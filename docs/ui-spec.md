@@ -477,7 +477,7 @@
 | 公开展示 | `Switch`（拇指 Check / Xmark，同数据刷新卡） | 未生成令牌时禁用并提示先生成；切换即 PUT（带浏览器时区） |
 | 访问令牌 | 文本「已生成 · 末四位 xxxx」+ 按钮 | 无令牌：主按钮「生成令牌」；有令牌：「重置令牌」→ `AlertDialog`（`status="warning"`，确认按钮 `variant="danger"`），正文写明旧链接立即失效、已上报用量不受影响 |
 | 仓库白名单 | 多选 `Select`（`selectionMode="multiple"`）+「保存白名单」 | 选项 = `knownProjects` ∪ 已在白名单的项；有改动才可保存，>32 项禁用；下方两行说明：三项口径缺口（账户级来源不计、无项目名会话不计、同名合并）与「活跃天数按 {时区} 折算」 |
-| 预览 | 四组 `ToggleButtonGroup size="sm"`（风格 / 主题 / 范围 / 对象）+ 仓库单选 `Select` | 预览图走会话预览分支，切换即换参；白名单为空时「仓库」置灰并提示；600px 面板在卡内横向滚动容器里，不外溢页面 |
+| 预览 | 四组 `ToggleButtonGroup size="sm"`（风格 / 主题 / 范围 / 对象）+ 仓库单选 `Select` | 预览图走会话预览分支，切换即换参；换参到新图解码完成之间盖 `PanelOverlay` 遮罩（容器 `aria-busy`），不闪上一张图；白名单为空时「仓库」置灰并提示；600px 面板在卡内横向滚动容器里，不外溢页面 |
 | README 片段 | `ToggleButtonGroup`（单主题 / 跟随 GitHub 明暗）+ 只读 `TextArea` + 复制 | 按当前预览参数生成，令牌以 `YOUR_BADGE_TOKEN` 占位 |
 
 - 生成/重置成功后弹「保存你的徽章令牌」`Modal`（`size="lg"`）：`Alert status="warning"` 写明

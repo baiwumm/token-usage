@@ -202,6 +202,12 @@ const PRODUCT_LOGO = {
   dark: { tile: "#FFFFFF", glyph: "#0A0A0B" },
 } as const;
 
+// Brand lockup (§5.2, 2026-11-03): product mark + name, with the project's
+// site right under the name. Fixed text rather than the request host — every
+// self-hosted deployment points at the same project site, and a host-derived
+// string would make the output non-deterministic (byte-level goldens, §5.1).
+const PROJECT_SITE = "token-usage.cc";
+
 function productLogoBox(tile: string, glyph: string): string {
   return (
     `<rect width="360" height="360" rx="80" ry="80" fill="${tile}"/>` +
@@ -408,7 +414,7 @@ function renderPanel(
   const title = data.displayName.trim() || "AI Coding Usage";
   const subtitle = `TOTAL USAGE · ${data.range === "30d" ? "30 DAYS" : "ALL TIME"}`;
   const sparkline = withSparkline
-    ? sparklinePolyline(data.series, 456, 48, 120, 28, paint)
+    ? sparklinePolyline(data.series, 456, 56, 120, 28, paint)
     : null;
   const styleBlock = paint.kind === "class" ? AUTO_STYLE : "";
   // Without an avatar the left column starts at the card margin; with one the
@@ -451,6 +457,10 @@ function renderPanel(
     textEl(576, 32, 10, fillAttr(paint, "accent"), "TOKEN USAGE", {
       anchor: "end",
       spacing: 2,
+    }) +
+    textEl(576, 45, 9, fillAttr(paint, "muted"), PROJECT_SITE, {
+      anchor: "end",
+      spacing: 0.5,
     }) +
     (sparkline ?? "") +
     statSlot(24, "TOKENS", formatBadgeTokens(data.totals.tokens), paint, 0.05) +

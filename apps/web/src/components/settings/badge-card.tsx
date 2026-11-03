@@ -33,6 +33,7 @@ import { ResetBadgeDialog, RevealTokenDialog } from "./badge-dialogs";
 import { TOKEN_PLACEHOLDER } from "./badge-helpers";
 import { BadgeSnippetSection } from "./badge-snippet-section";
 
+import { PanelOverlay } from "@/components/panel-overlay";
 import { PendingButton } from "@/components/pending-button";
 import { SectionError } from "@/components/section-states";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
@@ -140,6 +141,7 @@ export function BadgeCard() {
   const [resetOpen, setResetOpen] = useState(false);
   const [revealToken, setRevealToken] = useState<string | null>(null);
   const [previewVersion, setPreviewVersion] = useState(0);
+  const [loadedPreview, setLoadedPreview] = useState<string | null>(null);
   const [view, setView] = useState<BadgeView>({
     style: "panel",
     theme: "dark",
@@ -147,6 +149,11 @@ export function BadgeCard() {
     scope: "user",
     project: null,
   });
+
+  const previewSrc = badgePreviewUrl(view, previewVersion);
+  // Derived from the loaded src, so a new query starts in the loading state
+  // during the very render that switched it — no effect, no stale frame.
+  const previewLoading = loadedPreview !== previewSrc;
 
   const redirectToLogin = useCallback(() => {
     router.replace(`${LOGIN_PATH}?next=${encodeURIComponent("/settings")}`);
@@ -521,14 +528,24 @@ export function BadgeCard() {
               {copy.scopeRepoEmpty}
             </Description>
           ) : null}
-          {/* Wide panels scroll inside the card, never the page (ui-spec). */}
-          <div className="bg-surface-secondary flex min-h-44 items-center overflow-x-auto rounded-xl p-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              alt={copy.previewAlt}
-              className="max-w-none"
-              src={badgePreviewUrl(view, previewVersion)}
-            />
+          {/* Wide panels scroll inside the card, never the page (ui-spec).
+              The overlay holds the frame while a new query loads, so switching
+              style/theme/range never shows the previous render in place. */}
+          <div
+            aria-busy={previewLoading}
+            className="bg-surface-secondary relative rounded-xl"
+          >
+            <div className="flex min-h-44 items-center overflow-x-auto p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt={copy.previewAlt}
+                className="max-w-none"
+                src={previewSrc}
+                onError={() => setLoadedPreview(previewSrc)}
+                onLoad={() => setLoadedPreview(previewSrc)}
+              />
+            </div>
+            <PanelOverlay active={previewLoading} className="rounded-xl" />
           </div>
         </Block>
 

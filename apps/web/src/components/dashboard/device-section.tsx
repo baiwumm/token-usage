@@ -5,8 +5,8 @@ import type { DashboardPayload } from "@/lib/dashboard/api";
 import { Card } from "@heroui/react";
 
 import { DevicePanel } from "./device-panel";
-import { PanelOverlay } from "./panel-overlay";
 
+import { PanelOverlay } from "@/components/panel-overlay";
 import { SectionError, SectionSkeleton } from "@/components/section-states";
 
 /** Device panel slot: per-device activity for the current window. */

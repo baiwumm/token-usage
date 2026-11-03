@@ -9,8 +9,7 @@ import type { DashboardCopy } from "@/lib/copy/dashboard";
 import { Card } from "@heroui/react";
 import { memo } from "react";
 
-import { PanelOverlay } from "./panel-overlay";
-
+import { PanelOverlay } from "@/components/panel-overlay";
 import { SourceIcon } from "@/components/source-icon";
 import { useFormat } from "@/lib/format/format";
 
