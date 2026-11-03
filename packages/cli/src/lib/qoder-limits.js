@@ -38,7 +38,10 @@ const QODER_COSY_VERSION = "1.0.22";
 const QODER_ACTIVITY_CACHE_FILE = "qoder-activity-cache.json";
 const QODER_ACTIVITY_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const QODER_LIMITS_CACHE_FILE = "qoder-usage-limits-cache.json";
-const QODER_LIMITS_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+// Stale-serve TTL unified to 12h across every limits cache (2026-11-03, rationale
+// in usage-limits.js's cursor note). The promotional activity cache above stays
+// at 24h — it feeds campaign buckets, not quota readings.
+const QODER_LIMITS_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const QODER_LIMITS_CACHE_UNKNOWN_RESET_TTL_MS = 12 * 60 * 60 * 1000;
 const QODER_SERVER_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDA8iMH5c02LilrsERw9t6Pv5Nc

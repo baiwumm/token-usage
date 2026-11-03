@@ -69,7 +69,9 @@ const CACHE_TTL_MS = 2 * 60 * 1000;
 const CACHE_MIN_TTL_MS = 5 * 1000;
 const DEFAULT_PROVIDER_TIMEOUT_MS = 15_000;
 const ANTIGRAVITY_LIMITS_CACHE_FILE = "usage-limits-cache.json";
-const ANTIGRAVITY_LIMITS_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+// Stale-serve TTL unified to 12h across every limits cache (2026-11-03, rationale
+// in the cursor note below).
+const ANTIGRAVITY_LIMITS_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const ANTIGRAVITY_LIMITS_CACHE_UNKNOWN_RESET_TTL_MS = 12 * 60 * 60 * 1000;
 // Well-known public OAuth client for Google Antigravity, embedded in the agy
 // binary. Installed-app OAuth clients cannot keep a confidential secret, so
@@ -115,9 +117,10 @@ const ANTIGRAVITY_NOT_RUNNING_MESSAGE = "Antigravity IDE is not running. Launch 
 // Claude shares its OAuth usage endpoint budget with Claude Code itself, so a transient
 // 429 is common. Persist the last successful read so the panel can keep showing it instead
 // of flashing a red error. Separate file from Antigravity's (whose writer rewrites the whole
-// file with only its own key, so a shared file would clobber).
+// file with only its own key, so a shared file would clobber). Stale-serve TTL unified to
+// 12h across every limits cache (2026-11-03, see the cursor note below).
 const CLAUDE_LIMITS_CACHE_FILE = "claude-usage-limits-cache.json";
-const CLAUDE_LIMITS_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const CLAUDE_LIMITS_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const CLAUDE_LIMITS_CACHE_FRESH_TTL_MS = 10 * 60 * 1000;
 // Longer than the fresh TTL, so a prompt made after a snapshot was written always
 // falls inside it (see claudeCacheAwaitsNewWindow).
@@ -125,15 +128,17 @@ const CLAUDE_UNSTARTED_WINDOW_RETRY_MS = 15 * 60 * 1000;
 // Codex has no rate-limit cooldown like Claude, but its two sequential chatgpt.com requests
 // (/wham/usage + /wham/rate-limit-reset-credits) make it the provider most exposed to slow
 // networks. Persist the last successful read so a timeout serves stale bars instead of a red
-// error, mirroring the Claude stale-fallback path.
+// error, mirroring the Claude stale-fallback path. Stale-serve TTL unified to 12h
+// across every limits cache (2026-11-03, see the cursor note below).
 const CODEX_LIMITS_CACHE_FILE = "codex-usage-limits-cache.json";
-const CODEX_LIMITS_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const CODEX_LIMITS_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 // OpenCode Go hits opencode.ai over the public internet (15s timeout) with no local CLI to
 // fall back on. A transient 5xx / timeout previously left the panel blank until the next
 // 2-minute poll — persist the last successful windows so a blip serves stale bars instead
-// of a flash of "fetch failed" (mirrors Claude / Codex / Antigravity).
+// of a flash of "fetch failed" (mirrors Claude / Codex / Antigravity). Stale-serve TTL
+// unified to 12h across every limits cache (2026-11-03, see the cursor note below).
 const OPENCODE_GO_LIMITS_CACHE_FILE = "opencode-go-usage-limits-cache.json";
-const OPENCODE_GO_LIMITS_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const OPENCODE_GO_LIMITS_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const OPENCODE_GO_LOCAL_ESTIMATE_CACHE_MAX_AGE_MS = 60 * 60 * 1000;
 // Cursor's web summary (cursor.com) and Grok Bot RPCs (api2.cursor.sh) both traverse
 // proxied routes where a timeout or 5xx previously blanked the card until the next
