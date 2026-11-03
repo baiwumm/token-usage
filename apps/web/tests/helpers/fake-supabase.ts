@@ -39,6 +39,7 @@ type TableDef = {
   rows: Row[];
   unique: UniqueConstraint[];
   generate?: string[]; // columns filled with defaults when missing
+  defaults?: Row; // column defaults applied when the row omits them (e.g. '')
 };
 
 const now = () => new Date().toISOString();
@@ -73,10 +74,13 @@ function defaultTables(): Record<string, TableDef> {
     token_usage_hourly: {
       rows: [],
       generate: ["created_at", "updated_at"],
+      // contract v2 (2026-11-03): project_key is part of the identity; the
+      // real column is NOT NULL DEFAULT '' (a PK column cannot be NULL).
+      defaults: { project_key: "" },
       unique: [
         {
           name: "token_usage_hourly_pkey",
-          columns: ["user_id", "device_id", "hour_start", "source", "model"],
+          columns: ["user_id", "device_id", "hour_start", "source", "model", "project_key"],
         },
       ],
     },
@@ -390,6 +394,9 @@ export class FakeSupabase {
 
   private applyDefaults(table: TableDef, row: Row): Row {
     const out = { ...row };
+    for (const [column, value] of Object.entries(table.defaults ?? {})) {
+      if (out[column] == null) out[column] = value;
+    }
     for (const column of table.generate ?? []) {
       if (out[column] == null) {
         if (column === "id") out[column] = randomUUID();

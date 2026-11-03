@@ -168,6 +168,7 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 | `conversations`（别名 `conversation_count`） | 非负整数，默认 0 |
 | `total_cost_usd` | 非负数，默认 0；**单行钳制 ≤ 10.0 USD**（2026-10-27 安全收紧，防设备令牌伪造天价成本扭曲仪表盘：超出按 10.0 计，不整批拒绝——避免卡住已部署采集机的队列） |
 | `credits` | **可选**（2026-10-31 P1），非负数，默认 0。厂商积分/点数（如 Qoder Credits），浮点，服务端四舍五入到 6 位小数、单行钳制 ≤ 1,000,000，非法/负值按 0 计（对齐 `total_cost_usd` 的钳制哲学，不整批拒绝）。**独立维度**：永不并入任何 token 列、`total_tokens` 校验或成本；是否携带不影响请求合法性。机制背景见 `docs/sources-capture-audit.md` §2 |
+| `project_key` | **可选**（2026-11-03 契约 v2，操作者放行）。字符串或显式 `null`/缺省；其余类型 → 整批 `400 {"error":"Invalid usage bucket"}`。清洗规则与 session 的 `project_key` **同一实现**：去尾部路径分隔符后取 basename（`/` 与 `\` 均视为分隔符）、去控制字符、截断 120；空、`.`、`..` 均记为未归因。语义 = 桶所属项目；缺省/空 = 未归因。旧客户端不传时行为与旧版逐字一致 |
 
 **session 字段**（`sessions` 可选；除标注可选者外全部必填；任一非法 → 整批 `400 {"error":"Invalid session"}`）：
 
@@ -187,8 +188,8 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 - `hourly` / `account_session_states` 各 **≤500 条**，`sessions` **≤200 条**，超出 `400`；三者皆空 → `400 {"error":"No usage buckets provided"}`（仅带 `sessions` 的请求合法）。
 - `sessions` 缺省、`null` 或空数组均视为未提供；非数组 → `400 {"error":"Invalid session"}`。`models` 非数组、条目非对象同样按非法会话处理。
 - 全局 1 MiB 请求体上限仍然适用（§1.2）；`sessions` 的 200 条上限与体积上限相互独立，超体积按 `413` 拒绝，CLI 需分批上报。
-- 请求内去重：用量桶按 `hour_start|source|model` 分组，**保留 `total_tokens` 最大的一条**；会话按 `source|session_id` 分组，**保留 `ended_at` 最大的一条**（同刻取 `total_tokens` 最大，再同取数组靠后者）。
-- 落库 upsert 键：用量桶 `(user_id, device_id, hour_start, source, model)`——**桶粒度 last-wins**，这是全系统对账基线（本地 `queue.jsonl` last-wins 总数）的根基，不可改动。
+- 请求内去重：用量桶按 `hour_start|source|model|project_key` 分组（2026-11-03 契约 v2 起含 project_key；缺省/未归因按空串参与分组），**保留 `total_tokens` 最大的一条**；会话按 `source|session_id` 分组，**保留 `ended_at` 最大的一条**（同刻取 `total_tokens` 最大，再同取数组靠后者）。
+- 落库 upsert 键：用量桶 `(user_id, device_id, hour_start, source, model, project_key)`（2026-11-03 契约 v2 起含 project_key，操作者放行；**桶粒度 last-wins**，这是全系统对账基线（本地 `queue.jsonl` last-wins 总数）的根基）。未归因桶的 `project_key` 在 `token_usage_hourly` 落为**空串 `''`**（主键列不可为 NULL 的工程约束；`token_sessions.project_key` 保持 `null`，两表空值形态不同属有意）。向后兼容承诺：旧客户端不携带 `project_key` 时全部落入未归因桶，键的其余部分与去重/响应行为逐字不变。
 - 校验先于任何写入：任一条非法则整批拒绝（`400 {"error":"Invalid usage bucket"}` / `"Invalid account session state"` / `"Invalid session"`）。**例外**：账户级来源的会话按上表整条跳过，不触发 400；旧/等值 `ended_at` 快照在写入阶段跳过。
 - `account_session_states` 条目：`source` 当前**必须是 `"trae-cn"`**，`session_id` 非空 ≤256，`total_tokens` 必须等于 `input + cached_input + cache_creation + output`；按 `user_id + source + session_id` upsert。
 - 会话落库键 `(user_id, device_id, source, session_id)`；**last-wins 以 `ended_at` 严格大于现有值为准**。迁移提供原子 RPC `token_upsert_sessions` 做条件 upsert；旧快照或等值重放只计 `sessions_skipped`，不得覆盖新快照。
@@ -396,11 +397,15 @@ Query：`from`、`to`（ISO 瞬时，按 `hour_start ∈ [from,to)`）、`limit`
 {
   "from": "...", "to": "...", "device_id": "...", "limit": 1000, "offset": 0,
   "buckets": [ { "hour_start", "source", "model",
+                 "project_key",
                  "input_tokens", "cached_input_tokens", "cache_creation_input_tokens",
                  "output_tokens", "reasoning_output_tokens", "total_tokens",
                  "billable_total_tokens", "conversations", "credits" } ]
 }
 ```
+
+- `project_key`（2026-11-03 契约 v2 起随桶返回）：空串 `''` = 未归因（同 §2.4）；
+  逐键比对的键随之扩展为 `(hour_start, source, model, project_key)`。
 
 - 排序：`hour_start` 升序 → `source` 升序 → `model` 升序，作为稳定分页依据。
 - 行**原样返回**：不聚合、不去重（同一键每设备至多一行，upsert 语义已保证）、不剔除
@@ -433,7 +438,7 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
 
 1. 规范路径（`token-usage-*`）行为逐字一致，`/device` 页面可达；旧 `tokentracker-*`
    路径已退役（§1.5）：GET 返回 404，写动词返回 405，均无处理器。
-2. ingest 的桶粒度 last-wins upsert 键与请求内"取 total 最大"去重。
+2. ingest 的桶粒度 last-wins upsert 键（2026-11-03 契约 v2 起含 `project_key`）与请求内"取 total 最大"去重（分组键同步含 `project_key`）。
 3. `user_code` 字母表与 `XXXX-XXXX` 形态；`device_code` 64 位 hex；900 秒 / 5 秒。
 4. 令牌只存 sha256，明文仅签发响应一次；吊销即时生效。
 5. 错误信封 `{error}` 与 2.1–2.10 列出的全部稳定错误码。

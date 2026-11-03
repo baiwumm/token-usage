@@ -657,3 +657,88 @@ describe("ingest sessions", () => {
     expect(models[0]).toMatchObject({ model: "same", input_tokens: 6, total_tokens: 6 });
   });
 });
+
+// Contract v2 (2026-11-03, docs/cli-contract.md §2.4): optional project_key on
+// usage buckets; identity and request-internal dedup keys both gain it. The
+// unattributed form stores '' (a PK column cannot be NULL).
+describe("ingest project_key (contract v2)", () => {
+  const HOUR = "2026-10-21T09:00:00.000Z";
+  const rowsAt = () =>
+    fake
+      .table("token_usage_hourly")
+      .filter((r) => r.hour_start === HOUR && r.source === "codex");
+
+  it("normalizes project_key to a basename and stores it on the bucket row", async () => {
+    const res = await ingest({ hourly: [bucket({ project_key: "/home/oops/work/my-app/" })] });
+    expect(res.status).toBe(200);
+    const rows = rowsAt().filter((r) => r.project_key === "my-app");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].total_tokens).toBe(15);
+  });
+
+  it("keeps same hour/source/model rows apart when project_key differs", async () => {
+    const res = await ingest({
+      hourly: [
+        bucket({ project_key: "app-one", total_tokens: 15 }),
+        bucket({ project_key: "app-two", total_tokens: 30 }),
+        bucket({ project_key: null, total_tokens: 7 }),
+      ],
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ inserted: 3 });
+    const projects = rowsAt().map((r) => `${r.project_key}:${r.total_tokens}`).sort();
+    expect(projects).toEqual([":7", "app-one:15", "app-two:30"]);
+  });
+
+  it("last-wins within the same (hour, source, model, project_key) key", async () => {
+    await ingest({ hourly: [bucket({ project_key: "app-one", total_tokens: 15 })] });
+    const res = await ingest({ hourly: [bucket({ project_key: "app-one", total_tokens: 99 })] });
+    expect(res.status).toBe(200);
+    const rows = rowsAt().filter((r) => r.project_key === "app-one");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].total_tokens).toBe(99);
+  });
+
+  it("request-internal dedup keeps the max-total row per 4-field key", async () => {
+    const res = await ingest({
+      hourly: [
+        bucket({ project_key: "app-one", total_tokens: 10 }),
+        bucket({ project_key: "app-one", total_tokens: 42 }),
+        bucket({ project_key: "app-one", total_tokens: 21 }),
+      ],
+    });
+    expect(res.status).toBe(200);
+    const rows = rowsAt().filter((r) => r.project_key === "app-one");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].total_tokens).toBe(42);
+  });
+
+  it("treats missing, null, empty and dot project_key as the unattributed '' bucket", async () => {
+    const res = await ingest({
+      hourly: [
+        bucket({ total_tokens: 1 }),
+        bucket({ project_key: null, total_tokens: 2 }),
+        bucket({ project_key: "", total_tokens: 3 }),
+        bucket({ project_key: ".", total_tokens: 4 }),
+      ],
+    });
+    expect(res.status).toBe(200);
+    // All four collapse onto the same unattributed key: max total wins.
+    const rows = rowsAt().filter((r) => r.project_key === "");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].total_tokens).toBe(4);
+  });
+
+  it("rejects a non-string project_key with the stable invalid-bucket envelope", async () => {
+    const res = await ingest({ hourly: [bucket({ project_key: 123 })] });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Invalid usage bucket" });
+  });
+
+  it("truncates project_key at 120 chars", async () => {
+    const res = await ingest({ hourly: [bucket({ project_key: `x/${"a".repeat(200)}` })] });
+    expect(res.status).toBe(200);
+    const stored = rowsAt()[0].project_key as string;
+    expect(stored).toHaveLength(120);
+  });
+});

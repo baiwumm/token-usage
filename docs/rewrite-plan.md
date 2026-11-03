@@ -73,7 +73,7 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 | `token_devices` | 每用户多设备，软吊销 | `id uuid pk`, `user_id → auth.users`, `device_name`, `platform`, `machine_id`, `machine_cluster_id`（由旧 `tokentracker_device_machine` 1:1 表折叠为列）, `name_customized bool`（**v1 未启用**：实现从不写入，「恢复默认名称」按 `default_device_name` 快照比较判定），`default_device_name`（§2.2 签发时写入的创建期名称快照，改名不更新）, `revoked_at`, `created_at`, `updated_at`；部分唯一索引：活跃设备 `(user_id, machine_id)` 与 `(user_id, platform, device_name)` |
 | `token_device_tokens` | 设备令牌，只存哈希 | `token_hash unique`, `user_id`, `device_id → token_devices`, `revoked_at`, `last_used_at` |
 | `token_device_codes` | CLI 配对码 | `device_code pk(64hex)`, `user_code unique(XXXX-XXXX)`, `status check in (pending/approved/used/expired)`, `user_id`, `expires_at`, `client_info`, `machine_id`, `approved_at` |
-| `token_usage_hourly` | 机器级小时桶（旧 tokentracker_hourly） | 主键 `(user_id, device_id, hour_start, source, model)`；6 个 token 列非负 check；`billable_total_tokens` 可空非负；`conversations ≥0`；`total_cost_usd ≥0`（CLI 上报恒 0，成本读取时算）；`credits numeric not null default 0`（2026-10-31：厂商积分，非负，独立维度，永不并入 token / 成本） |
+| `token_usage_hourly` | 机器级小时桶（旧 tokentracker_hourly） | 主键 `(user_id, device_id, hour_start, source, model)`；**2026-11-03 契约 v2 起扩展为 `(…, model, project_key)`**——`project_key text not null default ''`（'' = 未归因，主键列不可为 NULL；migration `20261103000000_token_hourly_project_key.sql`）；6 个 token 列非负 check；`billable_total_tokens` 可空非负；`conversations ≥0`；`total_cost_usd ≥0`（CLI 上报恒 0，成本读取时算）；`credits numeric not null default 0`（2026-10-31：厂商积分，非负，独立维度，永不并入 token / 成本） |
 | `token_account_session_states` | trae-cn 规范会话 | 主键 `(user_id, source, session_id)`；`total = input+cached+cache_creation+output` check |
 | `token_sessions` | 设备级会话明细（Sessions 页，B 阶段） | `id uuid pk`, `user_id`, `device_id → token_devices`, `source`（check 1–100）, `session_id`（check 1–256）, `project_key`（可空，check ≤120，basename），`started_at`, `ended_at`, 6 个 token 列（非负 check）+ `billable_total_tokens`（可空、非负），`credits numeric not null default 0`（2026-10-31：会话级厂商积分，非负、独立维度），`models jsonb not null default '[]'`（`[{model, 6 个 token 列}]`，数组 ≤32），`created_at`, `updated_at`；唯一 `(user_id, device_id, source, session_id)`；check `ended_at >= started_at`；check `total_tokens = input_tokens + cached_input_tokens + cache_creation_input_tokens + output_tokens`（reasoning 单列，不计入 total）；check `jsonb_typeof(models) = 'array' and jsonb_array_length(models) <= 32`；check `lower(source) not in ('cursor','trae-cn')`；索引 `(user_id, ended_at desc)` / `(user_id, device_id, ended_at desc)` / `(user_id, source, ended_at desc)` / `(user_id, project_key)` |
 | `token_allowed_emails` | 可选：自助注册白名单 | `email citext unique`, `added_by`, `created_at`；配套触发器迁移（单独文件，注释标明 optional） |
@@ -328,8 +328,11 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` �
 **远期 backlog（2026-11-03 上游对比后立项，明细见 `docs/upstream-comparison-plan.md`）**：
 
 1. **bucket project 维度（契约 v2）**：juejin 的去重键含 `project`（`queue/keys.ts`），
-   可做每项目成本分析；本项目 bucket 键为 `hour_start|source|model`，project 仅在 session
-   级。落地需契约 v2 + 服务端聚合改造（≥5 人日），走硬性约束 1 流程单独立项。
+   可做每项目成本分析。~~本项目 bucket 键为 `hour_start|source|model`，project 仅在 session
+   级~~ **2026-11-03 已放行并交付契约+存储+ingest**（`docs/cli-contract.md` §2.4、
+   migration `20261103000000_token_hourly_project_key.sql`）；Projects 页阶段 0（sessions
+   口径）同日上线（`docs/projects-page-plan.md` §9）；CLI 逐源套用与口径切换见该计划
+   批次 3/4。
 2. **定价差集人工月检**：不新增 CI 定时任务，每月人工核对 TT curated / LiteLLM seed /
    models.dev 三向差集，方法与记录格式见 `docs/upstream-comparison-plan.md` §4。
 3. **队列按月分片（原 D2）**：juejin 式 `queue/<month>.jsonl` 分片可控制 queue.jsonl

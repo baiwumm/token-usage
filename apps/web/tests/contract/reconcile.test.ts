@@ -150,7 +150,9 @@ describe("reconcile rows", () => {
     // Account-level sources are NOT stripped: they are this device's uploads.
     expect(body.buckets[3].source).toBe("cursor");
     expect(body.buckets[3].credits).toBe(0);
-    // Wire shape: exactly the contract fields, no derived cost.
+    // Wire shape: exactly the contract fields (project_key since contract v2
+    // 2026-11-03; '' = unattributed), no derived cost.
+    expect(codex.project_key).toBe("");
     expect(Object.keys(codex).sort()).toEqual(
       [
         "billable_total_tokens",
@@ -162,6 +164,7 @@ describe("reconcile rows", () => {
         "input_tokens",
         "model",
         "output_tokens",
+        "project_key",
         "reasoning_output_tokens",
         "source",
         "total_tokens",
