@@ -66,11 +66,15 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 1. 改 `packages/cli/package.json` 的 `version`，并在 `packages/cli/CHANGELOG.md`
    顶部补一节 `## X.Y.Z`（release notes 的来源，缺了会退回自动生成）。
-2. 提交并推送 main，确认 CI 绿。
-3. 打 tag 并推送：`git tag cli-vX.Y.Z && git push origin cli-vX.Y.Z`
+2. 安全审计：`pnpm audit --prod --registry=https://registry.npmjs.org` 应为
+   "No known vulnerabilities found"。**注意**：默认配置的 npmmirror 镜像没有
+   audit 端点（报 404 错误而非漏洞），必须显式带官方 registry 参数
+   （2026-11-03 实测官方源 0 漏洞）。
+3. 提交并推送 main，确认 CI 绿。
+4. 打 tag 并推送：`git tag cli-vX.Y.Z && git push origin cli-vX.Y.Z`
    （必须打在**已推送**的 main 提交上；打在旧提交上不会触发任何东西且无报错）。
-4. workflow 全自动完成：版本校验 → main 祖先校验 → `pnpm verify` → 发包 → Release。
-5. 纪律：run 结束前不要 rebase / 强推 main——重写历史会让 tag 脱离 main，
+5. workflow 全自动完成：版本校验 → main 祖先校验 → `pnpm verify` → 发包 → Release。
+6. 纪律：run 结束前不要 rebase / 强推 main——重写历史会让 tag 脱离 main，
    发布被安全拒绝（只会发不出去，不会发错）。
 
 回滚：误发版本用 `npm deprecate tokenusage-cli@X.Y.Z "reason"` + 发 patch 版；

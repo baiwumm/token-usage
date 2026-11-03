@@ -3,6 +3,38 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## Unreleased
+
+2026-11-03 起累积，发版时定版号与日期。
+
+- **服务端 breaking：旧 `tokentracker-*` API 路径别名已移除**（契约 §1.5，2026-11-03
+  操作者拍板）。指向本后端的钉版旧 CLI（tokentracker-cli@1.4.x）上传会得到
+  GET 404 / 写动词 405——有声失败、本地 `queue.jsonl` 数据保留，升级到本包后随下次
+  `sync` 补传，不丢历史。
+- **新增 DeepSeek 余额卡与 DeepSeek 服务状态**：`status` 限额面板新增第 18 家提供商
+  （pay-as-you-go 余额，含 12h TTL 磁盘缓存与 API key 指纹绑定，凭据错误不回退缓存），
+  服务状态探测接入 status.deepseek.com。
+- **`status --json` 暴露计价数据出处**：新增 `pricing` 块（数据来源、seed 快照日期、
+  LiteLLM/curated 条目数），成本为 0 时可直接区分「未采集」与「未定价」。
+- **`doctor` 新增计价覆盖自检**：近 7 天本地队列的桶/token 计价命中率、Top 未定价模型
+  （零 token 的积分桶单独计数、不再误报），以及 unknown 模型「对齐到同时段主导模型」的
+  只读 dry-run 预览（不改变任何历史归属）。
+- **计价覆盖大幅扩充**：curated exact 91 → 191。同步上游 TokenTracker 新增的 29+9 条
+  （claude-opus-4-5/4-6、gpt-5.4/5.5 系、kimi-k3.1-pro 等）；从 juejin-usage 选摘
+  volcengine/alibaba-cn/xiaomi/muse 四组 69 条（署名见 THIRD_PARTY_NOTICES）；补
+  Unisound `u2-flash` 与 StepFun `step-5-preview` 官价。本机 7 天窗口 token 计价覆盖率
+  97.3% → 100%。
+- **Cursor / Kimi / Grok 限额卡新增磁盘缓存回退**：请求超时或 5xx 时展示最近一次成功
+  读数（卡片标 `stale` + 原 `cached_at`），不再整卡空白。缓存文件各为
+  `cursor/kimi/grok-usage-limits-cache.json`（`~/.tokenusage/tracker/`，0600 原子写、
+  7 天 TTL、只在成功时写、reset_at 已过期的窗口自动丢弃）；身份指纹绑定（cursor=规范
+  userId、kimi=profile 标识、grok=JWT sub），换号不串用；凭据类错误（401/403/过期）
+  不回退、原样上面板。与既有 claude/codex/opencodeGo 缓存及 deepseek 余额卡同口径。
+- 单测：`pricing-parity`（CLI/web 两份定价数据逐字节一致守卫）、`pricing-meta`、
+  `pricing-coverage`、`deepseek-limits` / `deepseek-status`，以及
+  `cursor/grok/kimi-limits-cache-fallback`（命中/过期/失败回退/换号不串用/凭据错误直通/
+  无缓存失败，共 22 例）。
+
 ## 0.4.3
 
 2026-11-01。两处只有真机首跑才暴露的问题：调度摘要依旧看不出拒绝原因（修的过程中又追出
