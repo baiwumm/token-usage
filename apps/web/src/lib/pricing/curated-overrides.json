@@ -556,6 +556,199 @@
       "cache_read": 0,
       "cache_write": 0,
       "note": "Alias for free Build SKU as labeled in Grok updates.jsonl modelUsage. Canonical storage id is grok-build-free."
+    },
+    "claude-opus-4-5": {
+      "input": 5,
+      "output": 25,
+      "cache_read": 0.5,
+      "cache_write": 6.25,
+      "note": "Canonical undated Opus 4.5 alias (LiteLLM bare key, sourced from https://platform.claude.com/docs/en/about\u002dclaude/pricing, cached 2026\u002d10\u002d31): standard Opus tier $5/$25 per MTok, cache_read 0.1x, cache_write 1.25x — same rates as claude\u002dopus\u002d4\u002d5\u002d20250414. Previously LiteLLM\u002donly; promoted so cloud account views price the bare id (issue #929)."
+    },
+    "claude-opus-4-6": {
+      "input": 5,
+      "output": 25,
+      "cache_read": 0.5,
+      "cache_write": 6.25,
+      "note": "Opus 4.6 standard tier (LiteLLM entry sourced from https://platform.claude.com/docs/en/about\u002dclaude/pricing, cached 2026\u002d10\u002d31): $5/$25 per MTok, cache_read 0.1x, cache_write 1.25x. The edge table pins the same rate; curated pins it so local billing and \u002dthinking variants no longer depend on LiteLLM fuzzy matching (issue #929)."
+    },
+    "claude-sonnet-4-6": {
+      "input": 3,
+      "output": 15,
+      "cache_read": 0.3,
+      "cache_write": 3.75,
+      "note": "Sonnet 4.6 standard tier (LiteLLM entry sourced from https://platform.claude.com/docs/en/about\u002dclaude/pricing, cached 2026\u002d10\u002d31): $3/$15 per MTok, cache_read 0.1x, cache_write 1.25x. The edge table pins the same rate; curated pins it so local billing no longer depends on the LiteLLM cache (issue #929)."
+    },
+    "claude-haiku-5-5": {
+      "input": 0.1,
+      "output": 0.5,
+      "cache_read": 0.01,
+      "cache_write": 0.125,
+      "note": "Official Anthropic Haiku 5.5 short\u002dcontext (prompts <=100K) USD/MTok verified 2026\u002d10\u002d22: https://platform.claude.com/docs/en/about\u002dclaude/pricing. Prompts over 100K use 5x rates; computeRowCost does not yet split that long\u002dprompt tier. Cache write is the 5\u002dminute rate."
+    },
+    "claude-haiku-5.5": {
+      "input": 0.1,
+      "output": 0.5,
+      "cache_read": 0.01,
+      "cache_write": 0.125,
+      "note": "Dotted alias for claude\u002dhaiku\u002d5\u002d5. Same short\u002dcontext rates."
+    },
+    "gpt-6.1-terra": {
+      "input": 1,
+      "output": 5,
+      "cache_read": 0.05,
+      "cache_write": 1.25,
+      "priority_multiplier": 2,
+      "note": "Official Standard USD/MTok rates verified 2026\u002d10\u002d27: https://developers.openai.com/api/docs/models/gpt\u002d6.1\u002dterra and https://developers.openai.com/api/docs/pricing. Short\u002dcontext (≤272K): $1/$5/$0.05 cached/$1.25 cache write (30m). Requests above 272K input use 2x input/cache and 1.5x output for the full request. Fast mode is 2x Standard; Ultrafast is not published for this model. Premiums apply only to observed request subsets. Cloud aggregates remain Standard short\u002dcontext estimates."
+    },
+    "gpt-6-luna": {
+      "input": 0.1,
+      "output": 0.5,
+      "cache_read": 0.01,
+      "cache_write": 0.125,
+      "note": "GPT\u002d6 Luna lightweight tier, Standard USD/MTok (LiteLLM entry sourced from https://developers.openai.com/api/docs/pricing, cached 2026\u002d10\u002d31): $0.10/$0.50 per MTok, $0.01 cache read, $0.125 cache write. Distinct from gpt\u002d5.6\u002dluna. Previously LiteLLM\u002donly, so cloud account views showed it unpriced; promoted so cloud prices it and curated/edge parity guards the key (issue #929)."
+    },
+    "gpt-5.5": {
+      "input": 5,
+      "output": 30,
+      "cache_read": 0.5,
+      "note": "Official Standard USD/MTok rates (LiteLLM entry sourced from https://developers.openai.com/api/docs/pricing, cached 2026\u002d10\u002d31): $5/$30 per MTok, $0.50 cache read, no published cache\u002dwrite rate. The largest production LiteLLM\u002donly model — codex's primary SKU ($1,118 of cloud account usage showed unpriced between 2026\u002d01\u002d01 and 2026\u002d10\u002d31); promoted so cloud account views price it and curated/edge parity guards the key (issue #929)."
+    },
+    "gpt-5.4": {
+      "input": 2.5,
+      "output": 15,
+      "cache_read": 0.25,
+      "note": "Official Standard USD/MTok rates (LiteLLM entry sourced from https://developers.openai.com/api/docs/pricing, cached 2026\u002d10\u002d31): $2.50/$15 per MTok, $0.25 cache read. The edge table has pinned this rate since before v1.5.1; curated pins the same value so local billing no longer depends on the LiteLLM cache (issue #929). \u002dpro/\u002dnano/\u002dmini keep their own SKUs."
+    },
+    "gpt-5.4-pro": {
+      "input": 30,
+      "output": 180,
+      "cache_read": 3,
+      "note": "Official Pro USD/MTok rates, matching the edge table's gpt\u002d5.4\u002dpro entry ($30/$180, $3 cache read; https://developers.openai.com/api/docs/pricing). Companion pin for the gpt\u002d5.4 promotion: without a curated Pro entry, the curated contained match captures provider\u002dqualified dated snapshots (openai/gpt\u002d5.4\u002dpro\u002d2026\u002d03\u002d05) at the base $2.50/$15 rate before the LiteLLM reverse lookup reaches the Pro SKU — 12x under local vs edge (issue #929)."
+    },
+    "gpt-5.4-mini": {
+      "input": 0.75,
+      "output": 4.5,
+      "cache_read": 0.075,
+      "note": "Official Standard USD/MTok rates (LiteLLM entry sourced from https://developers.openai.com/api/docs/pricing, cached 2026\u002d10\u002d31): $0.75/$4.50 per MTok, $0.075 cache read. Same promotion rationale as gpt\u002d5.4 (issue #929)."
+    },
+    "gpt-5.2": {
+      "input": 1.75,
+      "output": 14,
+      "cache_read": 0.175,
+      "note": "Official Standard USD/MTok rates (LiteLLM entry sourced from https://developers.openai.com/api/docs/pricing, cached 2026\u002d10\u002d31): $1.75/$14 per MTok, $0.175 cache read. Same promotion rationale as gpt\u002d5.4 (issue #929); \u002dpro stays on its own 10x LiteLLM SKU."
+    },
+    "gpt-5.3-codex-spark": {
+      "input": 1.75,
+      "output": 14,
+      "cache_read": 0.175,
+      "note": "Codex spark capacity tier; not a separate LiteLLM key. Local (LiteLLM reverse\u002dsubstring) and the edge matcher both bill it at the base gpt\u002d5.3\u002dcodex rate ($1.75/$14, $0.175 cache read, https://developers.openai.com/api/docs/pricing); the exact entry pins that resolution on both sides (issue #929)."
+    },
+    "qwen3.8-max": {
+      "input": 2,
+      "output": 6,
+      "cache_read": 0.17,
+      "cache_write": 2.5,
+      "note": "Alibaba Model Studio Singapore (International), USD per MTok, verified 2026\u002d10\u002d25: https://www.alibabacloud.com/help/en/model\u002dstudio/model\u002dpricing and https://www.alibabacloud.com/help/en/model\u002dstudio/qwen3\u002d8\u002dmax . Reference API estimate; other regions/providers can have different rates. Issue #744."
+    },
+    "qwen3.8-max-0902": {
+      "input": 2,
+      "output": 6,
+      "cache_read": 0.17,
+      "cache_write": 2.5,
+      "note": "Alibaba Model Studio Singapore (International), USD per MTok, verified 2026\u002d10\u002d25: https://www.alibabacloud.com/help/en/model\u002dstudio/model\u002dpricing and https://www.alibabacloud.com/help/en/model\u002dstudio/qwen3\u002d8\u002dmax . Reference API estimate; other regions/providers can have different rates. Issue #744. Dated SKU qwen3.8\u002dmax\u002d0902 shares Singapore International list rates."
+    },
+    "qwen3.8-max-2026-09-02": {
+      "input": 2,
+      "output": 6,
+      "cache_read": 0.17,
+      "cache_write": 2.5,
+      "note": "Alibaba Model Studio Singapore (International), USD per MTok, verified 2026\u002d10\u002d25: https://www.alibabacloud.com/help/en/model\u002dstudio/qwen3\u002d8\u002dmax . Alias of qwen3.8\u002dmax\u002d0902; same Singapore International list rates. Issue #744."
+    },
+    "gemini-3-flash-preview": {
+      "input": 0.5,
+      "output": 3,
+      "cache_read": 0.05,
+      "note": "LiteLLM entry (sourced from https://cloud.google.com/gemini\u002denterprise\u002dagent\u002dplatform/generative\u002dai/pricing, cached 2026\u002d10\u002d31): $0.50/$3 per MTok, $0.05 cache read, no published cache\u002dwrite rate. Same rate the edge table already pins; promoted so curated/edge parity guards the key (issue #929)."
+    },
+    "kimi-k3.1-pro": {
+      "input": 2,
+      "output": 10,
+      "cache_read": 0.2,
+      "cache_write": 2,
+      "note": "Kimi K3.1 Pro (API id kimi\u002dk3.1\u002dpro). Official USD list from https://platform.kimi.ai/ : $2/M input, $10/M output, $2/M cache write (default 5m TTL), $0.20/M cache hit. Flat 1M context; no context\u002dlength tiers. Verified 2026\u002d10\u002d25. Distinct from kimi\u002dk3 ($3/$15)."
+    },
+    "kimi-k3.1-pro-highspeed": {
+      "input": 4,
+      "output": 20,
+      "cache_read": 0.2,
+      "cache_write": 4,
+      "note": "Kimi K3.1 Pro Highspeed (API id kimi\u002dk3.1\u002dpro\u002dhighspeed). Official USD list from https://platform.kimi.ai/ : $4/M input, $20/M output, $4/M cache write (default 5m TTL), $0.20/M cache hit. Same intelligence as K3.1 Pro at higher speed. Verified 2026\u002d10\u002d25."
+    },
+    "k3.1-pro": {
+      "input": 2,
+      "output": 10,
+      "cache_read": 0.2,
+      "cache_write": 2,
+      "note": "Bare/compact alias for kimi\u002dk3.1\u002dpro. Same official rates."
+    },
+    "k3.1pro": {
+      "input": 2,
+      "output": 10,
+      "cache_read": 0.2,
+      "cache_write": 2,
+      "note": "Compact alias (no hyphen) for kimi\u002dk3.1\u002dpro. Same official rates."
+    },
+    "k3.1-pro-highspeed": {
+      "input": 4,
+      "output": 20,
+      "cache_read": 0.2,
+      "cache_write": 4,
+      "note": "Bare alias for kimi\u002dk3.1\u002dpro\u002dhighspeed. Same official rates."
+    },
+    "k3.1pro-highspeed": {
+      "input": 4,
+      "output": 20,
+      "cache_read": 0.2,
+      "cache_write": 4,
+      "note": "Compact alias for kimi\u002dk3.1\u002dpro\u002dhighspeed. Same official rates."
+    },
+    "mimo-v2.5": {
+      "input": 0.4,
+      "output": 2,
+      "cache_read": 0.08,
+      "note": "Xiaomi MiMo v2.5 (queue rows report the bare id; LiteLLM keys are provider\u002dqualified). Rates match the deepinfra entry — the lexicographically smallest provider key the matcher deterministically picks: $0.40/$2 per MTok, $0.08 cache read, no published cache\u002dwrite rate. The edge table pinned this exact rate after the kimi\u002dk2.6/mimo profile\u002dmodal incident; curated pins the same value so local billing no longer depends on LiteLLM prefix\u002dstrip (issue #929)."
+    },
+    "mimo-v2.5-pro": {
+      "input": 1,
+      "output": 3,
+      "cache_read": 0.2,
+      "note": "Xiaomi MiMo v2.5 Pro (deepinfra is the lexicographically smallest LiteLLM provider key, matching the edge table): $1/$3 per MTok, $0.20 cache read. Exact entry required alongside mimo\u002dv2.5 so the contained\u002dexact fallback cannot bill \u002dpro at the base v2.5 rate (issue #929)."
+    },
+    "muse-spark-1.2-contributor": {
+      "input": 0.1,
+      "output": 0.2,
+      "cache_read": 0.002,
+      "note": "Paid Muse contributor SKU. LiteLLM provider\u002dqualified entries agree on $0.10/$0.20 per MTok, $0.002 cache read (meta and opencode_go both list these rates, cached 2026\u002d10\u002d31). Previously LiteLLM prefix\u002dstrip\u002donly, so cloud account views showed it unpriced; promoted so cloud prices it and curated/edge parity guards the key (issue #929). The \u002dfree SKU below stays $0."
+    },
+    "muse-spark-1.3-contributor": {
+      "input": 0.1,
+      "output": 0.2,
+      "cache_read": 0.002,
+      "note": "See muse\u002dspark\u002d1.2\u002dcontributor — same paid contributor SKU at the same verified rates (issue #929)."
+    },
+    "muse-spark-1.2-contributor-free": {
+      "input": 0,
+      "output": 0,
+      "cache_read": 0,
+      "cache_write": 0,
+      "note": "Muse contributor free SKU. Also covered by matcher \u002dfree suffix; exact entry keeps status=free (issue #744)."
+    },
+    "muse-spark-1.3-contributor-free": {
+      "input": 0,
+      "output": 0,
+      "cache_read": 0,
+      "cache_write": 0,
+      "note": "Muse contributor free SKU. Also covered by matcher \u002dfree suffix; exact entry keeps status=free (issue #744)."
     }
   },
   "alias": {
@@ -817,6 +1010,42 @@
     {
       "match": "stepfun",
       "ref": "step-3.7-flash"
+    },
+    {
+      "match": "gpt\u002d6.1\u002dterra",
+      "ref": "gpt\u002d6.1\u002dterra"
+    },
+    {
+      "match": "haiku\u002d5\u002d5",
+      "ref": "claude\u002dhaiku\u002d5\u002d5"
+    },
+    {
+      "match": "haiku\u002d5.5",
+      "ref": "claude\u002dhaiku\u002d5.5"
+    },
+    {
+      "match": "kimi\u002dk3.1\u002dpro\u002dhighspeed",
+      "ref": "kimi\u002dk3.1\u002dpro\u002dhighspeed"
+    },
+    {
+      "match": "k3.1\u002dpro\u002dhighspeed",
+      "ref": "kimi\u002dk3.1\u002dpro\u002dhighspeed"
+    },
+    {
+      "match": "k3.1pro\u002dhighspeed",
+      "ref": "kimi\u002dk3.1\u002dpro\u002dhighspeed"
+    },
+    {
+      "match": "kimi\u002dk3.1\u002dpro",
+      "ref": "kimi\u002dk3.1\u002dpro"
+    },
+    {
+      "match": "k3.1\u002dpro",
+      "ref": "kimi\u002dk3.1\u002dpro"
+    },
+    {
+      "match": "k3.1pro",
+      "ref": "kimi\u002dk3.1\u002dpro"
     }
   ]
 }
