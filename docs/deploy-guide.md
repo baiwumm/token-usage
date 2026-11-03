@@ -132,9 +132,10 @@ CLI 机制速查（完整说明见 `packages/cli/README.md`）：
   最小 60000）；停止 = 终止进程（Ctrl+C），队列/水位已落盘，随时终止都安全；
 - `tokenusage status` / `doctor`：自查令牌、队列积压与各工具接入状态。
 
-> 旧采集端 `tokentracker-cli@1.4.x` 仍可经旧路径别名兼容（base URL 指向
-> `<部署域名>/api`）；`tokenusage-cli` 数据目录独立（`~/.tokenusage`），两者可在同一台
-> 机器共存，迁移步骤见 `docs/launch-runbook.md`「新 CLI 迁移」段。
+> 旧采集端 `tokentracker-cli@1.4.x` 的兼容别名已于 **2026-11-03 退役**：旧路径
+> GET 404 / 写动词 405（有声失败、不丢数据），必须升级 `tokenusage-cli`
+>（数据目录独立 `~/.tokenusage`，两者可在同一台机器共存）。升级三步与逐台迁移细节见
+> 根 `README.md`「从旧版 CLI 升级」与 `docs/launch-runbook.md`「新 CLI 迁移」段。
 
 ## 7. 验证闭环
 

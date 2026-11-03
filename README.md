@@ -90,6 +90,22 @@ pnpm verify     # 提交前门禁：lint + typecheck + test + build
 完整运行需配置服务端环境变量（见 [`docs/rewrite-plan.md`](docs/rewrite-plan.md) §9，
 本地放 `apps/web/.env.local`，**密钥严禁提交仓库**）。
 
+## ⬆️ 从旧版 CLI 升级（tokentracker-* 入口已退役）
+
+服务端已于 2026-11-03 移除旧 `/api/functions/tokentracker-*` 别名（契约
+[`docs/cli-contract.md`](docs/cli-contract.md) §1.5）。钉版旧 CLI（`tokentracker-cli@1.4.x`）
+的请求会得到 **GET 404 / 写动词 405**——这是有声失败，不静默丢数据：本地未上报的积压
+仍在磁盘日志与旧队列里，新 CLI 首跑会全量重扫本地日志重建并补传。
+
+```bash
+npm i -g tokenusage-cli@latest    # 1. 安装新 CLI
+tokenusage init --yes             # 2. 重建 hook 与调度（自托管后端加 --base-url https://<你的域名>/api）
+tokenusage reconcile --days 7     # 3. 与云端逐键对账，确认无漂移
+```
+
+> 新 CLI 数据目录独立（`~/.tokenusage`），与旧 CLI 可共存；逐台迁移细节见
+> [`docs/launch-runbook.md`](docs/launch-runbook.md)「新 CLI 迁移」段。
+
 ## 🗺️ 路线图
 
 M0 脚手架 → M1 契约层 → M2 认证与设置 → M3 仪表盘 → M4 wrapped / 分享 / 服务状态 →
@@ -130,6 +146,7 @@ independent community project; code provenance and third-party licenses live in
 - **Deploy**: Supabase (free tier) + Vercel (Hobby) is enough — see the [English-friendly deploy guide](docs/deploy-guide.md) (Chinese, step by step) or use the Deploy button above
 - **Pairing**: the collector CLI prints a `XXXX-XXXX` code and opens `/device?user_code=...`; you approve it after signing in, and reporting starts immediately
 - **CLI contract**: two-tier — the collector-facing API is frozen, the dashboard API evolves with the UI ([`docs/cli-contract.md`](docs/cli-contract.md))
+- **Upgrading from `tokentracker-cli@1.4.x`**: the legacy `/api/functions/tokentracker-*` aliases were removed on 2026-11-03 (GET 404 / write verbs 405 — a loud failure, nothing is silently dropped; pending local data is re-scanned and backfilled on the first run). Run `npm i -g tokenusage-cli@latest` → `tokenusage init --yes` → `tokenusage reconcile --days 7`
 
 ## ⚖️ License
 
