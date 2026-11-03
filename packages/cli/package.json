@@ -41,9 +41,9 @@
     "prepublishOnly": "npm test"
   },
   "dependencies": {
-    "@journeyapps/wa-sqlite": "2.0.7",
-    "smol-toml": "^1.9.0",
-    "undici": "8.12.2",
+    "@journeyapps/wa-sqlite": "2.0.10",
+    "smol-toml": "^1.9.1",
+    "undici": "8.12.3",
     "yauzl": "^3.4.0"
   },
   "pnpm": {
