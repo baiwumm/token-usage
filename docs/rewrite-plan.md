@@ -323,3 +323,15 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` �
    解析、watch 退避、`--integrations`、死参数移除、调度三平台、死模块清理、`files` 收紧、
    JSONL 日志）。当时未做的对账命令 `reconcile` 于同日第二批交付：契约文档 + golden
    测试先行（§2.13），操作者放行后实现端点与 CLI 命令。
+
+**远期 backlog（2026-11-03 上游对比后立项，明细见 `docs/upstream-comparison-plan.md`）**：
+
+1. **bucket project 维度（契约 v2）**：juejin 的去重键含 `project`（`queue/keys.ts`），
+   可做每项目成本分析；本项目 bucket 键为 `hour_start|source|model`，project 仅在 session
+   级。落地需契约 v2 + 服务端聚合改造（≥5 人日），走硬性约束 1 流程单独立项。
+2. **定价差集人工月检**：不新增 CI 定时任务，每月人工核对 TT curated / LiteLLM seed /
+   models.dev 三向差集，方法与记录格式见 `docs/upstream-comparison-plan.md` §4。
+3. **队列按月分片（原 D2）**：juejin 式 `queue/<month>.jsonl` 分片可控制 queue.jsonl
+   增长与范围读取成本；触及对账基线文件格式（约束 8），留待有体感再立项。
+4. **align-unknown 落地**：dry-run 结论见 `docs/upstream-comparison-plan.md` §7；
+   落地会改历史 unknown 桶归属，需再次确认后按两步走第二步执行。
