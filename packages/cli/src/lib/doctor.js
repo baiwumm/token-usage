@@ -1,7 +1,9 @@
 const fs = require("node:fs/promises");
+const path = require("node:path");
 const { constants } = require("node:fs");
 
 const { readJsonStrict } = require("./fs");
+const { collectPricingCoverage } = require("./pricing-coverage");
 
 async function buildDoctorReport({
   runtime = {},
@@ -17,6 +19,7 @@ async function buildDoctorReport({
   if (paths.trackerDir) {
     checks.push(await checkTrackerDir(paths.trackerDir));
     checks.push(await checkRuntimeCopy(paths.trackerDir));
+    checks.push(await checkPricingCoverage(paths.trackerDir));
   }
   if (paths.configPath) {
     checks.push(await checkConfigJson(paths.configPath));
@@ -173,6 +176,53 @@ async function checkTrackerDir(trackerDir) {
       detail: "tracker dir error",
       critical: true,
       meta: { path: trackerDir, code: err?.code || "error" },
+    };
+  }
+}
+
+// B3 (docs/upstream-comparison-plan.md §2): pricing coverage of the local
+// last-wins queue over the trailing 7 days, plus the C2 unknown-alignment
+// dry-run preview. Informational only — never critical, never writes.
+async function checkPricingCoverage(trackerDir) {
+  const queuePath = path.join(trackerDir, "queue.jsonl");
+  try {
+    const report = await collectPricingCoverage({ queuePath });
+    const { coverage, unknown_alignment_preview: alignment } = report;
+    if (coverage.buckets === 0) {
+      return {
+        id: "pricing.coverage",
+        status: "ok",
+        critical: false,
+        detail: `no local buckets in the last ${report.window.days}d`,
+        meta: report,
+      };
+    }
+    const parts = [
+      `last ${report.window.days}d: ${(coverage.token_coverage * 100).toFixed(1)}% of tokens priced ` +
+        `(${coverage.covered_buckets}/${coverage.buckets} buckets covered)`,
+    ];
+    const top = coverage.top_unpriced[0];
+    if (top) {
+      parts.push(`top unpriced: ${top.model} (${top.sources.join("/")}, ${top.total_tokens} tokens)`);
+    }
+    if (alignment.alignable_buckets > 0) {
+      parts.push(
+        `unknown dry-run: ${alignment.alignable_buckets} bucket(s) / ${alignment.alignable_tokens} token(s) would re-attribute to a dominant known model`,
+      );
+    }
+    return {
+      id: "pricing.coverage",
+      status: coverage.token_coverage >= 0.95 ? "ok" : "warn",
+      critical: false,
+      detail: parts.join("; "),
+      meta: report,
+    };
+  } catch (error) {
+    return {
+      id: "pricing.coverage",
+      status: "warn",
+      critical: false,
+      detail: `coverage check failed: ${error?.message || error}`,
     };
   }
 }
