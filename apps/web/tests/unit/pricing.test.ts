@@ -123,15 +123,17 @@ describe("getModelPricingInfo provenance", () => {
 
   it("surfaces selfhost-curated provenance", () => {
     resetPricingForTests();
-    const info = getModelPricingInfo("step-5-preview");
-    expect(info.status).toBe("priced");
+    // step-5-preview was promoted into curated-overrides on 2026-11-03; the
+    // remaining live selfhost entry is the source-scoped opencode/big-pickle.
+    const info = getModelPricingInfo("big-pickle", { source: "opencode" });
+    expect(info.status).toBe("free");
     expect(info.source).toBe("selfhost-curated");
     expect(Array.isArray(__getSelfhostMergeForTests().droppedKeys)).toBe(true);
   });
 
   it("never leaks the _selfhost flag through getModelPricing", () => {
     resetPricingForTests();
-    const rates = getModelPricing("step-5-preview");
+    const rates = getModelPricing("big-pickle", { source: "opencode" });
     expect(Object.keys(rates)).not.toContain("_selfhost");
   });
 });

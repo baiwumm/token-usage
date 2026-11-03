@@ -1134,6 +1134,19 @@
       "output": 20,
       "cache_read": 0.2,
       "note": "Imported from juejin\u002dusage@f72ca4d packages/core/src/pricing/pricing.json (models.dev official\u002dchannel bundle, MIT (c) juejin\u002dcn) on 2026\u002d11\u002d03. No published cache_write rate."
+    },
+    "u2-flash": {
+      "input": 0.14,
+      "output": 0.28,
+      "cache_read": 0.03,
+      "note": "Unisound U2-Flash (maas.unisound.com), pay-as-you-go tier verified 2026-11-03: https://maas.unisound.com/docs/price/overview \u2014 CNY 1 / 2 per MTok input/output, CNY 0.2 cache hit, converted at 7.2 CNY/USD and rounded to 2dp (same convention as the iFlytek entries). No published cache-write rate. Collected via the DeepSeek Harness passive reader (source dsh). If usage actually rides a U Plan subscription this reference rate overstates real spend \u2014 the same estimation convention as other subscription-with-local-tokens sources (grok/kimi/zcode)."
+    },
+    "step-5-preview": {
+      "input": 1,
+      "output": 2.7,
+      "cache_read": 0.1,
+      "cache_write": 1,
+      "note": "StepFun Step 5 Preview, official USD list verified 2026-11-03: https://platform.stepfun.ai/docs/en/guides/pricing/details ($1.00 / $2.70 per MTok input/output, $0.10 cache hit). The China site lists CNY 7 / 20 with a CNY 0.70 cache-hit rate (raised from CNY 0.35 on 2026-10-14): https://platform.stepfun.com/docs/zh/guides/pricing/details. Output includes the reasoning trace (no separate reasoning rate); the cache-miss input price includes writing new content to the cache, so cache_write = input. Promoted from selfhost-overrides on 2026-11-03 (first verified there 2026-10-22). Step Plan subscription usage would make this reference rate an overestimate \u2014 same convention as other subscription-with-local-tokens sources (grok/kimi/zcode). OpenCode's own free SKU is the suffixed step-5-preview-free and stays zero via the opencode -free rule."
     }
   },
   "alias": {
