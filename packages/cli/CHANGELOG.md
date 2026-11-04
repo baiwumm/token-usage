@@ -11,6 +11,14 @@
   操作者拍板）。指向本后端的钉版旧 CLI（tokentracker-cli@1.4.x）上传会得到
   GET 404 / 写动词 405——有声失败、本地 `queue.jsonl` 数据保留，升级到本包后随下次
   `sync` 补传，不丢历史。
+- **桶级 `project_key`（契约 v2，2026-11-03）**：小时用量桶按项目名拆行——每个项目一行，
+  再加一条 `project_key` 为空的余量行，两者相加等于原聚合值，不重复计数；无法归因的
+  历史/账户级用量留在余量行（`docs/cli-contract.md` §2.4、`docs/projects-page-plan.md` §5）。
+- **项目键父级回退（2026-11-04）**：`projectKey()` 不再把 `<repo>/.claude/worktrees/<id>`、
+  `<repo>/worktrees/<id>`、`<project>/<session>/subagents` 这类工具目录当成项目名，而是向上
+  取真实项目目录；qoder-cn 子代理转录继承记录里的 `cwd`。只影响新采集——历史键不回填
+  （会话落库键含 `session_id`，同会话只更新不改名）。`~/.codex/worktrees/<id>` 无上游项目
+  规则，保持旧行为。
 - **新增 DeepSeek 余额卡与 DeepSeek 服务状态**：`status` 限额面板新增第 18 家提供商
   （pay-as-you-go 余额，含 12h TTL 磁盘缓存与 API key 指纹绑定，凭据错误不回退缓存），
   服务状态探测接入 status.deepseek.com。
