@@ -301,11 +301,10 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` �
 2. macOS / Linux 调度真机验证：暂无真机，目前只有产物级测试（plist / systemd unit 与
    文案断言）。首次在真机跑 `init` 后需确认 `launchctl list` / `systemctl --user
    list-timers` 里有对应条目，再回填 `docs/cli-release.md` §四。
-3. **下一版 CLI（0.4.4 候选）发版**：`packages/cli/CHANGELOG.md` 的 `## Unreleased` 已累积
-   2026-11-03 ~ 11-04 的用户可见变更（桶级 `project_key`、项目键父级回退、DeepSeek 余额/状态卡、
-   `status --json` pricing 块、`doctor` 计价覆盖自检、limits 磁盘缓存回退等）。bump / tag /
-   `npm publish` 由操作者执行；发版并升级采集机后 `/projects` 的 hourly 口径才会有带项目名的
-   桶行（2026-11-04 生产库实测桶行 `project_key` 非空数为 0）。
+3. ~~下一版 CLI（0.4.4）发版~~ → **已发版（2026-11-04）**：npm `tokenusage-cli@0.4.4` + tag
+   `cli-v0.4.4`，CI 自动发包与 Release 均成功（验证清单见 `docs/cli-release.md` §五）。
+   剩余动作是采集机升级：另一台机器仍为 0.4.3，升级后新桶才开始带 `project_key`
+   （2026-11-04 生产库实测桶行 `project_key` 非空数为 0；历史桶不回填）。
 
 已关闭：0.4.3 候选（降级原因改取 `stderr` + 代码页解码、`reconcile` pending 分类，已随
 0.4.3 发版并在本机验收）；「同小时键多行递增值」观测（zcode 源库核对证明 last-wins 行即

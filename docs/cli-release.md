@@ -553,3 +553,18 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 另案处理：apps/web 的 10 条依赖审计通告（1 low / 5 moderate / 2 high /
 2 critical），属仪表盘侧。
+
+## 五、0.4.4 发版验证清单（2026-11-04）
+
+| 项 | 结果 |
+|---|---|
+| npm 版本 | `tokenusage-cli@0.4.4`，`dist-tags.latest = 0.4.4`；publish 于 2026-11-04T06:42:23Z，约 2.5 分钟后 registry 可读（`time["0.4.4"] = 06:45:02Z`） |
+| git tag | `cli-v0.4.4`（annotated，指向 `478eead`）；本地与 `git ls-remote` 一致 |
+| GitHub Actions | run `41787116998` 成功，耗时 1m43s；版本校验 → main 祖先校验 → `pnpm verify` → Trusted Publishing 发包 → Release 全部通过 |
+| provenance | 已写入 sigstore transparency log（logIndex 3686619441） |
+| Release notes | 取 CHANGELOG `## 0.4.4` 段（44 行），未退回 `--generate-notes` |
+| 干净安装 | 临时目录 `npm i tokenusage-cli@0.4.4`（6 包 / 6s）后 `--version` → `v0.4.4`，`help` 正常；临时目录已删除，未污染全局 |
+| 安全审计 | `pnpm audit --prod --registry=https://registry.npmjs.org` → No known vulnerabilities found |
+| [ ] 另一台采集机升级 | 仍为 0.4.3：`npm i -g tokenusage-cli@0.4.4` 后重跑 `init --yes`（用户操作） |
+| [ ] cursor 重新登录 | 凭据过期，需在 Cursor 客户端重新登录后跑 `tokenusage doctor` 复核（用户操作） |
+| [ ] 升级后验收 | 每台机器 `tokenusage reconcile --days 7` 应为 OK / 0 drift；新桶开始带 `project_key`，`/projects` 的 hourly 口径不再整页落在「未归因」 |
