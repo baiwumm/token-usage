@@ -113,6 +113,39 @@ test("two projects in one (hour, source, model) produce two keys plus a zero res
   assert.equal(sum, aggregate.total_tokens);
 });
 
+test("split rows use the server's basename identity and merge same-basename projects", async () => {
+  // Local project keys may be owner/repo (or nested GitLab groups), but the
+  // server only stores the basename (docs/cli-contract.md §2.4). Emitting two
+  // rows with the same wire key would let the server's request dedupe keep
+  // only one of them, so the writer must merge their totals first.
+  const queuePath = path.join(tmpDir, "queue.jsonl");
+  const a = totals({ input_tokens: 60, output_tokens: 40, total_tokens: 100, conversation_count: 1 });
+  const b = totals({ input_tokens: 30, output_tokens: 20, total_tokens: 50, conversation_count: 1 });
+  const aggregate = totals({
+    input_tokens: 90,
+    output_tokens: 60,
+    total_tokens: 150,
+    conversation_count: 2,
+  });
+  const projectState = projectStateFor({ "alice/api": a, "bob/api": b });
+  const hourlyState = hourlyStateFor(aggregate);
+
+  await enqueueTouchedBuckets({
+    queuePath,
+    hourlyState,
+    touchedBuckets: new Set(Object.keys(hourlyState.buckets)),
+    projectState,
+    projectTouchedBuckets: new Set(Object.keys(projectState.buckets)),
+  });
+
+  const rows = readQueue(queuePath);
+  const byProject = new Map(rows.map((row) => [row.project_key, row]));
+  assert.equal(byProject.has("alice/api"), false, "owner/repo must not reach the wire");
+  assert.equal(byProject.get("api").total_tokens, 150, "same-basename projects are merged");
+  assert.equal(byProject.get("").total_tokens, 0);
+  assert.equal(rows.reduce((acc, row) => acc + row.total_tokens, 0), 150);
+});
+
 test("partially attributed usage leaves the remainder in the unattributed residual", async () => {
   const queuePath = path.join(tmpDir, "queue.jsonl");
   const a = totals({ input_tokens: 60, total_tokens: 100, conversation_count: 1 });

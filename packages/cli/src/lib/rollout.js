@@ -13,6 +13,7 @@ const { readSqliteJsonRows, readSqliteJsonRowsAsync } = require("./sqlite-reader
 const wsl = require("./wsl-probe");
 const { resolveInstallPaths } = require("./install-resolver");
 const { expandHome } = require("./scan-roots");
+const { basenameKey } = require("./project-key");
 const {
   consumeUsageDelta,
   createUsageDeltaState,
@@ -3575,27 +3576,48 @@ function appendProjectSplitRows({ group, model, aggregateBucket, projects, toApp
   if (!projects || projects.size === 0) return;
   const attributed = initTotals();
   const projectKeys = [...projects.keys()].sort();
+  // The server stores only the basename (docs/cli-contract.md §2.4), so two
+  // local projects such as `alice/api` and `bob/api` share one cloud identity.
+  // Merge their totals under that normalized key here: emitting two rows with
+  // the same wire key would make the server's request dedupe keep just one of
+  // them and silently drop the other project's usage.
+  const normalizedProjects = new Map();
   for (const projectKey of projectKeys) {
     const projectBucket = projects.get(projectKey);
     if (!projectBucket.totals) continue;
     addTotals(attributed, projectBucket.totals);
-    const totals = projectBucket.totals;
-    const usagePrecision = projectBucket.usage_precision || aggregateBucket.usage_precision || null;
+    const normalizedKey = basenameKey(projectKey);
+    if (!normalizedKey) continue;
+    let entry = normalizedProjects.get(normalizedKey);
+    if (!entry) {
+      entry = { totals: initTotals(), usagePrecision: null, buckets: [] };
+      normalizedProjects.set(normalizedKey, entry);
+    }
+    addTotals(entry.totals, projectBucket.totals);
+    entry.usagePrecision = entry.usagePrecision || projectBucket.usage_precision || null;
+    entry.buckets.push(projectBucket);
+  }
+
+  for (const [normalizedKey, entry] of normalizedProjects) {
+    const totals = entry.totals;
+    const usagePrecision = entry.usagePrecision || aggregateBucket.usage_precision || null;
     const marker = usagePrecision ? `${totalsKey(totals)}|${usagePrecision}` : totalsKey(totals);
-    if (projectBucket.queuedHourlyKey === marker) continue;
+    // Every contributing bucket must agree that this normalized row was
+    // already queued; one changed contributor re-emits the merged total.
+    if (entry.buckets.every((bucket) => bucket.queuedHourlyKey === marker)) continue;
     toAppend.push(
       JSON.stringify({
         source: group.source,
         model,
         hour_start: group.hourStart,
-        project_key: projectKey,
+        project_key: normalizedKey,
         ...totalsRowFields(totals),
         usage_precision: usagePrecision || undefined,
         ...prioritySubsetOf(totals),
         ...creditsSubsetOf(totals),
       }),
     );
-    projectBucket.queuedHourlyKey = marker;
+    for (const bucket of entry.buckets) bucket.queuedHourlyKey = marker;
   }
 
   const residual = cloneTotals(aggregateBucket.totals);

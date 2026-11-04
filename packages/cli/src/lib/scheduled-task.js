@@ -158,7 +158,13 @@ function writeHiddenRunner({
 }) {
   fs.mkdirSync(binDir, { recursive: true });
   const vbsPath = vbsPathFor(binDir);
-  fs.writeFileSync(vbsPath, buildHiddenRunnerVbs({ nodeExe, cliJs, fallbackCliJs }), { mode: 0o600 });
+  // wscript.exe reads a BOM-less .vbs with the system ANSI code page (GBK on
+  // Chinese Windows), so a UTF-8 path containing a non-ASCII username turns
+  // into mojibake and the hourly run cannot find node. UTF-16LE + BOM is what
+  // Windows Script Host expects; the XML definition already follows the same
+  // rule.
+  const body = buildHiddenRunnerVbs({ nodeExe, cliJs, fallbackCliJs });
+  fs.writeFileSync(vbsPath, Buffer.from(`\uFEFF${body}`, "utf16le"), { mode: 0o600 });
   return vbsPath;
 }
 

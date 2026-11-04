@@ -365,6 +365,29 @@ test("a failed batch keeps earlier watermark advances and reports progress", asy
   assert.ok(!marks.has("claude|doomed"));
 });
 
+test("an unconfirmed 2xx never advances the watermark", async () => {
+  // Captive portals and proxies can answer 200 with an HTML / generic body.
+  // Treating that as success would skip the batch forever.
+  const watermarkPath = path.join(tmpDir, "watermarks.json");
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ ok: true }),
+  });
+
+  await assert.rejects(
+    uploadSessions({
+      baseUrl: "https://example.test",
+      deviceToken: "t",
+      sessions: [validRow({ session_id: "unconfirmed-1" })],
+      watermarkPath,
+      fetchImpl,
+    }),
+    /not confirmed/,
+  );
+  assert.equal(loadWatermarks(watermarkPath).size, 0);
+});
+
 test("batches cut on the 1 MiB body limit as well as the row cap", () => {
   const { buildBatches } = require("../src/lib/session-upload");
   // Rows padded past 500 KiB each force one row per batch regardless of the
@@ -395,7 +418,7 @@ test("uploadSessions maps RAW sidecar rows internally (no unmapped field ever re
   const seen = [];
   const fetchImpl = async (url, init) => {
     seen.push(JSON.parse(init.body));
-    return { ok: true, json: async () => ({ inserted: 0, sessions_upserted: 1 }) };
+    return { ok: true, json: async () => ({ inserted: 0, sessions_upserted: 1, sessions_skipped: 0 }) };
   };
   const result = await uploadSessions({
     baseUrl: "https://example.test", deviceToken: "t",

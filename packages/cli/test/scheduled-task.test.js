@@ -7,6 +7,7 @@
 // scheduler rejects).
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
@@ -35,6 +36,7 @@ const {
   consoleEncoding,
   decodeStream,
   errorText,
+  writeHiddenRunner,
 } = require("../src/lib/scheduled-task");
 
 test("platform routing covers the three supported families", () => {
@@ -71,6 +73,25 @@ test("the Windows definition carries catch-up, logon trigger and retry settings"
   assert.match(xml, /<Command>wscript\.exe<\/Command>/, "the GUI-subsystem runner hides the window");
   assert.ok(xml.includes('"C:\\Users\\me\\.tokenusage\\bin\\run-sync-hidden.vbs"'));
   assert.ok(!xml.includes("src\\cli.js"));
+});
+
+test("the hidden runner is UTF-16LE with a BOM so non-ASCII paths survive wscript", () => {
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "tokenusage-vbs-"));
+
+  try {
+    const vbsPath = writeHiddenRunner({
+      binDir,
+      nodeExe: "C:\\Users\\张三\\AppData\\node.exe",
+      cliJs: "C:\\Users\\张三\\AppData\\tokenusage.js",
+    });
+    const bytes = fs.readFileSync(vbsPath);
+
+    assert.equal(bytes[0], 0xff, "UTF-16LE BOM low byte");
+    assert.equal(bytes[1], 0xfe, "UTF-16LE BOM high byte");
+    assert.ok(bytes.subarray(2).toString("utf16le").includes("张三"));
+  } finally {
+    fs.rmSync(binDir, { recursive: true, force: true });
+  }
 });
 
 test("the Windows start boundary is local time at the top of the next hour", () => {

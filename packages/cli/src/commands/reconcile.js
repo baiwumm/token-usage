@@ -40,6 +40,7 @@ const { functionUrlFor, fetchFunctionResponse } = require("../lib/function-url")
 const { iterateQueueLines } = require("../lib/upload-queue");
 const { normalizeQueueRow } = require("../lib/queue-row-normalize");
 const { sanitizeBucketForUpload } = require("../lib/ingest-sanitize");
+const { basenameKey } = require("../lib/project-key");
 const { TOKEN_COLUMNS } = require("../lib/account-usage-dedup");
 const { UsageError, unknownOptionError } = require("../lib/cli-errors");
 
@@ -208,7 +209,13 @@ async function collectBuckets({ queuePath, fromMs, toMs, start = 0 }) {
       });
       const sanitized = sanitizeBucketForUpload(row);
       if (!sanitized) continue;
-      const project = typeof sanitized.project_key === "string" ? sanitized.project_key.trim() : "";
+      // The server stores only the basename (§2.4). Normalizing here keeps
+      // pre-v2 queues whose rows still carry `owner/repo` comparable with the
+      // cloud instead of reporting permanent missing_on_server drift.
+      const project =
+        typeof sanitized.project_key === "string"
+          ? basenameKey(sanitized.project_key) || ""
+          : "";
       buckets.set(bucketKey(hourMs, source, model, project), sanitized);
     }
   } finally {

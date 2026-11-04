@@ -4721,6 +4721,14 @@ async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, que
         throw err;
       }
 
+      if (!isConfirmedIngestResponse(data)) {
+        const err = new Error(
+          `Unconfirmed ingest response (HTTP ${res.status}): ${rawText.substring(0, 300)}`,
+        );
+        err.status = res.status;
+        err.code = "CLOUD_UPLOAD_UNCONFIRMED";
+        throw err;
+      }
       cloudAccess = data;
       if (data.upload_scope === "community") batchBudget = Math.min(batchBudget, 10);
       inserted += Number(data?.inserted || 0);
@@ -4753,6 +4761,23 @@ async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, que
     }
   }
   return resultSoFar();
+}
+
+// A 200 is not proof the ingest committed: captive portals / reverse proxies
+// return 200 HTML and maintenance pages return an empty body. Advancing the
+// queue offset on those silently drops the batch forever, so the drain only
+// accepts the contract's success shape (docs/cli-contract.md §2.4).
+function isCount(value) {
+  return (
+    (typeof value === "number" || typeof value === "string") &&
+    value !== "" &&
+    Number.isFinite(Number(value))
+  );
+}
+
+function isConfirmedIngestResponse(data) {
+  return Boolean(data) && typeof data === "object" && !Array.isArray(data) &&
+    isCount(data.inserted) && isCount(data.skipped);
 }
 
 async function readQueueBatch(queuePath, startOffset, maxBuckets) {
@@ -4862,7 +4887,17 @@ async function readQueueBatch(queuePath, startOffset, maxBuckets) {
       // otherwise 400 the whole ingest batch and stall the queue.
       const sanitized = sanitizeBucketForUpload(bucket);
       if (!sanitized) continue;
-      bucketMap.set(`${source}|${model}|${hourStart}`, sanitized);
+      // Contract v2: project_key is part of the bucket identity. Split hours
+      // carry several rows with the same (source, model, hour) under different
+      // project keys (plus the '' residual); omitting it here collapsed them
+      // to the last row and then advanced the offset past the rest, losing the
+      // attributed usage permanently. New queue rows already carry the
+      // server-normalized basename (rollout's appendProjectSplitRows); old
+      // owner/repo rows stay distinct here and let the server's own basename
+      // dedupe pick the larger total instead of collapsing them locally.
+      const projectKey =
+        typeof sanitized.project_key === "string" ? sanitized.project_key.trim() : "";
+      bucketMap.set(`${source}|${model}|${hourStart}|${projectKey}`, sanitized);
       linesRead += 1;
       if (linesRead >= maxBuckets) break;
     }

@@ -141,6 +141,40 @@ test("readQueueBatch drops hourly rows the edge would 400 and floors fractional 
   assert.equal(result.nextOffset, fs.statSync(queuePath).size);
 });
 
+test("readQueueBatch keeps every project split row in the same batch", async () => {
+  // Contract v2: one (source, model, hour) splits into per-project rows plus
+  // the '' residual. The upload reader must keep all of them — dropping any
+  // here advances the offset past data the server never saw.
+  const queuePath = writeQueue([
+    validBucket({ project_key: "proj-a", total_tokens: 100 }),
+    validBucket({ project_key: "proj-b", total_tokens: 50 }),
+    validBucket({ project_key: "", total_tokens: 0 }),
+  ]);
+  const result = await readQueueBatch(queuePath, 0, 500);
+  assert.equal(result.buckets.length, 3);
+  assert.deepEqual(
+    result.buckets.map((row) => [row.project_key ?? "", row.total_tokens]),
+    [["proj-a", 100], ["proj-b", 50], ["", 0]],
+  );
+  assert.equal(result.nextOffset, fs.statSync(queuePath).size);
+});
+
+test("readQueueBatch keeps distinct raw project identities in one batch", async () => {
+  // New queue rows carry the basename (rollout normalizes before writing).
+  // Pre-upgrade rows may still carry owner/repo; keeping them distinct here
+  // lets the server apply its own basename cleanup + max-total dedupe instead
+  // of collapsing one project away in the CLI.
+  const queuePath = writeQueue([
+    validBucket({ project_key: "alice/api", total_tokens: 100 }),
+    validBucket({ project_key: "bob/api", total_tokens: 50 }),
+  ]);
+  const result = await readQueueBatch(queuePath, 0, 500);
+  assert.deepEqual(
+    result.buckets.map((row) => [row.project_key ?? "", row.total_tokens]),
+    [["alice/api", 100], ["bob/api", 50]],
+  );
+});
+
 test("a segment of only-poison rows reads empty with the offset advanced", async () => {
   const queuePath = writeQueue([
     validBucket({ hour_start: "garbage" }),

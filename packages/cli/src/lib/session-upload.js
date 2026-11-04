@@ -17,6 +17,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 
 const { functionUrlFor, fetchFunctionResponse } = require("./function-url");
+const { basenameKey } = require("./project-key");
 
 const INGEST_SLUG = "token-usage-ingest";
 const MAX_SESSIONS_PER_BATCH = 200;
@@ -64,17 +65,6 @@ function foldReasoningIntoOutput(tokens) {
   ) {
     tokens.output_tokens += tokens.reasoning_output_tokens;
   }
-}
-
-function basenameKey(value) {
-  const raw = String(value || "").replace(/[\\/]+$/, "");
-  if (!raw || raw === "." || raw === "..") return null;
-  const base = raw.split(/[\\/]/).pop().trim();
-  if (!base || base === "." || base === "..") return null;
-  // Control characters are rejected server-side; strip instead of failing.
-  // eslint-disable-next-line no-control-regex
-  const clean = base.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 120);
-  return clean || null;
 }
 
 function validSessionId(value) {
@@ -347,7 +337,30 @@ async function uploadSessions({
       error.upserted = upserted;
       throw error;
     }
-    const data = await res.json().catch(() => ({}));
+    // A 2xx is not a confirmation: captive portals and reverse proxies answer
+    // with 200 HTML/empty bodies. Advancing the watermark on those would skip
+    // the batch forever, so require the contract's counter fields
+    // (docs/cli-contract.md §2.4) before recording progress.
+    const data = await res.json().catch(() => null);
+    const isCount = (value) =>
+      (typeof value === "number" || typeof value === "string") &&
+      value !== "" &&
+      Number.isFinite(Number(value));
+
+    if (
+      !data ||
+      typeof data !== "object" ||
+      !isCount(data.sessions_upserted) ||
+      !isCount(data.sessions_skipped)
+    ) {
+      const error = new Error(
+        `sessions upload was not confirmed (HTTP ${res.status}): unexpected response body`,
+      );
+      error.status = res.status;
+      error.uploaded = uploaded;
+      error.upserted = upserted;
+      throw error;
+    }
     batches += 1;
     uploaded += batch.length;
     upserted += Number(data?.sessions_upserted || 0);

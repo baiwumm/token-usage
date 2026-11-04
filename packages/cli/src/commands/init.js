@@ -2807,7 +2807,14 @@ function readFirstSyncTotals(trackerDir) {
     if (!trimmed) continue;
     try {
       const row = JSON.parse(trimmed);
-      const key = `${row.source || ""}|${row.model || ""}|${row.hour_start || ""}`;
+      // Control records (account session states / watermarks) carry a
+      // `total_tokens` too; they are not usage buckets and must not inflate
+      // the first-sync counter.
+      if (!row || typeof row !== "object" || Object.hasOwn(row, "kind")) continue;
+      // Contract v2: project_key joins the last-wins identity. Without it the
+      // residual row (appended last) hides every attributed project row, and a
+      // fully attributed hour would display as 0 tokens.
+      const key = `${row.source || ""}|${row.model || ""}|${row.hour_start || ""}|${row.project_key || ""}`;
       latest.set(key, row);
     } catch {
       // skip malformed
