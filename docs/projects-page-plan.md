@@ -59,6 +59,8 @@
 - 切换与验收：项目页切到桶口径后，与 sessions 口径对账误差应收敛到「非 session 来源不再缺失」带来的正向增量；验收阈值：同窗口两口径差 = 非 session 来源 token 量 ±5%。
 - 回滚：接口双跑，UI 切换是前端单点改动，`git revert` 即回 sessions 口径。
 
+> 实现（2026-11-04）：`GET /api/app/projects-hourly`（`apps/web/src/lib/api/projects-hourly.ts`）按 `token_usage_hourly.project_key` 聚合，payload 与 `/api/app/projects` 同形（`session_count` 取 `conversations` 之和，便于两口径同表对比）。空串桶固定排在列表末尾，并单独计入 `totals.unattributed_tokens` / `unattributed_sessions`，不与项目桶合并——项目行本身已是「聚合减去余量」的结果（契约 §2.4），整表求和仍等于 dashboard 总量。页面切换由 `NEXT_PUBLIC_PROJECTS_CALIBER=hourly` 控制（`apps/web/src/lib/dashboard/api.ts`）：未设置或任何其他值仍走 sessions 口径，回退=删除该环境变量，无需改代码。旧 `/api/app/projects` 行为与默认值未动。
+
 ## 6. 我的建议（计划外新增节）
 
 | # | 建议 | 理由 | 优先级 | 代价 | 风险 |
