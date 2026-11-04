@@ -66,6 +66,11 @@
 > - **`totals` 补齐** `total_cost_usd`（6 位小数字符串）与 `credits`（6 位小数），两口径同形，页面合计有来源。
 > - **会话指标改名**：小时桶表没有会话维度，`Σ conversations` 是按小时累加值，故 hourly 口径列头改为「会话条目 / Session entries」，并在提示条说明「并非去重后的会话数量」；sessions 口径保持「会话数」。
 > - **口径标注条按口径切换**：`scopeNote` 拆为 `sessions` / `hourly` 两段文案，由 `projectsCaliber()` 选取；hourly 段说明「来自用量桶、含未归因余量、费用为实时估价、归因依赖采集器上报项目名」。
+> - **库内 `total_cost_usd` 恒 0 的语义已显式化（2026-11-04）**：迁移
+>   `20261104000000_token_hourly_cost_usd_comment.sql` 给该列加了 DB 列注释（哨兵值：CLI 写入行恒 0，
+>   成本在读取时按 curated + LiteLLM 定价实时计算，只有 grok/cline 的厂商上报成本可能为正），
+>   生产库已落库该注释。**外部对账脚本不要对该列求和**——读到的 0 是哨兵而非真实费用；应复刻读取时
+>   定价（`computeRowCost()`），或直接用 `total_tokens` / `billable_total_tokens` 对账。
 
 > 部署与历史口径（2026-11-04 补注）：该开关是部署级、`NEXT_PUBLIC_` 构建期内联——CLI 采集端不读，
 > 改值或删除都需重新部署（回退 = Vercel 删除变量后 Redeploy）。历史桶没有项目名且不做回溯

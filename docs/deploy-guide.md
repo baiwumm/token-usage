@@ -150,6 +150,12 @@ CLI 机制速查（完整说明见 `packages/cli/README.md`）：
 `/settings` 可改名与吊销设备（吊销即时生效）；`/wrapped` 年度回顾；`/service-status`
 自查端点健康。
 
+**对账口径提示**：`token_usage_hourly.total_cost_usd` 是**哨兵列**——CLI 写入行恒为 0（只有
+grok/cline 的厂商上报成本可能为正），真实费用在读取时按 curated + LiteLLM 定价实时计算
+（列注释见迁移 `supabase/migrations/20261104000000_token_hourly_cost_usd_comment.sql`）。
+写外部对账脚本时**不要对 `total_cost_usd` 求和**（读到的 0 不是「免费」，而是「读取时才算」）；
+请用 `total_tokens` / `billable_total_tokens`，或复刻读取时定价（`computeRowCost()`）。
+
 ## 常见问题
 
 | 现象 | 原因与处理 |
