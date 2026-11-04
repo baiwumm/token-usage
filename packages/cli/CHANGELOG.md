@@ -3,9 +3,12 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
-## Unreleased
+## 0.4.4
 
-2026-11-03 起累积，发版时定版号与日期。
+2026-11-04。契约 v2 落地：小时用量桶按项目名拆行（`project_key`），项目键向上回退到真实
+项目目录；新增 DeepSeek 余额/状态卡、`status --json` 的计价出处块、`doctor` 计价覆盖自检；
+curated 定价扩到 191 条，Cursor / Kimi / Grok 限额卡补磁盘缓存回退。旧 `tokentracker-*`
+别名已在服务端移除，仍打旧路径的钉版客户端会得到有声失败（GET 404 / 写动词 405），本地队列不丢。
 
 - **服务端 breaking：旧 `tokentracker-*` API 路径别名已移除**（契约 §1.5，2026-11-03
   操作者拍板）。指向本后端的钉版旧 CLI（tokentracker-cli@1.4.x）上传会得到

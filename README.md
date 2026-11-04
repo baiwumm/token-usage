@@ -57,6 +57,7 @@
 - **数据自主**：每个部署实例绑定自己的 Supabase 项目，采集端只向配对实例上报，跨实例零共享
 - **可观测**：仪表盘 / Sessions 会话明细（支持按当前筛选导出 CSV）/ 采集运行记录 / 成就墙；积分（credits）作为独立维度展示，不混入 token 与成本
 - **契约先行**：CLI 采集契约两档制——采集面硬冻结、仪表盘面随 UI 演进（[`docs/cli-contract.md`](docs/cli-contract.md)）
+- **项目名明文**：项目名按工作目录的 basename 明文上报并原样展示（用于跨设备同名合并），暂不提供脱敏开关；敏感目录请自行评估
 - **开源自部署**：Vercel free + Supabase free 即可跑通，见[部署指南](docs/deploy-guide.md)
 
 ## 🧱 技术栈
@@ -110,7 +111,7 @@ tokenusage reconcile --days 7     # 3. 与云端逐键对账，确认无漂移
 
 M0 脚手架 → M1 契约层 → M2 认证与设置 → M3 仪表盘 → M4 wrapped / 分享 / 服务状态 →
 M5 配对页与部署文档 → M5.5 上游 Dashboard 核心 + 外观设置 → M5.6 Sessions →
-M-CLI 采集端（`tokenusage-cli`，当前 0.3.0）→ M6 数据迁移与切换 → M7 成就系统。
+M-CLI 采集端（`tokenusage-cli`，当前 0.4.4）→ M6 数据迁移与切换 → M7 成就系统。
 **v1 全部完成并上线（2026-10-30）**；剩余待办与待拍板事项见
 [`docs/rewrite-plan.md`](docs/rewrite-plan.md) §10。
 
@@ -147,6 +148,7 @@ independent community project; code provenance and third-party licenses live in
 - **Pairing**: the collector CLI prints a `XXXX-XXXX` code and opens `/device?user_code=...`; you approve it after signing in, and reporting starts immediately
 - **CLI contract**: two-tier — the collector-facing API is frozen, the dashboard API evolves with the UI ([`docs/cli-contract.md`](docs/cli-contract.md))
 - **Upgrading from `tokentracker-cli@1.4.x`**: the legacy `/api/functions/tokentracker-*` aliases were removed on 2026-11-03 (GET 404 / write verbs 405 — a loud failure, nothing is silently dropped; pending local data is re-scanned and backfilled on the first run). Run `npm i -g tokenusage-cli@latest` → `tokenusage init --yes` → `tokenusage reconcile --days 7`
+- **Plaintext project names**: the collector reports each project as the working directory's basename and the dashboard shows it verbatim (so the same name merges across devices). There is no redaction switch yet — evaluate sensitive directory names before collecting
 
 ## ⚖️ License
 
