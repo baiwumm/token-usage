@@ -1,5 +1,7 @@
 "use client";
 
+import type { ComponentPropsWithRef } from "react";
+
 import {
   Calendar,
   ClockArrowRotateLeft,
@@ -10,7 +12,7 @@ import {
   Medal,
   Tachometer,
 } from "@gravity-ui/icons";
-import { Chip, cn } from "@heroui/react";
+import { Button, Chip, Tooltip, Typography, cn } from "@heroui/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -57,33 +59,68 @@ export function NavItems({
         const label = copy[item.key];
         const showBadge = "badge" in item && item.badge;
 
+        const itemClassName = cn(
+          NAV_ITEM_BASE,
+          collapsed ? "w-9 justify-center px-0" : "px-2.5",
+          active
+            ? "bg-surface text-surface-foreground font-medium"
+            : "text-foreground/65 hover:bg-default hover:text-foreground",
+        );
+        const icon = (
+          <Icon
+            aria-hidden="true"
+            className={cn(
+              "size-4.5 shrink-0",
+              active
+                ? "text-foreground"
+                : "text-muted group-hover:text-foreground",
+            )}
+          />
+        );
+
+        // Collapsed rail: the native title is replaced by a HeroUI Tooltip.
+        // A bare <a> does not consume React Aria's focusable context, so the
+        // trigger is a HeroUI Button rendered back into a Next.js Link (keeps
+        // client-side navigation and the link semantics). Button's render props
+        // are typed against <button>, but React Aria's focusable props and ref
+        // target the real DOM node, which is the <a> rendered by Link.
+        if (collapsed) {
+          return (
+            <Tooltip key={item.href} delay={0}>
+              <Button
+                aria-current={active ? "page" : undefined}
+                aria-label={label}
+                className={itemClassName}
+                render={(props) => (
+                  <Link
+                    {...(props as unknown as ComponentPropsWithRef<"a">)}
+                    href={item.href}
+                    onClick={onNavigate}
+                  />
+                )}
+                variant="ghost"
+              >
+                {icon}
+              </Button>
+              <Tooltip.Content showArrow placement="right">
+                <Tooltip.Arrow />
+                <Typography type="body-xs">{label}</Typography>
+              </Tooltip.Content>
+            </Tooltip>
+          );
+        }
+
         return (
           <Link
             key={item.href}
             aria-current={active ? "page" : undefined}
-            aria-label={collapsed ? label : undefined}
-            className={cn(
-              NAV_ITEM_BASE,
-              collapsed ? "w-9 justify-center" : "px-2.5",
-              active
-                ? "bg-surface text-surface-foreground font-medium"
-                : "text-foreground/65 hover:bg-default hover:text-foreground",
-            )}
+            className={itemClassName}
             href={item.href}
-            title={collapsed ? label : undefined}
             onClick={onNavigate}
           >
-            <Icon
-              aria-hidden="true"
-              className={cn(
-                "size-4.5 shrink-0",
-                active
-                  ? "text-foreground"
-                  : "text-muted group-hover:text-foreground",
-              )}
-            />
-            {collapsed ? null : <span className="truncate">{label}</span>}
-            {!collapsed && showBadge ? (
+            {icon}
+            <span className="truncate">{label}</span>
+            {showBadge ? (
               <Chip
                 className="ml-auto h-5 shrink-0 px-1.5 text-[10px]"
                 color="success"

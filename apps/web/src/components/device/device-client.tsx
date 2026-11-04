@@ -159,7 +159,9 @@ function DeviceClientInner() {
                   <InputOTP.Slot index={7} />
                 </InputOTP.Group>
               </InputOTP>
-              <Button type="submit">{copy.approve}</Button>
+              <Button className="self-center" type="submit">
+                {copy.approve}
+              </Button>
             </form>
           </Card.Content>
         </Card>
@@ -179,7 +181,10 @@ function DeviceClientInner() {
             >
               {activeCode}
             </Typography>
-            <Button onPress={() => void approve(activeCode)}>
+            <Button
+              className="self-center"
+              onPress={() => void approve(activeCode)}
+            >
               {copy.approve}
             </Button>
           </Card.Content>
