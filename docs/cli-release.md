@@ -565,6 +565,7 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 | Release notes | 取 CHANGELOG `## 0.4.4` 段（44 行），未退回 `--generate-notes` |
 | 干净安装 | 临时目录 `npm i tokenusage-cli@0.4.4`（6 包 / 6s）后 `--version` → `v0.4.4`，`help` 正常；临时目录已删除，未污染全局 |
 | 安全审计 | `pnpm audit --prod --registry=https://registry.npmjs.org` → No known vulnerabilities found |
+| [x] 本机升级与验证（2026-11-04） | Volta `tokenusage-cli@0.4.3 → 0.4.4`，`init --yes` 刷新 runtime copy；`doctor` 15 OK / 0 warn / 0 fail；`sync --drain` 解析 2,150 文件、上传 4 行；`reconcile --days 7` 有 **3 个既有 server-only**（dsh `2026-10-28` 08:30/09:00/09:30，本地队列的 dsh 行从 10-29 起才有，升级前快照即如此），非本次升级引入。升级后 7 天窗口 `project_key` 非空仍为 0——新桶来自 trae/workbuddy，项目型来源产生新桶后才会带上项目名 |
+| [x] cursor 重新登录 | 本机已不使用 Cursor（2026-11-04 确认），跳过；如后续需要 Cursor 用量，再在客户端登录并跑 `tokenusage doctor` 复核 |
 | [ ] 另一台采集机升级 | 仍为 0.4.3：`npm i -g tokenusage-cli@0.4.4` 后重跑 `init --yes`（用户操作） |
-| [ ] cursor 重新登录 | 凭据过期，需在 Cursor 客户端重新登录后跑 `tokenusage doctor` 复核（用户操作） |
-| [ ] 升级后验收 | 每台机器 `tokenusage reconcile --days 7` 应为 OK / 0 drift；新桶开始带 `project_key`，`/projects` 的 hourly 口径不再整页落在「未归因」 |
+| [ ] 另一台机器升级后验收 | `tokenusage reconcile --days 7` 应为 OK / 0 drift；项目型来源的新桶开始带 `project_key`，`/projects` 的 hourly 口径不再整页落在「未归因」 |
