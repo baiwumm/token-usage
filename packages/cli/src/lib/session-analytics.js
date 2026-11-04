@@ -408,9 +408,51 @@ function isWorktreeRef(ref) {
   return /[\\/](worktrees|subagents)[\\/]/.test(String(ref || ""));
 }
 
+const SUBAGENT_DIR = "subagents";
+const WORKTREE_DIR = "worktrees";
+const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Throwaway per-agent checkouts (`<repo>/.claude/worktrees/<id>`) and subagent
+// transcripts (`<session-dir>/subagents/`) belong to the project that owns
+// them, not to the temp name at the tail of the path. Both are artefacts of
+// how a tool lays out its state, so the project key steps up to the real
+// project directory instead of surfacing `agent-<hash>` / `subagents` as a
+// project of its own. Normal cwds and anything without those markers keep the
+// historical basename behavior.
 function projectKey(cwd, filePath) {
-  const value = cwd || path.dirname(filePath || "");
-  return path.basename(String(value).replace(/[\\/]+$/, "")) || "unknown";
+  const raw = String(cwd || path.dirname(filePath || "")).replace(/[\\/]+$/, "");
+  const segments = raw.split(/[\\/]+/).filter(Boolean);
+  if (segments.length === 0) return "unknown";
+  return projectSegment(segments) || "unknown";
+}
+
+function projectSegment(segments) {
+  const tail = segments[segments.length - 1];
+
+  const worktreeIndex = segments.lastIndexOf(WORKTREE_DIR);
+  if (worktreeIndex > 0 && worktreeIndex < segments.length - 1) {
+    const owner = segments[worktreeIndex - 1];
+    // Repo-local worktrees (`<repo>/.claude/worktrees/<id>`): the owner is the
+    // repo above the agent dot-directory.
+    if (owner === ".claude") {
+      const repo = segments[worktreeIndex - 2];
+      if (repo && !repo.startsWith(".")) return repo;
+    }
+    // `<project>/worktrees/<name>`: the project directly above the marker.
+    // A dot-directory there (e.g. `~/.codex/worktrees/<id>`) has no project
+    // above it, so keep the old tail behavior instead of guessing.
+    if (!owner.startsWith(".")) return owner;
+  }
+
+  if (tail === SUBAGENT_DIR) {
+    // `<project>/<session-id>/subagents`: skip the session container too.
+    let index = segments.length - 2;
+    while (index >= 0 && UUID_SEGMENT.test(segments[index])) index -= 1;
+    const project = index >= 0 ? segments[index] : null;
+    if (project && !project.startsWith(".")) return project;
+  }
+
+  return tail;
 }
 
 function extractClaudePrompt(obj) {
@@ -1996,6 +2038,12 @@ function scanQoderSessionFile(filePath, source) {
       if (typeof cwd === "string" && cwd.trim()) projectRef = cwd.trim();
       continue;
     }
+    // Subagent transcripts under `<session>/subagents/` carry no workspace
+    // record, but each record still names the workspace cwd — inherit it so the
+    // project key stays the real project instead of the "subagents" directory.
+    if (!projectRef && typeof record?.cwd === "string" && record.cwd.trim()) {
+      projectRef = record.cwd.trim();
+    }
     if (record?.type !== "assistant" || record?.message?.role !== "assistant") continue;
     const usage = record.message.usage;
     if (!usage || typeof usage !== "object") continue;
@@ -3128,6 +3176,8 @@ module.exports = {
   scanZcodeSessions,
   scanOpencodeSessions,
   scanKimiSessions,
+  scanQoderSessionFile,
+  projectKey,
   buildSessionAnalytics,
   summarizeSessions,
   listSessionsForBrowser,
