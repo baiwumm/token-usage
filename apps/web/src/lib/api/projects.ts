@@ -187,6 +187,50 @@ export function projectTotalsOf(groups: Iterable<ProjectGroup>): {
   };
 }
 
+/**
+ * A project row with no measurable usage in the window: zero tokens, zero
+ * cost and zero credits. These are session shells — Codex Desktop onboarding
+ * directories, Qoder subagent transcripts, aborted sessions — whose basename
+ * would otherwise surface as an empty "project". They are dropped from the
+ * list (never from the totals, which already count them as 0) so the table
+ * does not grow a new zero row every time a tool invents a scratch directory.
+ */
+export function isZeroUsageGroup(group: ProjectGroup): boolean {
+  return group.totalTokens === 0 && group.costUsd === 0 && group.credits === 0;
+}
+
+/**
+ * Split merged groups into the attributed list (zero-usage rows filtered out)
+ * and the pinned unattributed group (always kept, even at zero). Shared by
+ * both calibers so the table behaves identically whichever data path is live.
+ */
+export function splitProjectGroups(groups: Iterable<ProjectGroup>): {
+  attributed: ProjectGroup[];
+  unattributed: ProjectGroup | null;
+  attributedTokens: number;
+  filteredZeroUsage: number;
+} {
+  const attributed: ProjectGroup[] = [];
+  let unattributed: ProjectGroup | null = null;
+  let attributedTokens = 0;
+  let filteredZeroUsage = 0;
+
+  for (const group of groups) {
+    if (group.key == null) {
+      unattributed = group;
+      continue;
+    }
+    if (isZeroUsageGroup(group)) {
+      filteredZeroUsage += 1;
+      continue;
+    }
+    attributed.push(group);
+    attributedTokens += group.totalTokens;
+  }
+
+  return { attributed, unattributed, attributedTokens, filteredZeroUsage };
+}
+
 export function groupKeyOf(row: RestRow): string | null {
   const raw = row.project_key;
 
@@ -258,6 +302,7 @@ export async function projectsPayloadForUser(
       total_cost_usd: "0.000000",
       credits: 0,
     },
+    filtered_zero_usage_projects: 0,
     caliber: "sessions",
     projects: [],
   };
@@ -321,17 +366,8 @@ export async function projectsPayloadForUser(
 
   if (groups.size === 0) return jsonResponse(200, emptyPayload);
 
-  const attributed: ProjectGroup[] = [];
-  let unattributed: ProjectGroup | null = null;
-  let attributedTokens = 0;
-
-  for (const group of groups.values()) {
-    if (group.key == null) unattributed = group;
-    else {
-      attributed.push(group);
-      attributedTokens += group.totalTokens;
-    }
-  }
+  const { attributed, unattributed, attributedTokens, filteredZeroUsage } =
+    splitProjectGroups(groups.values());
 
   const valueOf = (group: ProjectGroup): number =>
     sort === "cost" ? group.costUsd : group.totalTokens;
@@ -362,6 +398,7 @@ export async function projectsPayloadForUser(
       unattributed_sessions: unattributed?.sessionCount ?? 0,
       ...projectTotalsOf(groups.values()),
     },
+    filtered_zero_usage_projects: filteredZeroUsage,
     caliber: "sessions",
     projects: page,
   });

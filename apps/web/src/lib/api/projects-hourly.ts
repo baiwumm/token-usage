@@ -27,6 +27,7 @@ import {
   resolveOffset,
   resolveSort,
   resolveWindow,
+  splitProjectGroups,
   toWire,
   type ProjectGroup,
 } from "./projects";
@@ -73,6 +74,7 @@ export async function projectsHourlyPayloadForUser(
       total_cost_usd: "0.000000",
       credits: 0,
     },
+    filtered_zero_usage_projects: 0,
     caliber: "hourly",
     projects: [],
   };
@@ -132,17 +134,8 @@ export async function projectsHourlyPayloadForUser(
 
   if (groups.size === 0) return jsonResponse(200, emptyPayload);
 
-  const attributed: ProjectGroup[] = [];
-  let unattributed: ProjectGroup | null = null;
-  let attributedTokens = 0;
-
-  for (const group of groups.values()) {
-    if (group.key == null) unattributed = group;
-    else {
-      attributed.push(group);
-      attributedTokens += group.totalTokens;
-    }
-  }
+  const { attributed, unattributed, attributedTokens, filteredZeroUsage } =
+    splitProjectGroups(groups.values());
 
   const valueOf = (group: ProjectGroup): number =>
     sort === "cost" ? group.costUsd : group.totalTokens;
@@ -173,6 +166,7 @@ export async function projectsHourlyPayloadForUser(
       unattributed_sessions: unattributed?.sessionCount ?? 0,
       ...projectTotalsOf(groups.values()),
     },
+    filtered_zero_usage_projects: filteredZeroUsage,
     caliber: "hourly",
     projects: page,
   });

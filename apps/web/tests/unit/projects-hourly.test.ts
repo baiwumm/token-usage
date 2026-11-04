@@ -279,9 +279,37 @@ describe("projectsHourlyPayloadForUser — grouping and double-count guard", () 
         total_cost_usd: "0.000000",
         credits: 0,
       },
+      filtered_zero_usage_projects: 0,
       caliber: "hourly",
       projects: [],
     });
+  });
+
+  it("drops zero-usage project rows and reports how many were filtered", async () => {
+    fake.table("token_usage_hourly").push(
+      hourly({ project_key: "alpha", total_tokens: 100 }),
+      // Fully attributed hour (residual is 0) plus an empty scratch bucket.
+      hourly({ project_key: "beta", total_tokens: 0, conversations: 2 }),
+      hourly({ project_key: "https-openai-com", total_tokens: 0, conversations: 0 }),
+    );
+    const body = await payload("from=2026-10-19&to=2026-10-25");
+
+    expect(keys(body)).toEqual(["alpha"]);
+    expect(body.filtered_zero_usage_projects).toBe(2);
+    // Same behavior as the session caliber: totals keep the whole window.
+    expect(body.totals.attributed_tokens).toBe(100);
+  });
+
+  it("keeps the unattributed group even when it carries no usage", async () => {
+    fake.table("token_usage_hourly").push(
+      hourly({ project_key: "alpha", total_tokens: 100 }),
+      // A fully attributed hour leaves a 0-token residual row under "".
+      hourly({ project_key: "", total_tokens: 0, conversations: 0 }),
+    );
+    const body = await payload("from=2026-10-19&to=2026-10-25");
+
+    expect(keys(body)).toEqual(["alpha", null]);
+    expect(body.filtered_zero_usage_projects).toBe(0);
   });
 
   it("rejects malformed windows", async () => {

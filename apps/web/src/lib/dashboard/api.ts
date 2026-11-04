@@ -775,6 +775,10 @@ export interface ProjectsPayload {
     total_cost_usd: string;
     credits: number;
   };
+  // Project rows dropped from the list because they carry no usage at all
+  // (zero tokens / cost / credits) — see splitProjectGroups. Their values are
+  // zero, so `totals` stays the whole-window sum.
+  filtered_zero_usage_projects: number;
   projects: ProjectItem[];
 }
 

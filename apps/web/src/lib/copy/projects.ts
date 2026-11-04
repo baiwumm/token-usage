@@ -52,9 +52,9 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
     lastUpdatedNone: "尚未加载数据",
     scopeNote: {
       sessions:
-        "本页数据来自会话元数据（session sidecar），覆盖 Claude Code / Codex / Grok / OpenCode / ZCode / Kimi 等来源（本机实测约占 77% token）；MiniMax Code、Trae、DeepSeek Harness、WorkBuddy 等暂不在其中；Cursor / Trae CN 为账户级来源，永不出现在本页。费用为刊例价（list price）估算，订阅制来源可能与实际账单有偏差。",
+        "本页数据来自会话元数据（session sidecar），覆盖 Claude Code / Codex / Grok / OpenCode / ZCode / Kimi 等来源（本机实测约占 77% token）；MiniMax Code、Trae、DeepSeek Harness、WorkBuddy 等暂不在其中；Cursor / Trae CN 为账户级来源，永不出现在本页。费用为刊例价（list price）估算，订阅制来源可能与实际账单有偏差。零用量项目（只有会话壳、没有 token/费用/积分的项目，如工具自建的临时目录）不列出行，它们本就为 0，不影响合计。",
       hourly:
-        "本页数据来自用量桶（token_usage_hourly），按小时把 token 归到项目名；同一小时无法归因的部分单列为「未归因」，不与项目重复计入，各行合计仍等于仪表盘总量。费用为按刊例价（list price）实时估算，与仪表盘使用同一套定价引擎；订阅制来源可能与实际账单有偏差。项目归因依赖采集器上报项目名，未上报的用量会落在「未归因」。",
+        "本页数据来自用量桶（token_usage_hourly），按小时把 token 归到项目名；同一小时无法归因的部分单列为「未归因」，不与项目重复计入，各行合计仍等于仪表盘总量。费用为按刊例价（list price）实时估算，与仪表盘使用同一套定价引擎；订阅制来源可能与实际账单有偏差。项目归因依赖采集器上报项目名，未上报的用量会落在「未归因」。零用量项目（token、费用、积分都为 0 的项目行）不列出行，它们本就为 0，不影响合计。",
     },
     list: {
       title: "项目",
@@ -98,9 +98,9 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
     lastUpdatedNone: "No data loaded yet",
     scopeNote: {
       sessions:
-        "This page is built from session metadata (session sidecar), covering sources such as Claude Code / Codex / Grok / OpenCode / ZCode / Kimi (about 77% of tokens in local measurement); MiniMax Code, Trae, DeepSeek Harness, WorkBuddy and others are not covered yet; Cursor / Trae CN are account-level sources and never appear here. Costs are list-price estimates and may differ from actual billing for subscription-based sources.",
+        "This page is built from session metadata (session sidecar), covering sources such as Claude Code / Codex / Grok / OpenCode / ZCode / Kimi (about 77% of tokens in local measurement); MiniMax Code, Trae, DeepSeek Harness, WorkBuddy and others are not covered yet; Cursor / Trae CN are account-level sources and never appear here. Costs are list-price estimates and may differ from actual billing for subscription-based sources. Zero-usage projects (session shells with no tokens, cost or credits, such as scratch directories created by tools) are not listed; they already carry 0, so the totals are unaffected.",
       hourly:
-        "This page is built from hourly usage buckets (token_usage_hourly), attributing tokens to project names per hour; the part that cannot be attributed within an hour is listed separately as Unattributed, never double-counted, and every row still sums to the dashboard total. Costs are list-price estimates computed live with the same pricing engine the dashboard uses, and may differ from actual billing for subscription-based sources. Project attribution depends on the collector reporting a project name; usage that does not carry one lands in Unattributed.",
+        "This page is built from hourly usage buckets (token_usage_hourly), attributing tokens to project names per hour; the part that cannot be attributed within an hour is listed separately as Unattributed, never double-counted, and every row still sums to the dashboard total. Costs are list-price estimates computed live with the same pricing engine the dashboard uses, and may differ from actual billing for subscription-based sources. Project attribution depends on the collector reporting a project name; usage that does not carry one lands in Unattributed. Zero-usage project rows (0 tokens, cost and credits) are not listed; they already carry 0, so the totals are unaffected.",
     },
     list: {
       title: "Projects",

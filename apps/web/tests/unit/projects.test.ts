@@ -318,9 +318,68 @@ describe("projectsPayloadForUser — grouping", () => {
         total_cost_usd: "0.000000",
         credits: 0,
       },
+      filtered_zero_usage_projects: 0,
       caliber: "sessions",
       projects: [],
     });
+  });
+});
+
+describe("projectsPayloadForUser — zero-usage rows", () => {
+  it("drops zero-usage project rows (session shells) and reports the count", async () => {
+    seedProjects();
+    fake.table("token_sessions").push(
+      // Codex Desktop onboarding dir and a Qoder subagent transcript: both
+      // carry a project key but no tokens, cost or credits.
+      session({
+        session_id: "scratch-1",
+        project_key: "https-openai-com",
+        input_tokens: 0,
+        output_tokens: 0,
+        total_tokens: 0,
+        models: [],
+      }),
+      session({
+        session_id: "agents-1",
+        project_key: "subagents",
+        input_tokens: 0,
+        output_tokens: 0,
+        total_tokens: 0,
+        models: [],
+      }),
+    );
+    const body = await payload("from=2026-10-19&to=2026-10-25");
+
+    expect(keys(body)).toEqual(["alpha", "beta", null]);
+    expect(body.total).toBe(3);
+    expect(body.filtered_zero_usage_projects).toBe(2);
+    // Totals still describe the whole window (the dropped rows were 0 anyway).
+    expect(body.totals).toEqual({
+      attributed_tokens: 350,
+      unattributed_tokens: 100,
+      unattributed_sessions: 2,
+      total_cost_usd: "0.000000",
+      credits: 0,
+    });
+  });
+
+  it("keeps the unattributed group even when it carries no usage", async () => {
+    fake.table("token_sessions").push(
+      session({ session_id: "alpha-1", project_key: "alpha", total_tokens: 100 }),
+      session({
+        session_id: "none-zero",
+        project_key: null,
+        input_tokens: 0,
+        output_tokens: 0,
+        total_tokens: 0,
+        models: [],
+      }),
+    );
+    const body = await payload("from=2026-10-19&to=2026-10-25");
+
+    expect(keys(body)).toEqual(["alpha", null]);
+    expect(body.filtered_zero_usage_projects).toBe(0);
+    expect(body.totals.unattributed_sessions).toBe(1);
   });
 });
 
