@@ -77,7 +77,7 @@ function sessionCostUsd(row: RestRow): number {
 }
 
 /** UTC instant of local midnight for a day key in the caller's tz context. */
-function dayStartIso(dayKey: string, tzContext: TzContext): string {
+export function dayStartIso(dayKey: string, tzContext: TzContext): string {
   if (tzContext.timeZone) {
     try {
       return new Date(
@@ -94,7 +94,7 @@ function dayStartIso(dayKey: string, tzContext: TzContext): string {
   ).toISOString();
 }
 
-function addDays(dayKey: string, days: number): string {
+export function addDays(dayKey: string, days: number): string {
   return new Date(Date.parse(`${dayKey}T00:00:00Z`) + days * DAY_MS)
     .toISOString()
     .slice(0, 10);
@@ -107,7 +107,7 @@ type Window = { from: string; to: string } | { error: string };
  * DEFAULT_RANGE_DAYS days ending today in the caller's tz; a partially
  * supplied or malformed window is a client error.
  */
-function resolveWindow(
+export function resolveWindow(
   searchParams: URLSearchParams,
   tzContext: TzContext,
   now: Date,
@@ -131,7 +131,9 @@ function resolveWindow(
   return { from: boundRangeStart(fromParam, toParam), to: toParam };
 }
 
-function resolveSort(searchParams: URLSearchParams): ProjectSortKey | null {
+export function resolveSort(
+  searchParams: URLSearchParams,
+): ProjectSortKey | null {
   const raw = (searchParams.get("sort") || "").trim().toLowerCase();
 
   if (!raw) return "tokens";
@@ -139,7 +141,7 @@ function resolveSort(searchParams: URLSearchParams): ProjectSortKey | null {
   return raw === "tokens" || raw === "cost" ? raw : null;
 }
 
-function resolveLimit(searchParams: URLSearchParams): number {
+export function resolveLimit(searchParams: URLSearchParams): number {
   const param = searchParams.get("limit");
   const raw = param == null || param === "" ? Number.NaN : Number(param);
 
@@ -148,14 +150,14 @@ function resolveLimit(searchParams: URLSearchParams): number {
     : DEFAULT_LIMIT;
 }
 
-function resolveOffset(searchParams: URLSearchParams): number {
+export function resolveOffset(searchParams: URLSearchParams): number {
   const param = searchParams.get("offset");
   const raw = param == null || param === "" ? 0 : Number(param);
 
   return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 0;
 }
 
-type ProjectGroup = {
+export type ProjectGroup = {
   key: string | null;
   totalTokens: number;
   costUsd: number;
@@ -165,7 +167,7 @@ type ProjectGroup = {
   dayTokens: Map<string, number>;
 };
 
-function groupKeyOf(row: RestRow): string | null {
+export function groupKeyOf(row: RestRow): string | null {
   const raw = row.project_key;
 
   if (raw == null) return null;
@@ -174,7 +176,7 @@ function groupKeyOf(row: RestRow): string | null {
   return key || null;
 }
 
-function toWire(group: ProjectGroup): ProjectWire {
+export function toWire(group: ProjectGroup): ProjectWire {
   let dayPeak: ProjectDayPeak | null = null;
 
   for (const [date, tokens] of group.dayTokens) {

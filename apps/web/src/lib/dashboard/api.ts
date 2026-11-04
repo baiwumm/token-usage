@@ -784,5 +784,14 @@ export function fetchProjects(params: {
   if (params.limit != null) query.set("limit", String(params.limit));
   if (params.offset != null) query.set("offset", String(params.offset));
 
-  return callApp<ProjectsPayload>("projects", `?${query}`);
+  // docs/projects-page-plan.md §5: the exact bucket caliber lives beside the
+  // session caliber. Flip NEXT_PUBLIC_PROJECTS_CALIBER=hourly to read
+  // token_usage_hourly instead; unset (or any other value) keeps the session
+  // caliber. Revert = remove the env var, no code change.
+  const path =
+    process.env.NEXT_PUBLIC_PROJECTS_CALIBER === "hourly"
+      ? "projects-hourly"
+      : "projects";
+
+  return callApp<ProjectsPayload>(path, `?${query}`);
 }

@@ -1,0 +1,165 @@
+// Exact bucket caliber for the projects page (docs/projects-page-plan.md §5
+// 批次 4): aggregate token_usage_hourly rows by project_key. It runs beside
+// /api/app/projects (the session caliber, unchanged) so the page can switch
+// without touching the existing data path.
+//
+// Double-count protection: a batch-3 CLI splits one (source, model, hour)
+// aggregate into one row per project plus a residual row under project_key
+// "" (contract v2 §2.4). Project rows therefore already exclude the residual,
+// and the "" bucket is surfaced as the pinned unattributed group — never
+// merged into a project's totals. Summing every row still equals the
+// dashboard's whole-table total (mixed windows included: pre-batch-3 rows
+// carry the full aggregate under "").
+//
+// Coverage caveats (mirrored by the in-page scope note): every source that
+// uploads hourly buckets is represented, including account-level (credits)
+// sources; cursor / trae-cn rows carry no project_key and land in
+// unattributed.
+
+import { loadAccountUsage } from "./account-data";
+import { jsonResponse } from "./http";
+import {
+  addDays,
+  dayStartIso,
+  groupKeyOf,
+  resolveLimit,
+  resolveOffset,
+  resolveSort,
+  resolveWindow,
+  toWire,
+  type ProjectGroup,
+} from "./projects";
+
+import { numberOr0, parseTzContext, zonedDayKey } from "@/lib/account/series";
+
+const DAY_MS = 86_400_000;
+
+export async function projectsHourlyPayloadForUser(
+  userId: string,
+  searchParams: URLSearchParams,
+  now: Date = new Date(),
+): Promise<Response> {
+  const tzContext = parseTzContext(searchParams);
+  const window = resolveWindow(searchParams, tzContext, now);
+
+  if ("error" in window) return jsonResponse(400, { error: window.error });
+  const sort = resolveSort(searchParams);
+
+  if (sort == null) return jsonResponse(400, { error: "Invalid sort" });
+  const limit = resolveLimit(searchParams);
+  const offset = resolveOffset(searchParams);
+  const { from, to } = window;
+  const fromMs = Date.parse(dayStartIso(from, tzContext));
+  const toMs = Date.parse(dayStartIso(addDays(to, 1), tzContext));
+  const days =
+    Math.round(
+      (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
+        DAY_MS,
+    ) + 1;
+
+  const emptyPayload = {
+    from,
+    to,
+    days,
+    total: 0,
+    limit,
+    offset,
+    totals: {
+      attributed_tokens: 0,
+      unattributed_tokens: 0,
+      unattributed_sessions: 0,
+    },
+    projects: [],
+  };
+
+  // Bucket semantics: absolute [from, to) instants on hour_start, revoked
+  // devices excluded wholesale — the same window and device rules as the
+  // session caliber so the two payloads line up.
+  const { hourly, activeDeviceIds } = await loadAccountUsage(userId);
+  const groups = new Map<string | null, ProjectGroup>();
+
+  for (const row of hourly) {
+    const rowDeviceId = String(row.device_id ?? "");
+
+    if (!activeDeviceIds.has(rowDeviceId)) continue;
+    const hourStart = String(row.hour_start ?? "");
+    const hourMs = Date.parse(hourStart);
+
+    if (!Number.isFinite(hourMs) || hourMs < fromMs || hourMs >= toMs) continue;
+    const dayKey = zonedDayKey(hourStart, tzContext);
+
+    if (!dayKey) continue;
+    const key = groupKeyOf(row);
+    let group = groups.get(key);
+
+    if (!group) {
+      group = {
+        key,
+        totalTokens: 0,
+        costUsd: 0,
+        sessionCount: 0,
+        lastActiveMs: 0,
+        lastActive: null,
+        dayTokens: new Map(),
+      };
+      groups.set(key, group);
+    }
+    const tokens = numberOr0(row.total_tokens);
+
+    group.totalTokens += tokens;
+    group.costUsd += numberOr0(row.total_cost_usd);
+    // Bucket rows count conversations, not session rows; the projects card
+    // keeps its single "sessions" column so the two calibers stay comparable.
+    group.sessionCount += numberOr0(row.conversations);
+    group.dayTokens.set(dayKey, (group.dayTokens.get(dayKey) ?? 0) + tokens);
+    if (hourMs > group.lastActiveMs) {
+      group.lastActiveMs = hourMs;
+      group.lastActive = hourStart;
+    }
+  }
+
+  if (groups.size === 0) return jsonResponse(200, emptyPayload);
+
+  const attributed: ProjectGroup[] = [];
+  let unattributed: ProjectGroup | null = null;
+  let attributedTokens = 0;
+
+  for (const group of groups.values()) {
+    if (group.key == null) unattributed = group;
+    else {
+      attributed.push(group);
+      attributedTokens += group.totalTokens;
+    }
+  }
+
+  const valueOf = (group: ProjectGroup): number =>
+    sort === "cost" ? group.costUsd : group.totalTokens;
+
+  attributed.sort(
+    (first, second) =>
+      valueOf(second) - valueOf(first) ||
+      ((first.key ?? "") < (second.key ?? "")
+        ? -1
+        : (first.key ?? "") > (second.key ?? "")
+          ? 1
+          : 0),
+  );
+  // The unattributed group always sinks to the bottom, regardless of sort.
+  const ordered = unattributed ? [...attributed, unattributed] : attributed;
+  const page = ordered.slice(offset, offset + limit).map(toWire);
+
+  return jsonResponse(200, {
+    from,
+    to,
+    days,
+    total: ordered.length,
+    limit,
+    offset,
+    totals: {
+      attributed_tokens: attributedTokens,
+      unattributed_tokens: unattributed?.totalTokens ?? 0,
+      unattributed_sessions: unattributed?.sessionCount ?? 0,
+    },
+    projects: page,
+  });
+}
