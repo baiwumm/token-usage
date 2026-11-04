@@ -44,6 +44,13 @@ export function ProjectsBody({
   const { formatTokens, formatNumber, formatCost, formatDate, formatDateTime } =
     useFormat();
   const router = useRouter();
+  const caliber = payload?.caliber ?? "sessions";
+  const sessionsLabel =
+    caliber === "hourly" ? copy.list.sessionsHourly : copy.list.sessions;
+  const unattributedHint =
+    caliber === "hourly"
+      ? copy.list.unattributedHintHourly
+      : copy.list.unattributedHint;
 
   const columns = useMemo<DataTableColumn<ProjectItem>[]>(
     () => [
@@ -58,7 +65,7 @@ export function ProjectsBody({
                 {copy.list.unattributed}
               </Chip>
               <Typography className="max-w-md" color="muted" type="body-xs">
-                {copy.list.unattributedHint}
+                {unattributedHint}
               </Typography>
             </div>
           ) : (
@@ -97,7 +104,7 @@ export function ProjectsBody({
       },
       {
         id: "sessions",
-        header: copy.list.sessions,
+        header: sessionsLabel,
         className: "whitespace-nowrap tabular-nums",
         cell: (project) => formatNumber(project.session_count),
       },
@@ -109,7 +116,16 @@ export function ProjectsBody({
           project.last_active ? formatDateTime(project.last_active) : "—",
       },
     ],
-    [copy, formatCost, formatDate, formatDateTime, formatNumber, formatTokens],
+    [
+      copy,
+      formatCost,
+      formatDate,
+      formatDateTime,
+      formatNumber,
+      formatTokens,
+      sessionsLabel,
+      unattributedHint,
+    ],
   );
 
   const renderProjectRow = (project: ProjectItem) => (
@@ -133,7 +149,7 @@ export function ProjectsBody({
         </div>
         {project.project_key == null ? (
           <Typography color="muted" type="body-xs">
-            {copy.list.unattributedHint}
+            {unattributedHint}
           </Typography>
         ) : null}
         <div className="text-muted flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
@@ -141,7 +157,7 @@ export function ProjectsBody({
             {formatCost(Number(project.total_cost_usd))}
           </span>
           <span className="tabular-nums">
-            {copy.list.sessions} {formatNumber(project.session_count)}
+            {sessionsLabel} {formatNumber(project.session_count)}
           </span>
           {project.day_peak ? (
             <span className="tabular-nums">
@@ -192,7 +208,7 @@ export function ProjectsBody({
         onRetry,
         retryLabel: copy.states.retry,
       }}
-      hint={copy.list.hint}
+      hint={caliber === "hourly" ? copy.list.hintHourly : copy.list.hint}
       refreshing={refreshing}
       renderMobileRow={renderProjectRow}
       rowKey={rowKey}

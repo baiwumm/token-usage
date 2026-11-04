@@ -42,6 +42,7 @@ import { loadable, type Loadable } from "@/lib/loadable";
 import {
   fetchProjects,
   isUnauthorized,
+  projectsCaliber,
   type ProjectsPayload,
 } from "@/lib/dashboard/api";
 import { browserTimezone, rangeForPreset } from "@/lib/dashboard/ranges";
@@ -202,7 +203,7 @@ export function ProjectsClient() {
         </div>
       </div>
 
-      <ScopeNote text={copy.scopeNote} />
+      <ScopeNote text={copy.scopeNote[projectsCaliber()]} />
 
       {state.status === "loading" && !payload ? (
         <ProjectsSkeleton />

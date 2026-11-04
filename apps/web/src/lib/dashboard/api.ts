@@ -751,6 +751,15 @@ export interface ProjectItem {
   last_active: string | null;
 }
 
+export type ProjectsCaliber = "sessions" | "hourly";
+
+/** Which projects payload the page reads (docs/projects-page-plan.md §5). */
+export function projectsCaliber(): ProjectsCaliber {
+  return process.env.NEXT_PUBLIC_PROJECTS_CALIBER === "hourly"
+    ? "hourly"
+    : "sessions";
+}
+
 export interface ProjectsPayload {
   from: string;
   to: string;
@@ -758,10 +767,13 @@ export interface ProjectsPayload {
   total: number;
   limit: number;
   offset: number;
+  caliber: ProjectsCaliber;
   totals: {
     attributed_tokens: number;
     unattributed_tokens: number;
     unattributed_sessions: number;
+    total_cost_usd: string;
+    credits: number;
   };
   projects: ProjectItem[];
 }
@@ -788,10 +800,7 @@ export function fetchProjects(params: {
   // session caliber. Flip NEXT_PUBLIC_PROJECTS_CALIBER=hourly to read
   // token_usage_hourly instead; unset (or any other value) keeps the session
   // caliber. Revert = remove the env var, no code change.
-  const path =
-    process.env.NEXT_PUBLIC_PROJECTS_CALIBER === "hourly"
-      ? "projects-hourly"
-      : "projects";
+  const path = projectsCaliber() === "hourly" ? "projects-hourly" : "projects";
 
   return callApp<ProjectsPayload>(path, `?${query}`);
 }
