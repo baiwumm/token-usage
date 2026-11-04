@@ -422,10 +422,16 @@ Query：`from`、`to`（ISO 瞬时，按 `hour_start ∈ [from,to)`）、`limit`
 > 冻结；随 UI 版本演进，变更回写本文）。鉴权与 `/api/app/sync-runs` 同款（`@supabase/ssr`
 > 会话 cookie），无参数、无设备令牌路径。
 
-- 响应 `200 {"version": "<created_at ISO>" | null}`，`Cache-Control: no-store`。
-- `version` = `token_sync_runs` 中该用户**最新一条非空运行**（`empty = false`，服务端派生
-  标志）的 `created_at`（服务端 `clock_timestamp`，与设备时钟无关）；无符合行时为 `null`
-  （新账号，客户端视为永不命中缓存）。`order by created_at desc limit 1`，单条索引读。
+- 响应 `200 {"version": "<ISO>" | null}`，`Cache-Control: no-store`。
+- `version` = 账号可观测状态的最新服务端时钟，取以下三者的最大值（2026-11-04 扩展）：
+  1. `token_sync_runs` 中该用户**最新一条非空运行**（`empty = false`，服务端派生标志）的
+     `created_at`；
+  2. 该用户最新一条 `credits_ingested > 0` 运行的 `created_at`（纯积分上传按 §2.11 派生规则
+     仍是 `empty`，但确实改变仪表盘数值）；
+  3. 该用户 `token_devices.updated_at` 的最大值（改名/吊销会改变设备名与活跃设备集合，
+     进而改变每个缓存 payload）。
+  三者均为服务端时钟（`clock_timestamp` / 服务端 `new Date()`），与设备时钟无关；无符合行时
+  为 `null`（新账号，客户端视为永不命中缓存）。每项都是 `order by … desc limit 1` 的单条索引读。
 - 客户端契约（`dashboard-client` 的 loadAll 版本门）：version 与缓存一致 → 直接水合缓存
   跳过七个重请求；不一致或查询失败 → 正常全量拉取（fail-open）。手动刷新绕过本门
   （兜 reconcile / replay 这类不建 run 行的改数盲区）。payload 按

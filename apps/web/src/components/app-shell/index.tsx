@@ -7,7 +7,7 @@
 //
 // The CLI API and /login stay outside this shell.
 
-import { cn } from "@heroui/react";
+import { cn, toast } from "@heroui/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
@@ -66,12 +66,24 @@ export function AppShell({ children }: { children: ReactNode }) {
     setSigningOut(true);
 
     try {
-      await authBrowserClient()?.auth.signOut();
+      const client = authBrowserClient();
+
+      if (!client) throw new Error("auth client unavailable");
+      // supabase-js reports failures in `error` instead of throwing; ignoring
+      // it navigated to /login while the session cookie survived, and the
+      // login page bounced straight back.
+      const { error } = await client.auth.signOut();
+
+      if (error) throw error;
+      setSignOutOpen(false);
       router.replace("/login");
       router.refresh();
+    } catch {
+      // Keep the dialog open so the operator can retry rather than believing
+      // they are signed out when the session is still live.
+      toast.danger(copy.signOutError);
     } finally {
       setSigningOut(false);
-      setSignOutOpen(false);
     }
   }
 

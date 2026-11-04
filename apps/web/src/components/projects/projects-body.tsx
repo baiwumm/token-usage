@@ -162,7 +162,13 @@ export function ProjectsBody({
           {project.day_peak ? (
             <span className="tabular-nums">
               {copy.list.dayPeak} {formatTokens(project.day_peak.total_tokens)}{" "}
-              · {formatDate(project.day_peak.date)}
+              {/* day_peak.date is a day key — render it as that day, not as
+                  UTC midnight in the viewer's zone. */}
+              ·{" "}
+              {formatDate(project.day_peak.date, {
+                dateStyle: "medium",
+                timeZone: "UTC",
+              })}
             </span>
           ) : null}
           {project.last_active ? (

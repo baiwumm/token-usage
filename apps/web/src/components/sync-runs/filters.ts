@@ -1,5 +1,6 @@
 // Filter contract for /sync-runs (docs/cli-contract.md §2.12): device, trigger,
-// result and paging live in the URL; the time range stays session-only.
+// result, paging and an explicit custom window live in the URL; preset ranges
+// never do.
 
 import { isValidDayKey } from "@/lib/dashboard/ranges";
 import { PAGE_SIZE_OPTIONS } from "@/lib/ui/pagination";
@@ -29,10 +30,12 @@ export interface Filters {
   pageSize: number;
 }
 
-// Range filters never round-trip the URL (operator call 2026-10-26, same as
-// sessions): a stale ?range=…&from=… link must not pin the list to old dates,
-// so only device/trigger/result/paging persist and every load starts at the
-// default window.
+// Preset ranges never round-trip the URL (operator call 2026-10-26): a stale
+// ?range=30d link must not pin the list to old dates, so every load starts at
+// the default preset window. A custom window is explicit data from the date
+// picker and must persist — parseFilters already restores it, and dropping it
+// here silently reverted the list to the default window on the next
+// navigation.
 export function parseFilters(params: {
   get(name: string): string | null;
 }): Filters {
@@ -60,6 +63,15 @@ export function parseFilters(params: {
 export function serializeFilters(filters: Filters): string {
   const query = new URLSearchParams();
 
+  if (
+    filters.range === "custom" &&
+    isValidDayKey(filters.from) &&
+    isValidDayKey(filters.to) &&
+    filters.from <= filters.to
+  ) {
+    query.set("from", filters.from);
+    query.set("to", filters.to);
+  }
   if (filters.deviceId) query.set("device_id", filters.deviceId);
   if (filters.trigger) query.set("trigger", filters.trigger);
   if (filters.result) query.set("result", filters.result);

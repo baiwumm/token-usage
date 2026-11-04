@@ -38,6 +38,7 @@ import { useAchievementFormat } from "./use-achievements-format";
 import { achievementById, TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { formatMessage } from "@/lib/copy/message";
+import { useFormat } from "@/lib/format/format";
 
 /** Distance between the front and back face planes (coin thickness). */
 const COIN_THICKNESS = 8;
@@ -64,6 +65,7 @@ export function AchievementCoin({
   locale: Locale;
 }) {
   const format = useAchievementFormat();
+  const { formatDate } = useFormat();
   const rotY = useMotionValue(0);
   const reducedMotion = useReducedMotion();
   const dragRef = useRef<DragState | null>(null);
@@ -405,7 +407,12 @@ export function AchievementCoin({
                             "achievements.ui.dialogAchieved",
                           ),
                           locale,
-                          { date: day },
+                          {
+                            date: formatDate(day, {
+                              dateStyle: "medium",
+                              timeZone: "UTC",
+                            }),
+                          },
                         )}
                       </Typography>
                     ) : null}

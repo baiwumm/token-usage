@@ -407,27 +407,54 @@ async function syncRuns({ url, principal }: SeriesArgs) {
 
 /**
  * Data-version signal for the dashboard's cache gate (2026-11-01 operator
- * plan): the created_at of the latest non-empty sync run. created_at is the
- * server clock (clock_timestamp default), so device clock skew on
- * started_at/ended_at can neither fake a change nor mask one; `empty` is the
- * server-derived flag, so pure session/credit uploads count as changes too.
- * null = no non-empty run yet (the client then simply never cache-hits).
+ * plan, extended 2026-11-04): the newest of
+ *   - the latest non-empty sync run's created_at,
+ *   - the latest run carrying credits (a credits-only run is `empty` under the
+ *     §2.11 rule but still changes the dashboard),
+ *   - the latest token_devices.updated_at (rename/revoke changes device names
+ *     and the active-device set, which ride along in every cached payload).
+ * All three values are server clocks, so device clock skew on
+ * started_at/ended_at can neither fake a change nor mask one.
+ * null = nothing to version yet (the client then simply never cache-hits).
  */
 export async function dataVersionForUser(userId: string): Promise<Response> {
-  const rows = await select("token_sync_runs", {
-    select: "created_at",
-    filters: [
-      ["user_id", "eq", userId],
-      ["empty", "eq", false],
-    ],
-    order: "created_at.desc",
-    limit: 1,
-  });
-  const value = rows[0]?.created_at;
+  const [runRows, creditRows, deviceRows] = await Promise.all([
+    select("token_sync_runs", {
+      select: "created_at",
+      filters: [
+        ["user_id", "eq", userId],
+        ["empty", "eq", false],
+      ],
+      order: "created_at.desc",
+      limit: 1,
+    }),
+    select("token_sync_runs", {
+      select: "created_at",
+      filters: [
+        ["user_id", "eq", userId],
+        ["credits_ingested", "gt", 0],
+      ],
+      order: "created_at.desc",
+      limit: 1,
+    }),
+    select("token_devices", {
+      select: "updated_at",
+      filters: [["user_id", "eq", userId]],
+      order: "updated_at.desc",
+      limit: 1,
+    }),
+  ]);
+  const candidates = [
+    runRows[0]?.created_at,
+    creditRows[0]?.created_at,
+    deviceRows[0]?.updated_at,
+  ].filter(
+    (value): value is string => typeof value === "string" && value !== "",
+  );
+  // ISO-8601 UTC timestamps compare lexicographically.
+  const value = candidates.sort().at(-1) ?? null;
 
-  return jsonResponse(200, {
-    version: typeof value === "string" ? value : null,
-  });
+  return jsonResponse(200, { version: value });
 }
 
 interface SessionModelWire {

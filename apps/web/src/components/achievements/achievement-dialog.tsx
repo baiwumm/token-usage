@@ -28,6 +28,7 @@ import {
 import { achievementCopy } from "@/lib/copy/achievements";
 import { formatMessage } from "@/lib/copy/message";
 import { SHARE_CARD_COPY } from "@/lib/copy/share-card";
+import { useFormat } from "@/lib/format/format";
 
 export function AchievementDialog({
   progress,
@@ -45,6 +46,12 @@ export function AchievementDialog({
   onShare: () => void;
 }) {
   const format = useAchievementFormat();
+  const { formatDate } = useFormat();
+  // achieved_at values are calendar day keys (the tier day is cut in the
+  // viewer's zone), so they must be rendered as that same day — formatting
+  // `YYYY-MM-DD` in local time would shift it a day west of UTC.
+  const dayLabel = (day: string) =>
+    formatDate(day, { dateStyle: "medium", timeZone: "UTC" });
   const catalogEntry = progress ? achievementById(progress.id) : undefined;
   const name = progress
     ? achievementCopy(
@@ -149,7 +156,7 @@ export function AchievementDialog({
                             "achievements.ui.dialogAchieved",
                           ),
                           locale,
-                          { date: achievedDay },
+                          { date: dayLabel(achievedDay) },
                         )}
                       </Typography>
                     ) : null}
@@ -238,7 +245,7 @@ export function AchievementDialog({
                                         "achievements.ui.dialogAchieved",
                                       ),
                                       locale,
-                                      { date: day },
+                                      { date: dayLabel(day) },
                                     )
                                   : `${unitLabel(progress.thresholds[tier.tier - 1])} · ${achievementCopy(
                                       locale,
@@ -291,7 +298,7 @@ export function AchievementDialog({
                                         "achievements.ui.dialogAchieved",
                                       ),
                                       locale,
-                                      { date: day },
+                                      { date: dayLabel(day) },
                                     )
                                   : `${unitLabel(progress.thresholds[tier.tier - 1])} · ${achievementCopy(
                                       locale,
@@ -316,7 +323,7 @@ export function AchievementDialog({
                                     "achievements.ui.dialogAchieved",
                                   ),
                                   locale,
-                                  { date: day },
+                                  { date: dayLabel(day) },
                                 )
                               : achievementCopy(
                                   locale,

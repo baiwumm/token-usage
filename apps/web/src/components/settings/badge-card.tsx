@@ -142,6 +142,10 @@ export function BadgeCard() {
   const [revealToken, setRevealToken] = useState<string | null>(null);
   const [previewVersion, setPreviewVersion] = useState(0);
   const [loadedPreview, setLoadedPreview] = useState<string | null>(null);
+  // `window` does not exist during the server render; the snippet snippets
+  // need the real origin, so read it after mount instead of touching window
+  // in render (which crashed SSR and would also mismatch hydration).
+  const [origin, setOrigin] = useState("");
   const [view, setView] = useState<BadgeView>({
     style: "panel",
     theme: "dark",
@@ -179,6 +183,10 @@ export function BadgeCard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   // Saved config replaces the loaded one; the known-projects list only comes
   // with GET and stays as loaded.
@@ -297,7 +305,6 @@ export function BadgeCard() {
       draftProjects,
       settings.allowedProjects,
     );
-    const origin = window.location.origin;
 
     return (
       <>

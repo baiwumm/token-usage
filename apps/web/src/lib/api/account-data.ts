@@ -3,12 +3,13 @@
 
 import type { UsageRow } from "@/lib/account/series";
 
-import { select, type RestRow } from "./supabase-rest";
+import { select, SupabaseError, type RestRow } from "./supabase-rest";
 
 import { canonicalizeUsage } from "@/lib/account/usage";
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 1000;
+const MAX_ROWS = PAGE_SIZE * MAX_PAGES;
 
 async function selectAll(
   table: string,
@@ -35,8 +36,28 @@ async function selectAll(
     });
 
     rows.push(...batch);
-    if (batch.length < PAGE_SIZE) break;
+    if (batch.length < PAGE_SIZE) return rows;
     offset += batch.length;
+  }
+
+  // Hitting the page cap used to return a silently truncated snapshot, which
+  // made every dashboard/series/achievement number consistently wrong with no
+  // 5xx or log. Probe one row past the cap and refuse to serve a partial
+  // account dataset: a visible failure is recoverable, a quiet undercount is
+  // not.
+  const overflow = await select(table, {
+    select: "*",
+    filters,
+    order,
+    limit: 1,
+    offset: rows.length,
+  });
+
+  if (overflow.length > 0) {
+    throw new SupabaseError(
+      `Account dataset for ${table} exceeds ${MAX_ROWS} rows; refusing to serve a truncated snapshot`,
+      500,
+    );
   }
 
   return rows;
@@ -62,34 +83,69 @@ export type AccountUsage = {
 const USAGE_TTL_MS = 10_000;
 
 type UsageCacheEntry = {
-  revision: number;
+  revision: string;
   expiresAt: number;
   promise: Promise<AccountUsage>;
 };
 
-let usageRevision = 0;
+// A global revision alone let one user's upload invalidate every other user's
+// cached snapshot in the same process. Revisions are therefore per user, with
+// a global component only for truly global changes (pricing/config resets).
+let globalUsageRevision = 0;
+const userUsageRevisions = new Map<string, number>();
 const usageCache = new Map<string, UsageCacheEntry>();
+const MAX_USAGE_CACHE_ENTRIES = 512;
+const MAX_SESSION_CACHE_ENTRIES = 512;
+const MAX_SYNC_RUN_CACHE_ENTRIES = 512;
+
+function revisionFor(userId: string): string {
+  return `${globalUsageRevision}:${userUsageRevisions.get(userId) ?? 0}`;
+}
+
+// Expired entries used to stay in the Map forever, so every custom session
+// range leaked its full row array for the life of the process. Sweep expired
+// keys and bound the entry count (Map preserves insertion order, so the first
+// keys are the oldest).
+function pruneCache<T extends { expiresAt: number }>(
+  cache: Map<string, T>,
+  now: number,
+  maxEntries: number,
+): void {
+  for (const [key, entry] of cache) {
+    if (entry.expiresAt <= now) cache.delete(key);
+  }
+  while (cache.size > maxEntries) {
+    const oldest = cache.keys().next().value;
+
+    if (oldest === undefined) break;
+    cache.delete(oldest);
+  }
+}
 
 function usageCacheDisabled(): boolean {
   return process.env.TOKEN_USAGE_USAGE_CACHE === "off";
 }
 
 export function invalidateAccountUsage(userId?: string): void {
-  // One revision bump invalidates every cache (sessions and sync runs share it).
-  usageRevision += 1;
   if (userId == null) {
+    globalUsageRevision += 1;
+    userUsageRevisions.clear();
     usageCache.clear();
     sessionCache.clear();
     syncRunCache.clear();
-  } else {
-    usageCache.delete(userId);
-    for (const key of sessionCache.keys()) {
-      if (key.startsWith(`${userId}|`)) sessionCache.delete(key);
-    }
-    for (const key of syncRunCache.keys()) {
-      if (key.startsWith(`${userId}|`)) syncRunCache.delete(key);
-    }
+
+    return;
   }
+  for (const key of usageCache.keys()) {
+    if (key === userId) usageCache.delete(key);
+  }
+  for (const key of sessionCache.keys()) {
+    if (key.startsWith(`${userId}|`)) sessionCache.delete(key);
+  }
+  for (const key of syncRunCache.keys()) {
+    if (key.startsWith(`${userId}|`)) syncRunCache.delete(key);
+  }
+  userUsageRevisions.set(userId, (userUsageRevisions.get(userId) ?? 0) + 1);
 }
 
 async function fetchAccountUsage(userId: string): Promise<AccountUsage> {
@@ -98,7 +154,10 @@ async function fetchAccountUsage(userId: string): Promise<AccountUsage> {
       columns:
         "device_id,hour_start,source,model,project_key,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,conversations,total_cost_usd,credits,updated_at",
       filters: [["user_id", "eq", userId]],
-      order: "hour_start.asc,device_id.asc,source.asc,model.asc",
+      // Order by the full primary key (project_key included): omitting it made
+      // offset pagination non-deterministic once a bucket had split rows.
+      order:
+        "hour_start.asc,device_id.asc,source.asc,model.asc,project_key.asc",
     }),
     selectAll("token_account_session_states", {
       columns:
@@ -110,11 +169,13 @@ async function fetchAccountUsage(userId: string): Promise<AccountUsage> {
       columns:
         "id,device_name,platform,default_device_name,revoked_at,created_at,updated_at",
       filters: [["user_id", "eq", userId]],
-      order: "created_at.asc",
+      order: "created_at.asc,id.asc",
     }),
     selectAll("token_device_tokens", {
       columns: "device_id,last_used_at,created_at,revoked_at",
       filters: [["user_id", "eq", userId]],
+      // No stable order meant offset paging could repeat/skip rows.
+      order: "device_id.asc,token_hash.asc",
     }),
   ]);
 
@@ -140,9 +201,10 @@ export function loadAccountUsage(userId: string): Promise<AccountUsage> {
   if (usageCacheDisabled()) return fetchAccountUsage(userId);
 
   const now = Date.now();
+  const revision = revisionFor(userId);
   const hit = usageCache.get(userId);
 
-  if (hit && hit.revision === usageRevision && hit.expiresAt > now) {
+  if (hit && hit.revision === revision && hit.expiresAt > now) {
     return hit.promise;
   }
   const promise = fetchAccountUsage(userId);
@@ -154,10 +216,11 @@ export function loadAccountUsage(userId: string): Promise<AccountUsage> {
     if (entry?.promise === promise) usageCache.delete(userId);
   });
   usageCache.set(userId, {
-    revision: usageRevision,
+    revision,
     expiresAt: now + USAGE_TTL_MS,
     promise,
   });
+  pruneCache(usageCache, now, MAX_USAGE_CACHE_ENTRIES);
 
   return promise;
 }
@@ -172,7 +235,7 @@ export function loadAccountUsage(userId: string): Promise<AccountUsage> {
 const SESSION_TTL_MS = 10_000;
 
 type SessionCacheEntry = {
-  revision: number;
+  revision: string;
   expiresAt: number;
   promise: Promise<{ sessions: RestRow[]; devices: RestRow[] }>;
 };
@@ -198,7 +261,7 @@ export function loadSessionRows(
           ["ended_at", "gte", fromIso],
           ["ended_at", "lt", toIso],
         ],
-        order: "ended_at.desc,source.asc,session_id.asc",
+        order: "ended_at.desc,source.asc,session_id.asc,device_id.asc",
       }),
       selectAll("token_devices", {
         columns: "id,device_name,revoked_at",
@@ -213,9 +276,10 @@ export function loadSessionRows(
 
   const now = Date.now();
   const cacheKey = `${userId}|${fromIso}|${toIso}`;
+  const revision = revisionFor(userId);
   const hit = sessionCache.get(cacheKey);
 
-  if (hit && hit.revision === usageRevision && hit.expiresAt > now) {
+  if (hit && hit.revision === revision && hit.expiresAt > now) {
     return hit.promise;
   }
   const promise = fetchRows();
@@ -227,10 +291,11 @@ export function loadSessionRows(
     if (entry?.promise === promise) sessionCache.delete(cacheKey);
   });
   sessionCache.set(cacheKey, {
-    revision: usageRevision,
+    revision,
     expiresAt: now + SESSION_TTL_MS,
     promise,
   });
+  pruneCache(sessionCache, now, MAX_SESSION_CACHE_ENTRIES);
 
   return promise;
 }
@@ -245,7 +310,7 @@ export function loadSessionRows(
 const SYNC_RUN_TTL_MS = 10_000;
 
 type SyncRunCacheEntry = {
-  revision: number;
+  revision: string;
   expiresAt: number;
   promise: Promise<{ runs: RestRow[]; devices: RestRow[] }>;
 };
@@ -267,7 +332,7 @@ export function loadSyncRunRows(
           ["started_at", "gte", fromIso],
           ["started_at", "lt", toIso],
         ],
-        order: "started_at.desc,run_id.asc",
+        order: "started_at.desc,run_id.asc,device_id.asc",
       }),
       selectAll("token_devices", {
         columns: "id,device_name,revoked_at",
@@ -282,9 +347,10 @@ export function loadSyncRunRows(
 
   const now = Date.now();
   const cacheKey = `${userId}|${fromIso}|${toIso}`;
+  const revision = revisionFor(userId);
   const hit = syncRunCache.get(cacheKey);
 
-  if (hit && hit.revision === usageRevision && hit.expiresAt > now) {
+  if (hit && hit.revision === revision && hit.expiresAt > now) {
     return hit.promise;
   }
   const promise = fetchRows();
@@ -296,10 +362,11 @@ export function loadSyncRunRows(
     if (entry?.promise === promise) syncRunCache.delete(cacheKey);
   });
   syncRunCache.set(cacheKey, {
-    revision: usageRevision,
+    revision,
     expiresAt: now + SYNC_RUN_TTL_MS,
     promise,
   });
+  pruneCache(syncRunCache, now, MAX_SYNC_RUN_CACHE_ENTRIES);
 
   return promise;
 }

@@ -17,6 +17,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useId } from "react";
 
 import { useFormat } from "@/lib/format/format";
 
@@ -256,6 +257,9 @@ export function CostTrendChart({
   labels: { cost: string };
 }) {
   const { formatCost } = useFormat();
+  // SVG ids are document-global: two cost charts on one page would share the
+  // first gradient (and React's useId keeps SSR and hydration in sync).
+  const gradientId = `cost-fill-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
   if (data.length === 0) return null;
 
@@ -272,7 +276,7 @@ export function CostTrendChart({
           margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
         >
           <defs>
-            <linearGradient id="cost-fill" x1="0" x2="0" y1="0" y2="1">
+            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stopColor="currentColor" stopOpacity={0.3} />
               <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
             </linearGradient>
@@ -302,7 +306,7 @@ export function CostTrendChart({
           />
           <Area
             dataKey="cost"
-            fill="url(#cost-fill)"
+            fill={`url(#${gradientId})`}
             fillOpacity={1}
             stroke="currentColor"
             strokeWidth={2}

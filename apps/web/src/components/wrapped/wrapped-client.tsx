@@ -79,6 +79,10 @@ export function WrappedClient() {
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
+  // Which year the payload/monthly/heatmap state currently describes. Until it
+  // matches the selected year the previous year's numbers must not be shown
+  // under the new year's heading (or fed to the share card).
+  const [payloadYear, setPayloadYear] = useState<number | null>(null);
   const [monthly, setMonthly] = useState<MonthlyPoint[]>([]);
   const [heatmap, setHeatmap] = useState<HeatmapPayload | null>(null);
   // All-time achievements: only the standalone achievements card reads them.
@@ -163,6 +167,7 @@ export function WrappedClient() {
             point.month.startsWith(`${year}-`),
           ),
         );
+        setPayloadYear(year);
         hasPayload.current = true;
         setStatus("ready");
       } catch (error) {
@@ -200,15 +205,23 @@ export function WrappedClient() {
     setYear(historyYears[0]);
   }, [historyYears, year]);
 
-  const totals = payload?.totals;
+  // Only ever expose state that belongs to the selected year: a year switch
+  // keeps the old payload in memory for instant retry, but rendering it under
+  // the new heading would show the previous year's totals.
+  const yearReady = payloadYear === year;
+  const yearPayload = yearReady ? payload : null;
+  const yearHeatmap = yearReady ? heatmap : null;
+  const totals = yearPayload?.totals;
   const hasData = (totals?.total_tokens ?? 0) > 0;
-  const models = payload?.models ?? [];
-  const sources = payload?.sources ?? [];
+  const models = yearPayload?.models ?? [];
+  const sources = yearPayload?.sources ?? [];
 
   // Month buckets are UTC-fixed (docs/cli-contract.md §2.7) while the totals
   // above ride the browser tz; only rows near a year boundary can differ.
   const trendData = useMemo<TrendPoint[]>(() => {
-    const byMonth = new Map(monthly.map((point) => [point.month, point]));
+    const byMonth = new Map(
+      (yearReady ? monthly : []).map((point) => [point.month, point]),
+    );
 
     return monthsOfYear(year, timezone).map((month) => {
       const point = byMonth.get(month);
@@ -228,7 +241,7 @@ export function WrappedClient() {
         output: point?.output_tokens ?? 0,
       };
     });
-  }, [formatMonth, monthly, timezone, year]);
+  }, [formatMonth, monthly, timezone, year, yearReady]);
 
   const totalTokens = totals?.total_tokens ?? 0;
 
@@ -239,9 +252,9 @@ export function WrappedClient() {
         formatNumber,
         formatPercent,
         formatTokens,
-        heatmap,
+        heatmap: yearHeatmap,
         locale,
-        payload,
+        payload: yearPayload,
         profile,
         year,
       }),
@@ -250,20 +263,32 @@ export function WrappedClient() {
       formatNumber,
       formatPercent,
       formatTokens,
-      heatmap,
+      yearHeatmap,
       locale,
-      payload,
+      yearPayload,
       profile,
       year,
     ],
   );
+
+  const retry = () => {
+    if (accessToken) void loadAll(accessToken);
+  };
+  // Loading the selected year: never paint the old year's numbers while the
+  // new request is in flight.
+  const showSkeleton = status === "loading" || (!yearReady && !loadError);
+  // No usable payload for this year → the full error card. With a payload for
+  // the selected year, a failed refresh instead keeps the content and shows
+  // the banner below, so the page never blanks on a transient error.
+  const showErrorCard =
+    !yearReady && (status === "error" || Boolean(loadError));
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-8">
       <WrappedHeader
         copy={copy}
         refreshing={refreshing}
-        shareInput={hasData ? shareInput : null}
+        shareInput={yearReady && hasData ? shareInput : null}
         year={year}
         yearOptions={yearOptions}
         onYearChange={(next) => {
@@ -272,27 +297,33 @@ export function WrappedClient() {
         }}
       />
 
-      {status === "loading" ? <WrappedSkeleton /> : null}
+      {showSkeleton && !showErrorCard ? <WrappedSkeleton /> : null}
 
-      {status === "error" ? (
+      {showErrorCard ? (
         <Card className="flex-col gap-3 p-6">
           <Typography className="text-danger" type="body-sm">
             {copy.loadError}
             {loadError ? ` (${loadError})` : ""}
           </Typography>
-          <Button
-            size="sm"
-            variant="outline"
-            onPress={() => {
-              if (accessToken) void loadAll(accessToken);
-            }}
-          >
+          <Button size="sm" variant="outline" onPress={retry}>
             {copy.retry}
           </Button>
         </Card>
       ) : null}
 
-      {status === "ready" && !hasData ? (
+      {yearReady && loadError ? (
+        <Card className="flex-row flex-wrap items-center justify-between gap-3 p-4">
+          <Typography className="text-danger" type="body-sm">
+            {copy.loadError}
+            {` (${loadError})`}
+          </Typography>
+          <Button size="sm" variant="outline" onPress={retry}>
+            {copy.retry}
+          </Button>
+        </Card>
+      ) : null}
+
+      {yearReady && !hasData ? (
         <Card className="p-10">
           <Card.Header>
             <Card.Title>{`${year} · ${copy.emptyTitle}`}</Card.Title>
@@ -301,7 +332,7 @@ export function WrappedClient() {
         </Card>
       ) : null}
 
-      {status === "ready" && hasData && totals ? (
+      {yearReady && hasData && totals ? (
         <>
           <StatCards copy={copy} totals={totals} />
 

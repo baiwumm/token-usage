@@ -82,13 +82,15 @@ export async function projectsHourlyPayloadForUser(
   // Bucket semantics: absolute [from, to) instants on hour_start, revoked
   // devices excluded wholesale — the same window and device rules as the
   // session caliber so the two payloads line up.
-  const { hourly, activeDeviceIds } = await loadAccountUsage(userId);
+  // Use the canonical account rows, not the raw hourly table: cursor is
+  // account-level (one row per device is a duplicate, not extra usage) and
+  // trae-cn's hourly rows are replaced by its session states. The raw table
+  // made this page's total disagree with the dashboard; canonicalizeUsage is
+  // the single caliber every other view already uses.
+  const { canonicalRows } = await loadAccountUsage(userId);
   const groups = new Map<string | null, ProjectGroup>();
 
-  for (const row of hourly) {
-    const rowDeviceId = String(row.device_id ?? "");
-
-    if (!activeDeviceIds.has(rowDeviceId)) continue;
+  for (const row of canonicalRows) {
     const hourStart = String(row.hour_start ?? "");
     const hourMs = Date.parse(hourStart);
 

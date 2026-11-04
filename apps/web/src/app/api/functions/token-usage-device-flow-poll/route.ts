@@ -60,19 +60,47 @@ export async function POST(request: Request) {
     }
 
     if (row.status === "approved" && row.user_id) {
-      const issued = await issueDeviceToken({
-        userId: String(row.user_id),
-        clientInfo: row.client_info,
-        machineId: (row.machine_id as string | null) || null,
-      });
+      // Claim the code before issuing: two concurrent polls must not both
+      // mint a token (the second would revoke the first's token, leaving the
+      // CLI holding a dead credential). The conditional update is the
+      // compare-and-swap; the loser sees status='used' and answers 410.
+      const claimed = await update("token_device_codes", { status: "used" }, [
+        ["device_code", "eq", deviceCode],
+        ["status", "eq", "approved"],
+      ]);
 
-      return jsonResponse(200, {
-        status: "approved",
-        user_id: row.user_id,
-        device_token: issued.token,
-        device_id: issued.deviceId,
-        machine_id: issued.machineId,
-      });
+      if (claimed.length === 0) {
+        return jsonResponse(410, { status: "expired" });
+      }
+
+      try {
+        const issued = await issueDeviceToken({
+          userId: String(row.user_id),
+          clientInfo: row.client_info,
+          machineId: (row.machine_id as string | null) || null,
+        });
+
+        return jsonResponse(200, {
+          status: "approved",
+          user_id: row.user_id,
+          device_token: issued.token,
+          device_id: issued.deviceId,
+          machine_id: issued.machineId,
+        });
+      } catch (error) {
+        // Never strand the CLI: if issuance failed after the claim, release
+        // the code so the next poll can retry.
+        await update(
+          "token_device_codes",
+          { status: "approved" },
+          [
+            ["device_code", "eq", deviceCode],
+            ["status", "eq", "used"],
+          ],
+          { returning: false },
+        ).catch(() => undefined);
+        throw error;
+      }
     }
 
     if (row.status === "expired" || row.status === "used") {

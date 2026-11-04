@@ -15,6 +15,7 @@ export function firstNameOf(profile: Profile | null): string | null {
 }
 
 export function titleForPath(pathname: string, copy: NavCopy): string {
+  if (pathname.startsWith("/projects")) return copy.projects;
   if (pathname.startsWith("/sessions")) return copy.sessions;
   if (pathname.startsWith("/sync-runs")) return copy.syncRuns;
   if (pathname.startsWith("/wrapped")) return copy.wrapped;

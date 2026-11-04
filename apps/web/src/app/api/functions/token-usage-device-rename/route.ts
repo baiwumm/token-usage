@@ -109,9 +109,11 @@ export async function POST(request: Request) {
     }
 
     try {
+      // Bump updated_at: the data-version gate reads it so a rename reaches
+      // browsers that still hold a cached dashboard payload.
       await update(
         "token_devices",
-        { device_name: deviceName },
+        { device_name: deviceName, updated_at: new Date().toISOString() },
         [
           ["id", "eq", target.id],
           ["user_id", "eq", principal.userId],

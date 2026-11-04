@@ -1,6 +1,8 @@
 // Contract test for the dashboard's data-version signal (2026-11-01 cache
-// gate): version = created_at of the latest NON-EMPTY sync run of the user.
-// Empty runs and other users' runs never count; no qualifying run → null.
+// gate, extended 2026-11-04): version = the newest of the latest NON-EMPTY
+// sync run, the latest credits-bearing run, and the latest device updated_at.
+// Empty runs without credits, other users' rows and unrelated devices never
+// count; nothing qualifying → null.
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -69,5 +71,47 @@ describe("dataVersionForUser", () => {
     const { version } = (await response.json()) as { version: string | null };
 
     expect(version).toBeNull();
+  });
+
+  it("counts a credits-only empty run", async () => {
+    fake.tables.token_sync_runs.rows.push(
+      runRow({
+        empty: true,
+        credits_ingested: 12.5,
+        created_at: "2026-11-02T12:00:00.000Z",
+      }),
+    );
+
+    const response = await dataVersionForUser(USER_ID);
+
+    expect(await response.json()).toEqual({
+      version: "2026-11-02T12:00:00.000Z",
+    });
+  });
+
+  it("counts a device rename/revoke as a change, newest wins", async () => {
+    fake.tables.token_sync_runs.rows.push(
+      runRow({ created_at: "2026-10-30T08:00:00.000Z" }),
+    );
+    fake.tables.token_devices.rows.push({
+      id: "22222222-2222-4222-8222-222222222222",
+      user_id: USER_ID,
+      device_name: "renamed",
+      created_at: "2026-10-01T00:00:00.000Z",
+      updated_at: "2026-11-03T07:00:00.000Z",
+    });
+    fake.tables.token_devices.rows.push({
+      id: "33333333-3333-4333-8333-333333333333",
+      user_id: "99999999-9999-4999-8999-999999999999",
+      device_name: "other",
+      created_at: "2026-10-01T00:00:00.000Z",
+      updated_at: "2026-12-01T00:00:00.000Z",
+    });
+
+    const response = await dataVersionForUser(USER_ID);
+
+    expect(await response.json()).toEqual({
+      version: "2026-11-03T07:00:00.000Z",
+    });
   });
 });

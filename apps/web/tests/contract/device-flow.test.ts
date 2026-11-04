@@ -210,6 +210,33 @@ describe("POST device-flow-poll", () => {
     expect(activeTokens[0].token_hash).toBe(sha256Hex(body.device_token));
   });
 
+  it("consumes the code after issuing — a second poll cannot rotate the token", async () => {
+    const first = await pollPost(
+      jsonRequest(base("device-flow-poll"), { body: { device_code: "b".repeat(64) } }),
+    );
+    const issued = await first.json();
+
+    expect(first.status).toBe(200);
+    expect(issued.status).toBe("approved");
+
+    const second = await pollPost(
+      jsonRequest(base("device-flow-poll"), { body: { device_code: "b".repeat(64) } }),
+    );
+
+    expect(second.status).toBe(410);
+    expect(await second.json()).toEqual({ status: "expired" });
+    expect(
+      fake.table("token_device_codes").find((row) => row.user_code === "CCCC-DDDD")!.status,
+    ).toBe("used");
+    // The first token stayed active: no second issuance revoked it.
+    const active = fake
+      .table("token_device_tokens")
+      .filter((row) => row.device_id === issued.device_id && row.revoked_at == null);
+
+    expect(active).toHaveLength(1);
+    expect(active[0].token_hash).toBe(sha256Hex(issued.device_token));
+  });
+
   it("answers 410 for codes already used or expired", async () => {
     fake.table("token_device_codes").find((row) => row.user_code === "CCCC-DDDD")!.status = "used";
     const res = await pollPost(
