@@ -114,7 +114,7 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
     },
     list: {
       title: "会话",
-      hint: "按结束时间倒序；仅显示设备级会话元数据。",
+      hint: "按结束时间倒序；仅显示设备级会话元数据。credits-only 来源（如 qoder-cn）只计积分，不产生 token 与费用，因此这类会话的 token/费用为 0 属正常。",
       endedAt: "结束时间",
       source: "来源",
       project: "项目",
@@ -202,7 +202,7 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
     },
     list: {
       title: "Sessions",
-      hint: "Newest first; device-level session metadata only.",
+      hint: "Newest first; device-level session metadata only. Credits-only sources (such as qoder-cn) report credits but no tokens or cost, so 0 tokens and $0 cost is expected for those sessions.",
       endedAt: "Ended",
       source: "Source",
       project: "Project",
