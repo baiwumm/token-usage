@@ -71,6 +71,14 @@
 >   成本在读取时按 curated + LiteLLM 定价实时计算，只有 grok/cline 的厂商上报成本可能为正），
 >   生产库已落库该注释。**外部对账脚本不要对该列求和**——读到的 0 是哨兵而非真实费用；应复刻读取时
 >   定价（`computeRowCost()`），或直接用 `total_tokens` / `billable_total_tokens` 对账。
+> - **零用量项目行不列出行（2026-11-04）**：窗口内 `total_tokens`、读取时费用、`credits` 三者全为 0 的
+>   项目行从列表剔除（Codex Desktop 教程目录、子代理转录壳等会不断产生这类键）；「未归因」组仍固定保留，
+>   即使为 0。`totals` 仍为整窗口合计（被滤行本就是 0，故数值不变），payload 新增
+>   `filtered_zero_usage_projects` 记录过滤条数。**两口径共用同一实现**（`splitProjectGroups()`），
+>   hourly 口径同样过滤，避免口径间出现静默差异。
+> - **CLI 项目键回退到父项目（2026-11-04）**：`projectKey()` 遇到 `worktrees`（`<repo>/.claude/worktrees/<id>`）
+>   或 `subagents`（`<project>/<session>/subagents`）时向上取真实项目目录；qoder-cn 子代理转录还会继承
+>   记录里的 `cwd`。只影响新采集，历史 `subagents` 键不回填（会话落库键含 `session_id`，同会话只更新不改名）。
 
 > 部署与历史口径（2026-11-04 补注）：该开关是部署级、`NEXT_PUBLIC_` 构建期内联——CLI 采集端不读，
 > 改值或删除都需重新部署（回退 = Vercel 删除变量后 Redeploy）。历史桶没有项目名且不做回溯
