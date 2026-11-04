@@ -778,7 +778,7 @@ async function parseRolloutIncremental({
     }
   }
 
-  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets });
+  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets, projectState, projectTouchedBuckets });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({ projectQueuePath, projectState, projectTouchedBuckets })
     : 0;
@@ -1318,7 +1318,7 @@ async function parseClaudeIncremental({
     }
   }
 
-  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets });
+  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets, projectState, projectTouchedBuckets });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({ projectQueuePath, projectState, projectTouchedBuckets })
     : 0;
@@ -1493,7 +1493,7 @@ async function parseGeminiIncremental({
     }
   }
 
-  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets });
+  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets, projectState, projectTouchedBuckets });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({ projectQueuePath, projectState, projectTouchedBuckets })
     : 0;
@@ -1644,7 +1644,7 @@ async function parseOpencodeIncremental({
     }
   }
 
-  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets });
+  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets, projectState, projectTouchedBuckets });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({ projectQueuePath, projectState, projectTouchedBuckets })
     : 0;
@@ -2005,7 +2005,7 @@ async function parseOpenclawIncremental({
     }
   }
 
-  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets });
+  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets, projectState, projectTouchedBuckets });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({ projectQueuePath, projectState, projectTouchedBuckets })
     : 0;
@@ -2655,11 +2655,14 @@ async function parseRolloutRecords({
         projectState,
         event.projectKey,
         source,
+        event.model,
         event.bucketStart,
         event.projectRef,
       );
       addTotals(projectBucket.totals, event.delta);
-      projectTouchedBuckets.add(projectBucketKey(event.projectKey, source, event.bucketStart));
+      projectTouchedBuckets.add(
+        projectBucketKey(event.projectKey, source, event.model, event.bucketStart),
+      );
     }
     eventsAggregated += 1;
   }
@@ -2900,8 +2903,8 @@ async function parseRolloutRecords({
 
     const bucket = getHourlyBucket(hourlyState, source, model, bucketStart);
     addTotals(bucket.totals, delta);
-    // Only the model bucket gets the subset: the project bucket below carries
-    // no model, so no per-model rate can be applied to it anyway.
+    // Priority subsets annotate per-model rate calculations, so both the
+    // aggregate and the (now model-dimensioned) project bucket carry them.
     if (isPriorityServiceTier(serviceTier)) addPriorityUsage(bucket.totals, delta);
     touchedBuckets.add(bucketKey(source, model, bucketStart));
     if (currentProjectKey && projectState && projectTouchedBuckets) {
@@ -2909,11 +2912,13 @@ async function parseRolloutRecords({
         projectState,
         currentProjectKey,
         source,
+        model,
         bucketStart,
         currentProjectRef,
       );
       addTotals(projectBucket.totals, delta);
-      projectTouchedBuckets.add(projectBucketKey(currentProjectKey, source, bucketStart));
+      if (isPriorityServiceTier(serviceTier)) addPriorityUsage(projectBucket.totals, delta);
+      projectTouchedBuckets.add(projectBucketKey(currentProjectKey, source, model, bucketStart));
     }
     eventsAggregated += 1;
   }
@@ -3219,11 +3224,12 @@ async function parseClaudeFile({
         projectState,
         projectKey,
         source,
+        model,
         bucketStart,
         projectRef,
       );
       addTotals(projectBucket.totals, delta);
-      projectTouchedBuckets.add(projectBucketKey(projectKey, source, bucketStart));
+      projectTouchedBuckets.add(projectBucketKey(projectKey, source, model, bucketStart));
     }
     eventsAggregated += 1;
   }
@@ -3340,11 +3346,14 @@ async function parseGeminiFile({
           projectState,
           projectKey,
           source,
+          projectModel,
           bucketStart,
           projectRef,
         );
         addTotals(projectBucket.totals, projectDelta);
-        projectTouchedBuckets.add(projectBucketKey(projectKey, source, bucketStart));
+        projectTouchedBuckets.add(
+          projectBucketKey(projectKey, source, projectModel, bucketStart),
+        );
       }
       projectTotals = currentTotals;
     }
@@ -3494,11 +3503,12 @@ async function parseOpencodeMessageFile({
       projectState,
       projectKey,
       source,
+      model,
       bucketStart,
       projectRef,
     );
     addTotals(projectBucket.totals, delta);
-    projectTouchedBuckets.add(projectBucketKey(projectKey, source, bucketStart));
+    projectTouchedBuckets.add(projectBucketKey(projectKey, source, model, bucketStart));
   }
   return {
     messageKey,
@@ -3510,15 +3520,133 @@ async function parseOpencodeMessageFile({
   };
 }
 
-async function enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets }) {
-  if (!touchedBuckets || touchedBuckets.size === 0) return 0;
+// Contract v2 (2026-11-03): hourly rows carry project_key. The hourly bucket
+// still owns the aggregate for (source, model, hour); a project bucket holds
+// the attributed subset for the same key. Split mode writes one row per
+// project plus a residual row under project_key "" (docs/cli-contract.md
+// §2.4 "project attribution"), so the rows add up to the aggregate and
+// nothing is double counted. Only model-dimensioned buckets take part: legacy
+// three-part buckets (project|source|hour) cannot be matched to a model and
+// stay inside the residual.
+const UNATTRIBUTED_PROJECT_KEY = "";
+
+function indexProjectBucketsByGroup(projectState) {
+  const index = new Map();
+  const buckets = projectState?.buckets;
+  if (!buckets || typeof buckets !== "object") return index;
+  for (const bucket of Object.values(buckets)) {
+    if (!bucket || typeof bucket !== "object" || !bucket.totals) continue;
+    if (typeof bucket.hour_start !== "string" || !bucket.hour_start) continue;
+    if (typeof bucket.model !== "string" || !bucket.model) continue;
+    if (typeof bucket.project_key !== "string" || !bucket.project_key) continue;
+    const source = normalizeSourceInput(bucket.source) || DEFAULT_SOURCE;
+    const model = normalizeModelInput(bucket.model) || DEFAULT_MODEL;
+    const groupKey = groupBucketKey(source, bucket.hour_start);
+    let byModel = index.get(groupKey);
+    if (!byModel) {
+      byModel = new Map();
+      index.set(groupKey, byModel);
+    }
+    let projects = byModel.get(model);
+    if (!projects) {
+      projects = new Map();
+      byModel.set(model, projects);
+    }
+    projects.set(bucket.project_key, bucket);
+  }
+  return index;
+}
+
+function totalsRowFields(totals) {
+  return {
+    input_tokens: totals.input_tokens,
+    cached_input_tokens: totals.cached_input_tokens,
+    cache_creation_input_tokens: totals.cache_creation_input_tokens,
+    output_tokens: totals.output_tokens,
+    reasoning_output_tokens: totals.reasoning_output_tokens,
+    total_tokens: totals.total_tokens,
+    billable_total_tokens: totals.billable_total_tokens ?? totals.total_tokens,
+    total_cost_usd: totals.total_cost_usd || 0,
+    conversation_count: totals.conversation_count,
+  };
+}
+
+function appendProjectSplitRows({ group, model, aggregateBucket, projects, toAppend }) {
+  if (!projects || projects.size === 0) return;
+  const attributed = initTotals();
+  const projectKeys = [...projects.keys()].sort();
+  for (const projectKey of projectKeys) {
+    const projectBucket = projects.get(projectKey);
+    if (!projectBucket.totals) continue;
+    addTotals(attributed, projectBucket.totals);
+    const totals = projectBucket.totals;
+    const usagePrecision = projectBucket.usage_precision || aggregateBucket.usage_precision || null;
+    const marker = usagePrecision ? `${totalsKey(totals)}|${usagePrecision}` : totalsKey(totals);
+    if (projectBucket.queuedHourlyKey === marker) continue;
+    toAppend.push(
+      JSON.stringify({
+        source: group.source,
+        model,
+        hour_start: group.hourStart,
+        project_key: projectKey,
+        ...totalsRowFields(totals),
+        usage_precision: usagePrecision || undefined,
+        ...prioritySubsetOf(totals),
+        ...creditsSubsetOf(totals),
+      }),
+    );
+    projectBucket.queuedHourlyKey = marker;
+  }
+
+  const residual = cloneTotals(aggregateBucket.totals);
+  subtractTotals(residual, attributed);
+  clampTotalsNonNegative(residual);
+  const usagePrecision = aggregateBucket.usage_precision || null;
+  const marker = usagePrecision ? `${totalsKey(residual)}|${usagePrecision}` : totalsKey(residual);
+  if (aggregateBucket.queuedResidualKey === marker) return;
+  toAppend.push(
+    JSON.stringify({
+      source: group.source,
+      model,
+      hour_start: group.hourStart,
+      project_key: UNATTRIBUTED_PROJECT_KEY,
+      ...totalsRowFields(residual),
+      usage_precision: usagePrecision || undefined,
+      ...prioritySubsetOf(residual),
+      ...creditsSubsetOf(residual),
+    }),
+  );
+  aggregateBucket.queuedResidualKey = marker;
+}
+
+async function enqueueTouchedBuckets({
+  queuePath,
+  hourlyState,
+  touchedBuckets,
+  projectState = null,
+  projectTouchedBuckets = null,
+}) {
+  if (!touchedBuckets || touchedBuckets.size === 0) {
+    // A project backfill only moves projectState (an upgrade re-reads history
+    // for attribution without touching the hourly totals). Still emit the
+    // split rows so the cloud learns the attribution for those hours.
+    if (!projectState || !projectTouchedBuckets || projectTouchedBuckets.size === 0) return 0;
+  }
 
   const touchedGroups = new Set();
-  for (const bucketStart of touchedBuckets) {
+  for (const bucketStart of touchedBuckets || []) {
     const parsed = parseBucketKey(bucketStart);
     const hourStart = parsed.hourStart;
     if (!hourStart) continue;
     touchedGroups.add(groupBucketKey(parsed.source, hourStart));
+  }
+  if (projectState && projectTouchedBuckets) {
+    for (const key of projectTouchedBuckets) {
+      const bucket = projectState.buckets?.[key];
+      if (!bucket || typeof bucket.hour_start !== "string" || !bucket.hour_start) continue;
+      if (typeof bucket.model !== "string" || !bucket.model) continue;
+      touchedGroups.add(groupBucketKey(bucket.source, bucket.hour_start));
+    }
   }
   if (touchedGroups.size === 0) return 0;
 
@@ -3600,9 +3728,32 @@ async function enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets })
   }
 
   const codexDominants = collectCodexDominantModels(hourlyState);
+  const projectBucketsByGroup = indexProjectBucketsByGroup(projectState);
 
   const toAppend = [];
   for (const group of groupedBuckets.values()) {
+    const projectModels = projectBucketsByGroup.get(groupBucketKey(group.source, group.hourStart));
+    // Split only when every model of the hour has project attribution: the
+    // rows then add up to the untouched aggregate (project totals + residual),
+    // so totals never move and nothing is counted twice. Mixed hours fall
+    // back to the plain aggregate row; those project totals stay unattributed.
+    const canSplit =
+      projectModels &&
+      projectModels.size > 0 &&
+      group.buckets.size > 0 &&
+      [...group.buckets.keys()].every((model) => projectModels.has(model));
+    if (canSplit) {
+      for (const [model, bucket] of group.buckets.entries()) {
+        appendProjectSplitRows({
+          group,
+          model,
+          aggregateBucket: bucket,
+          projects: projectModels.get(model),
+          toAppend,
+        });
+      }
+      continue;
+    }
     const unknownBucket = group.buckets.get(DEFAULT_MODEL) || null;
     const dominantModel = pickDominantModel(group.buckets);
     let alignedModel = null;
@@ -3848,23 +3999,51 @@ async function enqueueTouchedProjectBuckets({
 
   await ensureDir(path.dirname(projectQueuePath));
 
-  const toAppend = [];
+  // Contract v2 (2026-11-03): project buckets gained a model dimension so the
+  // hourly queue can be split per project. The local project queue keeps its
+  // original (project, source, hour) wire shape: one cumulative row per group,
+  // summed across the hour's models. Rows are last-wins, so a rewrite of the
+  // same group is harmless.
+  const groups = new Map();
   for (const key of projectTouchedBuckets) {
     const bucket = projectState.buckets[key];
     if (!bucket || !bucket.totals) continue;
-    const totals = bucket.totals;
-    const queuedKey = totalsKey(totals);
-    if (bucket.queuedKey === queuedKey) continue;
-    const projectRef = typeof bucket.project_ref === "string" ? bucket.project_ref : null;
-    const projectKey = typeof bucket.project_key === "string" ? bucket.project_key : null;
-    if (!projectRef || !projectKey) continue;
+    if (typeof bucket.project_key !== "string" || !bucket.project_key) continue;
+    if (typeof bucket.project_ref !== "string" || !bucket.project_ref) continue;
+    if (typeof bucket.source !== "string" || typeof bucket.hour_start !== "string") continue;
+    const groupKey = JSON.stringify([bucket.project_key, bucket.source, bucket.hour_start]);
+    let group = groups.get(groupKey);
+    if (!group) {
+      group = {
+        projectKey: bucket.project_key,
+        projectRef: bucket.project_ref,
+        source: bucket.source,
+        hourStart: bucket.hour_start,
+        changed: false,
+      };
+      groups.set(groupKey, group);
+    }
+    if (bucket.queuedKey !== totalsKey(bucket.totals)) group.changed = true;
+  }
 
+  const toAppend = [];
+  for (const group of groups.values()) {
+    if (!group.changed) continue;
+    const totals = initTotals();
+    const members = [];
+    for (const bucket of Object.values(projectState.buckets)) {
+      if (!bucket || !bucket.totals) continue;
+      if (bucket.project_key !== group.projectKey) continue;
+      if (bucket.source !== group.source || bucket.hour_start !== group.hourStart) continue;
+      addTotals(totals, bucket.totals);
+      members.push(bucket);
+    }
     toAppend.push(
       JSON.stringify({
-        project_ref: projectRef,
-        project_key: projectKey,
-        source: bucket.source,
-        hour_start: bucket.hour_start,
+        project_ref: group.projectRef,
+        project_key: group.projectKey,
+        source: group.source,
+        hour_start: group.hourStart,
         input_tokens: totals.input_tokens,
         cached_input_tokens: totals.cached_input_tokens,
         cache_creation_input_tokens: totals.cache_creation_input_tokens,
@@ -3876,7 +4055,7 @@ async function enqueueTouchedProjectBuckets({
         conversation_count: totals.conversation_count,
       }),
     );
-    bucket.queuedKey = queuedKey;
+    for (const member of members) member.queuedKey = totalsKey(member.totals);
   }
 
   if (toAppend.length > 0) {
@@ -4292,12 +4471,13 @@ function subtractCountedOpencodeMessage({
       projectState,
       countedAt.projectKey,
       source,
+      countedAt.model,
       countedAt.bucketStart,
       countedAt.projectRef,
     );
     subtractTotals(projectBucket.totals, counted);
     projectTouchedBuckets.add(
-      projectBucketKey(countedAt.projectKey, source, countedAt.bucketStart),
+      projectBucketKey(countedAt.projectKey, source, countedAt.model, countedAt.bucketStart),
     );
   }
   return true;
@@ -4363,10 +4543,14 @@ function getHourlyBucket(state, source, model, hourStart) {
   return bucket;
 }
 
-function getProjectBucket(state, projectKey, source, hourStart, projectRef) {
+function getProjectBucket(state, projectKey, source, model, hourStart, projectRef) {
   const buckets = state.buckets;
   const normalizedSource = normalizeSourceInput(source) || DEFAULT_SOURCE;
-  const key = projectBucketKey(projectKey, normalizedSource, hourStart);
+  // `model == null` means this parser cannot reliably pair project usage with
+  // an hourly model (separate attribution pass or cursor drift). Such buckets
+  // keep the legacy three-part key and are never split out of an aggregate.
+  const normalizedModel = model == null ? null : normalizeModelInput(model) || DEFAULT_MODEL;
+  const key = projectBucketKey(projectKey, normalizedSource, normalizedModel, hourStart);
   let bucket = buckets[key];
   if (!bucket || typeof bucket !== "object") {
     bucket = {
@@ -4377,6 +4561,7 @@ function getProjectBucket(state, projectKey, source, hourStart, projectRef) {
       source: normalizedSource,
       hour_start: hourStart,
     };
+    if (normalizedModel) bucket.model = normalizedModel;
     buckets[key] = bucket;
     return bucket;
   }
@@ -4392,6 +4577,7 @@ function getProjectBucket(state, projectKey, source, hourStart, projectRef) {
   if (projectRef) bucket.project_ref = projectRef;
   if (projectKey) bucket.project_key = projectKey;
   bucket.source = normalizedSource;
+  if (normalizedModel) bucket.model = normalizedModel;
   bucket.hour_start = hourStart;
 
   return bucket;
@@ -4613,9 +4799,16 @@ function bucketKey(source, model, hourStart) {
   return `${safeSource}${BUCKET_SEPARATOR}${safeModel}${BUCKET_SEPARATOR}${hourStart}`;
 }
 
-function projectBucketKey(projectKey, source, hourStart) {
+// Contract v2 (2026-11-03): a project bucket is per (project, source, model,
+// hour) so it can be subtracted from the matching per-model hourly aggregate
+// when usage rows are split by project_key. Buckets written before the model
+// dimension existed keep their old `project|source|hour` key and are never
+// touched again (their usage stays in the unattributed residual).
+function projectBucketKey(projectKey, source, model, hourStart) {
   const safeSource = normalizeSourceInput(source) || DEFAULT_SOURCE;
-  return `${projectKey}${BUCKET_SEPARATOR}${safeSource}${BUCKET_SEPARATOR}${hourStart}`;
+  if (model == null) return `${projectKey}${BUCKET_SEPARATOR}${safeSource}${BUCKET_SEPARATOR}${hourStart}`;
+  const safeModel = normalizeModelInput(model) || DEFAULT_MODEL;
+  return `${projectKey}${BUCKET_SEPARATOR}${safeSource}${BUCKET_SEPARATOR}${safeModel}${BUCKET_SEPARATOR}${hourStart}`;
 }
 
 function groupBucketKey(source, hourStart) {
@@ -6378,13 +6571,14 @@ async function parseOpencodeDbIncremental({
         projectState,
         attribution.projectKey,
         defaultSource,
+        model,
         bucketStart,
         attribution.projectRef,
       );
       addTotals(projectBucket.totals, contribution);
       clampTotalsNonNegative(projectBucket.totals);
       projectTouchedBuckets.add(
-        projectBucketKey(attribution.projectKey, defaultSource, bucketStart),
+        projectBucketKey(attribution.projectKey, defaultSource, model, bucketStart),
       );
     }
 
@@ -6411,7 +6605,7 @@ async function parseOpencodeDbIncremental({
     }
   }
 
-  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets });
+  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets, projectState, projectTouchedBuckets });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({ projectQueuePath, projectState, projectTouchedBuckets })
     : 0;
@@ -6726,12 +6920,13 @@ async function parseQoderDbIncremental({
             projectState,
             previous.projectKey,
             sourceKey,
+            previous.model,
             previous.bucketStart,
             previous.projectRef || null,
           );
           subtractTotals(oldProjectBucket.totals, previousTotals);
           projectTouchedBuckets.add(
-            projectBucketKey(previous.projectKey, sourceKey, previous.bucketStart),
+            projectBucketKey(previous.projectKey, sourceKey, previous.model, previous.bucketStart),
           );
         }
       }
@@ -6744,11 +6939,12 @@ async function parseQoderDbIncremental({
           projectState,
           projectKey,
           sourceKey,
+          model,
           bucketStart,
           projectRef,
         );
         addTotals(projectBucket.totals, currentTotals);
-        projectTouchedBuckets.add(projectBucketKey(projectKey, sourceKey, bucketStart));
+        projectTouchedBuckets.add(projectBucketKey(projectKey, sourceKey, model, bucketStart));
       }
       qoderState.messages[messageKey] = {
         totals: currentTotals,
@@ -6779,6 +6975,8 @@ async function parseQoderDbIncremental({
     queuePath,
     hourlyState,
     touchedBuckets,
+    projectState,
+    projectTouchedBuckets,
   });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({
@@ -7130,9 +7328,9 @@ async function parseQoderNewIncremental({
       subtractTotals(oldBucket.totals, prev.totals);
       touchedBuckets.add(bucketKey(sourceKey, prev.model, prev.bucketStart));
       if (projectEnabled && prev.projectKey) {
-        const oldProjectBucket = getProjectBucket(projectState, prev.projectKey, sourceKey, prev.bucketStart, prev.projectRef || null);
+        const oldProjectBucket = getProjectBucket(projectState, prev.projectKey, sourceKey, prev.model, prev.bucketStart, prev.projectRef || null);
         subtractTotals(oldProjectBucket.totals, prev.totals);
-        projectTouchedBuckets.add(projectBucketKey(prev.projectKey, sourceKey, prev.bucketStart));
+        projectTouchedBuckets.add(projectBucketKey(prev.projectKey, sourceKey, prev.model, prev.bucketStart));
       }
     }
     if (cur) {
@@ -7142,10 +7340,10 @@ async function parseQoderNewIncremental({
       // addTotals handles total_cost_usd via USD_TICKS, but credits cost is small; ensure it accumulates
       touchedBuckets.add(bucketKey(sourceKey, cur.model, cur.bucketStart));
       if (projectEnabled && cur.projectKey) {
-        const projectBucket = getProjectBucket(projectState, cur.projectKey, sourceKey, cur.bucketStart, cur.projectRef);
+        const projectBucket = getProjectBucket(projectState, cur.projectKey, sourceKey, cur.model, cur.bucketStart, cur.projectRef);
         addTotals(projectBucket.totals, cur.totals);
         if (cur.totals.usage_precision) projectBucket.usage_precision = cur.totals.usage_precision;
-        projectTouchedBuckets.add(projectBucketKey(cur.projectKey, sourceKey, cur.bucketStart));
+        projectTouchedBuckets.add(projectBucketKey(cur.projectKey, sourceKey, cur.model, cur.bucketStart));
       }
       qoderState.messages[key] = {
         totals: cur.totals,
@@ -7171,10 +7369,10 @@ async function parseQoderNewIncremental({
     if (cur.totals.usage_precision) bucket.usage_precision = cur.totals.usage_precision;
     touchedBuckets.add(bucketKey(sourceKey, cur.model, cur.bucketStart));
     if (projectEnabled && cur.projectKey) {
-      const projectBucket = getProjectBucket(projectState, cur.projectKey, sourceKey, cur.bucketStart, cur.projectRef);
+      const projectBucket = getProjectBucket(projectState, cur.projectKey, sourceKey, cur.model, cur.bucketStart, cur.projectRef);
       addTotals(projectBucket.totals, cur.totals);
       if (cur.totals.usage_precision) projectBucket.usage_precision = cur.totals.usage_precision;
-      projectTouchedBuckets.add(projectBucketKey(cur.projectKey, sourceKey, cur.bucketStart));
+      projectTouchedBuckets.add(projectBucketKey(cur.projectKey, sourceKey, cur.model, cur.bucketStart));
     }
     qoderState.messages[key] = {
       totals: cur.totals,
@@ -7188,7 +7386,7 @@ async function parseQoderNewIncremental({
     eventsAggregated += 1;
   }
 
-  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets });
+  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets, projectState, projectTouchedBuckets });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({ projectQueuePath, projectState, projectTouchedBuckets })
     : 0;
@@ -11680,11 +11878,12 @@ async function parseWorkbuddyIncremental({
             projectState,
             projectKey,
             source,
+            null,
             bucketStart,
             projectRef,
           );
           addTotals(projectBucket.totals, delta);
-          projectTouchedBuckets.add(projectBucketKey(projectKey, source, bucketStart));
+          projectTouchedBuckets.add(projectBucketKey(projectKey, source, null, bucketStart));
         },
       );
 
@@ -11980,6 +12179,8 @@ async function parseWorkbuddyIncremental({
     queuePath,
     hourlyState,
     touchedBuckets,
+    projectState,
+    projectTouchedBuckets,
   });
   const updatedAt = new Date().toISOString();
   hourlyState.updatedAt = updatedAt;
@@ -15072,12 +15273,13 @@ async function parseDevinIncremental({
             projectState,
             previous.projectKey,
             DEVIN_SOURCE,
+            previous.model,
             previous.bucketStart,
             previous.projectRef || null,
           );
           subtractTotals(oldProjectBucket.totals, previousTotals);
           projectTouchedBuckets.add(
-            projectBucketKey(previous.projectKey, DEVIN_SOURCE, previous.bucketStart),
+            projectBucketKey(previous.projectKey, DEVIN_SOURCE, previous.model, previous.bucketStart),
           );
         }
       }
@@ -15090,12 +15292,13 @@ async function parseDevinIncremental({
           projectState,
           projectKey,
           DEVIN_SOURCE,
+          event.model,
           bucketStart,
           projectRef,
         );
         addTotals(projectBucket.totals, event.totals);
         projectTouchedBuckets.add(
-          projectBucketKey(projectKey, DEVIN_SOURCE, bucketStart),
+          projectBucketKey(projectKey, DEVIN_SOURCE, event.model, bucketStart),
         );
       }
       // The ledger records only what was added: owning session, model,
@@ -15130,6 +15333,8 @@ async function parseDevinIncremental({
     queuePath,
     hourlyState,
     touchedBuckets,
+    projectState,
+    projectTouchedBuckets,
   });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({
@@ -16154,12 +16359,13 @@ async function parseDroidIncremental({
             projectState,
             projectKey,
             "droid",
+            model,
             bucketStart,
             projectRef,
           );
           addTotals(projectBucket.totals, projectDelta);
           projectTouchedBuckets.add(
-            projectBucketKey(projectKey, "droid", bucketStart),
+            projectBucketKey(projectKey, "droid", model, bucketStart),
           );
         }
         projectSessionTotals[sessionId] = {
@@ -16221,6 +16427,8 @@ async function parseDroidIncremental({
     queuePath,
     hourlyState,
     touchedBuckets,
+    projectState,
+    projectTouchedBuckets,
   });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({
@@ -16721,15 +16929,17 @@ async function parseOmpLikeIncremental({
             total_tokens: totalTokens,
             conversation_count: 1,
           };
+          const projectModel = normalizeModelInput(msg.model) || fallbackModel;
           const projectBucket = getProjectBucket(
             projectState,
             projectKey,
             source,
+            projectModel,
             bucketStart,
             projectRef,
           );
           addTotals(projectBucket.totals, delta);
-          projectTouchedBuckets.add(projectBucketKey(projectKey, source, bucketStart));
+          projectTouchedBuckets.add(projectBucketKey(projectKey, source, projectModel, bucketStart));
           projectSeenIds.add(entryId);
         });
       }
@@ -16757,6 +16967,8 @@ async function parseOmpLikeIncremental({
     queuePath,
     hourlyState,
     touchedBuckets,
+    projectState,
+    projectTouchedBuckets,
   });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({
@@ -17334,15 +17546,19 @@ async function parsePiLikeIncremental({
             total_tokens: totalTokens,
             conversation_count: 1,
           };
+          const projectModel = normalizeModelInput(msg.model) || fallbackModel;
           const projectBucket = getProjectBucket(
             projectState,
             projectKey,
             sourceForProvider(msg.provider),
+            projectModel,
             bucketStart,
             projectRef,
           );
           addTotals(projectBucket.totals, delta);
-          projectTouchedBuckets.add(projectBucketKey(projectKey, sourceForProvider(msg.provider), bucketStart));
+          projectTouchedBuckets.add(
+            projectBucketKey(projectKey, sourceForProvider(msg.provider), projectModel, bucketStart),
+          );
           projectSeenIds.add(entryId);
         }
       }
@@ -17365,6 +17581,8 @@ async function parsePiLikeIncremental({
     queuePath,
     hourlyState,
     touchedBuckets,
+    projectState,
+    projectTouchedBuckets,
   });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({ projectQueuePath, projectState, projectTouchedBuckets })
@@ -21540,12 +21758,13 @@ async function parseGrokBuildIncremental({
               projectState,
               projectKey,
               "grok",
+              pending.model,
               pending.hourStartStr,
               projectRef,
             );
             addTotals(projectBucket.totals, pending.delta);
             projectTouchedBuckets.add(
-              projectBucketKey(projectKey, "grok", pending.hourStartStr),
+              projectBucketKey(projectKey, "grok", pending.model, pending.hourStartStr),
             );
           }
 
@@ -21558,12 +21777,13 @@ async function parseGrokBuildIncremental({
               projectState,
               projectKey,
               "grok",
+              projectLastModel || DEFAULT_MODEL,
               projectFinalTouchedHourStart,
               projectRef,
             );
             addTotals(projectBucket.totals, { conversation_count: deltaMessageCount });
             projectTouchedBuckets.add(
-              projectBucketKey(projectKey, "grok", projectFinalTouchedHourStart),
+              projectBucketKey(projectKey, "grok", projectLastModel || DEFAULT_MODEL, projectFinalTouchedHourStart),
             );
           }
 
@@ -21592,7 +21812,7 @@ async function parseGrokBuildIncremental({
   if (projectEnabled) pruneMissingGrokProjectUpdateOffsets(projectUpdateOffsets);
 
   let bucketsQueued = queuePath
-    ? await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets })
+    ? await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets, projectState, projectTouchedBuckets })
     : 0;
 
   // After a semantics migration, retract stale grok queue keys that the full
@@ -22323,11 +22543,12 @@ async function parseAntigravityIncremental({
               projectState,
               c.projectKey,
               c.source,
+              c.model,
               c.bucketStart,
               c.projectRef || null,
             );
             subtractTotals(oldProjectBucket.totals, c.totals);
-            projectTouchedBuckets.add(projectBucketKey(c.projectKey, c.source, c.bucketStart));
+            projectTouchedBuckets.add(projectBucketKey(c.projectKey, c.source, c.model, c.bucketStart));
           }
         }
       }
@@ -22482,7 +22703,7 @@ async function parseAntigravityIncremental({
     }
   }
 
-  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets });
+  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets, projectState, projectTouchedBuckets });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({ projectQueuePath, projectState, projectTouchedBuckets })
     : 0;
@@ -22970,11 +23191,12 @@ async function parseAntigravityFile({
           projectState,
           projectKey,
           source,
+          model,
           bucketStart,
           projectRef,
         );
         addTotals(projectBucket.totals, delta);
-        projectTouchedBuckets.add(projectBucketKey(projectKey, source, bucketStart));
+        projectTouchedBuckets.add(projectBucketKey(projectKey, source, model, bucketStart));
       }
     }
     const isNewForCounter = watermarkLine > 0 ? i >= watermarkLine : true;
@@ -25668,8 +25890,8 @@ async function parseCommandCodeIncremental({
     apply(getHourlyBucket(hourlyState, COMMAND_CODE_SOURCE, value.model, value.bucketStart).totals, totals);
     touchedBuckets.add(bucketKey(COMMAND_CODE_SOURCE, value.model, value.bucketStart));
     if (projectEnabled && value.projectKey) {
-      apply(getProjectBucket(projectState, value.projectKey, COMMAND_CODE_SOURCE, value.bucketStart, value.projectRef).totals, totals);
-      projectTouchedBuckets.add(projectBucketKey(value.projectKey, COMMAND_CODE_SOURCE, value.bucketStart));
+      apply(getProjectBucket(projectState, value.projectKey, COMMAND_CODE_SOURCE, value.model, value.bucketStart, value.projectRef).totals, totals);
+      projectTouchedBuckets.add(projectBucketKey(value.projectKey, COMMAND_CODE_SOURCE, value.model, value.bucketStart));
     }
   }
 
@@ -25738,7 +25960,7 @@ async function parseCommandCodeIncremental({
   prepareBuckets(touchedBuckets, hourlyState, cursors?.hourly);
   if (projectEnabled) prepareBuckets(projectTouchedBuckets, projectState, cursors?.projectHourly);
 
-  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets });
+  const bucketsQueued = await enqueueTouchedBuckets({ queuePath, hourlyState, touchedBuckets, projectState, projectTouchedBuckets });
   const projectBucketsQueued = projectEnabled
     ? await enqueueTouchedProjectBuckets({ projectQueuePath, projectState, projectTouchedBuckets })
     : 0;
@@ -25769,6 +25991,12 @@ async function parseCommandCodeIncremental({
 }
 
 module.exports = {
+  enqueueTouchedBuckets,
+  enqueueTouchedProjectBuckets,
+  projectBucketKey,
+  getProjectBucket,
+  initTotals,
+  totalsKey,
   parseTraeIncremental,
   listRolloutFiles,
   listRolloutFilesDeep,
