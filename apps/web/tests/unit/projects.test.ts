@@ -278,7 +278,10 @@ describe("projectsPayloadForUser — grouping", () => {
       attributed_tokens: 350,
       unattributed_tokens: 100,
       unattributed_sessions: 2,
+      total_cost_usd: "0.000000",
+      credits: 0,
     });
+    expect(body.caliber).toBe("sessions");
   });
 
   it("drops sessions from revoked devices and account-level sources", async () => {
@@ -312,7 +315,10 @@ describe("projectsPayloadForUser — grouping", () => {
         attributed_tokens: 0,
         unattributed_tokens: 0,
         unattributed_sessions: 0,
+        total_cost_usd: "0.000000",
+        credits: 0,
       },
+      caliber: "sessions",
       projects: [],
     });
   });

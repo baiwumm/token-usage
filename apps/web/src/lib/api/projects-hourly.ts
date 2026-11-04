@@ -22,6 +22,7 @@ import {
   addDays,
   dayStartIso,
   groupKeyOf,
+  projectTotalsOf,
   resolveLimit,
   resolveOffset,
   resolveSort,
@@ -31,6 +32,7 @@ import {
 } from "./projects";
 
 import { numberOr0, parseTzContext, zonedDayKey } from "@/lib/account/series";
+import { computeRowCost } from "@/lib/pricing";
 
 const DAY_MS = 86_400_000;
 
@@ -68,7 +70,10 @@ export async function projectsHourlyPayloadForUser(
       attributed_tokens: 0,
       unattributed_tokens: 0,
       unattributed_sessions: 0,
+      total_cost_usd: "0.000000",
+      credits: 0,
     },
+    caliber: "hourly",
     projects: [],
   };
 
@@ -97,6 +102,7 @@ export async function projectsHourlyPayloadForUser(
         key,
         totalTokens: 0,
         costUsd: 0,
+        credits: 0,
         sessionCount: 0,
         lastActiveMs: 0,
         lastActive: null,
@@ -107,9 +113,15 @@ export async function projectsHourlyPayloadForUser(
     const tokens = numberOr0(row.total_tokens);
 
     group.totalTokens += tokens;
-    group.costUsd += numberOr0(row.total_cost_usd);
-    // Bucket rows count conversations, not session rows; the projects card
-    // keeps its single "sessions" column so the two calibers stay comparable.
+    // Same read-time pricing engine as the dashboard/session series: the
+    // persisted bucket total_cost_usd is a legacy 0 in production, so the
+    // column must be re-costed per row (computeRowCost honours grok/cline
+    // provider-reported costs and DeepSeek off-peak tiers).
+    group.costUsd += computeRowCost(row);
+    group.credits += numberOr0(row.credits);
+    // Hourly buckets carry per-bucket conversation counts, not session
+    // identity; the sum is surfaced as "bucket entries", not distinct
+    // sessions (there is no session dimension in this table).
     group.sessionCount += numberOr0(row.conversations);
     group.dayTokens.set(dayKey, (group.dayTokens.get(dayKey) ?? 0) + tokens);
     if (hourMs > group.lastActiveMs) {
@@ -159,7 +171,9 @@ export async function projectsHourlyPayloadForUser(
       attributed_tokens: attributedTokens,
       unattributed_tokens: unattributed?.totalTokens ?? 0,
       unattributed_sessions: unattributed?.sessionCount ?? 0,
+      ...projectTotalsOf(groups.values()),
     },
+    caliber: "hourly",
     projects: page,
   });
 }

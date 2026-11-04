@@ -161,11 +161,31 @@ export type ProjectGroup = {
   key: string | null;
   totalTokens: number;
   costUsd: number;
+  credits: number;
   sessionCount: number;
   lastActiveMs: number;
   lastActive: string | null;
   dayTokens: Map<string, number>;
 };
+
+/** Per-payload cost/credits totals shared by both calibers (6-dp wire form). */
+export function projectTotalsOf(groups: Iterable<ProjectGroup>): {
+  total_cost_usd: string;
+  credits: number;
+} {
+  let cost = 0;
+  let credits = 0;
+
+  for (const group of groups) {
+    cost += group.costUsd;
+    credits += group.credits;
+  }
+
+  return {
+    total_cost_usd: cost.toFixed(6),
+    credits: Math.round(credits * 1e6) / 1e6,
+  };
+}
 
 export function groupKeyOf(row: RestRow): string | null {
   const raw = row.project_key;
@@ -235,7 +255,10 @@ export async function projectsPayloadForUser(
       attributed_tokens: 0,
       unattributed_tokens: 0,
       unattributed_sessions: 0,
+      total_cost_usd: "0.000000",
+      credits: 0,
     },
+    caliber: "sessions",
     projects: [],
   };
 
@@ -275,6 +298,7 @@ export async function projectsPayloadForUser(
         key,
         totalTokens: 0,
         costUsd: 0,
+        credits: 0,
         sessionCount: 0,
         lastActiveMs: 0,
         lastActive: null,
@@ -286,6 +310,7 @@ export async function projectsPayloadForUser(
 
     group.totalTokens += tokens;
     group.costUsd += sessionCostUsd(row);
+    group.credits += numberOr0(row.credits);
     group.sessionCount += 1;
     group.dayTokens.set(dayKey, (group.dayTokens.get(dayKey) ?? 0) + tokens);
     if (endedMs > group.lastActiveMs) {
@@ -335,7 +360,9 @@ export async function projectsPayloadForUser(
       attributed_tokens: attributedTokens,
       unattributed_tokens: unattributed?.totalTokens ?? 0,
       unattributed_sessions: unattributed?.sessionCount ?? 0,
+      ...projectTotalsOf(groups.values()),
     },
+    caliber: "sessions",
     projects: page,
   });
 }

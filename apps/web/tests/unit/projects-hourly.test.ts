@@ -176,10 +176,13 @@ describe("projectsHourlyPayloadForUser — grouping and double-count guard", () 
     const body = await payload("from=2026-10-19&to=2026-10-25");
 
     expect(keys(body)).toEqual(["alpha", "beta", null]);
+    expect(body.caliber).toBe("hourly");
     expect(body.totals).toEqual({
       attributed_tokens: 150,
       unattributed_tokens: 200,
       unattributed_sessions: 1,
+      total_cost_usd: "0.000000",
+      credits: 0,
     });
     // No double counting: the sum of every row still equals the table total.
     expect(body.projects.reduce((acc, p) => acc + p.total_tokens, 0)).toBe(350);
@@ -209,15 +212,54 @@ describe("projectsHourlyPayloadForUser — grouping and double-count guard", () 
     expect(body.totals.attributed_tokens).toBe(100);
   });
 
+  it("prices every bucket row at read time with the shared pricing engine", async () => {
+    fake.table("token_usage_hourly").push(
+      // Persisted bucket cost is the legacy 0; composer-1 is $1.25/M input and
+      // $10/M output, so the row must be re-costed to 1.25 + 1.00 = 2.25.
+      hourly({
+        source: "command-code",
+        model: "composer-1",
+        project_key: "alpha",
+        input_tokens: 1_000_000,
+        output_tokens: 100_000,
+        total_tokens: 1_100_000,
+        conversations: 3,
+        total_cost_usd: 0,
+      }),
+      hourly({
+        project_key: "",
+        total_tokens: 200,
+        conversations: 2,
+        total_cost_usd: 0,
+      }),
+    );
+    const body = await payload("from=2026-10-19&to=2026-10-25");
+
+    const alpha = body.projects.find((p) => p.project_key === "alpha");
+
+    expect(alpha?.total_cost_usd).toBe("2.250000");
+    expect(body.totals.total_cost_usd).toBe("2.250000");
+    expect(body.totals.total_cost_usd).toBe(
+      body.projects
+        .reduce((acc, p) => acc + Number(p.total_cost_usd), 0)
+        .toFixed(6),
+    );
+    // Hourly has no session identity: the column is the sum of per-bucket
+    // conversation counts (3 + 2), surfaced as bucket entries, not sessions.
+    expect(body.totals.unattributed_sessions).toBe(2);
+  });
+
   it("sorts by read-time cost numerically and keeps unattributed last", async () => {
     fake.table("token_usage_hourly").push(
-      hourly({ project_key: "alpha", total_tokens: 100, total_cost_usd: 2 }),
-      hourly({ project_key: "beta", total_tokens: 50, total_cost_usd: 10 }),
-      hourly({ project_key: "", total_tokens: 999, total_cost_usd: 5 }),
+      // Grok carries an authoritative provider-reported cost.
+      hourly({ source: "grok", project_key: "alpha", total_tokens: 100, total_cost_usd: 2 }),
+      hourly({ source: "grok", project_key: "beta", total_tokens: 50, total_cost_usd: 10 }),
+      hourly({ source: "grok", project_key: "", total_tokens: 999, total_cost_usd: 5 }),
     );
     const body = await payload("from=2026-10-19&to=2026-10-25&sort=cost");
 
     expect(keys(body)).toEqual(["beta", "alpha", null]);
+    expect(body.projects[0].total_cost_usd).toBe("10.000000");
   });
 
   it("answers an empty payload when nothing matches", async () => {
@@ -234,7 +276,10 @@ describe("projectsHourlyPayloadForUser — grouping and double-count guard", () 
         attributed_tokens: 0,
         unattributed_tokens: 0,
         unattributed_sessions: 0,
+        total_cost_usd: "0.000000",
+        credits: 0,
       },
+      caliber: "hourly",
       projects: [],
     });
   });
