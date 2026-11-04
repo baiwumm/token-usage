@@ -301,6 +301,11 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` �
 2. macOS / Linux 调度真机验证：暂无真机，目前只有产物级测试（plist / systemd unit 与
    文案断言）。首次在真机跑 `init` 后需确认 `launchctl list` / `systemctl --user
    list-timers` 里有对应条目，再回填 `docs/cli-release.md` §四。
+3. **下一版 CLI（0.4.4 候选）发版**：`packages/cli/CHANGELOG.md` 的 `## Unreleased` 已累积
+   2026-11-03 ~ 11-04 的用户可见变更（桶级 `project_key`、项目键父级回退、DeepSeek 余额/状态卡、
+   `status --json` pricing 块、`doctor` 计价覆盖自检、limits 磁盘缓存回退等）。bump / tag /
+   `npm publish` 由操作者执行；发版并升级采集机后 `/projects` 的 hourly 口径才会有带项目名的
+   桶行（2026-11-04 生产库实测桶行 `project_key` 非空数为 0）。
 
 已关闭：0.4.3 候选（降级原因改取 `stderr` + 代码页解码、`reconcile` pending 分类，已随
 0.4.3 发版并在本机验收）；「同小时键多行递增值」观测（zcode 源库核对证明 last-wins 行即
@@ -338,5 +343,8 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` �
    models.dev 三向差集，方法与记录格式见 `docs/upstream-comparison-plan.md` §4。
 3. **队列按月分片（原 D2）**：juejin 式 `queue/<month>.jsonl` 分片可控制 queue.jsonl
    增长与范围读取成本；触及对账基线文件格式（约束 8），留待有体感再立项。
+   实测基线（2026-11-04，本机 `~/.tokenusage/tracker`）：`queue.jsonl` 511 行 / 162,755 B，
+   `project.queue.jsonl` 390 行 / 150,613 B，`session.queue.jsonl` 182 行 / 1,455,392 B；
+   未设数字阈值，以「队列体积或读取延迟有明显体感」为立项触发。
 4. **align-unknown 落地**：dry-run 结论见 `docs/upstream-comparison-plan.md` §7；
    落地会改历史 unknown 桶归属，需再次确认后按两步走第二步执行。

@@ -129,6 +129,13 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 后续版本候选与实测记录（不阻塞已发版本）
 
+> **未发版批次（0.4.4 候选，2026-11-03 ~ 11-04）**：契约 v2 桶级 `project_key`（`fe4fb26`）、
+> 项目键父级回退（`823ee14`）、DeepSeek 余额/状态卡、`status --json` 的 pricing 块、`doctor`
+> 计价覆盖自检、curated 定价扩充、cursor/kimi/grok limits 磁盘缓存回退。明细以
+> `packages/cli/CHANGELOG.md` 的 `## Unreleased` 为准；bump / tag / `npm publish` 由操作者执行。
+> 注意：本机运行的 `0.4.3` 不含桶级 `project_key`，升级前 `/projects` 的 hourly 口径全部落在
+> 「未归因」（`docs/projects-page-plan.md` §5）。
+
 > **原「未发版候选」（2026-11-01 盘点；两项均已随 0.4.0 交付）**：① `init` 逐工具集成
 > 选择（当时 `--no-integrations` 只有全有 / 全无）；② macOS / Linux 原生调度（当时仅
 > Windows 计划任务，其他平台靠 `--watch` / 手动）。

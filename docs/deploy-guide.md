@@ -89,6 +89,8 @@ CLI 采集端不读它：未设置时走 sessions 口径（覆盖约 77% 历史�
 设为 `hourly` 走桶口径（100% token，但只有带项目名的新写入桶才有归因，历史桶整体计入
 「未归因」且不做回溯）。改值或删除都必须重新部署（Vercel Redeploy）才生效；新部署建议先保持
 默认，等带项目名的桶攒够再切。新采集机器只影响「本机从接入起」的用量，不影响历史。
+注意：截至 2026-11-04，npm 上的 `tokenusage-cli@0.4.3` 尚未写入桶级项目名（该能力在未发版
+的下一版里），因此现在就切 `hourly` 会看到整页「未归因」；应先等 CLI 发版并升级采集机。
 
 Deploy 后得到部署域名（如 `https://token-usage-xxx.vercel.app`）。**回到 Supabase Auth
 配置，把 Site URL 与 Redirect URLs 里的域名核对成这个实际域名**；`TOKEN_USAGE_DASHBOARD_URL`

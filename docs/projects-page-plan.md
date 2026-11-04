@@ -79,6 +79,18 @@
 > - **CLI 项目键回退到父项目（2026-11-04）**：`projectKey()` 遇到 `worktrees`（`<repo>/.claude/worktrees/<id>`）
 >   或 `subagents`（`<project>/<session>/subagents`）时向上取真实项目目录；qoder-cn 子代理转录还会继承
 >   记录里的 `cwd`。只影响新采集，历史 `subagents` 键不回填（会话落库键含 `session_id`，同会话只更新不改名）。
+> - **credits-only 来源口径标注（2026-11-04）**：项目页口径条（sessions / hourly 两段）与 Sessions
+>   列表提示条都补了同一句说明——credits-only 来源（如 qoder-cn）只贡献积分，不贡献 token 与费用，
+>   因此这类会话仍可见、积分非零，而 token/费用为 0 属正常。文案不含会随数据变化的硬编码数字；
+>   `apps/web/tests/unit/projects-caliber.test.ts` 锁定该说明在中英两种语言、两种口径与 Sessions 页都存在。
+> - **批次 3（CLI 桶级 `project_key`）状态（2026-11-04 实测）**：写入逻辑已在 main（`fe4fb26`，
+>   按契约 §2.4 写项目行 + 余量 `''` 行），但**尚未发版**——本机运行的 `tokenusage-cli@0.4.3`
+>   早于该提交。生产库实测 2,311 行桶行里 `project_key` 非空数为 **0**，即 hourly 口径此刻全部
+>   落在「未归因」。发版（0.4.4）并升级采集机后，新桶才会带项目名；历史桶不回填（有界重扫已决定不做）。
+>   逐来源「能拿 / 拿不到项目」清单需在发版升级后按真实桶行回填 `docs/sources-capture-audit.md`。
+> - **`~/.codex/worktrees/<id>` 无上游项目规则（2026-11-04）**：该路径下没有可靠的仓库名，
+>   `projectKey()` 保持旧行为（落 `<id>`），由 `packages/cli/test/session-project-key.test.js` 显式锁定；
+>   不做猜测式回退。
 
 > 部署与历史口径（2026-11-04 补注）：该开关是部署级、`NEXT_PUBLIC_` 构建期内联——CLI 采集端不读，
 > 改值或删除都需重新部署（回退 = Vercel 删除变量后 Redeploy）。历史桶没有项目名且不做回溯
@@ -104,11 +116,15 @@
 
 ## 7. 待拍板事项
 
-1. **契约破坏性变更**：bucket 加 `project_key` + upsert 键扩展（批次 2 前提，按约束 1 流程走）。
-2. **迁移期「未归因」分组**：接受混合版本窗口期存在 null 桶分组（预计持续一个 CLI 版本周期）。
-3. **旧图表口径保持**：总量页整表求和不变（默认）；若要让总量页也按新键拆分需另议。
-4. **项目名隐私开关默认值**：明文 basename（现状语义）还是默认脱敏。
-5. **阶段 0 精度标注文案**：页面固定说明条的措辞与位置（UI 评审）。
+1. ~~契约破坏性变更：bucket 加 `project_key` + upsert 键扩展~~ → **已拍板并交付（2026-11-03）**：
+   `docs/cli-contract.md` §2.4 与迁移 `20261103000000_token_hourly_project_key.sql` 已落地，golden 先行。
+2. ~~迁移期「未归因」分组~~ → **已交付（2026-11-04）**：hourly 口径把 `project_key=''` 单列「未归因」，
+   `totals.unattributed_tokens` / `unattributed_sessions` 与项目行不重复计。
+3. ~~旧图表口径保持~~ → **已按默认保持**：总量页与既有图表仍为整表求和，未按新键拆分。
+4. **项目名隐私开关默认值**（唯一仍未拍板项）：现状为明文 basename 上传（跨设备同名天然合并）；
+   若改为默认脱敏属协议层行为变更，需按硬性约束 1 走契约 v2 流程，上了协议再改代价更高。
+5. ~~阶段 0 精度标注文案~~ → **已交付（2026-11-04）**：`scopeNote.sessions` / `scopeNote.hourly`
+   双口径文案 + `projects-caliber.test.ts` 锁定。
 
 ## 8. 完成定义（可测）
 

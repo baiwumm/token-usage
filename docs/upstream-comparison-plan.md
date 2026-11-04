@@ -110,7 +110,7 @@
 | TT `wrapped` 年报 / juejin `service` 命令 / 订阅卡片 UI / juejin 其余 8 个独有 parser | 单人自托管场景价值低或流行度未确认；如未来公开实例化再评估 |
 | juejin `local_metrics` 本地缓存命中率 | 价值中等但无展示位（TU 无本地 CLI 面板页），待桌面端/面板决策后一并考虑 |
 | Sentry 等遥测回搬 | 0.2.6 已决策移除，不回摆 |
-| **limits 磁盘缓存回退**（2026-11-03 C1 新发现候选） | 上游 fork 后新增：cursor/grok/kimi limits 结果写磁盘缓存、失败时 stale 回退（`usage-limits.js` 的 `*LimitsCache` 系列 + 约 980 行测试）。本仓库无此层。价值：限额面板离线/凭据失效时仍有上次读数。工作量 1–2 人日（功能 + 测试一并移植）。**待操作者拍板**，不在本轮范围 |
+| ~~limits 磁盘缓存回退~~（原 2026-11-03 C1 新发现候选） | **已交付（2026-11-03 起，见 `packages/cli/CHANGELOG.md` 的 `## Unreleased`）**：cursor/kimi/grok 限额卡与 DeepSeek 余额卡新增磁盘缓存回退（请求超时/5xx 时展示上次成功读数并标 `stale`），身份指纹绑定、凭据类错误不回退；limits 磁盘缓存 stale TTL 统一 12h。测试 `cursor/grok/kimi-limits-cache-fallback` 等 22 例。 |
 
 ## 5. 用户输入（2026-11-03 已全部拍板）
 
