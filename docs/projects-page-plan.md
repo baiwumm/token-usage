@@ -87,15 +87,26 @@
 >   按契约 §2.4 写项目行 + 余量 `''` 行），已随 **`tokenusage-cli@0.4.4` 于 2026-11-04 发版**
 >   （tag `cli-v0.4.4`）。采集机仍运行 0.4.3（早于该提交），生产库实测 2,311 行桶行里
 >   `project_key` 非空数为 **0**，即 hourly 口径此刻全部落在「未归因」。升级采集机后新桶才会
->   带项目名；历史桶不回填（有界重扫已决定不做）。
+>   带项目名；历史桶不做源库重扫（有界重扫已决定不做）。
 >   逐来源「能拿 / 拿不到项目」清单需在发版升级后按真实桶行回填 `docs/sources-capture-audit.md`。
+> - **历史 opencode 桶项目回填（2026-11-04 已执行）**：作为「不重扫源库」的例外，本机用
+>   `scripts/admin/project-backfill.cjs` 从本地 `project.queue.jsonl`（无 model 字段）与
+>   `session.queue.jsonl` 重建旧桶的项目拆分行：先 dry-run 校验逐字段总量，再 `--apply` 原子
+>   追加到 `queue.jsonl`（留时间戳备份），最后走 `tokenusage upload --drain`。本次回填
+>   255 个单模型组（337 项目行 + 255 余量行，14 个项目键，1.471B token）；6 个多模型
+>   opencode 组因会话证据缺失或与项目队列不一致保持未归因，5 个 qoder-cn/zcode 零项目组
+>   不产生行，3 个已带项目键的近期组跳过。全量本地基线逐字段不变（total_tokens
+>   2,932,085,133，credits 195.02793）；upload 3 请求 / 592 行 / 0 skipped；reconcile
+>   `--from 2026-08-25` 在本地 queue 覆盖范围内 missing=0、mismatch=0（931 条 server-only
+>   是本地 queue 已裁掉的旧行，属既有 drift）。脚本只读本地队列，不重建本地不存在的行。
 > - **`~/.codex/worktrees/<id>` 无上游项目规则（2026-11-04）**：该路径下没有可靠的仓库名，
 >   `projectKey()` 保持旧行为（落 `<id>`），由 `packages/cli/test/session-project-key.test.js` 显式锁定；
 >   不做猜测式回退。
 
 > 部署与历史口径（2026-11-04 补注）：该开关是部署级、`NEXT_PUBLIC_` 构建期内联——CLI 采集端不读，
-> 改值或删除都需重新部署（回退 = Vercel 删除变量后 Redeploy）。历史桶没有项目名且不做回溯
-> （有界重扫功能已决定不做），因此 hourly 口径下的历史只能整体计入「未归因」；新采集机器只影响
+> 改值或删除都需重新部署（回退 = Vercel 删除变量后 Redeploy）。历史桶不做源库重扫
+> （有界重扫功能已决定不做）；本机 2026-11-04 已用 `project-backfill` 回填 opencode 的历史项目
+> 归因，其他来源、多模型组与无项目证据的桶仍整体计入「未归因」。新采集机器只影响
 > 「本机从接入起」的用量，不影响历史。新部署建议先保持默认 sessions 口径，等带项目名的桶攒够再切
 > （部署步骤见 [`docs/deploy-guide.md`](deploy-guide.md) §4）。
 

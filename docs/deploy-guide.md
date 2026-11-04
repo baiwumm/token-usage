@@ -86,9 +86,11 @@ Dashboard → **Authentication → URL Configuration**：
 可选：`NEXT_PUBLIC_PROJECTS_CALIBER` 控制 `/projects` 页口径（详见
 [`docs/projects-page-plan.md`](projects-page-plan.md) §5）。它是**部署级、构建期内联**的开关，
 CLI 采集端不读它：未设置时走 sessions 口径（覆盖约 77% 历史，`cursor` / `trae-cn` 永不出现），
-设为 `hourly` 走桶口径（100% token，但只有带项目名的新写入桶才有归因，历史桶整体计入
-「未归因」且不做回溯）。改值或删除都必须重新部署（Vercel Redeploy）才生效；新部署建议先保持
-默认，等带项目名的桶攒够再切。新采集机器只影响「本机从接入起」的用量，不影响历史。
+设为 `hourly` 走桶口径（100% token，只有带项目名的桶才有归因；本机 2026-11-04 已用
+`scripts/admin/project-backfill.cjs` 回填 opencode 的历史项目行，其他来源、多模型组与无项目
+证据的桶仍整体计入「未归因」，不做源库重扫）。改值或删除都必须重新部署（Vercel Redeploy）
+才生效；新部署建议先保持默认，等带项目名的桶攒够再切。新采集机器只影响「本机从接入起」的
+用量，不影响历史。
 注意：桶级项目名从 `tokenusage-cli@0.4.4`（2026-11-04 发布）起才写入，0.4.3 及更早不会。
 采集机需升级到 0.4.4 并跑一次 `sync`，`hourly` 口径的新桶才会有项目归因；否则整页都是「未归因」。
 

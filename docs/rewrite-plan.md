@@ -308,7 +308,8 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` �
 3. ~~下一版 CLI（0.4.4）发版~~ → **已发版（2026-11-04）**：npm `tokenusage-cli@0.4.4` + tag
    `cli-v0.4.4`，CI 自动发包与 Release 均成功（验证清单见 `docs/cli-release.md` §五）。
    剩余动作是采集机升级：另一台机器仍为 0.4.3，升级后新桶才开始带 `project_key`
-   （2026-11-04 生产库实测桶行 `project_key` 非空数为 0；历史桶不回填）。
+   （2026-11-04 生产库实测桶行 `project_key` 非空数为 0；本机随后用
+   `scripts/admin/project-backfill.cjs` 回填 opencode 历史项目归因，见本批第 1 条）。
 
 **2026-11-04 审计修复批（已随 0.4.5 / main 交付）**：CLI 修「队列去重键丢项目拆分行 +
 偏移照旧推进」导致的永久丢数据，拆分行统一按 basename 身份合并，ingest / session 上传必须
@@ -320,9 +321,14 @@ web 修账户快照全主键分页（>100 万行显式 500，不静默截断）�
 
 本批剩余决策与结论：
 
-1. **历史丢失数据不回填**：0.4.5 只保证今后不丢。本机升级时发现 1 条仍留在本地
-   `queue.jsonl` 的缺口（旧去重键压掉的项目拆分行），已用「重新追加该行 + `upload`」
-   补回；对本地已不存在的行不做重建。
+1. **历史丢失数据不重建，但项目归因可回填**：0.4.5 只保证今后不丢。本机升级时发现 1 条
+   仍留在本地 `queue.jsonl` 的缺口（旧去重键压掉的项目拆分行），已用「重新追加该行 +
+   `upload`」补回；对本地已不存在的行不做重建。**2026-11-04 例外已执行**：用
+   `scripts/admin/project-backfill.cjs` 从本地 `project.queue.jsonl` + `session.queue.jsonl`
+   回填 opencode 历史桶的 `project_key` 拆分行（255 组 / 337 项目行 + 255 余量行 / 14 个项目键 /
+   1.471B token，upload 592 行 / 0 skipped）；多模型组、无项目证据来源与本地已不存在的行仍保持
+   未归因。全量本地基线逐字段不变（total_tokens 2,932,085,133），reconcile 在本地 queue
+   覆盖范围内 missing=0、mismatch=0。详见 `docs/projects-page-plan.md` §5。
 2. **`empty` 契约口径不改**：仍为 `tokens_ingested === 0 && sessions_uploaded === 0`
    （`docs/cli-contract.md` §2.11/§2.12），credits-only 运行继续算 empty；改用 §2.14
    data-version 补偿——取「最新非空 run / 最新 `credits_ingested > 0` run / 最新
