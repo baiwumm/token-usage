@@ -83,6 +83,13 @@ Dashboard → **Authentication → URL Configuration**：
 可选：`TOKEN_USAGE_SITE_NAME` 覆盖页签标题后缀与 Apple Web App 标题，默认 `TokenUsage`
 （标题格式为 `<页面名> - <TOKEN_USAGE_SITE_NAME>`）。
 
+可选：`NEXT_PUBLIC_PROJECTS_CALIBER` 控制 `/projects` 页口径（详见
+[`docs/projects-page-plan.md`](projects-page-plan.md) §5）。它是**部署级、构建期内联**的开关，
+CLI 采集端不读它：未设置时走 sessions 口径（覆盖约 77% 历史，`cursor` / `trae-cn` 永不出现），
+设为 `hourly` 走桶口径（100% token，但只有带项目名的新写入桶才有归因，历史桶整体计入
+「未归因」且不做回溯）。改值或删除都必须重新部署（Vercel Redeploy）才生效；新部署建议先保持
+默认，等带项目名的桶攒够再切。新采集机器只影响「本机从接入起」的用量，不影响历史。
+
 Deploy 后得到部署域名（如 `https://token-usage-xxx.vercel.app`）。**回到 Supabase Auth
 配置，把 Site URL 与 Redirect URLs 里的域名核对成这个实际域名**；`TOKEN_USAGE_DASHBOARD_URL`
 若有出入也在 Vercel 改后 Redeploy 一次。
