@@ -569,3 +569,26 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 | [x] cursor 重新登录 | 本机已不使用 Cursor（2026-11-04 确认），跳过；如后续需要 Cursor 用量，再在客户端登录并跑 `tokenusage doctor` 复核 |
 | [ ] 另一台采集机升级 | 仍为 0.4.3：`npm i -g tokenusage-cli@0.4.4` 后重跑 `init --yes`（用户操作） |
 | [ ] 另一台机器升级后验收 | `tokenusage reconcile --days 7` 应为 OK / 0 drift；项目型来源的新桶开始带 `project_key`，`/projects` 的 hourly 口径不再整页落在「未归因」 |
+
+## 六、0.4.5 发版验证清单（2026-11-04）
+
+修复批：契约 v2 拆分行的队列去重键补 `project_key`（旧键会压掉被归因的行、偏移照旧推进 →
+永久丢数据）；拆分行改按服务端 basename 身份合并；ingest / session 上传必须拿到确认字段才推进
+offset / watermark；Windows 隐藏启动器写 UTF-16LE + BOM；`init` 首同步统计跳过控制行。无契约
+变更，服务端与 web 不需要跟着升级。
+
+| 项 | 结果 |
+|---|---|
+| npm 版本 | `tokenusage-cli@0.4.5`，`dist-tags.latest = 0.4.5`；publish 于 2026-11-04T08:49:45Z，npm 异步处理约 2.5 分钟后可读（`time["0.4.5"] = 08:52:23Z`） |
+| git tag | `cli-v0.4.5`（annotated，指向 `939ffc8`，即已推送 main 的发版提交） |
+| GitHub Actions | main CI run `41802149885` 全绿（verify 1m17s / Windows CLI 1m5s）；Release run `41802352267` 成功，耗时 1m12s，版本校验 → main 祖先校验 → `pnpm verify` → Trusted Publishing 发包 → Release 全部通过 |
+| provenance | 已写入 sigstore transparency log（logIndex 3687445085） |
+| Release notes | 取 CHANGELOG `## 0.4.5` 段（20 行），未退回 `--generate-notes` |
+| 干净安装 | 临时目录 `npm i tokenusage-cli@0.4.5 --registry=https://registry.npmjs.org`（6 包 / 20s）后 `--version` → `v0.4.5`，`help` 正常；临时目录已删除，未污染全局 |
+| 安全审计 | `pnpm audit --prod --registry=https://registry.npmjs.org` → No known vulnerabilities found |
+| [x] 本机升级与验证（2026-11-04） | Volta `tokenusage-cli@0.4.4 → 0.4.5`；`init --yes --no-integrations --no-open` 刷新 runtime copy（`.runtime-ready` v0.4.5，从 `C:\` 直跑副本 `--version` → v0.4.5）；`doctor` 15 OK / 0 warn / 0 fail（`runtime.copy` OK，7 天 token 计价覆盖 100%）；`sync --drain` 解析 1,886 文件、新入队 1 桶、上传 6 行，sessions 4/4 |
+| [x] 数据修复（本机） | 升级后首次 `reconcile --days 7` 报 1 条 `missing_on_server`：`2026-11-04T07:30Z opencode deepseek-v4.1-flash-free` 10,241,261 tokens——正是 0.4.4 旧去重键压掉项目拆分行后偏移照旧推进留下的缺口，本地队列仍保留该行。把该行重新追加到 `queue.jsonl` 末尾（追加即 last-wins，无需改 offset）→ `upload --drain` 上传 1 行 → 该缺口消失 |
+| [x] 复验 | 再次 `reconcile --days 7`：0 missing / 0 mismatched，仅剩 **2 条既有 server-only**（dsh `2026-10-28` 09:00 / 09:30，0.4.4 升级时就存在，本地队列的 dsh 行从 10-29 起才有），非本次升级引入 |
+| [x] Cursor | 同步提示 `Cursor session expired`，本机已不使用 Cursor（2026-11-04 确认），跳过 |
+| npm 镜像注意 | 本机 npm registry 是 `registry.npmmirror.com`，发版后镜像尚未同步 0.4.5，`volta install` 会 `ETARGET`；用 `npm_config_registry=https://registry.npmjs.org volta install tokenusage-cli@0.4.5` 绕过。日常升级若不想等镜像，可沿用同一写法 |
+| [ ] 另一台采集机升级 | 仍为 0.4.3，可直接升到 0.4.5：`npm i -g tokenusage-cli@0.4.5` → `tokenusage init --yes` → `tokenusage reconcile --days 7`（用户操作） |

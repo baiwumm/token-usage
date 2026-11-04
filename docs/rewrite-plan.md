@@ -247,25 +247,29 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），
 其值从 publishable key 取——公开客户端值的语义不变。
 
-## 10. 当前状态与剩余事项（2026-11-01 复核）
+## 10. 当前状态与剩余事项（2026-11-04 复核）
 
 **里程碑**：M0–M7 全部交付；生产实例 `token-usage.baiwumm.com` 自 2026-10-26 起承载
-两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.3`（2026-11-01
-发布；本机全局包与 `~/.tokenusage/tracker/app` 运行时副本均已升级到 0.4.3，7 天窗口
-`reconcile` 100/100 桶匹配、退出码 0）。版本沿革：0.4.0 交付 CLI 加固批与 `reconcile`，
-0.4.1 修 `reconcile` 的 `conversation_count` 别名误报，0.4.2 让 `init` 的 degraded 摘要
-显示被拒原因，0.4.3 把该原因改取 `stderr` 并修掉中文 Windows 的代码页乱码、`reconcile`
-区分 pending 与漂移。「同小时键多行递增值」观测已用源库核对证伪（属累计重入队，见
-`docs/cli-release.md` §四 0.4.3 条）。发版后只剩两条待办，见本节末尾。
+两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.5`（2026-11-04
+发布；本机全局包与 `~/.tokenusage/tracker/app` 运行时副本均已升级到 0.4.5，`doctor`
+15 项全 OK，7 天窗口 `reconcile` 0 missing / 0 mismatched，仅剩 2 条既有 server-only）。
+版本沿革：0.4.0 交付 CLI 加固批与 `reconcile`，0.4.1 修 `reconcile` 的
+`conversation_count` 别名误报，0.4.2 让 `init` 的 degraded 摘要显示被拒原因，0.4.3 把该
+原因改取 `stderr` 并修掉中文 Windows 的代码页乱码、`reconcile` 区分 pending 与漂移，
+0.4.4 落契约 v2 桶级 `project_key`、DeepSeek 余额/状态卡与计价覆盖自检，0.4.5 修
+队列去重丢拆分项目行、上传确认、VBS 编码与首同步统计（清单见 `docs/cli-release.md`
+§五/§六）。「同小时键多行递增值」观测已用源库核对证伪（属累计重入队，见
+`docs/cli-release.md` §四 0.4.3 条）。
 
 **最近一批交付（2026-10-31 ~ 11-01）**：Trae CN 本地库、桶级 / 会话级 credits、
 `credits_ingested` 遥测、模型大小写归一、wrapped canonical 来源、成就条进度与详情弹窗、
 Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）、Sessions CSV 导出（筛选全集，
 10,000 行 / 4 MiB 双上限）。来源接入的验收记录见 `docs/sources-capture-plan.md`。
 
-**测试与部署**：`pnpm verify` 全绿（lint 0 error + 5 条既有 `no-console` warning；
-web 33 files / 455 tests + build；CLI 138 tests）。CI 在 main 与 `cli-v*` tag 上运行；
-web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm（0.4.3 发版 run 41312131772 全绿）。
+**测试与部署**：`pnpm verify` 全绿（lint 0 error + 8 warnings——7 条既有 `no-console` +
+1 条 dashboard `useCallback` 依赖提示；web 44 files / 538 tests + build；CLI 210 tests）。
+CI 在 main 与 `cli-v*` tag 上运行；web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm
+（0.4.5 发版 run 41802352267 全绿，本机升级与复验记录见 `docs/cli-release.md` §六）。
 0.4.2 期间 CI 的 Windows `init` smoke 曾连挂三次（仍在传 0.4.0 删掉的 `--no-auth`，见
 `docs/cli-release.md` §四），commit `c6d7b68` 去掉该参数后转绿。
 
@@ -288,7 +292,7 @@ web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm（0.4.3 发版 run 413
 golden 测试 `apps/web/tests/contract/reconcile.test.ts`）与 CLI 命令
 （`packages/cli/src/commands/reconcile.js`）均已落地；只读，按基线（AGENTS 约束 8 的
 queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` 偏移之后的桶记为
-`pending`（不计漂移）。已随 0.4.0 起发到 npm（最新 0.4.3）；真机验收（2026-11-01，本机
+`pending`（不计漂移）。已随 0.4.0 起发到 npm（最新 0.4.5）；真机验收（2026-11-01，本机
 7 天窗口 100/100 桶匹配、退出码 0）通过（0.4.1 修掉 `conversation_count` 别名比较的
 误报，0.4.2 复核同样 OK，0.4.3 加 pending 分类）。⚠ 该端点占用最后一个 Vercel function
 槽位（12/12，见 §8 风险行），后续端点须复用 catch-all。
@@ -305,6 +309,34 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` �
    `cli-v0.4.4`，CI 自动发包与 Release 均成功（验证清单见 `docs/cli-release.md` §五）。
    剩余动作是采集机升级：另一台机器仍为 0.4.3，升级后新桶才开始带 `project_key`
    （2026-11-04 生产库实测桶行 `project_key` 非空数为 0；历史桶不回填）。
+
+**2026-11-04 审计修复批（已随 0.4.5 / main 交付）**：CLI 修「队列去重键丢项目拆分行 +
+偏移照旧推进」导致的永久丢数据，拆分行统一按 basename 身份合并，ingest / session 上传必须
+拿到确认字段才推进 offset / watermark，VBS 改 UTF-16LE + BOM，`init` 首同步统计跳过控制行；
+web 修账户快照全主键分页（>100 万行显式 500，不静默截断）、per-user 缓存 revision 与过期
+清理、`projects-hourly` 的 canonical 行、device-flow 配对码 `used` 条件更新、wrapped 年份
+切换骨架、UTC 渲染与若干 stale UI 状态。验证见 `docs/cli-release.md` §六，提交
+`5f4b7a8` / `511dabf` / `939ffc8`。
+
+本批剩余决策与结论：
+
+1. **历史丢失数据不回填**：0.4.5 只保证今后不丢。本机升级时发现 1 条仍留在本地
+   `queue.jsonl` 的缺口（旧去重键压掉的项目拆分行），已用「重新追加该行 + `upload`」
+   补回；对本地已不存在的行不做重建。
+2. **`empty` 契约口径不改**：仍为 `tokens_ingested === 0 && sessions_uploaded === 0`
+   （`docs/cli-contract.md` §2.11/§2.12），credits-only 运行继续算 empty；改用 §2.14
+   data-version 补偿——取「最新非空 run / 最新 `credits_ingested > 0` run / 最新
+   `token_devices.updated_at`」三者最大值，前端据此刷新。
+3. **账户快照 >100 万行**：明确返回 500（`SupabaseError`），不再截断后当成功；分页与
+   排序已按全主键稳定化。
+4. **缓存跨实例失效**：仍为进程内 per-user revision + 10s TTL。多实例部署最多 10s
+   陈旧；评估后不引入 DB 级 revision（每请求多一次查询，与缓存目的相悖），保留 TTL
+   作为上限。
+5. **keyset 分页 / 预聚合**：暂不立项，触发条件与远期 backlog「队列按月分片」一致
+   （查询延迟或数据量有明显体感再说）。
+6. **另一台采集机**：直接升 0.4.5（`npm i -g tokenusage-cli@0.4.5` → `init --yes` →
+   `reconcile --days 7`）。npm 镜像未同步时用
+   `npm_config_registry=https://registry.npmjs.org`。
 
 已关闭：0.4.3 候选（降级原因改取 `stderr` + 代码页解码、`reconcile` pending 分类，已随
 0.4.3 发版并在本机验收）；「同小时键多行递增值」观测（zcode 源库核对证明 last-wins 行即
