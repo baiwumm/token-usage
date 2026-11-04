@@ -3,6 +3,27 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## 0.4.5
+
+2026-11-04。一轮审计修复：`sync` 读队列时把契约 v2 的项目拆分行压回余量行、随后照旧推进
+上传偏移，被归因的用量会永久丢失；上传确认、Windows 隐藏启动器编码与首同步统计也各有一处
+缺陷。无契约变更，服务端无需同步升级。
+
+- **队列批次不再丢项目行**：`readQueueBatch` 的去重键原来只有 `source|model|hour`，
+  契约 v2 的拆分行（同键不同 `project_key`）会被合并成余量行并随偏移推进永久丢失；
+  现键含 `project_key`，每行独立上传。
+- **拆分行按服务端 basename 身份合并**：写出/合并项目拆分行时统一走共享的
+  `lib/project-key.js`（`basenameKey()`），与服务端请求去重口径一致；同名不同 owner 的
+  仓库不再互相覆盖。`reconcile` 对旧的 `owner/repo` 行做同样的归一，避免把正常数据报成漂移。
+- **上传确认后才推进进度**：`ingest` 需响应含 `inserted` + `skipped`、session 上传需含
+  `sessions_upserted` + `sessions_skipped`，才推进队列偏移 / watermark；未确认的 2xx
+  响应按失败处理，下次 `sync` 重传而不是静默跳数据。
+- **Windows 隐藏启动器改 UTF-16LE + BOM**：`run-sync-hidden.vbs` 按 wscript 期望的编码
+  写入，含非 ASCII 字符的安装路径不再乱码或被截断。
+- **首同步统计修正**：`init` 的首次同步统计跳过 `kind` 控制行，并把 `project_key` 纳入
+  last-wins 键，项目用量不再被余量行盖掉。
+- 回归测试：拆分行往返、basename 归一、VBS 编码、未确认 2xx 不推进偏移/watermark。
+
 ## 0.4.4
 
 2026-11-04。契约 v2 落地：小时用量桶按项目名拆行（`project_key`），项目键向上回退到真实
