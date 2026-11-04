@@ -20,7 +20,7 @@ import {
 } from "./format";
 import { SOURCE_MARKS } from "./marks";
 
-import { modelLogoFile, sourceLogoFile } from "@/lib/sources";
+import { sourceLogoFile } from "@/lib/sources";
 
 interface Palette {
   bg0: string;
@@ -147,6 +147,23 @@ function truncateByWidth(
 // §5.1: project display truncates at 24 characters with an ellipsis.
 function projectDisplay(project: string): string {
   return project.length > 24 ? `${project.slice(0, 23)}…` : project;
+}
+
+// §5.2: the subtitle carries the range for account badges; a repo badge puts
+// its uppercased project key where "ALL TIME" sits (operator call 2026-11-04)
+// and keeps the range phrase only for the 30-day window.
+function subtitleFor(data: BadgeData): string {
+  const range = data.range === "30d" ? "30 DAYS" : "ALL TIME";
+
+  if (data.scope === "repo" && data.project) {
+    const project = projectDisplay(data.project).toUpperCase();
+
+    return data.range === "30d"
+      ? `TOTAL USAGE · ${project} · ${range}`
+      : `TOTAL USAGE · ${project}`;
+  }
+
+  return `TOTAL USAGE · ${range}`;
 }
 
 interface TextOptions {
@@ -338,68 +355,63 @@ function statSlot(
   label: string,
   value: string,
   paint: Paint,
-  delay: number,
 ): string {
   return (
-    `<g>${reveal(delay)}` +
     textEl(x, 120, 10, fillAttr(paint, "muted"), label, { spacing: 1 }) +
-    textEl(x, 150, 24, fillAttr(paint, "text"), value, { weight: 700 }) +
-    "</g>"
+    textEl(x, 150, 24, fillAttr(paint, "text"), value, { weight: 700 })
   );
 }
 
-// §5.2: the bottom-right block switches on scope — user gets the TOP SOURCE
-// with a share bar, repo gets the TOP MODEL with its token count. One row only
-// (2026-11-02 operator call) and the row carries the vendor mark.
+// §5.2 (2026-11-04): both scopes show the same block — the top source with its
+// share — so a repo badge reads like an account badge (it used to switch to
+// TOP MODELS with a token count). Models stay on the public page. The bar runs
+// from the row name to the card's right edge; a fixed 72px stub left a visible
+// gap before the percentage (operator report).
+const RIGHT_EDGE = 576;
+const DETAIL_GAP = 8;
+
 function rightBlock(data: BadgeData, paint: Paint): string {
-  const header = data.scope === "user" ? "TOP SOURCES" : "TOP MODELS";
-  const source = data.scope === "user" ? data.sources[0] : undefined;
-  const model = data.scope === "repo" ? data.models[0] : undefined;
-  const name = source?.label ?? model?.label ?? "";
+  const source = data.sources[0];
+  const blockX = 452;
 
   // The header baseline matches the three left-hand stat labels (y=120) and
   // the row baseline matches their values (y=150), so the block reads as one
   // row of aligned columns (operator call 2026-11-02).
-  let out = textEl(452, 120, 10, fillAttr(paint, "muted"), header, {
+  let out = textEl(blockX, 120, 10, fillAttr(paint, "muted"), "TOP SOURCES", {
     spacing: 1,
   });
 
-  if (!name) {
-    return out + textEl(452, 150, 11, fillAttr(paint, "muted"), "—");
+  if (!source || !source.label) {
+    return out + textEl(blockX, 150, 11, fillAttr(paint, "muted"), "—");
   }
 
-  const mark = markFromFile(
-    source ? sourceLogoFile(source.key) : modelLogoFile(model?.key ?? ""),
-  );
-  const detail = source
-    ? formatBadgeShare(source.share)
-    : formatBadgeTokens(model?.tokens ?? 0);
-  const nameX = mark ? 470 : 452;
+  const mark = markFromFile(sourceLogoFile(source.key));
+  const detail = formatBadgeShare(source.share);
+  const nameX = mark ? blockX + 18 : blockX;
+  const nameMax = RIGHT_EDGE - textWidth(detail, 10) - DETAIL_GAP - nameX;
 
-  if (mark) out += drawMark(mark, 452, 140, 12, paint);
+  if (mark) out += drawMark(mark, blockX, 140, 12, paint);
   out += textEl(
     nameX,
     150,
     11,
     fillAttr(paint, "text"),
-    truncateByWidth(name, 11, mark ? 70 : 88),
+    truncateByWidth(source.label, 11, nameMax),
   );
-  out += textEl(576, 150, 10, fillAttr(paint, "muted"), detail, {
+  out += textEl(RIGHT_EDGE, 150, 10, fillAttr(paint, "muted"), detail, {
     anchor: "end",
   });
 
-  if (source) {
-    const barX = mark ? 470 : 452;
-    const barWidth = mark ? 72 : 90;
+  const barX = nameX;
+  const barWidth = RIGHT_EDGE - barX;
 
-    out += `<rect x="${barX}" y="157" width="${barWidth}" height="4" rx="2" ${fillAttr(paint, "track")}/>`;
-    const filled = Math.round(
-      barWidth * Math.min(1, Math.max(0, source.share ?? 0)),
-    );
+  out += `<rect x="${barX}" y="157" width="${barWidth}" height="4" rx="2" ${fillAttr(paint, "track")}/>`;
+  const filled = Math.round(
+    barWidth * Math.min(1, Math.max(0, source.share ?? 0)),
+  );
 
-    if (filled > 0) {
-      out += `<rect x="${barX}" y="157" width="${filled}" height="4" rx="2" ${fillAttr(paint, "accent")}><animate attributeName="width" from="0" to="${filled}" dur="1.1s" begin="0.15s" fill="freeze"/></rect>`;
-    }
+  if (filled > 0) {
+    out += `<rect x="${barX}" y="157" width="${filled}" height="4" rx="2" ${fillAttr(paint, "accent")}><animate attributeName="width" from="0" to="${filled}" dur="1.1s" begin="0.15s" fill="freeze"/></rect>`;
   }
 
   return out;
@@ -412,7 +424,7 @@ function renderPanel(
 ): string {
   const paint = paintFor(theme);
   const title = data.displayName.trim() || "AI Coding Usage";
-  const subtitle = `TOTAL USAGE · ${data.range === "30d" ? "30 DAYS" : "ALL TIME"}`;
+  const subtitle = subtitleFor(data);
   const sparkline = withSparkline
     ? sparklinePolyline(data.series, 456, 56, 120, 28, paint)
     : null;
@@ -442,37 +454,34 @@ function renderPanel(
     textEl(nameX, 64, 10, fillAttr(paint, "muted"), subtitle, {
       spacing: 1.5,
     }) +
-    (data.scope === "repo" && data.project
-      ? textEl(
-          nameX,
-          84,
-          12,
-          fillAttr(paint, "accent"),
-          projectDisplay(data.project),
-          { weight: 600 },
-        )
-      : "") +
     "</g>" +
-    productMark(460, 20, 16, paint) +
-    textEl(576, 32, 10, fillAttr(paint, "accent"), "TOKEN USAGE", {
+    // §5.2: the mark sits to the right of the two text lines and is centered
+    // on the block as a whole (2026-11-04 operator call) — its 24px box spans
+    // the name and site rows, which run y≈25–47.
+    textEl(540, 32, 10, fillAttr(paint, "accent"), "TOKEN USAGE", {
       anchor: "end",
       spacing: 2,
     }) +
-    textEl(576, 45, 9, fillAttr(paint, "muted"), PROJECT_SITE, {
+    textEl(540, 45, 9, fillAttr(paint, "muted"), PROJECT_SITE, {
       anchor: "end",
       spacing: 0.5,
     }) +
+    productMark(552, 24, 24, paint) +
     (sparkline ?? "") +
-    statSlot(24, "TOKENS", formatBadgeTokens(data.totals.tokens), paint, 0.05) +
-    statSlot(180, "COST", formatBadgeCost(data.totals.costUsd), paint, 0.1) +
+    // §5.6 (2026-11-04): all four columns share one entrance group, so they
+    // cannot drift apart in any frame — staggered groups made the TOP block
+    // sit a few pixels off from the three stat columns mid-animation.
+    `<g>${reveal(0.05)}` +
+    statSlot(24, "TOKENS", formatBadgeTokens(data.totals.tokens), paint) +
+    statSlot(180, "COST", formatBadgeCost(data.totals.costUsd), paint) +
     statSlot(
       330,
       "ACTIVE DAYS",
       formatBadgeCount(data.totals.activeDays),
       paint,
-      0.15,
     ) +
     rightBlock(data, paint) +
+    "</g>" +
     "</svg>"
   );
 }

@@ -93,16 +93,45 @@ describe.skipIf(!render)("badge svg renderer (docs/badge.md §5)", () => {
     expect(svg).toContain("token-usage.cc");
   });
 
-  it("panel (repo) switches the right block to TOP MODELS and shows the project (§5.2)", () => {
+  it("panel (repo) uses the same TOP SOURCES block and puts the uppercased project in the subtitle (§5.2)", () => {
     const { renderBadgeSvg } = unwrapSpecModule(render, "lib/badge/render");
     const svg = renderBadgeSvg(fixtureB, { style: "panel", theme: "dark" });
 
-    expect(svg).toContain("TOP MODELS");
-    expect(svg).not.toContain("TOP SOURCES");
-    expect(svg).toContain("fresh-repo");
+    expect(svg).toContain("TOP SOURCES");
+    expect(svg).not.toContain("TOP MODELS");
+    // The repo key replaces "ALL TIME" in the subtitle, uppercased.
+    expect(svg).toContain("TOTAL USAGE · FRESH-REPO");
+    expect(svg).not.toContain("ALL TIME");
+    expect(svg).not.toContain("fresh-repo");
     // Zero-session repo renders zeros — a normal badge, not a fallback (§2.3).
     expect(svg).not.toContain("NaN");
     expect(svg).not.toContain("undefined");
+  });
+
+  it("draws a repo's top source with its percentage and a bar that reaches the card edge (§5.2)", () => {
+    const { renderBadgeSvg } = unwrapSpecModule(render, "lib/badge/render");
+    const svg = renderBadgeSvg(
+      {
+        ...fixtureB,
+        totals: { tokens: 3638000000, costUsd: 249.86, activeDays: 40 },
+        sources: [
+          { key: "zcode", label: "ZCode", tokens: 2473840000, share: 0.68 },
+        ],
+        models: [
+          { key: "glm-5.3-flash", label: "GLM-5.3-Flash", tokens: 3638000000 },
+        ],
+      },
+      { style: "panel", theme: "dark" },
+    );
+
+    expect(svg).toContain("ZCode");
+    expect(svg).toContain("68%");
+    // A repo badge no longer shows the model row (§5.2).
+    expect(svg).not.toContain("GLM-5.3-Flash");
+    // Track bar ends at the 576 right edge, right under the percentage.
+    const bar = /<rect x="(\d+)" y="157" width="(\d+)"/.exec(svg);
+    expect(bar).not.toBeNull();
+    expect(Number(bar?.[1]) + Number(bar?.[2])).toBe(576);
   });
 
   it("shows a single top-source row that carries its mark (§5.2)", () => {
@@ -152,6 +181,12 @@ describe.skipIf(!render)("badge svg renderer (docs/badge.md §5)", () => {
 
     expect(svg).toContain('<animate attributeName="width"');
     expect(svg).toContain('<animateTransform attributeName="transform"');
+    // All four columns share one entrance group, so no frame can show the
+    // TOP block a few pixels off from the stat columns (§5.6).
+    const columns = svg.slice(svg.indexOf('begin="0.05s"'));
+    const group = columns.slice(0, columns.indexOf("</g>"));
+    expect(group).toContain("TOKENS");
+    expect(group).toContain("TOP SOURCES");
     expect(svg).not.toContain("<script");
   });
 
@@ -201,8 +236,8 @@ describe.skipIf(!render)("badge svg renderer (docs/badge.md §5)", () => {
       { style: "panel", theme: "dark" },
     );
 
-    expect(svg).toContain("&lt;b&gt;&amp;&quot;c");
-    expect(svg).not.toContain("<b>");
+    expect(svg).toContain("A&lt;B&gt;&amp;&quot;C");
+    expect(svg).not.toContain("<B>");
   });
 
   it("truncates project display at 24 characters with an ellipsis (§5.1)", () => {
@@ -214,7 +249,8 @@ describe.skipIf(!render)("badge svg renderer (docs/badge.md §5)", () => {
     );
 
     expect(svg).toContain("…");
-    expect(svg).not.toContain(long);
+    // Uppercased project display: 23 characters plus the ellipsis.
+    expect(svg).not.toContain("P".repeat(24));
   });
 
   it("keeps output free of scripts, external references and broken numbers (§5.1)", () => {

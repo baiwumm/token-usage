@@ -52,10 +52,9 @@ export interface BadgeCopy {
   rangeLabel: string;
   rangeAll: string;
   range30d: string;
-  scopeLabel: string;
-  scopeUser: string;
-  scopeRepo: string;
-  scopeRepoEmpty: string;
+  projectLabel: string;
+  projectAll: string;
+  projectEmpty: string;
   snippetLabel: string;
   snippetDescription: string;
   snippetSingle: string;
@@ -108,7 +107,7 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
       "活跃天数按 {timezone} 折算；每次保存会同步为当前浏览器时区。",
     previewLabel: "预览",
     previewDescription:
-      "切换风格、主题与范围，预览即时更新；未开启公开时同样可预览。",
+      "切换风格、主题、范围与仓库，预览即时更新；未选仓库即账户徽章，未开启公开时同样可预览。",
     previewAlt: "徽章预览",
     styleLabel: "风格",
     stylePanel: "面板",
@@ -121,10 +120,9 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     rangeLabel: "范围",
     rangeAll: "全部",
     range30d: "30 天",
-    scopeLabel: "对象",
-    scopeUser: "账户",
-    scopeRepo: "仓库",
-    scopeRepoEmpty: "先在上方把仓库加入白名单。",
+    projectLabel: "仓库",
+    projectAll: "全部仓库",
+    projectEmpty: "先在上方把仓库加入白名单。",
     snippetLabel: "README 片段",
     snippetDescription:
       "按当前预览参数生成。把 YOUR_BADGE_TOKEN 换成生成时保存的令牌；遗失后重置令牌即可拿到填好的新片段。",
@@ -177,7 +175,7 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
       "Active days are counted in {timezone}; each save syncs it to this browser's time zone.",
     previewLabel: "Preview",
     previewDescription:
-      "Switch style, theme and range to update the preview — it works before the badge is public too.",
+      "Switch style, theme, range and repository to update the preview — no repository means the account badge, and it works before the badge is public too.",
     previewAlt: "Badge preview",
     styleLabel: "Style",
     stylePanel: "Panel",
@@ -190,10 +188,9 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     rangeLabel: "Range",
     rangeAll: "All time",
     range30d: "30 days",
-    scopeLabel: "Subject",
-    scopeUser: "Account",
-    scopeRepo: "Repository",
-    scopeRepoEmpty: "Add a repository to the allowlist above first.",
+    projectLabel: "Repository",
+    projectAll: "All repositories",
+    projectEmpty: "Add a repository to the allowlist above first.",
     snippetLabel: "README snippet",
     snippetDescription:
       "Built from the preview settings. Replace YOUR_BADGE_TOKEN with the token you saved; if it's lost, reset the token to get a filled-in snippet.",

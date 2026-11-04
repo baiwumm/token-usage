@@ -38,29 +38,47 @@ function pick<T extends string>(
   return (allowed as readonly string[]).includes(value) ? (value as T) : null;
 }
 
+// §2.1 (2026-11-04 operator call): `project` is the switch — present renders
+// the repo badge, absent renders the account badge. The old `scope` parameter
+// is still accepted (existing README embeds) but no longer decides anything;
+// its value stays validated, and `scope=repo` without a project is still an
+// error so a stale link can never quietly turn into an account badge.
 export function parseBadgeParams(search: URLSearchParams): ParsedBadgeParams {
   const token = (search.get("token") ?? "").trim();
-  const scope = pick(search, "scope", SCOPES, "user");
   const style = pick(search, "style", STYLES, "panel");
   const theme = pick(search, "theme", THEMES, "dark");
   const range = pick(search, "range", RANGES, "all");
+  const scopeRaw = search.get("scope");
+  const scopeValid =
+    scopeRaw === null || (SCOPES as readonly string[]).includes(scopeRaw);
 
-  if (!token || !scope || !style || !theme || !range) {
+  if (!token || !style || !theme || !range || !scopeValid) {
     return { ok: false, reason: "bad_request" };
   }
 
-  let project: string | null = null;
+  const project = search.get("project") ?? "";
+  const trimmed = project.trim();
 
-  if (scope === "repo") {
-    // §2.1: repo 必填且 ≤120 字符；通过后原样透传，归一在数据层（§4.2）。
-    const raw = search.get("project") ?? "";
-    const trimmed = raw.trim();
-
-    if (!trimmed || trimmed.length > MAX_PROJECT_LENGTH) {
+  if (trimmed) {
+    // §2.1: ≤120 字符；通过后原样透传，归一在数据层（§4.2）。
+    if (trimmed.length > MAX_PROJECT_LENGTH) {
       return { ok: false, reason: "bad_request" };
     }
-    project = raw;
+
+    return {
+      ok: true,
+      token,
+      scope: "repo",
+      project,
+      style,
+      theme,
+      range,
+    };
   }
 
-  return { ok: true, token, scope, project, style, theme, range };
+  if (scopeRaw === "repo") {
+    return { ok: false, reason: "bad_request" };
+  }
+
+  return { ok: true, token, scope: "user", project: null, style, theme, range };
 }

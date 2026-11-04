@@ -140,10 +140,12 @@ describe("/api/app/badge settings additions (docs/badge.md §7.1–7.3)", () => 
       new NextRequest(`${APP_URL}?preview=1&scope=repo&project=alpha`),
     );
 
-    expect(await allowed.text()).toContain("alpha");
+    // Legacy scope=repo still works; the subtitle uppercases the project key.
+    expect(await allowed.text()).toContain("ALPHA");
 
+    // Project alone is enough for new preview URLs (§2.1, 2026-11-04).
     const outside = await GET(
-      new NextRequest(`${APP_URL}?preview=1&scope=repo&project=beta`),
+      new NextRequest(`${APP_URL}?preview=1&project=beta`),
     );
 
     expect(await outside.text()).toContain("unknown project");

@@ -62,6 +62,7 @@ describe.skipIf(!params)("badge params (docs/badge.md §2.1)", () => {
       ["style", "banner"],
       ["theme", "sepia"],
       ["range", "7d"],
+      ["scope", "team"],
     ] as const) {
       const parsed = parseBadgeParams(
         new URLSearchParams({ token: "tu_badge_x", [key]: value }),
@@ -77,7 +78,6 @@ describe.skipIf(!params)("badge params (docs/badge.md §2.1)", () => {
       parseBadgeParams(
         new URLSearchParams({
           token: "tu_badge_x",
-          scope: "user",
           style: "sparkline",
           theme: "auto",
           range: "30d",
@@ -97,7 +97,6 @@ describe.skipIf(!params)("badge params (docs/badge.md §2.1)", () => {
       parseBadgeParams(
         new URLSearchParams({
           token: "tu_badge_x",
-          scope: "repo",
           project: "token-usage",
           style: "compact",
           theme: "light",
@@ -114,7 +113,40 @@ describe.skipIf(!params)("badge params (docs/badge.md §2.1)", () => {
     });
   });
 
-  it("scope=repo requires a project value (§2.3)", () => {
+  it("selects repo scope from project alone and ignores the legacy scope value (§2.1)", () => {
+    const { parseBadgeParams } = unwrapSpecModule(params, "lib/badge/params");
+    const base = {
+      ok: true as const,
+      token: "tu_badge_x",
+      scope: "repo" as const,
+      project: "token-usage",
+      style: "panel" as const,
+      theme: "dark" as const,
+      range: "all" as const,
+    };
+
+    expect(
+      parseBadgeParams(
+        new URLSearchParams({ token: "tu_badge_x", project: "token-usage" }),
+      ),
+    ).toEqual(base);
+    // A legacy scope value cannot take the project away: project wins.
+    expect(
+      parseBadgeParams(
+        new URLSearchParams({
+          token: "tu_badge_x",
+          scope: "user",
+          project: "token-usage",
+        }),
+      ),
+    ).toEqual(base);
+    // No project (blank included) means the account badge.
+    expect(
+      parseBadgeParams(new URLSearchParams({ token: "tu_badge_x", project: "  " })),
+    ).toMatchObject({ ok: true, scope: "user", project: null });
+  });
+
+  it("legacy scope=repo without a project stays bad_request (§2.3)", () => {
     const { parseBadgeParams } = unwrapSpecModule(params, "lib/badge/params");
 
     expect(

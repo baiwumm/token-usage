@@ -244,15 +244,16 @@ describe.skipIf(!badgeRoute)("GET /api/badge (docs/badge.md §2)", () => {
 
   it("renders an allow-listed repo badge without cross-project leakage (§4.2)", async () => {
     const { GET } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
+    // §2.1 (2026-11-04): project alone selects the repo badge.
     const res = await GET(
-      new Request(`${BADGE_URL}?token=${BADGE_TOKEN}&scope=repo&project=token-usage`),
+      new Request(`${BADGE_URL}?token=${BADGE_TOKEN}&project=token-usage`),
     );
 
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe(SVG_SUCCESS_CACHE);
     const svg = await res.text();
-    expect(svg).toContain("token-usage");
-    expect(svg).toContain("TOP MODELS");
+    expect(svg).toContain("TOTAL USAGE · TOKEN-USAGE");
+    expect(svg).toContain("TOP SOURCES");
     expect(svg).not.toContain("other-repo");
   });
 

@@ -146,7 +146,6 @@ export function BadgeCard() {
     style: "panel",
     theme: "dark",
     range: "all",
-    scope: "user",
     project: null,
   });
 
@@ -252,11 +251,10 @@ export function BadgeCard() {
       applyConfig(config);
       setDraftProjects(config.allowedProjects);
       // A preview pointing at a project that just left the allowlist falls
-      // back to the account badge.
+      // back to the account badge (no project = all, §2.1).
       setView((current) =>
-        current.scope === "repo" &&
-        (!current.project || !config.allowedProjects.includes(current.project))
-          ? { ...current, scope: "user", project: null }
+        current.project && !config.allowedProjects.includes(current.project)
+          ? { ...current, project: null }
           : current,
       );
       setPreviewVersion((value) => value + 1);
@@ -470,45 +468,30 @@ export function BadgeCard() {
                 setView((current) => ({ ...current, range }))
               }
             />
-            <OptionGroup
-              label={copy.scopeLabel}
-              options={[
-                { id: "user", label: copy.scopeUser },
-                {
-                  id: "repo",
-                  label: copy.scopeRepo,
-                  isDisabled: settings.allowedProjects.length === 0,
-                },
-              ]}
-              value={view.scope}
-              onChange={(scope) =>
-                setView((current) => ({
-                  ...current,
-                  scope,
-                  project:
-                    scope === "repo"
-                      ? (current.project ?? settings.allowedProjects[0] ?? null)
-                      : null,
-                }))
-              }
-            />
-            {view.scope === "repo" ? (
+            {/* Repository replaces the old account/repo toggle (§2.1): an
+                empty value is the account badge, a picked key is that repo,
+                and Select.ClearButton returns to the account badge. */}
+            <div className="flex flex-col gap-1">
+              <Typography color="muted" type="body-xs">
+                {copy.projectLabel}
+              </Typography>
               <Select
-                aria-label={copy.scopeRepo}
+                aria-label={copy.projectLabel}
                 className="w-48"
+                isDisabled={settings.allowedProjects.length === 0}
+                placeholder={copy.projectAll}
                 value={view.project}
                 variant="secondary"
                 onChange={(key) => {
-                  if (key != null) {
-                    setView((current) => ({
-                      ...current,
-                      project: String(key),
-                    }));
-                  }
+                  setView((current) => ({
+                    ...current,
+                    project: key == null ? null : String(key),
+                  }));
                 }}
               >
                 <Select.Trigger>
                   <Select.Value />
+                  <Select.ClearButton />
                   <Select.Indicator />
                 </Select.Trigger>
                 <Select.Popover>
@@ -521,11 +504,11 @@ export function BadgeCard() {
                   </ListBox>
                 </Select.Popover>
               </Select>
-            ) : null}
+            </div>
           </div>
           {settings.allowedProjects.length === 0 ? (
             <Description className="text-muted text-xs">
-              {copy.scopeRepoEmpty}
+              {copy.projectEmpty}
             </Description>
           ) : null}
           {/* Wide panels scroll inside the card, never the page (ui-spec).

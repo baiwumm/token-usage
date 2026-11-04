@@ -40,8 +40,8 @@ JSON）永不包含 session 明细、提示词、正文、绝对路径、email�
 | 参数 | 必填 | 取值 | 默认 | 说明 |
 |---|---|---|---|---|
 | `token` | 是 | 非空字符串 | — | 公开徽章令牌（§3.2）；只校验非空，格式与有效性交给哈希查库 |
-| `scope` | 否 | `user` \| `repo` | `user` | |
-| `project` | `scope=repo` 时必填 | 白名单内 project_key（URL 编码） | — | 长度 1–120；解析层不归一，归一在数据层（§4.2） |
+| `project` | 否 | 白名单内 project_key（URL 编码） | — | 长度 1–120；**有则渲染仓库徽章，无则渲染账户徽章**（2026-11-04 操作者裁定：project 即开关）；解析层不归一，归一在数据层（§4.2） |
+| `scope` | 否 | `user` \| `repo` | — | **遗留参数**（2026-11-04 起不再决定对象，仅为兼容既有嵌入保留）：值仍校验；`scope=repo` 而缺 `project` 仍按 bad request，避免旧链接静默变成账户徽章；`scope=user&project=…` 以 project 为准 |
 | `style` | 否 | `panel` \| `compact` \| `sparkline` | `panel` | |
 | `theme` | 否 | `dark` \| `light` \| `auto` | `dark` | |
 | `range` | 否 | `all` \| `30d` | `all` | |
@@ -63,7 +63,7 @@ JSON）永不包含 session 明细、提示词、正文、绝对路径、email�
 | 令牌查无 / 哈希不匹配 | `badge unavailable` |
 | `enabled=false` | `badge disabled` |
 | `scope=repo` 且 project 不在 `allowed_projects` | `unknown project` |
-| 参数非法（未知 style/theme/range、repo 缺 project、project 空或超 120 字符、token 缺失） | `bad request` |
+| 参数非法（未知 style/theme/range/scope、`project` 超 120 字符、token 缺失、遗留 `scope=repo` 缺 `project`） | `bad request` |
 
 注意：`scope=repo` 且白名单命中但该仓库暂无会话**不是降级**——正常渲染，计数为 0
 （见附录 A fixture B）。
@@ -216,23 +216,32 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   未上传则不画任何占位圆（首字母圆已按 2026-11-02 操作者裁定取消），标题回到卡片左边距
   x=24。有头像时标题 x=74、最大宽 360；无头像时最大宽 410，超出以省略号收口。标题
   （`displayName`）空串回退 `AI Coding Usage`（**绝不**回退 email）；标题下副标题
-  `TOTAL USAGE · ALL TIME / 30 DAYS`；repo 徽章在副标题下加项目名。头像下方**不放**品牌名
+  `TOTAL USAGE · ALL TIME / 30 DAYS`。repo 徽章的副标题把仓库名**转大写**顶替
+  `ALL TIME`（`TOTAL USAGE · BETTER-ADMIN`，2026-11-04 操作者裁定，原「副标题下另起
+  一行项目名」作废）；`range=30d` 时追加 ` · 30 DAYS`。头像下方**不放**品牌名
   （品牌只在右上角出现）
 - 左下三列：`TOKENS` / `COST` / `ACTIVE DAYS`（标签 10px 大写、55% 透明度；
   数值 24px 700）
-- 右上：**品牌标 + 品牌名**——品牌标 16px，取对应主题的资产：light 用 `public/logo.svg`
-  （黑底白字形），dark 用 `public/logo-dark.svg`（白底黑字，2026-11-02：原实现用 accent 描
-  单色字形，在深色卡上几乎不可见）；`theme=auto` 同时内嵌两版，靠 `.c-lg-l` / `.c-lg-d`
-  类与同一 `prefers-color-scheme` 媒体查询切换。品牌名 `TOKEN USAGE`（10px 大写、字距 2、
-  右对齐）；品牌名下方一行项目站点 `token-usage.cc`（9px、muted、字距 0.5、右对齐，
-  2026-11-03 操作者裁定）。站点是**固定文本**，不取请求 host：自部署域名各异，而 host
+- 右上：**品牌名 + 品牌标（标在右）**——品牌名 `TOKEN USAGE`（10px 大写、字距 2、
+  右对齐，右边界 x=540）在上，项目站点 `token-usage.cc`（9px、muted、字距 0.5、右对齐，
+  2026-11-03 操作者裁定）在下（基线 32 / 45）；**品牌标在右侧**（x=552、y=24、24px，
+  右边缘 = 24px 页边），其方块高度覆盖两行文本（约 y25–47）并**按两行整体垂直居中**，
+  不与品牌名单独对齐（2026-11-04 操作者裁定，原「标在左、16px、与品牌名同行」作废）。
+  品牌标取对应主题的资产：light 用 `public/logo.svg`（黑底白字形），dark 用
+  `public/logo-dark.svg`（白底黑字，2026-11-02：原实现用 accent 描单色字形，在深色卡上
+  几乎不可见）；`theme=auto` 同时内嵌两版，靠 `.c-lg-l` / `.c-lg-d` 类与同一
+  `prefers-color-scheme` 媒体查询切换。站点是**固定文本**，不取请求 host：自部署域名各异，而 host
   进渲染会破坏字节级确定性（§5.1）；compact 单行版不画（§5.3）
-- 右下区块**按 scope 切换**：`scope=user` 显示 `TOP SOURCES` **前 1 行**（来源标 12px +
-  来源名 + 占比 + 占比条 72×4 圆角）；`scope=repo` 显示 `TOP MODELS` **前 1 行**
-  （模型标 + 模型名 + token 数）。无数据时显示 `—`（2026-11-02 操作者裁定：2 行改 1 行并补标；
-  标来自 `lib/badge/marks.ts`，由 `public/brand-logos/*.svg` 生成单色几何，随主题取 text 色）
-- **列对齐**（2026-11-02）：`TOP SOURCES` / `TOP MODELS` 标题基线 = 左侧三个标签基线
-  （y=120）；行名基线 = 三个数值基线（y=150），占比条 y=157——右侧不再自成一个错位的块
+- 右下区块**两个 scope 同款**（2026-11-04 操作者裁定，原「repo 显示 TOP MODELS + token 数」
+  作废）：固定 `TOP SOURCES` **前 1 行**——来源标 12px + 来源名 + 占比 + 占比条。repo 的来源取
+  `token_sessions` 的 `source` 聚合（数据层两个 scope 都已有 `sources`，只是范围不同），模型
+  TOP 只出现在公开页（§4.1）。占比条从行名起点拉到卡片右边界 x=576（宽 = 576 − 起点；
+  2026-11-04：原固定 72px 与右侧百分比之间空出一截），高 4、圆角 2；无数据时显示 `—`
+  （2026-11-02 操作者裁定：2 行改 1 行并补标；标来自 `lib/badge/marks.ts`，由
+  `public/brand-logos/*.svg` 生成单色几何，随主题取 text 色）
+- **列对齐**（2026-11-02 / 2026-11-04）：`TOP SOURCES` 标题基线 = 左侧三个标签基线
+  （y=120），左边界 x=452（两个 scope 统一）；行名基线 = 三个数值基线（y=150），占比条
+  y=157；行名宽 = `右边界 576 − 百分比实测宽 − 8px 间隙 − 行名起点`，不写死
 - **头像加载**（2026-11-02）：`lib/badge/data.ts` 用 service-role 读 `auth.users` 的
   `user_metadata.avatar_url`，仅允许本部署 host 且路径落于 `/storage/v1/object/public/avatars/`
   的地址（防 SSRF），类型限 PNG/JPEG/WebP、≤512 KB，内联为 `data:` URI；单飞缓存 5 分钟，
@@ -278,8 +287,10 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 - 只用 **SMIL**（`<animate>` / `<animateTransform>`），无脚本、无 CSS 动画：`<img>` 里的
   SVG 会播放 SMIL，而脚本在静态图片模式下被禁用
-- 三处：标题区（头像 + 名称 + 副标题）整体上移 4px 归位（0.9s）；三个指标列各上移 5px
-  （延迟 0.05 / 0.1 / 0.15s）；来源占比条宽度 0 → 实际值（1.1s，延迟 0.15s）
+- 两处（2026-11-04 修订）：标题区（头像 + 名称 + 副标题）整体上移 4px 归位（0.9s）；
+  **四个指标列共用一个 `<g>` + 一次 `reveal(0.05)`** 整体上移 5px（原按
+  0.05/0.1/0.15/0.2s 错峰，动画途中右上块与前三列会差几像素，看起来未顶对齐）；来源
+  占比条宽度 0 → 实际值（1.1s，延迟 0.15s）
 - 只用 `translate` 与 `width`，**不用 opacity**：静态渲染器（邮件、部分客户端）在 t=0
   冻结时仍能看到全部内容；`fill="freeze"` 保证终态
 - 不读 `prefers-reduced-motion`（`<img>` 语境拿不到媒体查询上下文），因此幅度刻意克制
@@ -322,13 +333,16 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 - 开关；令牌生成/重置（二次确认 + 明文只显示一次 + 复制）；白名单多选（数据源：
   §7.1 `knownProjects`——Sessions 已展示数据的投影，白名单里已不在会话中的项仍列出以便移除）；
   时区只读展示（浏览器时区，保存时随 PUT）
+- 预览筛选（§7.3）：风格 / 主题 / 范围 / **仓库**；不再有「对象」开关——仓库下拉默认空
+  = 账户徽章，选中 = 该仓库，清空（`Select.ClearButton`）= 回到账户（2026-11-04 操作者裁定，
+  与 §2.1 的 project 开关同构）
 - 细则遵循 `docs/ui-spec.md`（HeroUI 复合结构 + 语义文本组件）；随 P3 在 ui-spec
   增补对应小节
 
 ### §7.3 预览
 
 - 卡内实时 `<img src="/api/app/badge?preview=1&…">`（附 cache-busting 查询参数绕浏览器
-  缓存），风格/主题/范围/对象切换即换参。2026-11-02 P3 实施修订：原写 `/api/badge?token=…`，
+  缓存），风格/主题/范围/仓库切换即换参（仓库下拉的空值 = 账户徽章）。2026-11-02 P3 实施修订：原写 `/api/badge?token=…`，
   但明文令牌只在生成时出现一次，页面刷新后无从构造公开 URL，故改用会话鉴权预览分支（§7.1）
 - 换参后到新图解码完成之间，预览容器盖一层半透明遮罩 + `Spinner`（共享
   `PanelOverlay`，容器 `aria-busy`）：切换时不会先看到上一张图（2026-11-03 操作者裁定）。
@@ -361,7 +375,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 | 文件 | 覆盖 |
 |---|---|
 | `tests/unit/badge-params.test.ts` | §2.1 参数默认值/非法值矩阵、§2.3 bad_request 分类 |
-| `tests/unit/badge-svg.test.ts` | §5 渲染器：确定性、XML 转义、截断、隐私不变量（无 script/外链/NaN）、scope 切换区块、auto 媒体查询、零态渲染、品牌区站点行存在且 compact 不含（P6）；字节级快照（`toMatchSnapshot`）在 P2 实现时随操作者过目落盘 |
+| `tests/unit/badge-svg.test.ts` | §5 渲染器：确定性、XML 转义、截断、隐私不变量（无 script/外链/NaN）、两个 scope 共用区块、auto 媒体查询、零态渲染、品牌区站点行存在且 compact 不含（P6）；字节级快照（`toMatchSnapshot`）在 P2 实现时随操作者过目落盘 |
 | `tests/contract/badge.test.ts` | §2.2 响应头矩阵、§2.3 降级矩阵、方法守卫、隐私清扫（响应不含令牌/哈希/user_id）、§7.1 配置端点守卫与形状、两个 scope 都内联头像（P6） |
 
 - canonical fixtures（附录 A）是单测与实现的共同输入；契约测试经 FakeSupabase
@@ -379,6 +393,22 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   `tests/unit/badge-svg.test.ts` 新增「单行 + 标」「头像内联 / 无头像不画」「品牌标随主题」
   「SMIL 无脚本」用例，字节级快照随实现重录（操operator 过目）；compact 品牌段同期改为
   黑底白字大写 + 品牌标（§5.3）
+- P7 增量（2026-11-04，操作者裁定）：⑧ repo 徽章副标题改为大写仓库名替换 `ALL TIME`
+  （§5.2，`TOTAL USAGE · BETTER-ADMIN`；30d 追加 ` · 30 DAYS`），删掉原副标题下
+  单独一行的项目名以避免重复；`tests/unit/badge-svg.test.ts` 的 repo/转义/截断三例同步
+  改为大写期望；⑨ 品牌区改为「品牌名 + 站点两行在左、品牌标 24px 在右并跨两行垂直居中」
+  （§5.2），fixture A 面板快照随之重录（操作者过目）——该条取代⑧「fixture A 输出不变」
+  的说法，account 副标题本身仍不变；⑩ `TOP MODELS` 块左边界 452→420 并按右侧 token 数
+  实测宽度给行名分配空间（§5.2），新增「完整模型名不被截断」用例；⑪ 右上 TOP 块改为
+  第四个入场列（共用 `reveal(0.2)` 上移 5px，§5.6），修掉静态渲染里它比前三列高 5px 的
+  伪错位；十/⑪ 使 fixture A 面板快照重录（操作者过目）；⑫ 右下块两 scope 统一为
+  `TOP SOURCES` + 占比条 + 百分比（repo 不再显示 TOP MODELS）、占比条拉满到 x=576、
+  四列合并为同一入场组（§5.2 / §5.6），fixture A 面板快照再次重录；⑬ `/api/badge` 与
+  `/api/app/badge?preview=1` 的参数层改为 **project 即开关**（有 `project` → 仓库，无 → 账户），
+  `scope` 降为遗留参数（值仍校验，`scope=repo` 缺 project 仍 bad request）；`lib/badge/api.ts`
+  的 `badgeQuery` 不再输出 `scope`，README 片段与预览 URL 随之变短（§2.1）；⑭ 设置页预览
+  去掉「对象」开关（`BadgeView` 去 `scope`），改为**仓库下拉**：默认空 = 账户徽章、选中 =
+  该仓库、`Select.ClearButton` 清空回全部（§7.2 / §7.3）
 - P6 增量（2026-11-03，操作者裁定）：⑤ panel 品牌区加项目站点行、sparkline 下移 8px
   （§5.2 / §5.4），`tests/unit/badge-svg.test.ts` 断言站点行存在且 compact 不含，字节级
   快照重录（操作者过目）；⑥ 修复账户徽章不显示头像（§5.2，账户分支漏传

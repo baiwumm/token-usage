@@ -39,8 +39,8 @@
 <p align="center">
   <a href="https://token-usage.baiwumm.com/u/tu_badge_JTYz-Anbuv5AfcW8rOaoNNeB472Dqsw-">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://token-usage.baiwumm.com/api/badge?token=tu_badge_JTYz-Anbuv5AfcW8rOaoNNeB472Dqsw-&style=sparkline&theme=dark">
-      <img src="https://token-usage.baiwumm.com/api/badge?token=tu_badge_JTYz-Anbuv5AfcW8rOaoNNeB472Dqsw-&style=sparkline&theme=light" alt="Token Usage badge" width="600">
+      <source media="(prefers-color-scheme: dark)" srcset="https://token-usage.baiwumm.com/api/badge?token=tu_badge_JTYz-Anbuv5AfcW8rOaoNNeB472Dqsw-&style=sparkline&theme=dark&project=token-usage">
+      <img src="https://token-usage.baiwumm.com/api/badge?token=tu_badge_JTYz-Anbuv5AfcW8rOaoNNeB472Dqsw-&style=sparkline&theme=light&project=token-usage" alt="Token Usage badge" width="600">
     </picture>
   </a>
   <br />

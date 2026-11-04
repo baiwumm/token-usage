@@ -75,7 +75,7 @@ export type BadgeView = {
   style: BadgeStyle;
   theme: BadgeTheme;
   range: BadgeRange;
-  scope: "user" | "repo";
+  /** null → account badge; a project key → that repository (§2.1). */
   project: string | null;
 };
 
@@ -87,10 +87,9 @@ export function badgeQuery(view: BadgeView): URLSearchParams {
   query.set("style", view.style);
   query.set("theme", view.theme);
   if (view.range !== "all") query.set("range", view.range);
-  if (view.scope === "repo" && view.project) {
-    query.set("scope", "repo");
-    query.set("project", view.project);
-  }
+  // §2.1 (2026-11-04): the project alone selects the repo badge — `scope` is a
+  // legacy parameter the generator no longer emits.
+  if (view.project) query.set("project", view.project);
 
   return query;
 }
