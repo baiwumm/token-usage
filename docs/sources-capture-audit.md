@@ -37,7 +37,7 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 |---|---|
 | 凭据 | `%APPDATA%\Cursor\User\globalStorage\state.vscdb` → ItemTable 行 `cursorAuth/accessToken`（JWT）；userId 候选 **JWT `sub` 优先**，`~/.cursor/cli-config.json` 的 `authInfo.authId` 兜底，并按候选顺序重试 401（`packages/cli/src/lib/cursor-config.js` `collectCursorSessionUserIds` / `extractCursorAuth`） |
 | 取数 | `GET https://cursor.com/api/dashboard/export-usage-events-csv?strategy=tokens`，Cookie `WorkosCursorSessionToken=<userId>%3A%3A<JWT>` + Referer 伪装（`cursor-config.js` `fetchCursorUsageCsv`） |
-| 数据形态 | **逐事件 CSV：各 token 列 + 真实 Cost（USD）**——全仓库唯一 `reported-first`（真实成本优先）来源（`parseCursorCsv` / `normalizeCursorUsage`）。准入按 **input / cache write / cache read / output 四个分量**判断，cache-only 行不再因 `Total Tokens=0` 被丢；included 请求也计 token |
+| 数据形态 | **逐事件 CSV：各 token 列 + 厂商 Cost（USD）**。准入按 **input / cache write / cache read / output 四个分量**判断，cache-only 行不再因 `Total Tokens=0` 被丢；included 请求也计 token。0-token request-only 行**刻意不入库**（2026-11-05 A8 决策：会凭空造出活跃日并把 bot/automation 算成对话）。注意：Cost 列虽被 `parseCursorCsv` 解析，但 `normalizeCursorUsage` 不产出成本、`parseCursorApiIncremental` 不写 `total_cost_usd`，因此成本实际仍按「token × 定价」估算——旧版文档误写为 reported-first，2026-11-05 校正（真实成本接线见 `docs/sources-capture-plan.md` A10） |
 | 摄取路径 | `parseCursorApiIncremental`（`rollout.js`）：整份 CSV 当权威，从最早记录起清零重灌，走**普通小时桶**（cursor-status 列在 `lib/usage-limits.js`，仅 status） |
 | "账户级"语义 | 数据是账号维度而非设备维度：① 跨设备行级 MAX 去重（`apps/web/src/lib/account/usage.ts:69-83` `dedupeCursorRows`；cursor 无稳定 session id，`packages/cli/src/lib/account-usage-dedup.js:11-13`）；② Sessions 页永久排除：`token_sessions` CHECK `lower(source) not in ('cursor','trae-cn')`（`supabase/migrations/20261025000000_token_sessions.sql:45-46`，注释 "account-level sources; Sessions is device-level only"）+ 上传两端跳过（CLI `session-upload.js:25,109`、服务端 `apps/web/src/lib/ingest/route.ts:130-151`、`normalize.ts:177-179`） |
 | 与 trae-cn 的区别 | **`account_session_state` 队列记录只有 trae-cn 发**（`appendTraeCnSessionStates` `rollout.js:23634-23662`）；服务端 `normalizeSessionState` 硬编码只收 `source === "trae-cn"`（`normalize.ts:115`）。cursor 不发状态记录 |
@@ -77,6 +77,8 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 - **2026-10-31**：积分不换 token——沿用 `rollout.js:6785-6793` 既有决策，见 §2 铁律 1。
 - **2026-10-31**：Trae CN 本地库数据并入 `source: "trae"`（展示层 canonical 已合并 `trae-cn|trae→trae`，见 `apps/web/src/lib/sources.ts`；`trae-cn` id 保留给账户级 API 源，且 `token_sessions` CHECK 排除它）。
 - **2026-10-31**：credits 是独立维度，落库为独立列；credits 为浮点积分（本机样本 0.642/条），DB 列用 `numeric` 不用 bigint。
+- **2026-11-05**：Cursor 0-token request-only 行不采纳（A8）——活跃天数由小时桶覆盖的天数推导，0-token 行会造出活跃日并把自动化请求算成对话；cache-only 行仍准入（token 非零）。
+- **2026-11-05**：Qoder Desktop 0.4.x 限额改由本机 `main.log` 的 `[Auth] [AccountUsage]` 摘要兜底（A9），快照带自身观测时间作为 provenance；仍属 status/限额面，不落 token 表，也不改契约。
 
 ## 8. 证据索引
 
@@ -91,5 +93,5 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 | DB 约束 | `supabase/migrations/20261024000000_token_core_tables.sql:91-116`（hourly）、`:118-145`（account_session_states）；`20261025000000_token_sessions.sql:45-46`（CHECK） |
 | kiro 估算 / credits sidecar | `rollout.js:8497,8600-8603,8832-8849,9034+` |
 | workbuddy SQLite 忽略 | `rollout.js:11018-11023,11141,11770` |
-| 云端限额面板（16 家） | `packages/cli/src/lib/usage-limits.js:4003-4213` 及 qoder-limits / qoder-cn-cli-limits / grok-limits / zcode-limits 等 |
+| 云端限额面板（16 家） | `packages/cli/src/lib/usage-limits.js:4003-4213` 及 qoder-limits（含 Desktop 0.4.x `main.log` 的 `[Auth] [AccountUsage]` 摘要扫描 + provenance，2026-11-05）/ qoder-cn-cli-limits / grok-limits / zcode-limits 等 |
 | 本机 baseline（2026-10-31） | qoder-cn：38 JSONL / 8397 usage 行 100% credits-only（≈0.64/条）、队列 conv=3146 token=0；Trae CN 库 17/18 行 token_usage（10-26~28，deepseek-v4.1-flash）；Qoder legacy 停写 2026-02-02；队列现有 source：zcode(331)/dsh(89)/opencode(56)/workbuddy(50)/codex(25)/qoder(21)/qoder-cn(14)/pi 系(10)/zed/minimax-code |

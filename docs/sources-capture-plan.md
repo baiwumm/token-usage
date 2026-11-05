@@ -144,10 +144,23 @@ P1 只覆盖小时桶；本批把积分带到会话粒度与采集运行记录�
 - [x] A6 **Trae CN app dirs**：`["TRAE SOLO CN", "Trae CN"]`，优先已安装目录。
 - [x] A7 **文档漂移**：`source-metadata.js` 引用改为 `session-upload.js` 的
   `ACCOUNT_LEVEL_SOURCES`（该文件为退役态，packaging 测试断言保持删除）。
-- [ ] A8（未做，待操作者决定）**Cursor 0-token request-only 行**：保留会把 bot/automation
-  计入 `conversations`，可能抬高活跃天数；本批只修 cache-only，request-only 暂不入库。
-- [ ] A9（未做，面板项）**Qoder Desktop 0.4.x 限额**：上游扫 `main.log` 的
-  `[Auth] [AccountUsage]` + provenance；仅影响限额面板，不影响 token 采集，留 backlog。
+- [x] A8 **Cursor 0-token request-only 行：决定不采纳**（2026-11-05，操作者授权按建议执行）：
+  上游在行携带 model 时准入并计 `conversation_count`，配套的是云端请求留存（本项目没有）；本项目的
+  活跃天数由小时桶覆盖到的天数推导，0-token 行会凭空造出活跃日，并把 bot/automation 请求算成对话。
+  准入保持四分量判断，决策注释就近留在 `cursor-config.js` 的 `hasTokens` 处。
+- [x] A9 **Qoder Desktop 0.4.x 限额（仅限额面板，2026-11-05 已实现）**：`qoder-limits.js`
+  增加 `main.log` 的 `[Auth] [AccountUsage]` `qoderUsage` 摘要扫描——bundle-id 目录
+  （`com.qoder.app.stable` / `com.qodercn.app.stable`）与旧 `Qoder[CN]` 布局同时发现；
+  `main.log` / `renderer.log` 分开排序、单次探测 24 MB 预算、单文件逆向 8 MB 分块（512 KB 块 +
+  64 KB 重叠）扫描；只认 7 天内、跨文件按行时间戳取最新快照；`cached_at` 记录快照观测时间
+  （行时间戳，缺失回落文件 mtime），缓存写入保留该时间，避免把旧配额当新鲜值；`userType` 的
+  `invalid` 视为无 `plan_label`；百分比由配额数字推导（OpenAPI 返回分数、桌面端返回百分数，
+  混合标度不可信）。零契约 / 零 DB / 零 token 采集改动。
+- [ ] A10（backlog，仅文档校正已做）**Cursor CSV 的 Cost 列未被使用**：`parseCursorCsv` 解析了
+  厂商 Cost，但 `normalizeCursorUsage` 不产出成本、`parseCursorApiIncremental` 不写
+  `total_cost_usd`，因此 Cursor 成本实际与其他来源一样是「按 token × 定价」估算。本次只校正
+  `docs/sources-capture-audit.md` §3 的 reported-first 表述；是否接线真实成本需单独拍板
+  （涉及队列/云端口径与历史重算）。
 
 验收线：新增 3 个解析器 fixture 单测；`pnpm --filter tokenusage-cli test` 与 `pnpm verify` 全绿；
 本机 sync 后 Cursor（若安装）与 qoder-cn 队列行 token/credits 与解析结果一致。

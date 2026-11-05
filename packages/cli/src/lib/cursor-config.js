@@ -585,7 +585,12 @@ function parseCursorCsv(csvText) {
     // column) so a cache-read-only or cache-write-only row survives even when
     // Cursor's Total disagrees — normalizeCursorUsage and the downstream
     // isAllZeroUsage gate read these same component fields. Rows with no
-    // token component at all are placeholders and stay dropped.
+    // token component at all stay dropped on purpose (A8 decision,
+    // 2026-11-05): a 0-token request-only row would add a conversation but no
+    // tokens, and the dashboard derives active days from day buckets, so
+    // admitting them invents active days and counts bot/automation traffic as
+    // conversations. Upstream keeps them to pair with its cloud-side request
+    // retention, which this project does not have.
     const hasTokens =
       record.inputTokens > 0 ||
       record.cacheWriteTokens > 0 ||
