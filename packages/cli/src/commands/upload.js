@@ -18,6 +18,8 @@ const path = require("node:path");
 const fs = require("node:fs/promises");
 
 const { resolveTrackerPaths } = require("../lib/tracker-paths");
+const { formatDeviceLine } = require("../lib/progress");
+const { buildDeviceIdentity } = require("../lib/device-identity");
 const { readJson } = require("../lib/fs");
 const { cloudUsageResetBlocksUpload } = require("../lib/cloud-usage-reset");
 const { compactPendingQueue } = require("../lib/upload-queue");
@@ -134,9 +136,11 @@ async function cmdUpload(argv, options = {}) {
   process.stdout.write(
     [
       "Upload complete.",
+      formatDeviceLine(buildDeviceIdentity({ config, hostname: os.hostname() })),
       `- Requests: ${result.batches}`,
       `- Rows inserted: ${result.inserted.toLocaleString("en-US")} (skipped ${result.skipped.toLocaleString("en-US")})`,
       `- Tokens in this upload: ${result.tokens.toLocaleString("en-US")}`,
+      result.credits > 0 ? `- Credits in this upload: ${result.credits.toLocaleString("en-US")}` : null,
       `- Pending bytes: ${beforeBytes} → ${afterBytes}`,
       afterBytes > 0 ? "- Backlog remains; run `tokenusage upload --drain` or retry later." : null,
       "",

@@ -68,9 +68,38 @@ function formatBytes(bytes) {
   return `${fixed} ${units[i]}`;
 }
 
+function formatDuration(ms) {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n < 0) return "0s";
+  if (n < 1) return "0s";
+  if (n < 1000) return `${Math.round(n)}ms`;
+  const seconds = n / 1000;
+  if (seconds < 60) return `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${String(Math.round(seconds - minutes * 60)).padStart(2, "0")}s`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${String(minutes - hours * 60).padStart(2, "0")}m`;
+}
+
+/**
+ * The one line that says which collector machine produced this output.
+ *
+ * One account has two collector machines, and command output gets pasted into
+ * release checklists and issue trackers. Without the identity, "the machine"
+ * is ambiguous — the device name is the cloud's own name for it
+ * (docs/cli-contract.md §2.2), so it matches the dashboard device card.
+ */
+function formatDeviceLine(identity, { label = "Device", indent = "- " } = {}) {
+  const name = identity?.name || "unknown machine";
+  const id = identity?.device_id;
+  return `${indent}${label}: ${name}${id ? ` (id ${id})` : " (not paired)"}`;
+}
+
 module.exports = {
   createProgress,
   renderBar,
   formatNumber,
   formatBytes,
+  formatDuration,
+  formatDeviceLine,
 };

@@ -158,7 +158,8 @@ const {
   resolveZcodeInstallPaths,
 } = require("../lib/rollout");
 const { computeClaudeGroundTruthBuckets } = require("../lib/claude-categorizer");
-const { createProgress, renderBar, formatNumber, formatBytes } = require("../lib/progress");
+const { createProgress, renderBar, formatNumber, formatBytes, formatDuration, formatDeviceLine } = require("../lib/progress");
+const { buildDeviceIdentity } = require("../lib/device-identity");
 const {
   DEFAULTS: AUTO_UPLOAD_DEFAULTS,
   normalizeState: normalizeUploadState,
@@ -572,6 +573,58 @@ async function clearSyncSkip(trackerDir) {
   }
 }
 
+/**
+ * The human summary of one sync run.
+ *
+ * Pure on purpose: the summary is what ends up pasted into runbooks and issue
+ * trackers, so it has to state WHICH machine ran, how much was uploaded (in
+ * tokens, not just rows), how many sessions moved, what is still pending and
+ * how long it took. Extracted from cmdSync so it can be unit-tested.
+ */
+function buildSyncSummaryLines({
+  deviceIdentity = null,
+  totalParsed = 0,
+  totalBuckets = 0,
+  uploadResult = {},
+  sessionUploadSummary = null,
+  hasDeviceToken = false,
+  pendingBytes = 0,
+  drain = false,
+  durationMs = 0,
+  uploadError = null,
+  warning = null,
+} = {}) {
+  const uploadedTokens = Number(uploadResult.tokens || 0);
+  const uploadedCredits = Number(uploadResult.credits || 0);
+  const inserted = Number(uploadResult.inserted || 0);
+  const rowWord = inserted === 1 ? "row" : "rows";
+  const lines = ["Sync finished:"];
+  if (deviceIdentity) lines.push(formatDeviceLine(deviceIdentity));
+  lines.push(
+    `- Parsed files: ${formatNumber(totalParsed)}`,
+    `- New 30-min buckets queued: ${formatNumber(totalBuckets)}`,
+    hasDeviceToken
+      ? `- Uploaded: ${formatNumber(inserted)} ${rowWord} (${formatNumber(uploadedTokens)} tokens), ${formatNumber(uploadResult.skipped)} skipped`
+      : "- Uploaded: skipped (no device token)",
+  );
+  if (hasDeviceToken && uploadedCredits > 0) {
+    lines.push(`- Credits: ${formatNumber(uploadedCredits)}`);
+  }
+  if (sessionUploadSummary) {
+    lines.push(
+      `- Sessions: ${formatNumber(sessionUploadSummary.uploaded)}/${formatNumber(sessionUploadSummary.pending)} uploaded (upserted ${formatNumber(sessionUploadSummary.upserted)}, skipped ${formatNumber(sessionUploadSummary.skipped)})`,
+    );
+  }
+  if (hasDeviceToken && pendingBytes > 0 && !drain) {
+    lines.push(`- Remaining: ${formatBytes(pendingBytes)} pending (run sync again, or use --drain)`);
+  }
+  lines.push(`- Duration: ${formatDuration(durationMs)}`);
+  if (uploadError) lines.push(`- Upload error: ${uploadError.message || uploadError}`);
+  if (warning) lines.push(`- Warning: ${warning}`);
+  lines.push("");
+  return lines;
+}
+
 async function cmdSync(argv, context = {}) {
   context = context && typeof context === "object" ? context : {};
   const opts = parseArgs(argv);
@@ -597,6 +650,8 @@ async function cmdSync(argv, context = {}) {
   const syncDiagnostics = diagnostics && typeof diagnostics === "object" ? diagnostics : null;
   const home = context.home || os.homedir();
   const trackerDir = context.trackerDataDir || (await resolveTrackerPaths({ home })).trackerDir;
+  // Wall clock for the run summary (the §2.11 run record keeps its own).
+  const syncStartedAtMs = Date.now();
   // Collection pause (0.2.0): auto-flavored runs exit silently — no lock, no
   // log line, no run record. A manual sync is the user's explicit request
   // and runs regardless of the flag.
@@ -3641,6 +3696,9 @@ async function cmdSync(argv, context = {}) {
     let uploadAttempted = false;
     let uploadError = null;
     let autoUploadDecision = null;
+    // Session upload counters, folded into the final summary instead of being
+    // printed on their own line before it.
+    let sessionUploadSummary = null;
 
     if (canUpload() && (opts.auto || opts.publishAccount) && runtime.deviceToken && runtime.baseUrl &&
         (!isBackgroundLightweightSync || opts.publishAccount)) {
@@ -3831,17 +3889,21 @@ async function cmdSync(argv, context = {}) {
           canUpload,
         });
         if (result.pending > 0) {
-          const sessionSuffix =
-            result.upserted || result.skippedServer
-              ? ` (upserted ${result.upserted}, skipped ${result.skippedServer})`
-              : "";
-          const sessionLine =
-            `Sessions: ${result.uploaded}/${result.pending} uploaded${sessionSuffix}`;
-
-          if (!opts.auto) {
-            process.stdout.write(`${sessionLine}\n`);
-          } else {
-            autoLog(sessionLine);
+          sessionUploadSummary = {
+            uploaded: result.uploaded,
+            pending: result.pending,
+            upserted: result.upserted,
+            skipped: (result.skippedServer || 0) + (result.skippedLocal || 0),
+          };
+          // Auto runs keep the rolling log line; a manual run reports the same
+          // counters inside the final summary block (printing here would put
+          // the sessions line above the summary it belongs to).
+          if (opts.auto) {
+            const sessionSuffix =
+              result.upserted || result.skippedServer
+                ? ` (upserted ${result.upserted}, skipped ${result.skippedServer})`
+                : "";
+            autoLog(`Sessions: ${result.uploaded}/${result.pending} uploaded${sessionSuffix}`);
           }
         }
         syncRun?.noteSessions({
@@ -3904,28 +3966,28 @@ async function cmdSync(argv, context = {}) {
 
     if (!autoishSync) {
       const codexRecordOnlyWarning = formatRecordOnlyWarning(countRecordOnlyFiles(cursors));
+      const deviceIdentity = buildDeviceIdentity({ config: runtimeConfig, hostname: os.hostname() });
       process.stdout.write(
-        [
-          "Sync finished:",
-          `- Parsed files: ${totalParsed}`,
-          `- New 30-min buckets queued: ${totalBuckets}`,
-          runtime.deviceToken
-            ? `- Uploaded: ${uploadResult.inserted} inserted, ${uploadResult.skipped} skipped`
-            : "- Uploaded: skipped (no device token)",
-          runtime.deviceToken && pendingBytes > 0 && !opts.drain
-            ? `- Remaining: ${formatBytes(pendingBytes)} pending (run sync again, or use --drain)`
-            : null,
-          codexRecordOnlyWarning ? `- Warning: ${codexRecordOnlyWarning}` : null,
-          "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
+        buildSyncSummaryLines({
+          deviceIdentity,
+          totalParsed,
+          totalBuckets,
+          uploadResult,
+          sessionUploadSummary,
+          hasDeviceToken: Boolean(runtime.deviceToken),
+          pendingBytes,
+          drain: Boolean(opts.drain),
+          durationMs: Date.now() - syncStartedAtMs,
+          uploadError,
+          warning: codexRecordOnlyWarning,
+        }).join("\n"),
       );
     } else {
       autoLog(
         `Auto sync finished — parsed ${totalParsed} files, +${totalBuckets} buckets, ` +
           (runtime.deviceToken
             ? `uploaded ${uploadResult.inserted}, skipped ${uploadResult.skipped}` +
+              `, ${uploadResult.tokens || 0} tokens` +
               (pendingBytes > 0 ? `, pending ${formatBytes(pendingBytes)}` : ", queue drained")
             : "upload skipped (no device token)"),
         {
@@ -3934,7 +3996,12 @@ async function cmdSync(argv, context = {}) {
           buckets: totalBuckets,
           inserted: uploadResult.inserted,
           skipped: uploadResult.skipped,
+          tokens: uploadResult.tokens || 0,
+          credits: uploadResult.credits || 0,
+          sessions_uploaded: sessionUploadSummary ? sessionUploadSummary.uploaded : 0,
+          sessions_skipped: sessionUploadSummary ? sessionUploadSummary.skipped : 0,
           pending_bytes: pendingBytes,
+          duration_ms: Date.now() - syncStartedAtMs,
           uploaded: Boolean(runtime.deviceToken),
         },
       );
@@ -4112,6 +4179,7 @@ function recordCodexColdScanAudit(
 module.exports = {
   cmdSync,
   acquireSyncLock,
+  buildSyncSummaryLines,
   readQueueBatch,
   drainQueueToCloud,
   normalizeSyncSource,

@@ -104,6 +104,7 @@ const {
 } = require("../lib/cli-ui");
 const { renderLocalReport, renderAuthTransition, renderSuccessBox } = require("../lib/init-flow");
 const { maybeShowStarCta } = require("../lib/star-cta");
+const { buildDeviceIdentity } = require("../lib/device-identity");
 
 const ASCII_LOGO = [
   "████████╗ ██████╗ ██╗  ██╗███████╗███╗   ██╗",
@@ -368,7 +369,14 @@ async function cmdInit(argv, options = {}) {
     ahaSpinner.stop();
   }
 
-  renderLocalSuccess({ firstSync, dashboardUrl: runtime.dashboardUrl || DEFAULT_DASHBOARD_URL });
+  renderLocalSuccess({
+    firstSync,
+    dashboardUrl: runtime.dashboardUrl || DEFAULT_DASHBOARD_URL,
+    deviceIdentity: buildDeviceIdentity({
+      config: existingConfig && typeof existingConfig === "object" ? existingConfig : {},
+      hostname: os.hostname(),
+    }),
+  });
   await maybeShowStarCta({ trackerDir });
 }
 
@@ -397,7 +405,7 @@ function renderWelcome(dashboardUrl = DEFAULT_DASHBOARD_URL) {
   );
 }
 
-function renderLocalSuccess({ firstSync, dashboardUrl = DEFAULT_DASHBOARD_URL } = {}) {
+function renderLocalSuccess({ firstSync, dashboardUrl = DEFAULT_DASHBOARD_URL, deviceIdentity = null } = {}) {
   const lines = ["", `${BOLD}Setup complete!${RESET}`, ""];
 
   if (firstSync && firstSync.totalTokens > 0) {
@@ -410,6 +418,16 @@ function renderLocalSuccess({ firstSync, dashboardUrl = DEFAULT_DASHBOARD_URL } 
   } else {
     lines.push(
       "  No usage history yet — run any AI CLI and tokens appear within a minute.",
+    );
+  }
+
+  // Which machine was just set up — one account can have several collectors,
+  // and the setup output gets pasted into runbooks.
+  if (deviceIdentity) {
+    lines.push(
+      `  Device: ${deviceIdentity.name}${
+        deviceIdentity.device_id ? ` (id ${deviceIdentity.device_id})` : " (not paired)"
+      }`,
     );
   }
 

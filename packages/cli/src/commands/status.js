@@ -49,6 +49,8 @@ const {
 } = require("../lib/openclaw-session-plugin");
 const { resolveTrackerPaths } = require("../lib/tracker-paths");
 const { resolveDeviceTokenPresence } = require("../lib/cloud-device-token");
+const { resolveLocalDeviceIdentity } = require("../lib/device-identity");
+const { formatDeviceLine } = require("../lib/progress");
 const { getPricingMeta } = require("../lib/pricing");
 const {
   isCollectionPaused,
@@ -1073,12 +1075,22 @@ async function cmdStatus(argv = []) {
     config: config || {},
   });
 
+  // Which collector machine is this? Two machines report into one account, so
+  // every status output has to name itself — see lib/device-identity.js.
+  const deviceIdentity = resolveLocalDeviceIdentity({ config: config || {}, home });
+
   if (opts.json || opts.light) {
     const summary = {
       version: pkg.version,
       generated_at: new Date().toISOString(),
       base_url: config?.baseUrl || null,
       device_token_set: deviceTokenPresence.set,
+      device: {
+        name: deviceIdentity.name,
+        hostname: deviceIdentity.hostname,
+        machine_id: deviceIdentity.machine_id,
+        device_id: deviceIdentity.device_id,
+      },
       queue: {
         pending_bytes: pendingBytes,
         size_bytes: queueSize,
@@ -1316,6 +1328,7 @@ async function cmdStatus(argv = []) {
       "Status:",
       `- Base URL: ${config?.baseUrl || "unset"}`,
       `- Device token: ${deviceTokenPresence.set ? "set" : "unset"}`,
+      formatDeviceLine(deviceIdentity),
       collectionPaused
         ? "- Collection: PAUSED (auto/notify/watch syncs skip; manual sync runs; `tokenusage resume` to re-enable)"
         : "- Collection: active",
@@ -1751,6 +1764,8 @@ function renderLightTable(summary) {
   push("Version", summary.version);
   push("Base URL", summary.base_url);
   push("Device token", summary.device_token_set ? "set" : "unset");
+  push("Device", summary.device?.name);
+  push("Device ID", summary.device?.device_id);
   push("Queue pending (bytes)", summary.queue.pending_bytes);
   push("Queue size (bytes)", summary.queue.size_bytes);
   push("Last parse", summary.last_parse);
@@ -1887,5 +1902,6 @@ module.exports = {
   cmdStatus,
   formatUsageLimitRows,
   parseArgs,
+  renderLightTable,
   summarizeQoderDetail,
 };

@@ -10,11 +10,13 @@ async function buildDoctorReport({
   diagnostics = null,
   fetch = globalThis.fetch,
   now = () => new Date(),
+  deviceIdentity = null,
   paths = {},
 } = {}) {
   const checks = [];
 
   checks.push(...buildRuntimeChecks(runtime));
+  checks.push(...buildDeviceIdentityChecks(deviceIdentity));
 
   if (paths.trackerDir) {
     checks.push(await checkTrackerDir(paths.trackerDir));
@@ -131,6 +133,34 @@ function buildRuntimeChecks(runtime = {}) {
   return checks;
 }
 
+/**
+ * Which collector machine is this? The account has two of them, and every
+ * doctor report gets pasted into release checklists — without the device
+ * identity in the report, a reader cannot tell the two apart.
+ */
+function buildDeviceIdentityChecks(deviceIdentity) {
+  const checks = [];
+  if (!deviceIdentity) return checks;
+
+  const machineId = deviceIdentity.machine_id || null;
+  checks.push({
+    id: "runtime.device_identity",
+    status: machineId ? "ok" : "warn",
+    detail: machineId
+      ? `device ${deviceIdentity.name} (id ${deviceIdentity.device_id || "unpaired"})`
+      : `device ${deviceIdentity.name} (machine_id missing)`,
+    critical: false,
+    meta: {
+      name: deviceIdentity.name || null,
+      hostname: deviceIdentity.hostname || null,
+      machine_id: machineId,
+      device_id: deviceIdentity.device_id || null,
+    },
+  });
+
+  return checks;
+}
+
 async function checkTrackerDir(trackerDir) {
   try {
     const st = await fs.stat(trackerDir);
@@ -180,7 +210,7 @@ async function checkTrackerDir(trackerDir) {
   }
 }
 
-// B3 (docs/upstream-comparison-plan.md §2): pricing coverage of the local
+// B3 (docs/archive/upstream-2026-11-03.md): pricing coverage of the local
 // last-wins queue over the trailing 7 days, plus the C2 unknown-alignment
 // dry-run preview. Informational only — never critical, never writes.
 async function checkPricingCoverage(trackerDir) {
@@ -502,4 +532,4 @@ function summarizeChecks(checks = []) {
   return summary;
 }
 
-module.exports = { buildDoctorReport };
+module.exports = { buildDoctorReport, buildDeviceIdentityChecks };

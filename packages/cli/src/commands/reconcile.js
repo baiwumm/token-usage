@@ -43,6 +43,7 @@ const { sanitizeBucketForUpload } = require("../lib/ingest-sanitize");
 const { basenameKey } = require("../lib/project-key");
 const { TOKEN_COLUMNS } = require("../lib/account-usage-dedup");
 const { UsageError, unknownOptionError } = require("../lib/cli-errors");
+const { buildDeviceIdentity } = require("../lib/device-identity");
 
 const RECONCILE_SLUG = "token-usage-reconcile";
 const DAY_MS = 86_400_000;
@@ -440,6 +441,7 @@ function renderText(summary) {
     pendingCount > 0
       ? `  ${pendingCount.toLocaleString("en-US")} of them are past the upload offset (queue.state.json) and not compared yet`
       : null,
+    `Local device:  ${summary.device_name || "unknown machine"}${summary.machine_id ? ` (machine ${summary.machine_id.slice(0, 8)})` : ""}`,
     `Cloud device:   ${summary.device_id || "unknown"} — ${summary.cloud_buckets.toLocaleString("en-US")} row(s) in ${summary.pages} page(s)`,
   ].filter(Boolean);
 
@@ -506,6 +508,7 @@ async function cmdReconcile(argv = [], options = {}) {
 
   const config = (await readJson(path.join(trackerDir, "config.json"))) || {};
   const runtime = assertInsforgeRuntime(resolveRuntimeConfig({ config, env: process.env }));
+  const deviceIdentity = buildDeviceIdentity({ config, hostname: os.hostname() });
   if (!runtime.deviceToken) {
     throw new UsageError("This machine is not paired with a dashboard yet.", {
       code: "NO_DEVICE_TOKEN",
@@ -542,6 +545,8 @@ async function cmdReconcile(argv = [], options = {}) {
     to,
     clamped: window.clamped,
     device_id: deviceId,
+    device_name: deviceIdentity.name,
+    machine_id: deviceIdentity.machine_id,
     local_buckets: local.size,
     cloud_buckets: server.size,
     pages,

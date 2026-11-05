@@ -6,6 +6,7 @@ const { resolveTrackerPaths } = require("../lib/tracker-paths");
 const { collectTrackerDiagnostics } = require("../lib/diagnostics");
 const { resolveRuntimeConfig } = require("../lib/runtime-config");
 const { resolveDeviceTokenPresence } = require("../lib/cloud-device-token");
+const { resolveLocalDeviceIdentity } = require("../lib/device-identity");
 const { buildDoctorReport } = require("../lib/doctor");
 
 async function cmdDoctor(argv = []) {
@@ -37,11 +38,13 @@ async function cmdDoctor(argv = []) {
   }
   const diagnostics = await collectTrackerDiagnostics({ home });
   const cliPath = process.argv[1] ? path.resolve(process.argv[1]) : null;
+  const deviceIdentity = resolveLocalDeviceIdentity({ config, home });
 
   const report = await buildDoctorReport({
     runtime,
     diagnostics,
     fetch: globalThis.fetch,
+    deviceIdentity,
     paths: {
       trackerDir,
       configPath,

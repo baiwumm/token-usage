@@ -53,6 +53,7 @@ const COMMANDS = [
       "  --run-report=on|off         Persist the per-run telemetry preference (§2.11)",
       "  --yes                       Skip the interactive confirmation",
       "  --dry-run                   Preview without writing anything",
+      "  --no-open                   Do not open a browser window on success",
     ],
     notes: [
       "The hourly schedule uses Task Scheduler on Windows, launchd on macOS and a",
