@@ -592,3 +592,22 @@ offset / watermark；Windows 隐藏启动器写 UTF-16LE + BOM；`init` 首同�
 | [x] Cursor | 同步提示 `Cursor session expired`，本机已不使用 Cursor（2026-11-04 确认），跳过 |
 | npm 镜像注意 | 本机 npm registry 是 `registry.npmmirror.com`，发版后镜像尚未同步 0.4.5，`volta install` 会 `ETARGET`；用 `npm_config_registry=https://registry.npmjs.org volta install tokenusage-cli@0.4.5` 绕过。日常升级若不想等镜像，可沿用同一写法 |
 | [ ] 另一台采集机升级 | 仍为 0.4.3，可直接升到 0.4.5：`npm i -g tokenusage-cli@0.4.5` → `tokenusage init --yes` → `tokenusage reconcile --days 7`（用户操作） |
+
+## 七、0.4.6 发版验证清单（2026-11-05）
+
+上游对齐补丁 + 限额面板：Cursor 准入改按 token 分量（cache-only 行不再丢）、Qoder credits 取
+较大值 / `billable:false` 但 credits>0 准入 / 坏时间戳按行丢弃、Trae CN 双 app dir；Qoder Desktop
+0.4.x 限额改扫 `main.log` 摘要并带 provenance；新增 opt-in `status --limits`（`--json` 的
+`limits` 键）。零契约 / 零 DB 变更，服务端与 web 不需要跟着升级。
+
+| 项 | 结果 |
+|---|---|
+| npm 版本 | `tokenusage-cli@0.4.6`，`dist-tags.latest = 0.4.6`；publish 于 2026-11-05T10:31:17Z |
+| git tag | `cli-v0.4.6`（annotated，指向 `414c513`，即已推送 main 的发版提交） |
+| GitHub Actions | main CI run `42010816281` 全绿；Release run `42010824329` 成功（版本校验 → main 祖先校验 → `pnpm verify` → Trusted Publishing 发包 → Release） |
+| provenance | 已写入 npm attestations（`dist.attestations.url` 可查） |
+| Release notes | 取 CHANGELOG `## 0.4.6` 段，未退回 `--generate-notes` |
+| [x] 本机升级与验证（2026-11-05） | Volta `tokenusage-cli@0.4.5 → 0.4.6`；`init --yes --no-integrations --no-open` 刷新 runtime copy（`.runtime-ready` v0.4.6，首采 3,201,292,093 tokens / 13 providers）；`doctor` 15 OK / 0 warn / 0 fail（`runtime.copy` v0.4.6，7 天 token 计价覆盖 100%）；`status --limits` 首次可见 Qoder 两行：CN `Personal Standard, 0%, add-on: 40.8%, 1061/2600 credits, cli-api, 0s ago`、国际版 `disk-cache, stale, 36m ago`；`reconcile --days 7` **OK**（243 桶、51 条未上传、0 drift） |
+| npm 镜像注意 | 本机 npm registry 是 `registry.npmmirror.com`，发版后镜像通常滞后，`volta install` 会 `ETARGET`；用 `npm_config_registry=https://registry.npmjs.org volta install tokenusage-cli@0.4.6` 绕过 |
+| [ ] 另一台采集机升级 | 仍为 0.4.3，可直接升到 0.4.6：`npm i -g tokenusage-cli@0.4.6` → `tokenusage init --yes` → `tokenusage reconcile --days 7`（用户操作） |
+| [ ] 另一台机器升级后验收 | `tokenusage reconcile --days 7` 应为 OK / 0 drift；项目型来源的新桶开始带 `project_key`，`/projects` 的 hourly 口径不再整页落在「未归因」 |

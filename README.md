@@ -111,7 +111,7 @@ tokenusage reconcile --days 7     # 3. 与云端逐键对账，确认无漂移
 
 M0 脚手架 → M1 契约层 → M2 认证与设置 → M3 仪表盘 → M4 wrapped / 分享 / 服务状态 →
 M5 配对页与部署文档 → M5.5 上游 Dashboard 核心 + 外观设置 → M5.6 Sessions →
-M-CLI 采集端（`tokenusage-cli`，当前 0.4.5）→ M6 数据迁移与切换 → M7 成就系统。
+M-CLI 采集端（`tokenusage-cli`，当前 0.4.6）→ M6 数据迁移与切换 → M7 成就系统。
 **v1 全部完成并上线（2026-10-30）**；剩余待办与待拍板事项见
 [`docs/rewrite-plan.md`](docs/rewrite-plan.md) §10。
 

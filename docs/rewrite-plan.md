@@ -250,7 +250,7 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 ## 10. 当前状态与剩余事项（2026-11-04 复核）
 
 **里程碑**：M0–M7 全部交付；生产实例 `token-usage.baiwumm.com` 自 2026-10-26 起承载
-两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.5`（2026-11-04
+两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.6`（2026-11-05
 发布；本机全局包与 `~/.tokenusage/tracker/app` 运行时副本均已升级到 0.4.5，`doctor`
 15 项全 OK，7 天窗口 `reconcile` 0 missing / 0 mismatched，仅剩 2 条既有 server-only）。
 版本沿革：0.4.0 交付 CLI 加固批与 `reconcile`，0.4.1 修 `reconcile` 的
@@ -340,7 +340,7 @@ web 修账户快照全主键分页（>100 万行显式 500，不静默截断）�
    作为上限。
 5. **keyset 分页 / 预聚合**：暂不立项，触发条件与远期 backlog「队列按月分片」一致
    （查询延迟或数据量有明显体感再说）。
-6. **另一台采集机**：直接升 0.4.5（`npm i -g tokenusage-cli@0.4.5` → `init --yes` →
+6. **另一台采集机**：直接升 0.4.6（`npm i -g tokenusage-cli@0.4.6` → `init --yes` →
    `reconcile --days 7`）。npm 镜像未同步时用
    `npm_config_registry=https://registry.npmjs.org`。
 
