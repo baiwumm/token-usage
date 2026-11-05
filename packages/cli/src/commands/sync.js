@@ -182,6 +182,7 @@ const {
   isCursorInstalled,
   extractCursorSessionToken,
   fetchCursorUsageCsv,
+  fetchCursorUsageCsvWithFallback,
   parseCursorCsv,
 } = require("../lib/cursor-config");
 const { purgeProjectUsage } = require("../lib/project-usage-purge");
@@ -2259,7 +2260,11 @@ async function cmdSync(argv, context = {}) {
           if (progress?.enabled) {
             progress.start(`Fetching Cursor usage...`);
           }
-          const csvText = await cursorUsageFetcher({ cookie: cursorAuth.cookie });
+          const csvText = await fetchCursorUsageCsvWithFallback({
+            cookies: cursorAuth.cookies,
+            cookie: cursorAuth.cookie,
+            cookieFetcher: cursorUsageFetcher,
+          });
           const records = parseCursorCsv(csvText);
           if (records.length > 0) {
             if (progress?.enabled) {

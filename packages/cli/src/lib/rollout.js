@@ -7123,21 +7123,40 @@ function qoderNewMessageKey(record, filePath, lineIndex = 0) {
   return `jsonl:${fallbackSuffix}|${record?.uuid || ""}`;
 }
 
+// 8.64e15 is the ECMAScript TimeClip limit. A larger finite number (nanosecond
+// epochs, clock garbage) passes coerceEpochMs untouched, and `new Date(ms)`
+// yields Invalid Date whose .toISOString() THROWS RangeError — outside the
+// per-line JSON.parse try/catch, aborting the whole source on one bad row.
+// Clamp to a drop instead.
+const MAX_QODER_TIMESTAMP_MS = 8.64e15;
+
 function qoderNewTimestampMs(record) {
-  return coerceEpochMs(record?.timestamp)
+  const ms = coerceEpochMs(record?.timestamp)
     || coerceEpochMs(record?.message?.timestamp)
     || parseIsoTimestampMs(record?.timestamp)
     || parseIsoTimestampMs(record?.message?.timestamp)
     || 0;
+  return ms > MAX_QODER_TIMESTAMP_MS ? 0 : ms;
 }
 
 // Vendor credits (Qoder) ride along on token rows and are the only counter on
 // credits-only rows. They are a display-only dimension
 // (docs/sources-capture-audit.md §2): summed for visibility, never converted
 // to tokens and never merged into any token column.
+//
+// `credits` and `original_credits` coexist (the latter is the pre-discount
+// value) and either alone can be 0, so take the larger instead of
+// `credits ?? original_credits` — `??` does not skip a present-but-zero
+// `credits`, which would drop real activity.
+const MIN_QODER_CREDIT_ACTIVITY = 1e-6;
+
 function qoderUsageCredits(usage) {
-  const credits = Number(usage?.credits ?? usage?.original_credits ?? 0);
-  return Number.isFinite(credits) && credits > 0 ? Math.round(credits * 1e6) / 1e6 : 0;
+  let max = 0;
+  for (const raw of [usage?.credits, usage?.original_credits]) {
+    const credits = Number(raw);
+    if (Number.isFinite(credits) && credits > max) max = credits;
+  }
+  return max >= MIN_QODER_CREDIT_ACTIVITY ? Math.round(max * 1e6) / 1e6 : 0;
 }
 
 function normalizeQoderNewTokens(usage) {
@@ -7256,9 +7275,13 @@ async function parseQoderNewIncremental({
       const usage = msg.usage;
       if (!usage || typeof usage !== "object") continue;
       const base = normalizeQoderNewTokens(usage);
-      // Allow billable zero-token messages to still count conversation (no token delta)
+      // Three admission signals: authoritative token fields, the older
+      // credit-billed shape (billable absent/true), and Qoder 0.4.x rows that
+      // report nominal credits while flagging billable=false. Rows with none
+      // of them carry no activity at all.
       const isBillable = usage.billable !== false;
-      if (!base && !isBillable) continue;
+      const nominalCredits = qoderUsageCredits(usage);
+      if (!base && !isBillable && nominalCredits <= 0) continue;
       const timestampMs = qoderNewTimestampMs(record);
       if (!timestampMs) continue;
       const bucketStart = toUtcHalfHourStart(new Date(timestampMs).toISOString());
@@ -7291,7 +7314,7 @@ async function parseQoderNewIncremental({
         total_tokens: 0,
         billable_total_tokens: 0,
         total_cost_usd: 0,
-        credits: qoderUsageCredits(usage),
+        credits: nominalCredits,
         conversation_count: 1,
       };
       let projectKey = null;

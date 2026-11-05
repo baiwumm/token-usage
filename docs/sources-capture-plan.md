@@ -78,6 +78,7 @@ P1 只覆盖小时桶；本批把积分带到会话粒度与采集运行记录�
 | 2026-10-31 | 迁移应用 + 历史补记 + 操作者验收 | P0/P1 推送 main（`52e5808..bbc42e8`）；生产库 credits 列与 21 个 qoder-cn 桶落库验证通过 |
 | 2026-10-31 | P2 二轮增量 | Sessions credits `8d81282`、`credits_ingested` `bd124cc`、模型归一 `b19e57b`；全部上 main |
 | 2026-11-01 | CLI 0.3.0 发布并本机升级 | tag `cli-v0.3.0`（`56ff02c`）；本机全局包与运行时副本均为 0.3.0，Trae CN 已进入持续采集 |
+| 2026-11-05 | 上游对齐修复批次（§7） | 执行中：Cursor cache-only/凭据、Qoder credits/准入/时间戳、Trae CN app dirs、文档漂移；A8/A9 留待决策 |
 
 ### P0 交付记录（commit `c8b9d9e`）
 
@@ -125,3 +126,28 @@ P1 只覆盖小时桶；本批把积分带到会话粒度与采集运行记录�
 - 模型归一：所有聚合按小写折叠，展示名取组内 token 份额最大的写法；golden 覆盖
   `glm-5.3-flash` / `GLM-5.3-Flash` 合并后总量不变。
 - `pnpm verify` 全绿；操作者验收通过后推送 main。
+
+## 7. 上游对齐修复批次（2026-11-05）
+
+> 触发：只读对比上游 `TokenTracker`（v1.5.5）与 `juejin-usage`（core 0.1.15）后的差异。
+> **零契约/DB 变更**：只修解析器与凭据链路，`docs/cli-contract.md` 无需改动（§2.4 已允许
+> 0-token + `conversations ≥ 1` 与 credits-only 桶）。
+
+- [x] A1 **Cursor CSV 准入**：改按 input / cache write / cache read / output 四个分量判断，
+  cache-only 行不再因 `Total Tokens=0` 被丢（含真实 cost）。
+- [x] A2 **Cursor userId 候选**：JWT `sub` 优先、`cli-config.json` 兜底，401 时按候选重试；
+  仍只在 `AUTH_EXPIRED` 时重试，网络/超时不重试。
+- [x] A3 **Qoder credits**：取 `credits` / `original_credits` 较大值（`1e-6` 下限），
+  修 `credits:0` 且 `original_credits>0` 时归零。
+- [x] A4 **Qoder 准入**：`billable:false` 但 credits>0 的 0.4.x 行不再被丢。
+- [x] A5 **Qoder 时间戳**：`> 8.64e15` 按 0 丢弃，防单行坏时间戳中断整源。
+- [x] A6 **Trae CN app dirs**：`["TRAE SOLO CN", "Trae CN"]`，优先已安装目录。
+- [x] A7 **文档漂移**：`source-metadata.js` 引用改为 `session-upload.js` 的
+  `ACCOUNT_LEVEL_SOURCES`（该文件为退役态，packaging 测试断言保持删除）。
+- [ ] A8（未做，待操作者决定）**Cursor 0-token request-only 行**：保留会把 bot/automation
+  计入 `conversations`，可能抬高活跃天数；本批只修 cache-only，request-only 暂不入库。
+- [ ] A9（未做，面板项）**Qoder Desktop 0.4.x 限额**：上游扫 `main.log` 的
+  `[Auth] [AccountUsage]` + provenance；仅影响限额面板，不影响 token 采集，留 backlog。
+
+验收线：新增 3 个解析器 fixture 单测；`pnpm --filter tokenusage-cli test` 与 `pnpm verify` 全绿；
+本机 sync 后 Cursor（若安装）与 qoder-cn 队列行 token/credits 与解析结果一致。

@@ -31,7 +31,9 @@ function isTraeCnUsageEnabled(env = process.env) {
   const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
   return normalized === "1" || normalized === "true";
 }
-const TRAE_CN_APP_DIR = "TRAE SOLO CN";
+const TRAE_CN_APP_DIRS = ["TRAE SOLO CN", "Trae CN"];
+// Kept for callers that need the primary (Work) app dir by name.
+const TRAE_CN_APP_DIR = TRAE_CN_APP_DIRS[0];
 const TRAE_CN_AUTH_KEY = "iCubeAuthInfo://icube.cloudide";
 
 const TRAE_CN_USAGE_URL = "https://api.trae.cn/trae/api/v1/pay/query_user_usage_group_by_session";
@@ -77,25 +79,44 @@ const TRAE_CN_KG = Buffer.from([
 // Path resolution
 // ---------------------------------------------------------------------------
 
+function traeCnDataParent({ env = process.env, home = os.homedir(), platform = process.platform } = {}) {
+  if (platform === "darwin") {
+    return path.join(home, "Library", "Application Support");
+  }
+  if (platform === "win32") {
+    // Windows keeps the CN app under the roaming profile, mirroring the
+    // macOS Application Support layout (<parent>/<app dir>/User/...).
+    return typeof env.APPDATA === "string" && env.APPDATA.trim()
+      ? env.APPDATA.trim()
+      : path.join(home, "AppData", "Roaming");
+  }
+  // No verified CN app-data layout on other platforms yet.
+  return null;
+}
+
 function resolveTraeCnHome({ env = process.env, home = os.homedir(), platform = process.platform } = {}) {
   const override = env[TRAE_CN_HOME_ENV];
   if (typeof override === "string" && override.trim()) {
     return path.resolve(override.trim());
   }
-  if (platform === "darwin") {
-    return path.join(home, "Library", "Application Support", TRAE_CN_APP_DIR);
+  const parent = traeCnDataParent({ env, home, platform });
+  if (!parent) return null;
+  // Both CN clients share the same storage schema. Prefer an installed
+  // directory; otherwise fall back to the primary app dir so `status` can
+  // still render a diagnostic path on a machine where the app is absent.
+  let fallback = null;
+  for (const dir of TRAE_CN_APP_DIRS) {
+    const candidate = path.join(parent, dir);
+    if (!fallback) fallback = candidate;
+    try {
+      if (fs.statSync(candidate).isDirectory()) return candidate;
+    } catch (err) {
+      // Permission failures must reach the reader's diagnostics rather than
+      // masquerade as an absent installation (same policy as trae-db.js).
+      if (err.code !== "ENOENT" && err.code !== "ENOTDIR") return candidate;
+    }
   }
-  if (platform === "win32") {
-    // Windows keeps the CN Work app under the roaming profile, mirroring the
-    // macOS Application Support layout (APPDATA/TRAE SOLO CN/User/...).
-    const appData =
-      typeof env.APPDATA === "string" && env.APPDATA.trim()
-        ? env.APPDATA.trim()
-        : path.join(home, "AppData", "Roaming");
-    return path.join(appData, TRAE_CN_APP_DIR);
-  }
-  // No verified CN Work app-data layout on other platforms yet.
-  return null;
+  return fallback;
 }
 
 function resolveTraeCnStoragePath(options = {}) {
@@ -525,6 +546,7 @@ module.exports = {
   TRAE_CN_USAGE_ENV,
   isTraeCnUsageEnabled,
   TRAE_CN_APP_DIR,
+  TRAE_CN_APP_DIRS,
   TRAE_CN_AUTH_KEY,
   TRAE_CN_USAGE_URL,
   TRAE_CN_USAGE_TYPE,

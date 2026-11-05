@@ -3,7 +3,7 @@
 /**
  * Account-level cross-device truth - JS reference implementation.
  *
- * Account-level sources (ACCOUNT_LEVEL_SOURCES in src/lib/source-metadata.js)
+ * Account-level sources (ACCOUNT_LEVEL_SOURCES in src/lib/session-upload.js)
  * come from a per-ACCOUNT cloud API, so every device that syncs them stores
  * its own copy of the SAME account data. How to dedup depends on the source:
  *

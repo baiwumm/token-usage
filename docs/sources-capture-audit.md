@@ -9,10 +9,10 @@
 ## 1. 核心结论
 
 - CLI 全量 46+5 个来源（`packages/cli/src/commands/sync.js:338-393`）中，**非标准来源只有 6 处**（§4），其余约 40 个均为"本地真实 token 全量"或"本机未装/零数据"，机制完整。
-- **本机唯一有真实数据却未被采集的缺口**：Trae CN 的本地库（`%APPDATA%\Trae CN\ModularData\ai-agent\database.db`，SQLCipher 加密但内置共享密钥可解）不在 `resolveTraeDbPaths` 的扫描范围（`packages/cli/src/lib/trae-db.js:24`）。
-- **本机唯一"本地只有积分"的活跃源**：qoder-cn 新版 JSONL（`~/.qoder-cn/projects`），credits-only 行被有意丢弃、只计对话（`packages/cli/src/lib/rollout.js:6892-6929`）。
+- **Trae CN 本地库缺口已修（2026-10-31 P0）**：`resolveTraeDbPaths` 的 roots 已含 `Trae CN`（`packages/cli/src/lib/trae-db.js:29`），`%APPDATA%\Trae CN\ModularData\ai-agent\database.db` 真实 token 已进入持续采集。
+- **本机唯一"本地只有积分"的活跃源**：qoder-cn 新版 JSONL（`~/.qoder-cn/projects`），credits-only 行 token 记 0、conversation 照常、credits 进独立字段（2026-10-31 P1，`packages/cli/src/lib/rollout.js`）。
 - **行业事实（双重验证）**：订阅制工具的云端接口只有余额/百分比快照，**没有任何一家开放按 token 的消耗明细**——我们自己的 `lib/usage-limits.js` 覆盖 16 家、参照项目 12 个订阅渠道，结论一致。唯一例外是 Cursor 的 dashboard CSV 导出（逐事件 token 明细 + 真实美元成本），本项目已实现。
-- 改动任务共 2 批（Trae CN 接入 / credits 字段），见 `docs/sources-capture-plan.md`；其余保持现状（§6）。
+- 改动任务共 2 批（Trae CN 接入 / credits 字段）+ 1 批 Sessions 遥测，均已完成，见 `docs/sources-capture-plan.md`；2026-11-05 的上游对齐修复见该文档 §7。
 
 ## 2. 双平面原则（铁律）
 
@@ -27,7 +27,7 @@
 
 1. **积分永不换算成 token**。无第一方换算率且随版本/商业策略漂移；`rollout.js:6785-6793` 已有同样决策（"no first-party evidence for a credit→token rate"），参照项目文档红线同款（"额度百分比不能推导请求次数、Token 数或金额"）。
 2. **积分永不并入 token 六元组、成本估算、成就口径**。credits 是独立维度（落库为独立列，展示为独立位置）。
-3. credits-only 行**不是错误**：token 记 0、conversation 照常计数，credits 进独立字段（credits 字段落地前则整行丢弃积分、只计对话——`rollout.js:7018-7039` 现状）。
+3. credits-only 行**不是错误**：token 记 0、conversation 照常计数，credits 进独立字段（2026-10-31 P1 起；`rollout.js` `parseQoderNewIncremental`）。credits 取 `credits`/`original_credits` 的较大值，且 `billable:false` 但 credits>0 的 0.4.x 行同样准入（2026-11-05 对齐上游）。
 
 ## 3. cursor 账户级机制（详解）
 
@@ -35,10 +35,10 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 
 | 环节 | 实现 |
 |---|---|
-| 凭据 | `%APPDATA%\Cursor\User\globalStorage\state.vscdb` → ItemTable 行 `cursorAuth/accessToken`（JWT）；userId 取 `~/.cursor/cli-config.json` 的 `authInfo.authId`（兜底 JWT payload `sub`）——`packages/cli/src/lib/cursor-config.js:91-146` |
-| 取数 | `GET https://cursor.com/api/dashboard/export-usage-events-csv?strategy=tokens`，Cookie `WorkosCursorSessionToken=<userId>%3A%3A<JWT>` + Referer 伪装（`cursor-config.js:150,196-205`） |
-| 数据形态 | **逐事件 CSV：各 token 列 + 真实 Cost（USD）**——全仓库唯一 `reported-first`（真实成本优先）来源（`parseCursorCsv` `cursor-config.js:451-507`、`normalizeCursorUsage` :512-538，included 请求也计 token :525-536） |
-| 摄取路径 | `parseCursorApiIncremental`（`rollout.js:7551-7650`）：整份 CSV 当权威，从最早记录起清零重灌，走**普通小时桶**（cursor-status 列在 `lib/usage-limits.js:789-823`，仅 status） |
+| 凭据 | `%APPDATA%\Cursor\User\globalStorage\state.vscdb` → ItemTable 行 `cursorAuth/accessToken`（JWT）；userId 候选 **JWT `sub` 优先**，`~/.cursor/cli-config.json` 的 `authInfo.authId` 兜底，并按候选顺序重试 401（`packages/cli/src/lib/cursor-config.js` `collectCursorSessionUserIds` / `extractCursorAuth`） |
+| 取数 | `GET https://cursor.com/api/dashboard/export-usage-events-csv?strategy=tokens`，Cookie `WorkosCursorSessionToken=<userId>%3A%3A<JWT>` + Referer 伪装（`cursor-config.js` `fetchCursorUsageCsv`） |
+| 数据形态 | **逐事件 CSV：各 token 列 + 真实 Cost（USD）**——全仓库唯一 `reported-first`（真实成本优先）来源（`parseCursorCsv` / `normalizeCursorUsage`）。准入按 **input / cache write / cache read / output 四个分量**判断，cache-only 行不再因 `Total Tokens=0` 被丢；included 请求也计 token |
+| 摄取路径 | `parseCursorApiIncremental`（`rollout.js`）：整份 CSV 当权威，从最早记录起清零重灌，走**普通小时桶**（cursor-status 列在 `lib/usage-limits.js`，仅 status） |
 | "账户级"语义 | 数据是账号维度而非设备维度：① 跨设备行级 MAX 去重（`apps/web/src/lib/account/usage.ts:69-83` `dedupeCursorRows`；cursor 无稳定 session id，`packages/cli/src/lib/account-usage-dedup.js:11-13`）；② Sessions 页永久排除：`token_sessions` CHECK `lower(source) not in ('cursor','trae-cn')`（`supabase/migrations/20261025000000_token_sessions.sql:45-46`，注释 "account-level sources; Sessions is device-level only"）+ 上传两端跳过（CLI `session-upload.js:25,109`、服务端 `apps/web/src/lib/ingest/route.ts:130-151`、`normalize.ts:177-179`） |
 | 与 trae-cn 的区别 | **`account_session_state` 队列记录只有 trae-cn 发**（`appendTraeCnSessionStates` `rollout.js:23634-23662`）；服务端 `normalizeSessionState` 硬编码只收 `source === "trae-cn"`（`normalize.ts:115`）。cursor 不发状态记录 |
 | 本机状态 | 未安装 → `isCursorInstalled` 短路（`sync.js:2246-2249`），零数据、零请求。`status.js` 无 Cursor 输出行 |
@@ -49,12 +49,12 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 
 | # | 来源 | 情况 | 关键代码 | 本机实测（2026-10-31） | 定性 |
 |---|---|---|---|---|---|
-| 1 | **trae（CN 目录缺口）** | `resolveTraeDbPaths` roots 只有 `["Trae","TRAE SOLO"]`，不扫 `Trae CN` | `trae-db.js:24`（TRAE SOLO CN 是另一目录，属 trae-cn 账户级：`trae-cn-config.js:34-35`） | `%APPDATA%\Trae CN\...ai-agent\database.db` 存在：`chat_turn` 18 行、17 行带真实 `token_usage`（≈2026-10-26~28，模型 `deepseek-v4.1-flash`）；内置共享 SQLCipher 密钥解密成功 | **缺口，P0 修** |
-| 2 | **qoder / qoder-cn（新版 JSONL）** | credits-only 行被有意丢弃（无换算率），只计对话 | `rollout.js:6892-6929`（credits 已解析在 6894/6920，仅随 token 行携带）、设计注释 :6785-6793、conv-only totals :7018-7039 | `~/.qoder-cn/projects` 38 个会话 JSONL、8397 条 assistant usage **100% credits-only**（input/output=0，credits≈0.64/条）；队列已采 conv=3146、token=0。`~/.qoder/projects` 为空 | **积分制，credits 字段的受益者** |
+| 1 | trae（CN 本地库，已修） | `resolveTraeDbPaths` roots 已含 `["Trae","TRAE SOLO","Trae CN"]`（2026-10-31 P0） | `trae-db.js:29`（`TRAE SOLO CN` 是账户级目录，属 trae-cn：`trae-cn-config.js` `TRAE_CN_APP_DIRS`） | `%APPDATA%\Trae CN\...ai-agent\database.db` 存在：`chat_turn` 18 行、17 行带真实 `token_usage`（≈2026-10-26~28，模型 `deepseek-v4.1-flash`）；内置共享 SQLCipher 密钥解密成功 | **已接入，持续采集** |
+| 2 | **qoder / qoder-cn（新版 JSONL）** | credits-only 行不换 token：token 六元组记 0、conversation 照常、credits 进独立字段（2026-10-31 P1）；credits 取 `credits`/`original_credits` 较大值，`billable:false` + credits>0 也准入，坏时间戳按行丢弃不中断整源（2026-11-05） | `rollout.js` `normalizeQoderNewTokens` / `parseQoderNewIncremental`、设计注释 `qoderUsageCredits` | `~/.qoder-cn/projects` 38 个会话 JSONL、8397 条 assistant usage **100% credits-only**（input/output=0，credits≈0.64/条）；队列已采 conv=3146、token=0。`~/.qoder/projects` 为空 | **积分制，credits 字段的受益者** |
 | 3 | qoder（国际版 legacy SQLite） | 机制正常，但上游停写 | `%APPDATA%\Qoder\SharedClientCache\cache\db\local.db`，SQL `rollout.js:6409-6429` | 库最后写入 2026-02-02（704 行 token_info 历史已在队列，最后桶 2026-02-02） | 无动作（历史已采） |
 | 4 | **kiro（CLI 部分）** | 无真实 token：按 4 字符/token 估算（带 `usage_precision`）；credits 写 sidecar `~/.tokenusage/tracker/kiro-credits.json` 仅诊断、不入队列 | `rollout.js:8497`（`KIRO_CLI_CHARS_PER_TOKEN=4`）、:8600-8603 注释、:8832-8849、:9034+ | 未装（无 sidecar 文件） | 估算制先例，保持 |
 | 5 | **cursor** | 账户级 CSV 明细（§3） | `cursor-config.js` 全文件 | 未装，休眠 | 机制完整，不改 |
-| 6 | **trae-cn（账户级 API）** | opt-in：`TOKENUSAGE_TRAE_CN_USAGE=1`；凭据 `%APPDATA%\TRAE SOLO CN\User\globalStorage\storage.json` 的 `iCubeAuthInfo://icube.cloudide`（tc v5 解密）→ `POST https://api.trae.cn/trae/api/v1/pay/query_user_usage_group_by_session`，30 天窗会话快照 | `trae-cn-config.js:27-37,229-345`、`rollout.js:23598-23849`、`sync.js:2309-2329` | 无 `TRAE SOLO CN` 目录 → 通路无对象。注意：status 里的 "Trae SOLO plan: plan Free" 快照（`status.js:1460`、`rollout.js:23296-23320`）是另一条 entitlement 通路，证明 Trae 系登录态可读 | 保持 opt-in 关闭 |
+| 6 | **trae-cn（账户级 API）** | opt-in：`TOKENUSAGE_TRAE_CN_USAGE=1`；凭据 `<APPDATA>/TRAE SOLO CN` 或 `<APPDATA>/Trae CN` 下 `User/globalStorage/storage.json` 的 `iCubeAuthInfo://icube.cloudide`（tc v5 解密）→ `POST https://api.trae.cn/trae/api/v1/pay/query_user_usage_group_by_session`，30 天窗会话快照（2026-11-05 起两个 CN app dir 都发现） | `trae-cn-config.js`、`rollout.js` `parseTraeCnApiIncremental`、`sync.js` | 无 `TRAE SOLO CN` 目录 → 通路无对象。注意：status 里的 "Trae SOLO plan: plan Free" 快照（`status.js`、`rollout.js`）是另一条 entitlement 通路，证明 Trae 系登录态可读 | 保持 opt-in 关闭 |
 | 附 | workbuddy（SQLite `session_usage`） | 只有 used/size+credits，**刻意忽略**，JSONL 是权威 | `rollout.js:11018-11023,11141,11770` | 53 个 JSONL 正常在采 | 忽略正确，保持 |
 
 ## 5. 标准来源速览
@@ -82,7 +82,7 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 
 | 主题 | 位置 |
 |---|---|
-| 来源总清单 | `packages/cli/src/commands/sync.js:338-393`（AUTO 46 + BACKGROUND 5）；账户级标记 `packages/cli/src/lib/source-metadata.js:1` |
+| 来源总清单 | `packages/cli/src/commands/sync.js`（AUTO + BACKGROUND）；账户级标记 `packages/cli/src/lib/session-upload.js` `ACCOUNT_LEVEL_SOURCES`（`source-metadata.js` 已退役，`test/packaging.test.js` 断言其保持删除） |
 | qoder 新 JSONL credits 丢弃 | `rollout.js:6785-6793,6892-6929,7001-7039`；status 文案 `status.js:611` |
 | qoder legacy SQL / 路径 | `rollout.js:6409-6457`（QODER_USAGE_SQL / resolveQoderDbPath） |
 | Trae 本地读取 / history_v2 排除 | `packages/cli/src/lib/trae-db.js:15-45,51-54`；解密 `lib/trae-snapshot.js`（内置共享密钥） |

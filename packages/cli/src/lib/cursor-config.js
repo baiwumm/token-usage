@@ -67,11 +67,11 @@ function readCursorAccessTokenFromStateDb(stateDbPath, deps = {}) {
 
 /**
  * Extract Cursor session cookie from local SQLite + cli-config.json.
- * Returns { cookie, userId } or null on failure.
+ * Returns { cookie, cookies, userId, userIds } or null on failure.
  *
  * Cookie format: WorkosCursorSessionToken=<userId>%3A%3A<jwt>
  * - JWT from state.vscdb → ItemTable → cursorAuth/accessToken
- * - userId from cli-config.json → authInfo.authId
+ * - userId candidates, JWT subject first, then cli-config.json authInfo.authId:
  *   - native Cursor email/password: "auth0|user_XXXXX"        → "user_XXXXX"
  *   - Google sign-in via WorkOS:    "google-oauth2|<numeric>" → kept verbatim
  *   - other WorkOS subjects:        "github|…", "oidc|…"      → kept verbatim
@@ -79,7 +79,9 @@ function readCursorAccessTokenFromStateDb(stateDbPath, deps = {}) {
 function extractCursorSessionToken({ home, platform, env, deps } = {}) {
   const auth = extractCursorAuth({ home, platform, env, deps });
   if (!auth) return null;
-  return { cookie: auth.cookie, userId: auth.userId };
+  // `cookies` is additive: callers that only need one session cookie keep
+  // using `cookie`, while sync can retry the remaining userId candidates.
+  return { cookie: auth.cookie, cookies: auth.cookies, userId: auth.userId };
 }
 
 /**
@@ -99,16 +101,16 @@ function extractCursorAuth({ home, platform, env, deps } = {}) {
   const jwt = readCursorAccessTokenFromStateDb(stateDbPath, deps);
   if (!jwt || jwt.length < 10) return null;
 
-  // 2. Extract userId — try cli-config.json first, fall back to JWT decode
-  let userId = extractUserIdFromCliConfig(cliConfigPath);
-  if (!userId) {
-    userId = extractUserIdFromJwt(jwt);
-  }
+  // 2. Build every userId candidate — JWT subject first (cli-config.json can
+  //    hold a stale account and pairing it with the current token is a
+  //    persistent 401), then the cli-config authId as a fallback.
+  const userIds = collectCursorSessionUserIds(jwt, readCursorCliAuthId(cliConfigPath));
+  const userId = userIds[0] || null;
   if (!userId) return null;
 
-  // 3. Build cookie
-  const cookie = `WorkosCursorSessionToken=${userId}%3A%3A${jwt}`;
-  return { cookie, userId, accessToken: jwt };
+  // 3. Build cookie(s)
+  const cookies = userIds.map((id) => `${CURSOR_SESSION_COOKIE}=${id}%3A%3A${jwt}`);
+  return { cookie: cookies[0], cookies, userId, userIds, accessToken: jwt };
 }
 
 // WorkOS OAuth subject prefixes Cursor accepts as-is in the session cookie.
@@ -125,24 +127,55 @@ function normalizeCursorSubject(subject) {
   return null;
 }
 
-function extractUserIdFromCliConfig(configPath) {
+function readCursorCliAuthId(configPath) {
   try {
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    return normalizeCursorSubject(config?.authInfo?.authId || "");
+    const raw = typeof config?.authInfo?.authId === "string" ? config.authInfo.authId.trim() : "";
+    return raw || null;
   } catch {
     return null;
   }
 }
 
-function extractUserIdFromJwt(jwt) {
+function decodeJwtSubject(jwt) {
   try {
     const parts = jwt.split(".");
     if (parts.length !== 3) return null;
     const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
-    return normalizeCursorSubject(payload.sub || "");
+    return typeof payload.sub === "string" && payload.sub.trim() ? payload.sub.trim() : null;
   } catch {
     return null;
   }
+}
+
+const CURSOR_SESSION_COOKIE = "WorkosCursorSessionToken";
+const CURSOR_USER_ID_RE = /^user_[A-Za-z0-9_]+$/;
+
+function addCursorUserIdCandidate(ids, value) {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  if (!trimmed) return;
+  // Same acceptance rule as normalizeCursorSubject: bare `user_*` ids or a
+  // WorkOS provider subject. Anything else is not a cookie identity.
+  if (!normalizeCursorSubject(trimmed) && !CURSOR_USER_ID_RE.test(trimmed)) return;
+  if (!ids.includes(trimmed)) ids.push(trimmed);
+}
+
+/**
+ * Ordered userId candidates for the Cursor session cookie.
+ *
+ * The JWT subject is authoritative: cli-config.json can still hold a different
+ * (stale) account, and pairing that id with the current access token is a
+ * persistent 401. Both the normalized and the raw subject are kept because
+ * Cursor accepts `auth0|user_x` and `user_x` for the same login.
+ */
+function collectCursorSessionUserIds(jwt, cliAuthId) {
+  const ids = [];
+  const jwtSubject = decodeJwtSubject(jwt);
+  addCursorUserIdCandidate(ids, normalizeCursorSubject(jwtSubject || ""));
+  addCursorUserIdCandidate(ids, jwtSubject);
+  addCursorUserIdCandidate(ids, normalizeCursorSubject(cliAuthId || ""));
+  addCursorUserIdCandidate(ids, cliAuthId);
+  return ids;
 }
 
 // ── API client ──
@@ -207,7 +240,11 @@ function fetchCursorUsageCsv({ cookie, timeoutMs = 30000, fetchImpl = fetch }) {
     signal: AbortSignal.timeout(timeoutMs),
   }).then(async (res) => {
     if (res.status === 401 || res.status === 403) {
-      throw new Error("Cursor session expired — re-login in Cursor to refresh");
+      const error = new Error("Cursor session expired — re-login in Cursor to refresh");
+      // Lets sync retry the remaining userId candidates instead of treating
+      // one stale cli-config account as a dead session.
+      error.code = "AUTH_EXPIRED";
+      throw error;
     }
     if (res.status === 308 || res.status === 301 || res.status === 302) {
       // Follow redirect once. Keep this hop on redirect:"manual" so the
@@ -222,6 +259,48 @@ function fetchCursorUsageCsv({ cookie, timeoutMs = 30000, fetchImpl = fetch }) {
     }
     return res.text();
   }).catch(remapCursorFetchTimeout);
+}
+
+/**
+ * Fetch the CSV trying each userId candidate in order.
+ *
+ * Only an auth rejection (`AUTH_EXPIRED`) moves to the next candidate: a stale
+ * cli-config account produces exactly that, while a network/timeout failure
+ * says nothing about the identity and must surface immediately.
+ */
+async function fetchCursorUsageCsvWithFallback({
+  cookies,
+  cookie,
+  timeoutMs,
+  fetchImpl = fetch,
+  cookieFetcher,
+} = {}) {
+  const candidates = Array.isArray(cookies) && cookies.length > 0
+    ? cookies
+    : (cookie ? [cookie] : []);
+  if (candidates.length === 0) {
+    throw new Error("Cursor session cookie is missing — re-login in Cursor to refresh");
+  }
+  const fetcher = typeof cookieFetcher === "function"
+    ? cookieFetcher
+    : (opts) => fetchCursorUsageCsv({
+      cookie: opts.cookie,
+      fetchImpl,
+      ...(timeoutMs ? { timeoutMs } : {}),
+    });
+  let lastAuthError = null;
+  for (const candidate of candidates) {
+    try {
+      return await fetcher({ cookie: candidate });
+    } catch (err) {
+      if (err && err.code === "AUTH_EXPIRED") {
+        lastAuthError = err;
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastAuthError;
 }
 
 /**
@@ -502,7 +581,17 @@ function parseCursorCsv(csvText) {
       cost: toFloat(fields[costIdx]),
     };
 
-    if (record.totalTokens <= 0 && record.inputTokens <= 0 && record.outputTokens <= 0) continue;
+    // Token presence is judged on the component columns (not the Total
+    // column) so a cache-read-only or cache-write-only row survives even when
+    // Cursor's Total disagrees — normalizeCursorUsage and the downstream
+    // isAllZeroUsage gate read these same component fields. Rows with no
+    // token component at all are placeholders and stay dropped.
+    const hasTokens =
+      record.inputTokens > 0 ||
+      record.cacheWriteTokens > 0 ||
+      record.cacheReadTokens > 0 ||
+      record.outputTokens > 0;
+    if (!hasTokens) continue;
 
     records.push(record);
   }
@@ -597,7 +686,9 @@ module.exports = {
   readCursorAccessTokenFromStateDb,
   extractCursorAuth,
   extractCursorSessionToken,
+  collectCursorSessionUserIds,
   fetchCursorUsageCsv,
+  fetchCursorUsageCsvWithFallback,
   fetchCursorUsageSummary,
   decodeCursorSandAccessStatus,
   decodeCursorSandUsageStatus,
