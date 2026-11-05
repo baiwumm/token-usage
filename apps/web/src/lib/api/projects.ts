@@ -44,6 +44,10 @@ export interface ProjectWire {
   session_count: number;
   day_peak: ProjectDayPeak | null;
   last_active: string | null;
+  /** Source ids ordered by token share (desc, ties by id). The list renders
+   *  the first five as brand icons and folds the rest into "+N"; it is a
+   *  display-only projection, never a second total. */
+  sources: string[];
 }
 
 // Same token-column set the sessions series costs per model entry
@@ -166,6 +170,9 @@ export type ProjectGroup = {
   lastActiveMs: number;
   lastActive: string | null;
   dayTokens: Map<string, number>;
+  /** Token total per source inside this project — drives the brand-icon row
+   *  (top 5 + "+N") on the list, sorted at wire time. */
+  sourceTokens: Map<string, number>;
 };
 
 /** Per-payload cost/credits totals shared by both calibers (6-dp wire form). */
@@ -264,6 +271,13 @@ export function toWire(group: ProjectGroup): ProjectWire {
     session_count: group.sessionCount,
     day_peak: dayPeak,
     last_active: group.lastActive,
+    sources: [...group.sourceTokens.entries()]
+      .sort(
+        (first, second) =>
+          second[1] - first[1] ||
+          (first[0] < second[0] ? -1 : first[0] > second[0] ? 1 : 0),
+      )
+      .map(([source]) => source),
   };
 }
 
@@ -348,12 +362,18 @@ export async function projectsPayloadForUser(
         lastActiveMs: 0,
         lastActive: null,
         dayTokens: new Map(),
+        sourceTokens: new Map(),
       };
       groups.set(key, group);
     }
     const tokens = numberOr0(row.total_tokens);
+    const sourceLabel = source.trim() || "unknown";
 
     group.totalTokens += tokens;
+    group.sourceTokens.set(
+      sourceLabel,
+      (group.sourceTokens.get(sourceLabel) ?? 0) + tokens,
+    );
     group.costUsd += sessionCostUsd(row);
     group.credits += numberOr0(row.credits);
     group.sessionCount += 1;

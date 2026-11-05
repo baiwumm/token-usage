@@ -1,196 +1,159 @@
 "use client";
 
-// Project list for /projects (docs/projects-page-plan.md 批次 1): one row per
-// project basename plus the pinned "未归因" group at the bottom. Sort and
-// range live with the page's URL/session filters; this component only renders
-// the payload it is given.
+// Page-local list surface for /projects. It deliberately does not reuse the
+// shared table card: this page has its own list/card language, its own three
+// states and its own review-mode effect switches (operator decision
+// 2026-11-05 — no other page adopts these components).
 
+import type { ProjectsPayload, ProjectItem } from "@/lib/dashboard/api";
 import type { ProjectsCopy } from "@/lib/copy/projects";
-import type { ProjectItem, ProjectsPayload } from "@/lib/dashboard/api";
-import type { LoadStatus } from "@/lib/loadable";
+import type { ProjectEffectState } from "./projects-effects";
+import type { ProjectLimit } from "./projects-filters";
 
 import { Folder } from "@gravity-ui/icons";
-import { Button, Card, Chip, Typography } from "@heroui/react";
+import { Button, Card, Skeleton, Spinner, Typography, cn } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
 
-import { resolveProjectDisplayName } from "./identity";
+import { ProjectCardTile, ProjectRow, type ProjectView } from "./projects-row";
+import { sliceProjects } from "./projects-filters";
 
-import {
-  DataTableCard,
-  type DataTableColumn,
-} from "@/components/data-table-card";
+import { formatMessage } from "@/lib/copy/message";
 import { useFormat } from "@/lib/format/format";
+import { SectionError } from "@/components/section-states";
 
 const QUICK_START_URL = "https://github.com/baiwumm/token-usage#readme";
 
-function rowKey(project: ProjectItem): string {
-  return project.project_key ?? "__unattributed";
+export interface ProjectsBodyProps {
+  copy: ProjectsCopy;
+  locale: "zh" | "en";
+  payload: ProjectsPayload | null;
+  status: "loading" | "ready" | "error";
+  refreshing: boolean;
+  view: ProjectView;
+  sortLabel: string;
+  limit: ProjectLimit;
+  effects: ProjectEffectState;
+  styles: Readonly<Record<string, string>>;
+  selectedKey: string | null;
+  replayNonce: number;
+  simulatedState:
+    "ready" | "loading" | "empty" | "error" | "detailError" | null;
+  onOpen: (project: ProjectItem) => void;
+  onRetry: () => void;
 }
 
-export function ProjectsBody({
-  copy,
+function Summary({
   payload,
-  status,
-  refreshing,
-  onRetry,
-}: {
-  copy: ProjectsCopy;
-  payload: ProjectsPayload | null;
-  status: LoadStatus;
-  refreshing: boolean;
-  onRetry: () => void;
-}) {
-  const { formatTokens, formatNumber, formatCost, formatDate, formatDateTime } =
-    useFormat();
-  const router = useRouter();
-  const caliber = payload?.caliber ?? "sessions";
-  const sessionsLabel =
-    caliber === "hourly" ? copy.list.sessionsHourly : copy.list.sessions;
-  const unattributedHint =
-    caliber === "hourly"
-      ? copy.list.unattributedHintHourly
-      : copy.list.unattributedHint;
+  copy,
+  locale,
+  effects,
+  styles,
+}: Pick<
+  ProjectsBodyProps,
+  "payload" | "copy" | "locale" | "effects" | "styles"
+>) {
+  const { formatTokens, formatCost, formatNumber } = useFormat();
 
-  const columns = useMemo<DataTableColumn<ProjectItem>[]>(
-    () => [
-      {
-        id: "project",
-        header: copy.list.project,
-        className: "max-w-64",
-        cell: (project) =>
-          project.project_key == null ? (
-            <div className="flex flex-col gap-1 py-1">
-              <Chip color="warning" size="sm" variant="soft">
-                {copy.list.unattributed}
-              </Chip>
-              <Typography className="max-w-md" color="muted" type="body-xs">
-                {unattributedHint}
-              </Typography>
-            </div>
-          ) : (
-            <span className="block max-w-64 truncate">
-              {resolveProjectDisplayName(project.project_key)}
-            </span>
-          ),
-      },
-      {
-        id: "tokens",
-        header: copy.list.tokens,
-        className: "whitespace-nowrap tabular-nums",
-        cell: (project) => formatTokens(project.total_tokens),
-      },
-      {
-        id: "cost",
-        header: copy.list.cost,
-        className: "whitespace-nowrap tabular-nums",
-        cell: (project) => formatCost(Number(project.total_cost_usd)),
-      },
-      {
-        id: "dayPeak",
-        header: copy.list.dayPeak,
-        className: "whitespace-nowrap tabular-nums",
-        cell: (project) =>
-          project.day_peak ? (
-            <span className="flex items-baseline gap-1.5">
-              {formatTokens(project.day_peak.total_tokens)}
-              <Typography color="muted" type="body-xs">
-                {formatDate(project.day_peak.date)}
-              </Typography>
-            </span>
-          ) : (
-            "—"
-          ),
-      },
-      {
-        id: "sessions",
-        header: sessionsLabel,
-        className: "whitespace-nowrap tabular-nums",
-        cell: (project) => formatNumber(project.session_count),
-      },
-      {
-        id: "lastActive",
-        header: copy.list.lastActive,
-        className: "whitespace-nowrap",
-        cell: (project) =>
-          project.last_active ? formatDateTime(project.last_active) : "—",
-      },
-    ],
+  if (!payload) return null;
+
+  const cells: Array<[string, string]> = [
+    [copy.summary.tokens, formatTokens(payload.totals.attributed_tokens)],
+    [copy.summary.cost, formatCost(Number(payload.totals.total_cost_usd))],
+    [copy.summary.projects, formatNumber(payload.projects.length)],
     [
-      copy,
-      formatCost,
-      formatDate,
-      formatDateTime,
-      formatNumber,
-      formatTokens,
-      sessionsLabel,
-      unattributedHint,
+      copy.summary.unattributed,
+      formatTokens(payload.totals.unattributed_tokens),
     ],
-  );
+  ];
 
-  const renderProjectRow = (project: ProjectItem) => (
-    <Card className="p-3">
-      <Card.Content className="gap-2">
-        <div className="flex items-center justify-between gap-2">
-          {project.project_key == null ? (
-            <Chip color="warning" size="sm" variant="soft">
-              {copy.list.unattributed}
-            </Chip>
-          ) : (
-            <Typography type="body-sm" weight="semibold">
-              <span className="block max-w-56 truncate">
-                {resolveProjectDisplayName(project.project_key)}
-              </span>
+  return (
+    <Card className="p-4 md:p-6">
+      <Card.Header className="flex-col items-start gap-1">
+        <Card.Title>{copy.summary.title}</Card.Title>
+        <Typography color="muted" type="body-xs">
+          {formatMessage(copy.summary.allTime, locale, {
+            from: payload.from,
+            to: payload.to,
+          })}
+        </Typography>
+      </Card.Header>
+      <Card.Content className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {cells.map(([label, value]) => (
+          <span
+            key={label}
+            className={cn(
+              "flex flex-col gap-1",
+              effects.stateMotion && styles.stateFade,
+            )}
+          >
+            <Typography color="muted" type="body-xs">
+              {label}
             </Typography>
-          )}
-          <span className="tabular-nums">
-            {formatTokens(project.total_tokens)}
+            <Typography
+              className="tabular-nums"
+              type="body-sm"
+              weight="semibold"
+            >
+              {value}
+            </Typography>
           </span>
-        </div>
-        {project.project_key == null ? (
-          <Typography color="muted" type="body-xs">
-            {unattributedHint}
-          </Typography>
-        ) : null}
-        <div className="text-muted flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-          <span className="tabular-nums">
-            {formatCost(Number(project.total_cost_usd))}
-          </span>
-          <span className="tabular-nums">
-            {sessionsLabel} {formatNumber(project.session_count)}
-          </span>
-          {project.day_peak ? (
-            <span className="tabular-nums">
-              {copy.list.dayPeak} {formatTokens(project.day_peak.total_tokens)}{" "}
-              {/* day_peak.date is a day key — render it as that day, not as
-                  UTC midnight in the viewer's zone. */}
-              ·{" "}
-              {formatDate(project.day_peak.date, {
-                dateStyle: "medium",
-                timeZone: "UTC",
-              })}
-            </span>
-          ) : null}
-          {project.last_active ? (
-            <span>{formatDateTime(project.last_active)}</span>
-          ) : null}
-        </div>
+        ))}
       </Card.Content>
     </Card>
   );
+}
 
-  const emptyState = (
-    <div className="flex flex-col items-start gap-2 py-6">
+function RowsSkeleton({
+  copy,
+  effects,
+  styles,
+}: Pick<ProjectsBodyProps, "copy" | "effects" | "styles">) {
+  return (
+    <div aria-label={copy.list.title} className="flex flex-col gap-2">
+      {Array.from({ length: 6 }, (_, index) => (
+        <Skeleton
+          key={index}
+          className={cn(
+            "h-20 w-full rounded-2xl",
+            effects.skeletonShimmer && styles.shimmer,
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({
+  copy,
+  effects,
+  styles,
+  onRetry,
+  filtered,
+}: Pick<ProjectsBodyProps, "copy" | "effects" | "styles" | "onRetry"> & {
+  filtered: boolean;
+}) {
+  const router = useRouter();
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-start gap-2 py-8",
+        effects.stateMotion && styles.stateFade,
+      )}
+    >
       <Folder aria-hidden="true" className="text-muted size-6" />
       <Typography type="body-sm" weight="semibold">
-        {copy.states.emptyTitle}
+        {filtered ? copy.states.emptyFilterTitle : copy.states.emptyTitle}
       </Typography>
       <Typography className="max-w-2xl" color="muted" type="body-sm">
-        {copy.states.emptyBody}
+        {filtered ? copy.states.emptyFilterBody : copy.states.emptyBody}
       </Typography>
       <div className="flex flex-wrap gap-2 pt-1">
-        <Button size="sm" onPress={() => router.push("/device")}>
-          {copy.states.emptyPair}
+        <Button
+          size="sm"
+          onPress={filtered ? onRetry : () => router.push("/device")}
+        >
+          {filtered ? copy.states.emptyFilterAction : copy.states.emptyPair}
         </Button>
         <Button
           size="sm"
@@ -204,24 +167,156 @@ export function ProjectsBody({
       </div>
     </div>
   );
+}
+
+export function ProjectsBody(props: ProjectsBodyProps) {
+  const {
+    copy,
+    locale,
+    payload,
+    status,
+    refreshing,
+    view,
+    sortLabel,
+    limit,
+    effects,
+    styles,
+    selectedKey,
+    replayNonce,
+    simulatedState,
+    onOpen,
+    onRetry,
+  } = props;
+  const allProjects = payload?.projects ?? [];
+  const projects = sliceProjects(allProjects, limit);
+  const maxTokens = projects.reduce(
+    (max, project) => Math.max(max, project.total_tokens),
+    0,
+  );
+  // Same denominator as the detail modal's "share of total": every token in
+  // the window, unattributed included.
+  const windowTotal = payload
+    ? payload.totals.attributed_tokens + payload.totals.unattributed_tokens
+    : 0;
+  const isLoading =
+    simulatedState === "loading" || (status === "loading" && !payload);
+  const isEmpty =
+    simulatedState === "empty" || (!isLoading && allProjects.length === 0);
+  const isError =
+    simulatedState === "error" || (status === "error" && !payload);
+  const stale = status === "error" && payload != null && simulatedState == null;
+  const filtered =
+    payload != null && allProjects.length === 0 && payload.total > 0;
 
   return (
-    <DataTableCard
-      columns={columns}
-      empty={emptyState}
-      error={{
-        message: copy.states.loadError,
-        onRetry,
-        retryLabel: copy.states.retry,
-      }}
-      hint={caliber === "hourly" ? copy.list.hintHourly : copy.list.hint}
-      refreshing={refreshing}
-      renderMobileRow={renderProjectRow}
-      rowKey={rowKey}
-      rows={payload?.projects ?? []}
-      status={status}
-      tableLabel={copy.list.title}
-      title={copy.list.title}
-    />
+    <div className="flex flex-col gap-4">
+      <Summary
+        copy={copy}
+        effects={effects}
+        locale={locale}
+        payload={payload}
+        styles={styles}
+      />
+
+      <Card className="p-4 md:p-6">
+        <Card.Header className="flex-col items-start gap-1">
+          <Card.Title>{copy.list.title}</Card.Title>
+          <Typography color="muted" type="body-xs">
+            {limit === "all"
+              ? formatMessage(copy.list.count, locale, {
+                  count: String(allProjects.length),
+                })
+              : formatMessage(copy.list.showing, locale, {
+                  count: String(projects.length),
+                  total: String(allProjects.length),
+                })}{" "}
+            · {formatMessage(copy.list.sortedBy, locale, { sort: sortLabel })} ·{" "}
+            {copy.list.relativeBar}
+          </Typography>
+        </Card.Header>
+
+        <Card.Content className="relative flex flex-col gap-2">
+          {stale ? (
+            <div
+              className={cn(
+                "bg-danger-soft text-danger flex flex-wrap items-center justify-between gap-2 rounded-2xl px-3 py-2",
+                effects.stateMotion && styles.errorSlide,
+              )}
+            >
+              <Typography type="body-xs">{copy.states.stale}</Typography>
+              <Button size="sm" variant="outline" onPress={onRetry}>
+                {copy.states.retry}
+              </Button>
+            </div>
+          ) : null}
+
+          {isError ? (
+            <SectionError
+              message={copy.states.loadError}
+              retry={onRetry}
+              retryLabel={copy.states.retry}
+            />
+          ) : isLoading ? (
+            <RowsSkeleton copy={copy} effects={effects} styles={styles} />
+          ) : isEmpty ? (
+            <EmptyState
+              copy={copy}
+              effects={effects}
+              filtered={filtered && simulatedState == null}
+              styles={styles}
+              onRetry={onRetry}
+            />
+          ) : (
+            <div
+              key={replayNonce}
+              className={cn(
+                view === "cards"
+                  ? "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+                  : "flex flex-col gap-2",
+              )}
+            >
+              {projects.map((project, index) => {
+                const key = project.project_key ?? "__unattributed";
+                const shared = {
+                  copy,
+                  effects,
+                  index,
+                  locale,
+                  maxTokens,
+                  project,
+                  selected: selectedKey === key,
+                  sources: project.sources ?? [],
+                  styles,
+                  view,
+                  windowShare:
+                    windowTotal > 0 ? project.total_tokens / windowTotal : 0,
+                  onOpen: () => onOpen(project),
+                };
+
+                return view === "cards" ? (
+                  <ProjectCardTile {...shared} key={key} />
+                ) : (
+                  <ProjectRow {...shared} key={key} />
+                );
+              })}
+            </div>
+          )}
+
+          {payload && payload.filtered_zero_usage_projects > 0 ? (
+            <Typography color="muted" type="body-xs">
+              {formatMessage(copy.list.filteredNote, locale, {
+                count: String(payload.filtered_zero_usage_projects),
+              })}
+            </Typography>
+          ) : null}
+
+          {refreshing && payload && !isLoading ? (
+            <div className="bg-surface/60 absolute inset-0 z-10 flex items-center justify-center rounded-2xl backdrop-blur-[2px]">
+              <Spinner size="sm" />
+            </div>
+          ) : null}
+        </Card.Content>
+      </Card>
+    </div>
   );
 }

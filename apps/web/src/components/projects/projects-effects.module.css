@@ -1,0 +1,150 @@
+/* Page-scoped effect candidates for /projects only. Every class maps to one
+   toggle in the review panel; nothing here leaks to other pages. All motion is
+   CSS-only and disabled under prefers-reduced-motion. */
+
+.row {
+  position: relative;
+  transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.hoverLift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px -12px rgb(0 0 0 / 0.35);
+}
+
+.meter {
+  transition: width 420ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease;
+}
+
+.meterFlow {
+  transition: width 420ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease, filter 240ms ease;
+}
+
+.meterFlow:hover {
+  filter: brightness(1.12);
+}
+
+.selectedRail::before {
+  content: "";
+  position: absolute;
+  inset-block: 8px;
+  inset-inline-start: 0;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-chart-1, currentColor);
+}
+
+.staggerRow {
+  animation: rowIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--stagger-delay, 0ms);
+}
+
+.dialogSurface {
+  transform-origin: center;
+}
+
+.dialogEntrance {
+  animation: dialogIn 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.detailFade {
+  animation: detailIn 200ms ease both;
+}
+
+.stateFade {
+  animation: fadeIn 260ms ease both;
+}
+
+.errorSlide {
+  animation: slideDown 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(127 127 127 / 0.12), transparent);
+  animation: shimmerSweep 1.4s ease-in-out infinite;
+}
+
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes detailIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmerSweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row,
+  .meter,
+  .meterFlow {
+    transition: none;
+  }
+
+  .staggerRow,
+  .dialogEntrance,
+  .detailFade,
+  .stateFade,
+  .errorSlide,
+  .shimmer::after {
+    animation: none;
+  }
+}

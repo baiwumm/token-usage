@@ -111,12 +111,18 @@ export async function projectsHourlyPayloadForUser(
         lastActiveMs: 0,
         lastActive: null,
         dayTokens: new Map(),
+        sourceTokens: new Map(),
       };
       groups.set(key, group);
     }
     const tokens = numberOr0(row.total_tokens);
+    const sourceLabel = String(row.source ?? "").trim() || "unknown";
 
     group.totalTokens += tokens;
+    group.sourceTokens.set(
+      sourceLabel,
+      (group.sourceTokens.get(sourceLabel) ?? 0) + tokens,
+    );
     // Same read-time pricing engine as the dashboard/session series: the
     // persisted bucket total_cost_usd is a legacy 0 in production, so the
     // column must be re-costed per row (computeRowCost honours grok/cline

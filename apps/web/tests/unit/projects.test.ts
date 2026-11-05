@@ -39,10 +39,7 @@ vi.mock("@/lib/auth/config", () => ({
 import type { NextRequest } from "next/server";
 
 import { GET } from "@/app/api/app/projects/route";
-import {
-  projectsPayloadForUser,
-  type ProjectWire,
-} from "@/lib/api/projects";
+import { projectsPayloadForUser } from "@/lib/api/projects";
 import type { ProjectsPayload } from "@/lib/dashboard/api";
 import { resetPricingForTests } from "@/lib/pricing";
 
@@ -191,7 +188,7 @@ function keys(body: ProjectsPayload): Array<string | null> {
 function find(
   body: ProjectsPayload,
   key: string | null,
-): ProjectWire {
+): ProjectsPayload["projects"][number] {
   const found = body.projects.find((project) => project.project_key === key);
 
   if (!found) throw new Error(`missing project ${key}`);
@@ -243,6 +240,42 @@ describe("GET /api/app/projects — auth gate", () => {
     const body = (await response.json()) as ProjectsPayload;
 
     expect(body.total).toBe(3);
+  });
+});
+
+describe("projectsPayloadForUser — source icons", () => {
+  it("orders a project's sources by token share, ties by id", async () => {
+    fake.table("token_sessions").push(
+      session({
+        session_id: "gamma-1",
+        project_key: "gamma",
+        source: "codex",
+        total_tokens: 100,
+        ended_at: "2026-10-20T01:00:00.000Z",
+      }),
+      session({
+        session_id: "gamma-2",
+        project_key: "gamma",
+        source: "claude-code",
+        total_tokens: 300,
+        ended_at: "2026-10-20T02:00:00.000Z",
+      }),
+      session({
+        session_id: "gamma-3",
+        project_key: "gamma",
+        source: "zeta",
+        total_tokens: 300,
+        ended_at: "2026-10-20T03:00:00.000Z",
+      }),
+    );
+
+    const body = await payload("from=2026-10-19&to=2026-10-25");
+
+    expect(find(body, "gamma").sources).toEqual([
+      "claude-code",
+      "zeta",
+      "codex",
+    ]);
   });
 });
 

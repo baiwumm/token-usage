@@ -749,6 +749,9 @@ export interface ProjectItem {
   session_count: number;
   day_peak: { date: string; total_tokens: number } | null;
   last_active: string | null;
+  /** Source ids by token share (desc). Optional so an older payload still
+   *  renders: the row then falls back to its window-share caption. */
+  sources?: string[];
 }
 
 export type ProjectsCaliber = "sessions" | "hourly";
@@ -807,4 +810,71 @@ export function fetchProjects(params: {
   const path = projectsCaliber() === "hourly" ? "projects-hourly" : "projects";
 
   return callApp<ProjectsPayload>(path, `?${query}`);
+}
+
+// Project detail (/projects, list → modal). Dashboard's own face, cookie
+// session auth like the list; never part of the CLI contract. The caliber is
+// passed explicitly so the detail always matches the list payload in the
+// same build (NEXT_PUBLIC_PROJECTS_CALIBER is inlined at build time).
+
+export interface ProjectDetailTotals {
+  total_tokens: number;
+  input_tokens: number;
+  cached_input_tokens: number;
+  cache_creation_input_tokens: number;
+  output_tokens: number;
+  reasoning_output_tokens: number;
+  conversation_count: number;
+  total_cost_usd: string;
+  credits: number;
+}
+
+export interface ProjectDetailDay {
+  date: string;
+  total_tokens: number;
+  conversation_count: number;
+  total_cost_usd: string;
+  sources: Record<string, number>;
+}
+
+export interface ProjectDetailSource {
+  source: string;
+  total_tokens: number;
+  conversation_count: number;
+  days_active: number;
+  total_cost_usd: string;
+}
+
+export interface ProjectDetailPayload {
+  from: string;
+  to: string;
+  days: number;
+  caliber: ProjectsCaliber;
+  project_key: string | null;
+  totals: ProjectDetailTotals;
+  /** Whole-window token denominator for the "share of total" stat. */
+  range_total_tokens: number;
+  days_active: number;
+  daily: ProjectDetailDay[];
+  sources: ProjectDetailSource[];
+}
+
+export const UNATTRIBUTED_PROJECT_KEY = "__unattributed";
+
+export function fetchProjectDetail(params: {
+  projectKey: string | null;
+  fromDay: string;
+  toDay: string;
+  tz?: string;
+}): Promise<ProjectDetailPayload> {
+  const query = new URLSearchParams({
+    project: params.projectKey ?? UNATTRIBUTED_PROJECT_KEY,
+    from: params.fromDay,
+    to: params.toDay,
+    caliber: projectsCaliber(),
+  });
+
+  if (params.tz) query.set("tz", params.tz);
+
+  return callApp<ProjectDetailPayload>("projects-detail", `?${query}`);
 }

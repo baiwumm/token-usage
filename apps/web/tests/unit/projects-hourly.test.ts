@@ -164,6 +164,37 @@ describe("GET /api/app/projects-hourly — auth gate", () => {
   });
 });
 
+describe("projectsHourlyPayloadForUser — source icons", () => {
+  it("orders a project's sources by token share, ties by id", async () => {
+    fake.table("token_usage_hourly").push(
+      hourly({
+        project_key: "gamma",
+        source: "codex",
+        total_tokens: 100,
+        hour_start: "2026-10-20T01:00:00.000Z",
+      }),
+      hourly({
+        project_key: "gamma",
+        source: "claude-code",
+        total_tokens: 300,
+        hour_start: "2026-10-20T02:00:00.000Z",
+      }),
+      hourly({
+        project_key: "gamma",
+        source: "zeta",
+        total_tokens: 300,
+        hour_start: "2026-10-20T03:00:00.000Z",
+      }),
+    );
+    const body = await payload("from=2026-10-19&to=2026-10-25");
+    const gamma = body.projects.find(
+      (project) => project.project_key === "gamma",
+    );
+
+    expect(gamma?.sources).toEqual(["claude-code", "zeta", "codex"]);
+  });
+});
+
 describe("projectsHourlyPayloadForUser — grouping and double-count guard", () => {
   it("groups by project_key, pins the empty-string bucket as unattributed", async () => {
     fake.table("token_usage_hourly").push(
