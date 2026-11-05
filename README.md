@@ -98,7 +98,7 @@ pnpm verify     # 提交前门禁：lint + typecheck + test + build
 
 ## 🗺️ 路线图
 
-v1（M0–M7）已于 2026-10-30 全部完成并上线；采集端 CLI 当前 0.4.6。
+v1（M0–M7）已于 2026-10-30 全部完成并上线；采集端 CLI 当前 0.4.7。
 剩余待办与待拍板事项见 [`docs/rewrite-plan.md`](docs/rewrite-plan.md) §10。
 
 ## 📚 文档

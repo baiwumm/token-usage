@@ -20,7 +20,7 @@ npm 包 `tokenusage-cli` 的发布流程、首发未竟事项与发版后检查�
 不随改名更新，是**稳定标识**——文档引用机器时两个都写，CLI 打印的也正是默认名。
 
 **从 §八起，本文档每条升级 / 验收记录都带设备名**；`本机` / `另一台` 这类相对称呼不再用于
-新记录。下个 CLI 版本起 `tokenusage status` 会自报设备身份（`- Device: <hostname> #<id8>`），
+新记录。**CLI 0.4.7 起 `tokenusage status` 会自报设备身份**（`- Device: <hostname> #<id8>`），
 任何一段命令输出都能自证是哪台机器。
 
 ⚠ 历史段落里的「本机」含义**在 §四与 §五之间翻转过**，不要按字面理解：
@@ -97,8 +97,9 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
    audit 端点（报 404 错误而非漏洞），必须显式带官方 registry 参数
    （2026-11-03 实测官方源 0 漏洞）。
 3. 提交并推送 main，确认 CI 绿。
-4. 打 tag 并推送：`git tag cli-vX.Y.Z && git push origin cli-vX.Y.Z`
-   （必须打在**已推送**的 main 提交上；打在旧提交上不会触发任何东西且无报错）。
+4. 打 tag 并推送：`git tag -a cli-vX.Y.Z -m "tokenusage-cli X.Y.Z" && git push origin cli-vX.Y.Z`
+   （**annotated**，与历史 tag 一致；必须打在**已推送**的 main 提交上——打在旧提交上不会
+   触发任何东西且无报错）。
 5. workflow 全自动完成：版本校验 → main 祖先校验 → `pnpm verify` → 发包 → Release。
 6. 纪律：run 结束前不要 rebase / 强推 main——重写历史会让 tag 脱离 main，
    发布被安全拒绝（只会发不出去，不会发错）。
@@ -155,12 +156,13 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 后续版本候选与实测记录（不阻塞已发版本）
 
-> **已发版批次（0.4.4 ~ 0.4.6，2026-11-03 ~ 11-05）**：契约 v2 桶级 `project_key`（`fe4fb26`，
+> **已发版批次（0.4.4 ~ 0.4.7，2026-11-03 ~ 11-05）**：契约 v2 桶级 `project_key`（`fe4fb26`，
 > 随 0.4.4 发版）、项目键父级回退（`823ee14`）、DeepSeek 余额/状态卡、`status --json` 的
 > pricing 块、`doctor` 计价覆盖自检、curated 定价扩充、cursor/kimi/grok limits 磁盘缓存回退
 > （均随 0.4.4 发版）；0.4.5 修队列去重丢项目拆分行，0.4.6 修 Cursor 准入 / Qoder credits 与
-> 限额快照并加 `status --limits`。明细以 `packages/cli/CHANGELOG.md` 的对应版本节为准。
-> 两台采集机均已升到 0.4.6；`/projects` 的 hourly 口径见
+> 限额快照并加 `status --limits`，0.4.7 让每条命令自报设备身份并补全采集结果摘要。
+> 明细以 `packages/cli/CHANGELOG.md` 的对应版本节为准。
+> 家机已升到 0.4.7、公司机停在 0.4.6（待操作者升级）；`/projects` 的 hourly 口径见
 > `docs/ui-spec.md`「项目（`/projects`）」节。
 
 > **原「未发版候选」（2026-11-01 盘点；两项均已随 0.4.0 交付）**：① `init` 逐工具集成
@@ -643,7 +645,7 @@ offset / watermark；Windows 隐藏启动器写 UTF-16LE + BOM；`init` 首同�
 | 家机遗留项 | `Trae SOLO CN: usage sync off`（需 `TOKENUSAGE_TRAE_CN_USAGE=1` 开启）——0.4.6 已修 Trae CN 双 app dir 识别，开启后即可采到 Trae CN 用量 |
 | [x] 公司机 `Company · Partner`（默认名 `PC-20260408RIKF #68e47b34`）升级与验收 | **2026-11-05 操作者在那台机器上完成**：`npm i -g tokenusage-cli@0.4.6` → `tokenusage init --yes --no-integrations --no-open` → `tokenusage reconcile --days 7` 验收通过。服务端核对（`token-usage-dashboard?range=all_time`，设备令牌只读）：device `1bd2ff67-653f-4b9c-80a9-c7589432d431`、云端名 `Company · Partner`、active、2,037 桶 / 14,835,125,523 tokens、`last_used_at 2026-11-05T11:00:16Z`（升级后仍在按小时上报） |
 
-## 八、下个版本候选（未发版）：CLI 自报设备身份
+## 八、0.4.7 发版验证清单（2026-11-05）
 
 **背景**：一个账户两台采集机，而 `status` / `doctor` 的输出正是被贴进发版清单与工单的那段
 文字。旧版 CLI 从不说「我是哪台机器」，于是「本机」与「另一台」在文档里混成一团——本文件
@@ -674,13 +676,10 @@ offset / watermark；Windows 隐藏启动器写 UTF-16LE + BOM；`init` 首同�
 ```
 Sync finished:
 - Device: DESKTOP-MHFON1J #48ea790e (id 6a074a51-693b-48e3-9f65-0728f9f2ee5c)
-- Parsed files: 30,285
-- New 30-min buckets queued: 2
-- Uploaded: 2 rows (23,604,640 tokens), 0 skipped
-- Sessions: 4/5 uploaded (upserted 4, skipped 1)
-- Remaining: 2.00 KB pending (run sync again, or use --drain)
-- Duration: 7.7s
-- Warning: <原有问题提示>
+- Parsed files: 30,125
+- New 30-min buckets queued: 1
+- Uploaded: 2 rows (86,538,406 tokens), 0 skipped
+- Duration: 8.5s
 ```
 
 | 变化 | 说明 |
@@ -709,7 +708,30 @@ tokenusage doctor            # 新增 runtime.device_identity 检查
 `devices[]` 里逐台核对；已回填本文档开头「机器称呼约定」与 `docs/launch-runbook.md`
 的采集机清单表。
 
-**发版**：bump / tag / `npm publish` 由操作者执行（见 §二）。发布后两台机器各跑一次
-`npm i -g tokenusage-cli@latest` + `tokenusage init --yes --no-integrations --no-open`，
-`status` 即会自报身份。
+### 8.3 发版验证清单
+
+| 项 | 结果 |
+|---|---|
+| npm 版本 | `tokenusage-cli@0.4.7`，`dist-tags.latest = 0.4.7`；publish 于 2026-11-05T15:50:56Z，npm 异步处理约 **60 秒**后 registry 可读 |
+| git tag | `cli-v0.4.7`（lightweight tag，指向 `324e883`，即已推送 main 的发版提交） |
+| GitHub Actions | Release run `42058837663` 成功，耗时 1m41s；版本校验 → main 祖先校验 → `pnpm verify` → Trusted Publishing 发包 → Release notes 取段 → 建 Release 全部通过 |
+| provenance | 已发布（npm 提示 `Signed provenance statement`，transparency log logIndex 3695689270） |
+| Release notes | 取 CHANGELOG `## 0.4.7` 段，未退回 `--generate-notes`；GitHub Release `cli-v0.4.7` 已建（作者 github-actions[bot]） |
+| 安全审计 | `pnpm audit --prod --registry=https://registry.npmjs.org` → No known vulnerabilities found |
+| 提交分批 | `feat(cli)` 设备身份与摘要（`15e2fad`）→ `docs` 文档集规范化（`bc24f5e`）→ `chore(cli)` 发版 bump（`324e883`） |
+| [x] 家机 `DESKTOP-MHFON1J #48ea790e` 升级与验证（2026-11-05） | `npm i -g tokenusage-cli@0.4.7 --prefer-online --registry=https://registry.npmjs.org`（6 包 / 9s）→ `tokenusage --version` = **v0.4.7**；`init --yes --no-integrations --no-open` 刷新运行时副本（`.runtime-ready` v0.4.7，15:55:45Z），首采 **6,035,697,672 tokens / 13 providers**，完成页已带 `Device:` 行 |
+| [x] 家机采集验证 | `sync` 解析 **30,125** 文件、新入队 1 桶、上传 **2 行 / 86,538,406 tokens / 0 跳过**，耗时 8.5s，摘要带 `- Device:`；`reconcile --days 1` **OK**（4 桶逐键匹配）、`--days 7` **OK**（117 桶逐键匹配），退出码均 0 |
+| [x] 家机体检 | `doctor` **16 OK / 0 warn / 0 fail / 0 critical**（新增 `runtime.device_identity` 检查项 OK；`runtime.copy` v0.4.7；7 天 token 计价覆盖 100%） |
+| [x] 家机计划任务 | 手动触发 `\TokenUsageSync` → `LastTaskResult=0`；`sync.log` 记录 `parsed 30127 files, +1 buckets, uploaded 1, 31373059 tokens, queue drained`，JSONL 已带新字段 `tokens` / `credits` / `sessions_uploaded` / `sessions_skipped` / `duration_ms` |
+| [x] 家机输出面抽查 | `status --json` 的 `device` 块四字段齐全（`name` / `hostname` / `machine_id` / `device_id`）；`status --light` 表格含 `Device` 与 `Device ID` 两行 |
+| 调度降级（家机预期） | `init` 摘要仍为 `degraded: xml_rejected — 错误: 拒绝访问。`：非提升 shell 下 `schtasks /Create /XML` 需管理员权限，自动降级为每小时触发；采集与上传不受影响 |
+| [ ] 公司机 `Company · Partner`（默认名 `PC-20260408RIKF #68e47b34`）升级 | **待操作者执行**：`npm i -g tokenusage-cli@0.4.7` → `init --yes --no-integrations --no-open` → `reconcile --days 7`；该机当前为 0.4.6，不影响采集（仅输出面差异） |
+
+**升级后怎么用**（两台机器都跑一遍即可自动对上号）：
+
+```bash
+tokenusage status            # 文本输出里的 - Device: 就是这台机器
+tokenusage status --json     # .device.name / .device.device_id
+tokenusage doctor            # 新增 runtime.device_identity 检查
+```
 

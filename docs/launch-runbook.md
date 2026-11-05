@@ -12,7 +12,7 @@
 
 - **默认名**（稳定标识）：契约 `docs/cli-contract.md` §2.2 规定的 `<主机名> #<machine_id 前 8 位>`，
   签发时生成、不随改名更新。CLI 打印的也正是默认名（`status` / `doctor` / `sync` 等命令的
-  `- Device:` 行——**CLI 0.4.7 起，未发版**；npm 最新仍是 0.4.6）。
+  `- Device:` 行——**CLI 0.4.7 起**，2026-11-05 已发版）。
 - **云端当前名**：操作者可在仪表盘改名（`Home · C Future City` / `Company · Partner`）。
 
 | 别名 | 云端当前名 | 默认名（稳定标识） | device_id | 账号 / 数据目录 | Node 与安装方式 |

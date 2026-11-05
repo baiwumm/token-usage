@@ -240,29 +240,29 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），
 其值从 publishable key 取——公开客户端值的语义不变。
 
-## 10. 当前状态与剩余事项（2026-11-04 复核）
+## 10. 当前状态与剩余事项（2026-11-05 复核）
 
 **里程碑**：M0–M7 全部交付；生产实例 `token-usage.baiwumm.com` 自 2026-10-26 起承载
-两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.6`（2026-11-05
+两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.7`（2026-11-05
 发布）。两台采集机的身份与状态（设备名即契约 §2.2 的 `<主机名> #<machine_id 前 8 位>`，
 对照表见 `docs/cli-release.md` 开头「机器称呼约定」与 `docs/launch-runbook.md` 的采集机清单）：
 
 | 机器 | 云端当前名 | 默认名（稳定标识） | CLI 版本 | 状态 |
 |---|---|---|---|---|
-| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | **0.4.6**（2026-11-05 升级） | `doctor` 15 项全 OK；`reconcile --days 1` / `--days 7` 均 OK（114 桶逐键匹配、0 drift、退出码 0）；首采 5,936,534,278 tokens / 13 providers；服务端 943 桶 / 8,366,238,399 tokens |
-| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | **0.4.6**（2026-11-05 操作者升级并验收） | `reconcile --days 7` 验收通过；服务端 2,037 桶 / 14,835,125,523 tokens，`last_used_at 2026-11-05T11:00:16Z` |
+| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | **0.4.7**（2026-11-05 升级） | `doctor` 16 项全 OK；`reconcile --days 1` / `--days 7` 均 OK（4 / 117 桶逐键匹配、0 drift、退出码 0）；首采 6,035,697,672 tokens / 13 providers |
+| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | **0.4.6**（2026-11-05 操作者升级并验收；0.4.7 待升） | `reconcile --days 7` 验收通过；服务端 2,037 桶 / 14,835,125,523 tokens，`last_used_at 2026-11-05T11:00:16Z` |
 
 两台 `device_id` 与服务端核对记录见 `docs/cli-release.md` 开头「机器称呼约定」与
 `docs/launch-runbook.md` 的采集机清单表；CLI 自报身份（`status` / `doctor` 输出设备行）
-与采集结果摘要补全见 `docs/cli-release.md` §八。
+与采集结果摘要补全已随 **0.4.7** 发版，发版与本机验收记录见 `docs/cli-release.md` §八。
 
 版本沿革：0.4.0 交付 CLI 加固批与 `reconcile`，0.4.1 修 `reconcile` 的
 `conversation_count` 别名误报，0.4.2 让 `init` 的 degraded 摘要显示被拒原因，0.4.3 把该
 原因改取 `stderr` 并修掉中文 Windows 的代码页乱码、`reconcile` 区分 pending 与漂移，
 0.4.4 落契约 v2 桶级 `project_key`、DeepSeek 余额/状态卡与计价覆盖自检，0.4.5 修
 队列去重丢拆分项目行、上传确认、VBS 编码与首同步统计，0.4.6 修 Cursor 准入 / Qoder credits
-与限额快照、加 `status --limits`（清单见 `docs/cli-release.md`
-§五/§六/§七）；下个版本候选让 `status` / `doctor` 自报设备身份（§八）。
+与限额快照、加 `status --limits`，0.4.7 让每条命令自报设备身份并补全采集结果摘要
+（清单见 `docs/cli-release.md` §五–§八）。
 「同小时键多行递增值」观测已用源库核对证伪（属累计重入队，见
 `docs/cli-release.md` §四 0.4.3 条）。
 
@@ -298,7 +298,7 @@ CI 在 main 与 `cli-v*` tag 上运行；web 由 Vercel 部署，CLI 由 `releas
 golden 测试 `apps/web/tests/contract/reconcile.test.ts`）与 CLI 命令
 （`packages/cli/src/commands/reconcile.js`）均已落地；只读，按基线（AGENTS 约束 8 的
 queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` 偏移之后的桶记为
-`pending`（不计漂移）。已随 0.4.0 起发到 npm（最新 0.4.6）；真机验收（2026-11-01，本机
+`pending`（不计漂移）。已随 0.4.0 起发到 npm（最新 0.4.7）；真机验收（2026-11-01，本机
 7 天窗口 100/100 桶匹配、退出码 0）通过（0.4.1 修掉 `conversation_count` 别名比较的
 误报，0.4.2 复核同样 OK，0.4.3 加 pending 分类）。该端点由 catch-all 承接，
 后续端点优先复用 catch-all 或走 `/api/app/*`（见 §2 的 Vercel 函数预算结论）。
@@ -309,7 +309,8 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` �
    执行 `npm i -g tokenusage-cli@0.4.6` → `init --yes --no-integrations --no-open` →
    `reconcile --days 7` 验收通过；服务端核对 device `1bd2ff67-653f-4b9c-80a9-c7589432d431`
    （云端名 `Company · Partner`）、2,037 桶 / 14,835,125,523 tokens、升级后仍按小时上报。
-   家机 `DESKTOP-MHFON1J #48ea790e` 同日升到 0.4.6（见 §七）。
+   家机 `DESKTOP-MHFON1J #48ea790e` 同日升到 0.4.6（见 §七），并在 0.4.7 发版后升到
+   **0.4.7**（见 §八；公司机 0.4.7 待操作者升级，不影响采集）。
 2. macOS / Linux 调度真机验证：暂无真机，目前只有产物级测试（plist / systemd unit 与
    文案断言）。首次在真机跑 `init` 后需确认 `launchctl list` / `systemctl --user
    list-timers` 里有对应条目，再回填 `docs/cli-release.md` §四。
@@ -349,10 +350,10 @@ web 修账户快照全主键分页（>100 万行显式 500，不静默截断）�
    作为上限。
 5. **keyset 分页 / 预聚合**：暂不立项，触发条件与远期 backlog「队列按月分片」一致
    （查询延迟或数据量有明显体感再说）。
-6. ~~公司机 `PC-20260408RIKF #68e47b34`~~ → **已完成（2026-11-05）**，两台采集机 CLI 均为
+6. ~~公司机 `PC-20260408RIKF #68e47b34`~~ → **已完成（2026-11-05）**，两台采集机 CLI 均已到
    0.4.6（家机 `reconcile --days 1` / `--days 7` 均 OK、0 drift；公司机由操作者在那台机器上
-   升级并验收）。机器称呼与身份对照见 `docs/cli-release.md` 开头「机器称呼约定」
-   与 `docs/launch-runbook.md` 的采集机清单表。
+   升级并验收），家机随后升到 0.4.7。机器称呼与身份对照见 `docs/cli-release.md` 开头
+   「机器称呼约定」与 `docs/launch-runbook.md` 的采集机清单表。
 
 已关闭：0.4.3 候选（降级原因改取 `stderr` + 代码页解码、`reconcile` pending 分类，已随
 0.4.3 发版并在本机验收）；「同小时键多行递增值」观测（zcode 源库核对证明 last-wins 行即
