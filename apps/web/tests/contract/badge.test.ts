@@ -338,6 +338,10 @@ describe.skipIf(!badgeAppRoute)("/api/app/badge config (docs/badge.md §7.1)", (
       hasToken: true,
       tokenLast4: BADGE_TOKEN.slice(-4),
     });
+    // 2026-11-05: the public page section switches were removed from the
+    // config surface; heatmap and achievements are always on.
+    expect(body).not.toHaveProperty("showHeatmap");
+    expect(body).not.toHaveProperty("showAchievements");
     expect(JSON.stringify(body)).not.toContain(BADGE_TOKEN);
   });
 

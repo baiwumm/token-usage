@@ -16,6 +16,11 @@
 //
 // It resets to the front whenever the dialog closes or another achievement
 // opens (replaying the entrance, like the upstream remount).
+//
+// 2026-11-05: the coin is rendered through `Tooltip.Trigger` (still a native
+// <button> via `render`) so it consumes react-aria's FocusableContext — a raw
+// DOM child of the Tooltip root never receives hover/focus and stays shut.
+// `inline-flex!` beats the unlayered `.tooltip__trigger { display:inline-block }`.
 
 import type { AchievementProgress } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
@@ -267,10 +272,11 @@ export function AchievementCoin({
 
   return (
     <Tooltip delay={0}>
-      <button
+      <Tooltip.Trigger<"button">
         aria-label={flipLabel}
         aria-pressed={flipped}
-        className="focus-visible:outline-accent inline-flex cursor-grab select-none items-center justify-center rounded-full outline-none focus-visible:outline-2 focus-visible:outline-offset-2 active:cursor-grabbing [&_img]:[-webkit-user-drag:none]"
+        className="focus-visible:outline-accent inline-flex! cursor-grab select-none items-center justify-center rounded-full outline-none focus-visible:outline-2 focus-visible:outline-offset-2 active:cursor-grabbing [&_img]:[-webkit-user-drag:none]"
+        render={(props) => <button {...props} />}
         style={{ perspective: 900, touchAction: "pan-y" }}
         type="button"
         onClick={onClick}
@@ -466,7 +472,7 @@ export function AchievementCoin({
             style={{ bottom: -20 }}
           />
         </span>
-      </button>
+      </Tooltip.Trigger>
       <Tooltip.Content showArrow placement="bottom">
         <Tooltip.Arrow />
         <Typography type="body-xs">{flipLabel}</Typography>

@@ -24,6 +24,7 @@ import { sha256Hex } from "@/lib/device-codes";
 import { normalizeProjectKey } from "@/lib/ingest/normalize";
 import { ModelDisplayName, modelGroupKey } from "@/lib/model-names";
 import { computeRowCost } from "@/lib/pricing";
+import { invalidatePublicPageData } from "@/lib/public-page/cache";
 import { sourceDisplayLabel } from "@/lib/sources";
 
 const DAY_MS = 86_400_000;
@@ -103,6 +104,27 @@ function dayBucket(agg: Aggregation, day: string | null, tokens: number): void {
   agg.days.set(day, (agg.days.get(day) ?? 0) + tokens);
 }
 
+/**
+ * Shared day bucketing (§4.7): the badge's 30-day sparkline series and the
+ * public page's full-history heatmap both derive from this one function, so
+ * the two can never disagree on what "a day" or "a token" is.
+ */
+export function dayTotalsFromHourly(
+  rows: Record<string, unknown>[],
+  timeZone: string,
+): Map<string, number> {
+  const days = new Map<string, number>();
+
+  for (const row of rows) {
+    const day = dayKeyAt(row.hour_start, timeZone);
+
+    if (!day) continue;
+    days.set(day, (days.get(day) ?? 0) + n0(row.total_tokens));
+  }
+
+  return days;
+}
+
 function aggregateHourly(
   rows: Record<string, unknown>[],
   timeZone: string,
@@ -119,8 +141,8 @@ function aggregateHourly(
 
     agg.sourceTokens.set(source, (agg.sourceTokens.get(source) ?? 0) + tokens);
     addModelEntry(agg, String(row.model ?? ""), tokens);
-    dayBucket(agg, dayKeyAt(row.hour_start, timeZone), tokens);
   }
+  agg.days = dayTotalsFromHourly(rows, timeZone);
 
   return agg;
 }
@@ -329,6 +351,9 @@ function badgeCacheDisabled(): boolean {
 }
 
 export function invalidateBadgeData(userId?: string): void {
+  // §3.5: a config change also drops the public page's section cache, so a
+  // freshly enabled heatmap/achievement wall is visible on the next request.
+  invalidatePublicPageData(userId);
   if (userId == null) {
     cache.clear();
     avatarCache.clear();

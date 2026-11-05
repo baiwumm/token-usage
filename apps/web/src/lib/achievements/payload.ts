@@ -8,10 +8,12 @@
 // Auth stays in the route handler; this module takes the resolved user id so
 // it is testable against the fake Supabase backend without browser cookies.
 
+import type { AchievementsSnapshot } from "./types";
+
 import { computeAchievements } from "./compute";
 import { loadAchievementSeen } from "./seen";
 
-import { parseTzContext } from "@/lib/account/series";
+import { parseTzContext, type TzContext } from "@/lib/account/series";
 import {
   loadAccountUsage,
   loadSessionRows,
@@ -33,30 +35,44 @@ function sessionWindow(now: Date): { from: string; to: string } {
   return { from: HISTORY_START, to: new Date(dayStart + DAY_MS).toISOString() };
 }
 
+/**
+ * IO + pure compute, without the HTTP envelope or the seen watermark
+ * (docs/badge.md §4.7). The public page reuses this so achievements are
+ * computed exactly once, with the same history window as /api/app/achievements.
+ */
+export async function loadAchievementsSnapshot(
+  userId: string,
+  tzContext: Partial<TzContext>,
+  now: Date = new Date(),
+): Promise<AchievementsSnapshot> {
+  const { from, to } = sessionWindow(now);
+  const [usage, sessions, syncRuns] = await Promise.all([
+    loadAccountUsage(userId),
+    loadSessionRows(userId, from, to),
+    loadSyncRunRows(userId, from, to),
+  ]);
+
+  return computeAchievements({
+    hourly: usage.hourly,
+    sessionStates: usage.sessionStates,
+    sessions: sessions.sessions,
+    syncRuns: syncRuns.runs,
+    devices: usage.deviceRows,
+    tzContext,
+    now,
+  });
+}
+
 export async function achievementsPayloadForUser(
   userId: string,
   searchParams: URLSearchParams,
   now: Date = new Date(),
 ): Promise<Response> {
   const tzContext = parseTzContext(searchParams);
-  const { from, to } = sessionWindow(now);
-  const [usage, sessions, syncRuns, seenThrough] = await Promise.all([
-    loadAccountUsage(userId),
-    loadSessionRows(userId, from, to),
-    loadSyncRunRows(userId, from, to),
+  const [snapshot, seenThrough] = await Promise.all([
+    loadAchievementsSnapshot(userId, tzContext, now),
     loadAchievementSeen(userId),
   ]);
 
-  return jsonResponse(200, {
-    ...computeAchievements({
-      hourly: usage.hourly,
-      sessionStates: usage.sessionStates,
-      sessions: sessions.sessions,
-      syncRuns: syncRuns.runs,
-      devices: usage.deviceRows,
-      tzContext,
-      now,
-    }),
-    seen_through: seenThrough,
-  });
+  return jsonResponse(200, { ...snapshot, seen_through: seenThrough });
 }

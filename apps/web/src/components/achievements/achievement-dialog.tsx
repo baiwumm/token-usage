@@ -42,8 +42,11 @@ export function AchievementDialog({
   open: boolean;
   locale: Locale;
   onOpenChange: (open: boolean) => void;
-  /** Close this dialog and open the share card for the same achievement. */
-  onShare: () => void;
+  /**
+   * Close this dialog and open the share card. Optional: the public page has
+   * no share flow, so the button simply disappears when it is omitted.
+   */
+  onShare?: () => void;
 }) {
   const format = useAchievementFormat();
   const { formatDate } = useFormat();
@@ -217,8 +220,9 @@ export function AchievementDialog({
 
                         return (
                           <Tooltip key={tier.key} delay={0}>
-                            <span
-                              className="inline-flex h-2 w-8 overflow-hidden rounded-full"
+                            <Tooltip.Trigger<"span">
+                              className="inline-flex! h-2 w-8 overflow-hidden rounded-full"
+                              render={(props) => <span {...props} />}
                               style={
                                 reached
                                   ? {
@@ -232,7 +236,7 @@ export function AchievementDialog({
                               {reached ? null : (
                                 <span className="bg-default h-full w-full rounded-full" />
                               )}
-                            </span>
+                            </Tooltip.Trigger>
                             <Tooltip.Content showArrow placement="bottom">
                               <Tooltip.Arrow />
                               <Typography type="body-xs">
@@ -280,12 +284,15 @@ export function AchievementDialog({
                           )}
                         >
                           <Tooltip delay={0}>
-                            <span className="shrink-0">
+                            <Tooltip.Trigger<"span">
+                              className="shrink-0"
+                              render={(props) => <span {...props} />}
+                            >
                               <TierBadge
                                 label={achievementCopy(locale, tier.copyKey)}
                                 tier={reached ? tier.tier : 0}
                               />
-                            </span>
+                            </Tooltip.Trigger>
                             <Tooltip.Content showArrow placement="bottom">
                               <Tooltip.Arrow />
                               <Typography type="body-xs">
@@ -350,7 +357,7 @@ export function AchievementDialog({
                   </div>
                 ) : null}
 
-                {progress.tier >= 1 ? (
+                {progress.tier >= 1 && onShare ? (
                   <Button
                     fullWidth
                     className="mt-4"

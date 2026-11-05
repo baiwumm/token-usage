@@ -215,7 +215,9 @@
 - 数字使用 `tabular-nums`；表格列头可排序并暴露 `aria-sort`。
 - 动态数值统一用 `components/flow-number.tsx`（`FlowNumber`）包装：解析 format provider
   的成品串后交给 `@number-flow/react` 做数字滚动过渡；万进制 4 位分组与无法解析的占位符
-  （`—`）自动退化为静态文本。明细表格单元格不加（整表切换）。
+  （`—`）自动退化为静态文本。明细表格单元格不加（整表切换）。公开页是唯一例外：
+  传 `lib/badge/format.ts` 的固定口径串（不使用 `useFormat`），并补 `<noscript>` 与
+  `aria-label` 兜底，见「公开页」节。
 - `<lg`：KPI 两列、筛选条换行、图表高度约 220px；`Modal` 使用全屏尺寸；表格横向滚动
   只发生在 Card 内。
 
@@ -493,18 +495,59 @@
 
 ### 公开页（`/u/<token>`，徽章点击落地）
 
-规范见 `docs/badge.md` §6。公开页面、无 AppShell（同 `/login`）、`noindex`；主题跟随系统
-（无明暗切换入口），文案随访客语言，数字沿用徽章的固定口径（`lib/badge/format.ts`，与
-README 里的 SVG 一致，不受访客本地偏好影响）。自上而下：
+> **2026-11-05 二轮～六轮裁定（`docs/badge.md` §0）覆盖本节冲突描述**：头像、
+> 两列各 5 行等高对齐（六轮把来源 `Meter` 移出文档流，两列共用同一居中基线）、
+> 热力图改仪表盘同款近一年并上移且去卡片底色、成就全列放大
+> 并复用成就页详情弹窗、删除设置开关与仓库模块、顶部品牌栏（Logo + GitHub
+> outline Button）、Token 数值改随访客偏好格式、模型行加成本、删除成本说明、
+> 口径行移到头像行右侧并精简为「全量数据 · 更新于 …」（起止日由 HeroUI
+> `Tooltip` + `Tooltip.Trigger` 展示，不再用原生 `title`；裸 DOM 触发器无法
+> 消费 `FocusableContext`，浮层不会打开。成就页三处同类触发器已一并修复，
+> 由 `tests/contract/tooltip-trigger.test.ts` 统一守卫）。
+> 组件优先 HeroUI（Button / Avatar / Typography），悬停抬升用 Tailwind
+> `group-hover`。以下保留作决策沿革。
 
-- 抬头：`TOKEN USAGE` 眉题（accent）+ 显示名（空则「AI 编码用量」）+「AI 编码用量 · 全部时间」
-- 三张 KPI `Card`（总 Tokens / 成本 / 活跃天数），成本下注「按读时定价估算」；`sm` 以上三列
-- 「近 30 天」卡：30 根 CSS 柱（`bg-accent`，`role="img"` + 汇总 aria-label），不引图表库
-- 「来源占比」与「主要模型」两卡并排（`md` 以上）：`SourceIcon` + 名称 + 数值，来源行带
-  `Meter`（同仪表盘 TopModels 写法）
-- 「仓库」区：白名单仓库各一张卡（tokens / 成本 / 活跃天数），上方口径说明
-- 页脚隐私声明（只公开聚合数字）
-- 375px 纵向堆叠，页面无横向滚动
+规范见 `docs/badge.md` §6（页面唯一规范）与 §4.7（数据口径）；2026-11-05 改版方向已由
+操作者确认，实现按 `docs/badge.md` §10 的 P9–P11 推进。公开页面、无 AppShell
+（同 `/login`）、`noindex`；主题跟随系统（无明暗切换入口，不做深色专属变体）；文案随
+访客语言，数字沿用徽章的固定口径（`lib/badge/format.ts`，与 README 里的 SVG 一致，
+不受访客本地偏好影响）。**不再展示近 30 天维度**，全页统一总数据口径。
+
+- 版式（A 档案式）：主栏 720–880px、区块间距 64 / 96px（8pt 网格）；拆掉等权 `Card`
+  堆叠，用 1px 发丝线与留白分区；accent ≤10% 面积，只用于主数字、热力图高值格与焦点态；
+  一律 HeroUI 语义 token / 复合结构 / `Typography` / `Description` 语义文本，零裸色值
+- 层级：口径行（眉题 + `全部时间 · 起止日 · 更新于` + 显示名）→ **唯一巨数**总 Tokens
+  （`tabular-nums`、`clamp` 防 375px 裁切）→ 四列无边框指标带（成本 / 活跃天数 /
+  来源数 / 模型数，成本带「读时定价估算」）→ 两枚全历史事实胶囊（最长连续天数、
+  单日峰值）→ 结构双栏（来源占比 `Meter` / 模型 TOP / 白名单仓库，仓库明示「总量子集」）
+  → 热力图 → 成就墙 → 页脚
+- 热力图（编年式，开关开启时）：只复用 `components/dashboard/heatmap-geometry.ts` 的
+  `HEATMAP_STOPS`，Mon-start 对齐与年度月格由 `u-heatmap.tsx` 的纯 CSS grid 完成
+  （不用 `use-responsive-weeks` / `ResizeObserver`）；**不复用 `HeatmapCard`**（自带来源
+  筛选与登录态 `useFormat` / `DashboardCopy`）。按自然年分行、Mon-start 周格、最新年在
+  最上、无年份切换器；色阶按全历史分位数统一分档（`--heatmap-0..4`），零值保留 0 级
+  底色、空白 padding 不画；窄屏改每年 12 个月格，页面零横向滚动；tooltip 用原生
+  `title` / `aria-label` 给日期 + 当日总 Tokens，无来源明细、无 portal、无点击下钻
+- 成就（开关开启时）：仅已解锁，段位降序前 6 枚 +「共 N 枚」；复用
+  `achievement-medallion.tsx` / `achievement-tiers.ts` 与既有 PNG；详情用独立轻量弹窗
+  （名称 / 段位 / 达成日），不复用 `achievement-detail.tsx`；不展示当前值、阈值与进度
+- 数字动画：动态数值统一走 `components/flow-number.tsx`（`FlowNumber`，
+  `@number-flow/react` 0.6.2），公开页传 `lib/badge/format.ts` 成品串、**不用
+  `useFormat`**（登录态偏好）；只给巨数与四个次级指标，列表数字不加。挂载从 0 滚动
+  沿用项目约定，另加 `<noscript>` 终值 + 容器 `aria-label` 完整数值 +
+  `aria-live="off"`；`respectMotionPreference` 默认开启，`prefers-reduced-motion` 静态
+- 动效节奏（纯 CSS、零新依赖、只播一次、总窗口 ≤1.5s）：0–120ms 眉题 / 口径行淡入
+  上移 8px；120–900ms 数字滚动（次级错峰 80ms）；600–1400ms 热力图按周 +20ms 级联
+  点亮（0 级 → 目标色阶，非 `opacity:0` 起步）、徽章每枚 +60ms 抬升并掠过一次金属
+  高光；滚动进入视口一次性 reveal（10px / ≤350ms）；hover 徽章 `-4px` + 外环高光
+  180ms、格子 tooltip 120ms。`prefers-reduced-motion` 全部静态，不用循环动画
+- 三态与响应式：各数据面保留 Loading / Empty / Error；增强模块开关关闭或数据失败时整块
+  缺席、不阻塞其余区块（公开页无客户端重试入口）；375px 单列、页面无横向滚动
+- 页脚：口径与估算说明、时区、隐私声明（默认「只公开聚合数字」，开关开启后追加
+  「另公开日级用量与已解锁成就」）、品牌落款
+- 文件：`src/components/u/u-body.tsx` 编排，`u-hero.tsx` / `u-metrics.tsx` /
+  `u-breakdown-section.tsx` / `u-heatmap.tsx` / `u-achievements.tsx` /
+  `u-achievement-dialog.tsx` / `u-public-number.tsx`（按需）
 
 ## 数字、货币与时间格式
 

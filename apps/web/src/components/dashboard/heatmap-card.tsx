@@ -10,7 +10,7 @@ import type { HeatmapPayload } from "@/lib/dashboard/api";
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 
 import { CircleInfo } from "@gravity-ui/icons";
-import { Card, Typography } from "@heroui/react";
+import { Card, Typography, cn } from "@heroui/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { canonicalTokenTotals } from "./aggregate";
@@ -42,6 +42,11 @@ function HeatmapCardImpl({
   locale,
   timezone,
   onDaySelect,
+  hideFilter = false,
+  bare = false,
+  formatTokens: tokensFormatter,
+  formatPercent: percentFormatter,
+  emptyLabel,
 }: {
   payload: HeatmapPayload;
   copy: DashboardCopy;
@@ -49,8 +54,17 @@ function HeatmapCardImpl({
   timezone: string;
   /** Present = cells are clickable (dashboard → sessions cross-link). */
   onDaySelect?: (day: string) => void;
+  /** Public page: no source filter, no card chrome / background. */
+  hideFilter?: boolean;
+  bare?: boolean;
+  formatTokens?: (value: number) => string;
+  formatPercent?: (ratio: number) => string;
+  emptyLabel?: string;
 }) {
-  const { formatTokens } = useFormat();
+  const format = useFormat();
+  const fmtTokens = tokensFormatter ?? format.formatTokens;
+  const fmtPercent = percentFormatter ?? format.formatPercent;
+  const noDataLabel = emptyLabel ?? copy.charts.noData;
   const [selectedSources, setSelectedSources] = useState<Set<string> | null>(
     null,
   );
@@ -234,8 +248,18 @@ function HeatmapCardImpl({
   const filtersActive = selectedSources != null;
 
   return (
-    <Card className="p-4 md:p-6">
-      <Card.Header className="flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+    <Card
+      className={cn(
+        "p-4 md:p-6",
+        bare && "!border-0 !bg-transparent !p-0 !shadow-none",
+      )}
+    >
+      <Card.Header
+        className={cn(
+          "flex-col items-start justify-between gap-2 sm:flex-row sm:items-center",
+          bare && "!p-0",
+        )}
+      >
         <div className="flex flex-col gap-1">
           <Card.Title>
             {copy.charts.heatmapTitle}
@@ -248,19 +272,21 @@ function HeatmapCardImpl({
               count: payload.active_days,
             })}
             {filtersActive
-              ? ` · ${copy.charts.heatmapFiltered}: ${formatTokens(filteredTotal)}`
+              ? ` · ${copy.charts.heatmapFiltered}: ${fmtTokens(filteredTotal)}`
               : ""}
           </Card.Description>
         </div>
-        <HeatmapFilter
-          activeSources={activeSources}
-          copy={copy}
-          locale={locale}
-          sourceTotals={sourceTotals}
-          onSelect={setSelectedSources}
-        />
+        {hideFilter ? null : (
+          <HeatmapFilter
+            activeSources={activeSources}
+            copy={copy}
+            locale={locale}
+            sourceTotals={sourceTotals}
+            onSelect={setSelectedSources}
+          />
+        )}
       </Card.Header>
-      <Card.Content className="gap-3">
+      <Card.Content className={cn("gap-3", bare && "!p-0")}>
         {filtersActive && (activeSources?.length ?? 0) === 0 ? (
           <div className="text-muted flex w-full items-center justify-center gap-2 py-10 text-sm">
             <CircleInfo aria-hidden="true" className="size-4" />
@@ -329,11 +355,23 @@ function HeatmapCardImpl({
                   >
                     {visible.map((week, weekIndex) =>
                       week.map((cell, dayIndex) => {
-                        if (!cell) return null;
+                        // Padding cells MUST occupy a grid slot. Returning null
+                        // here used to let CSS auto-flow pull every following
+                        // cell up/left, so weekday rows drifted and "today"
+                        // always landed on the Sunday row.
+                        if (!cell) {
+                          return (
+                            <div
+                              key={`pad-${weekIndex}-${dayIndex}`}
+                              aria-hidden="true"
+                              style={{ height: cellSize, width: cellSize }}
+                            />
+                          );
+                        }
                         const color =
                           HEATMAP_STOPS[cell.level] ?? HEATMAP_STOPS[0];
                         const shared = {
-                          "aria-label": `${cell.day} · ${formatTokens(cell.total)}`,
+                          "aria-label": `${cell.day} · ${fmtTokens(cell.total)}`,
                           "data-day": cell.day,
                           "data-day-index": dayIndex,
                           "data-week-index": weekIndex,
@@ -356,7 +394,12 @@ function HeatmapCardImpl({
                             onClick={() => onDaySelect(cell.day)}
                           />
                         ) : (
-                          <div key={cell.day} {...shared} role="img" />
+                          <div
+                            key={cell.day}
+                            className="transition-transform hover:scale-110"
+                            {...shared}
+                            role="img"
+                          />
                         );
                       }),
                     )}
@@ -385,7 +428,9 @@ function HeatmapCardImpl({
       {tooltip ? (
         <HeatmapTooltip
           activeSources={activeSources}
-          copy={copy}
+          emptyLabel={noDataLabel}
+          formatPercent={fmtPercent}
+          formatTokens={fmtTokens}
           tooltip={tooltip}
         />
       ) : null}

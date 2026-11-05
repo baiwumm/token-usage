@@ -68,7 +68,11 @@ export function alignWeeks(
   const columns: Array<
     Array<{ day: string | null; sources: Record<string, number> | null }>
   > = [];
-  let row = 0;
+  // The leading padding already occupies `pad` of the first column's seven
+  // rows. Starting the counter at 0 used to let 7 REAL days join those pads,
+  // producing a 9-cell column: every later cell shifted down a weekday and
+  // "today" always appeared on the Sunday row.
+  let row = pad;
   let col: Array<{
     day: string | null;
     sources: Record<string, number> | null;

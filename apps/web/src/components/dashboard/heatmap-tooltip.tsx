@@ -4,25 +4,30 @@
 // Tooltip tree per cell (364 cells would rebuild too much on each refresh).
 
 import type { TooltipAnchor } from "./heatmap-geometry";
-import type { DashboardCopy } from "@/lib/copy/dashboard";
 
 import { createPortal } from "react-dom";
 import { Typography } from "@heroui/react";
 
 import { SourceIcon } from "@/components/source-icon";
 import { sourceDisplayLabel } from "@/lib/sources";
-import { useFormat } from "@/lib/format/format";
 
+/**
+ * Formatting is injected by the parent: the dashboard uses the viewer's
+ * format preferences, the public page uses the badge's fixed KMB style.
+ */
 export function HeatmapTooltip({
   tooltip,
   activeSources,
-  copy,
+  emptyLabel,
+  formatPercent,
+  formatTokens,
 }: {
   tooltip: TooltipAnchor;
   activeSources: string[] | null;
-  copy: DashboardCopy;
+  emptyLabel: string;
+  formatPercent: (ratio: number) => string;
+  formatTokens: (value: number) => string;
 }) {
-  const { formatTokens, formatPercent } = useFormat();
   const entries = Object.entries(tooltip.cell.sources)
     .filter(
       ([source]) => activeSources == null || activeSources.includes(source),
@@ -51,7 +56,7 @@ export function HeatmapTooltip({
       </div>
       {entries.length === 0 ? (
         <Typography color="muted" type="body-xs">
-          {copy.charts.noData}
+          {emptyLabel}
         </Typography>
       ) : (
         <div className="flex flex-col gap-1.5">

@@ -121,3 +121,56 @@
 	--heatmap-3: oklch(from var(--accent) l calc(c * 0.80) h);
 	--heatmap-4: oklch(from var(--accent) calc(l + 0.15) c h);
 }
+
+/*
+ * Public page (/u/<token>) motion — docs/badge.md §6.7, docs/ui-spec.md 公开页.
+ * One-shot entrances only. No opacity:0 starting frame: static renderers,
+ * no-JS readers and screenshots still see the content at t=0. Inline
+ * animation-delay staggers the week cells and medallions; the total window
+ * stays under 1.5s and reduced motion removes every animation.
+ */
+@keyframes u-rise {
+	from {
+		opacity: 0.35;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes u-cell-in {
+	from {
+		opacity: 0.35;
+		transform: scale(0.72);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.u-reveal {
+	animation: u-rise 0.45s ease-out both;
+}
+
+.u-heat-cell {
+	animation: u-cell-in 0.24s ease-out both;
+}
+
+.u-medallion {
+	animation: u-rise 0.35s ease-out both;
+}
+
+/* Hover lift / focus ring live on the HeroUI Button itself now (Tailwind
+   group-hover utilities + the component's own focus styles). Only the
+   one-shot entrance animations need custom keyframes here. */
+
+@media (prefers-reduced-motion: reduce) {
+	.u-reveal,
+	.u-heat-cell,
+	.u-medallion {
+		animation: none;
+	}
+}

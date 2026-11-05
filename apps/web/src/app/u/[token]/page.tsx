@@ -10,7 +10,8 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { UBody } from "@/components/u/u-body";
-import { findBadgeOwner, loadBadgeData } from "@/lib/badge/data";
+import { findBadgeOwner } from "@/lib/badge/data";
+import { loadPublicPageData } from "@/lib/public-page/data";
 
 export const dynamic = "force-dynamic";
 
@@ -40,13 +41,9 @@ export default async function PublicBadgePage({ params }: PageProps) {
 
   if (!owner) notFound();
 
-  const config = { displayName: owner.displayName, timezone: owner.timezone };
-  const [account, ...repos] = await Promise.all([
-    loadBadgeData(owner.userId, config, "user", null, "all"),
-    ...owner.allowedProjects.map((project) =>
-      loadBadgeData(owner.userId, config, "repo", project, "all"),
-    ),
-  ]);
+  // §4.7 / §6: one all-time payload, SSR service-role, with both opt-in
+  // public sections resolved server-side (off = null, never transmitted).
+  const data = await loadPublicPageData(owner);
 
-  return <UBody account={account} repos={repos} />;
+  return <UBody data={data} />;
 }

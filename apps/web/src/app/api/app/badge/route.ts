@@ -304,7 +304,6 @@ export async function PUT(request: NextRequest) {
     }
     patch.allowed_projects = projects;
   }
-
   try {
     patch.updated_at = new Date().toISOString();
     if (await loadRow(session.userId)) {

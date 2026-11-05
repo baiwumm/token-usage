@@ -7,6 +7,41 @@ import { useEffect, useRef, useState } from "react";
 
 import { CELL_GAP, LABEL_WIDTH, MIN_CELL } from "./heatmap-geometry";
 
+/**
+ * Pure fit calculation, exported so the right-edge clipping regression can
+ * be asserted without a DOM. The rendered template is
+ * `LABEL_WIDTHpx repeat(weeks, cellSizepx)` with `CELL_GAP` between every
+ * adjacent column — i.e. `weeks` gaps, including the label→first-week one.
+ */
+export function fitHeatmapWidth(
+  width: number,
+  maxWeeks: number,
+): { weeks: number; cellSize: number } {
+  if (maxWeeks <= 0 || width <= 0) return { weeks: 0, cellSize: MIN_CELL };
+
+  const fitted = Math.floor((width - LABEL_WIDTH) / (MIN_CELL + CELL_GAP));
+  const weeks = Math.max(1, Math.min(maxWeeks, fitted || 1));
+
+  if (weeks >= maxWeeks) {
+    const gaps = maxWeeks * CELL_GAP;
+
+    return {
+      weeks: maxWeeks,
+      cellSize: Math.max(
+        1,
+        Math.floor((width - LABEL_WIDTH - gaps) / maxWeeks),
+      ),
+    };
+  }
+
+  return { weeks, cellSize: MIN_CELL };
+}
+
+/** Total px width the grid will actually occupy. */
+export function heatmapGridWidth(weeks: number, cellSize: number): number {
+  return LABEL_WIDTH + weeks * cellSize + weeks * CELL_GAP;
+}
+
 export function useResponsiveWeeks(maxWeeks: number) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [cellSize, setCellSize] = useState(MIN_CELL);
@@ -18,23 +53,13 @@ export function useResponsiveWeeks(maxWeeks: number) {
     if (!element || maxWeeks <= 0) return;
 
     const update = () => {
-      const width = element.clientWidth;
-      const fitted = Math.floor(
-        (width - LABEL_WIDTH + CELL_GAP) / (MIN_CELL + CELL_GAP),
+      const { weeks, cellSize } = fitHeatmapWidth(
+        element.clientWidth,
+        maxWeeks,
       );
-      const weeks = Math.max(1, Math.min(maxWeeks, fitted || 1));
 
-      if (weeks >= maxWeeks) {
-        setVisibleWeeks(maxWeeks);
-        const gaps = Math.max(0, maxWeeks - 1) * CELL_GAP;
-
-        setCellSize(
-          Math.max(1, Math.floor((width - LABEL_WIDTH - gaps) / maxWeeks)),
-        );
-      } else {
-        setVisibleWeeks(weeks);
-        setCellSize(MIN_CELL);
-      }
+      setVisibleWeeks(weeks);
+      setCellSize(cellSize);
     };
 
     update();
