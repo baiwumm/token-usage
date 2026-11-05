@@ -1,4 +1,4 @@
-// Exact bucket caliber for the projects page (docs/projects-page-plan.md §5
+// Exact bucket caliber for the projects page (docs/ui-spec.md「项目（`/projects`）」节
 // 批次 4): aggregate token_usage_hourly rows by project_key. It runs beside
 // /api/app/projects (the session caliber, unchanged) so the page can switch
 // without touching the existing data path.

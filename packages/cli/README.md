@@ -1,13 +1,13 @@
 # tokenusage-cli
 
-自托管 AI 编码 token 用量采集器，为 [token-usage](https://github.com/baiwumm/token-usage)（自托管仪表盘）上报数据，指向其契约（`docs/cli-contract.md`）。代码来源与许可见 `LICENSE` 与 `THIRD_PARTY_NOTICES.md`。
+自托管 AI 编码 token 用量采集器，为 [token-usage](https://github.com/baiwumm/token-usage)（自托管仪表盘）上报数据，指向其契约（[CLI 契约](https://github.com/baiwumm/token-usage/blob/main/docs/cli-contract.md)）。代码来源与许可见 `LICENSE` 与 `THIRD_PARTY_NOTICES.md`。
 
 > 运行要求：Node ≥ 22.19（由上传依赖 undici 8 的引擎下限决定）。
 
 ## 快速开始（三步）
 
 ```bash
-# 1) 初始化：扫描根配置、各工具用量 hook、并注册每小时自动采集的计划任务
+# 1) 初始化：扫描根配置、各工具用量 hook，并注册每小时自动采集的计划任务
 #    （Windows 经 VBS 隐藏窗口运行，不弹黑框；--no-task 可跳过任务注册。增强任务定义
 #     需要管理员权限，非提升 shell 下会自动降级为普通每小时触发并提示 degraded）
 tokenusage init
@@ -31,20 +31,17 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 
 | 命令 | 说明 |
 |---|---|
-| `tokenusage init` | 本地初始化：扫描根配置、各工具 hook 安装、注册每小时计划任务（Windows 隐藏窗口）。`--no-task` 跳过任务；`--run-report=off` 关闭运行记录上报；`--integrations <ids,all,none>` 逐工具选择要接管的集成（缺省在交互确认里多选），`--no-integrations` 等于 `none`（只做纯定时采集）；`--yes` 非交互；`--dry-run` 只预览不落盘；`--no-open` 不打开浏览器。不含配对 |
+| `tokenusage init` | 本地初始化：扫描根配置、各工具 hook 安装、注册每小时计划任务（Windows 隐藏窗口）、刷新运行时副本。**不含配对** |
 | `tokenusage device-login` | 设备流配对：输出 `user_code`，在站点 `/device` 页批准后本机拿到设备令牌 |
 | `tokenusage sync` | 解析本地 AI 工具日志 → 上报小时桶 + 会话元数据 |
-| `tokenusage upload` | 只刷本地队列，不扫描来源（`--drain` / `--force` 抬批次上限、`--json` 输出结构化结果） |
-| `tokenusage reconcile` | 只读对账：本地 `queue.jsonl` 的 last-wins 基线 vs 云端该设备的桶明细，按 `(hour_start, source, model)` 逐键比对，有漂移退出码 1；尚未上传的桶（`queue.state.json` 偏移之后）记为 pending，不算漂移 |
-| `tokenusage sync --watch` | 常驻模式，默认每 15 分钟增量一轮（`--interval <ms>` 可调，≥60000） |
-| `tokenusage sync --no-sessions` | 只上报小时桶，跳过会话元数据 |
-| `tokenusage sync --drain` | 补传模式：更大的批处理预算，适合首次接入/长期积压 |
-| `tokenusage pause` / `resume` | 暂停/恢复自动采集：定时任务、hook、`--watch` 全部静默停手，手动 `sync` 不受影响（同步启停系统的调度项） |
-| `tokenusage status` | 本地状态：Base URL、令牌、采集状态、运行上报开关、队列积压、最近解析/上传时间 |
-| `tokenusage doctor` | 体检（运行时 / 网络 / 各工具配置），`--json` 输出 |
-| `tokenusage diagnostics` | 诊断信息导出 |
-| `tokenusage sessions` | 本地导出会话分析（JSON/CSV，元数据级）；`--out <file>` 原子写（0600） |
-| `tokenusage uninstall [--purge]` | 移除 hook 与计划任务；`--purge` 连数据目录一起删 |
+| `tokenusage upload` | 只刷本地队列，不扫描来源 |
+| `tokenusage reconcile` | 只读对账：本地 `queue.jsonl` 的 last-wins 基线 vs 云端该设备的桶明细，按 `(hour_start, source, model)` 逐键比对，有漂移退出码 1 |
+| `tokenusage pause` / `resume` | 暂停/恢复自动采集：定时任务、hook、`--watch` 全部静默停手，手动 `sync` 不受影响 |
+| `tokenusage status` | 本地状态：Base URL、令牌、设备身份、采集状态、队列积压、最近解析/上传时间 |
+| `tokenusage doctor` | 体检（运行时 / 网络 / 各工具配置），critical 时退出码非 0 |
+| `tokenusage diagnostics` | 诊断信息导出（家目录路径脱敏为 `~`） |
+| `tokenusage sessions` | 本地导出会话分析（JSON/CSV，元数据级） |
+| `tokenusage uninstall [--purge]` | 移除 hook、计划任务与运行时副本；`--purge` 连数据目录一起删（保留机器身份） |
 
 配置优先级：CLI 参数 > `~/.tokenusage/.../config.json` > 环境变量（`TOKENUSAGE_BASE_URL` 等）> 内置默认（你的部署地址 + 其公开 publishable key）。
 
@@ -52,7 +49,63 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 参数写错（未知命令 / 未知参数 / 非法取值）只输出一行 `Error: ...` 加 `Hint:`，退出码
 `2`；其余运行错误退出码 `1`。要堆栈加 `--debug`。
 
-只补传积压、不重扫本地日志：
+### 常用参数
+
+<details>
+<summary><code>init</code></summary>
+
+| 参数 | 说明 |
+|---|---|
+| `--base-url <url>` | 后端地址（默认托管实例） |
+| `--dashboard-url <url>` | 成功提示里显示的仪表盘地址 |
+| `--anon-key <key>` / `--anon-key-file <path>` | 自托管实例的 publishable key |
+| `--integrations <ids,all,none>` | 逐工具选择要接管的集成；`none` == `--no-integrations`（只做纯定时采集） |
+| `--no-integrations` | 不碰任何工具配置 |
+| `--no-task` | 不注册自动采集计划任务 |
+| `--run-report=on\|off` | 运行记录上报开关（关闭即不再上报心跳） |
+| `--yes` | 非交互 |
+| `--dry-run` | 只预览不落盘 |
+| `--no-open` | 不自动打开浏览器 |
+
+已移除：`--email` / `--password` / `--device-name` / `--link-code` / `--no-auth`（浏览器登录已下线，配对走 `device-login`）。
+</details>
+
+<details>
+<summary><code>sync</code></summary>
+
+| 参数 | 说明 |
+|---|---|
+| `--watch` / `--interval <ms>` | 常驻模式，默认每 15 分钟一轮（下限 60000） |
+| `--upload-only` | 不扫描来源，只刷队列（等同 `upload`） |
+| `--source <id>` | 只扫单个来源；未知 id 直接报错（不再静默全扫） |
+| `--drain` | 抬批次上限，补传整个积压 |
+| `--no-sessions` | 只上报小时桶，跳过会话元数据 |
+| `--publish-account` | 本地发布账户级来源（cursor / trae-cn） |
+| `--all-local-sources` | 连后台来源一起扫 |
+| `--auto` | 自动档：认暂停标志与云端同步开关 |
+| `--from-notify` / `--from-openclaw` / `--from-retry` / `--from-scheduled` | 触发标记（hook / 计划任务用） |
+| `--wait-for-lock` | 遇并发 sync 等待而不是跳过 |
+| `--background` / `--lightweight` | 精简扫描档 |
+| `--repair-grok` | 从会话快照重建 Grok 行 |
+
+可用 `--source` id 见 `tokenusage sync --help` 的来源清单。
+</details>
+
+<details>
+<summary><code>upload</code> / <code>reconcile</code> / <code>status</code> / <code>doctor</code> / <code>diagnostics</code> / <code>sessions</code> / <code>device-login</code></summary>
+
+| 命令 | 参数 |
+|---|---|
+| `upload` | `--drain` / `--force`（抬批次上限、忽略冷却）、`--json` |
+| `reconcile` | `--days <n>`（默认 7，上限 366）、`--from` / `--to`（UTC 日历日，裸日期含当天整天）、`--limit <n>`（1–2000）、`--json` |
+| `status` | `--diagnostics`（含路径 / 光标 / WSL·Kiro 探针）、`--json`、`--light`（无 ANSI 的 ASCII 表）、`--limits`（各家配额面板，会读本机凭据并访问厂商 API）、`--no-spinner`、`--probe-keychain` / `--probe-keychain-details`（macOS） |
+| `doctor` | `--json`、`--out <file>`、`--base-url <url>` |
+| `diagnostics` | `--out <file>` |
+| `sessions` | `--from` / `--to`、`--format json\|csv`（或 `--csv`）、`--out <file>`（原子写，0600）、`--refresh`、`--no-git` |
+| `device-login` | `--json`、`--base-url <url>` |
+</details>
+
+### 只补传积压、不重扫本地日志
 
 ```bash
 tokenusage upload            # 刷队列（默认最多 5 批，每批 200 条）
@@ -60,7 +113,7 @@ tokenusage upload --drain    # 大积压补传（最多 100 批）
 tokenusage upload --json     # 结构化结果，便于脚本消费
 ```
 
-对账（只读，不上传、不改队列、不动上传 offset）：
+### 对账（只读，不上传、不改队列、不动上传 offset）
 
 ```bash
 tokenusage reconcile                     # 最近 7 天
@@ -142,8 +195,7 @@ CLI 未配对也能正常用，只是**降级为“只采集、不上报”**：
 
 上报内容只有**聚合用量**：
 
-- 小时桶：每工具每小时六项 token 计数、模型名，以及积分（仅积分制来源上报，
-  如 Qoder；独立维度，不参与 token 与成本口径）。
+- 小时桶：每工具每小时六项 token 计数、模型名、项目名（basename），以及积分（仅积分制来源上报，如 Qoder；独立维度，不参与 token 与成本口径）。
 - 会话元数据：`session_id`（厂商会话 UUID，或无 UUID 来源的本地稳定指纹）、来源、起止时间、项目 basename、token 拆分、每模型用量、积分（仅积分制来源）。
 
 **永不上传**：prompt / 助手正文 / 工具参数 / 命令输出 / diff / 会话标题 / 本地绝对路径 / resume 命令。测试（`test/session-upload.test.js`）用字段白名单锁定该边界。
@@ -152,7 +204,20 @@ CLI 不发送匿名安装心跳，也不做任何第三方错误上报：上游�
 
 ## 数据目录
 
-`~/.tokenusage/`（`0700` 目录 + `0600` 文件）：`tracker/config.json`（配对与运行配置）、`tracker/app/`（自包含运行时副本，`.runtime-ready` 记录版本）、上传队列（`queue.jsonl` + offset）、会话分析 sidecar、`session-upload-watermarks.json`（增量水位）、`tracker/logs/sync.log`（自动采集滚动日志）、暂停标志。与旧版 tokentracker CLI 的 `~/.tokentracker/` 互不干扰，迁移期两套 CLI 可在同一台机器共存。
+`~/.tokenusage/`（`0700` 目录 + `0600` 文件）：
+
+| 文件 | 用途 |
+|---|---|
+| `tracker/config.json` | 配对与运行配置（base URL、设备令牌、机器 id） |
+| `tracker/app/` | 自包含运行时副本（`.runtime-ready` 记录版本） |
+| `tracker/queue.jsonl` / `queue.state.json` | 上传队列与上传 offset（对账基线） |
+| `tracker/project.queue.jsonl` | 项目级队列（`project_key` 分桶） |
+| `tracker/cursors.json` | 各来源增量光标 |
+| `tracker/session-upload-watermarks.json` | 会话上报增量水位 |
+| `tracker/upload.throttle.json` | 上传节流状态 |
+| `tracker/logs/sync.log` | 自动采集滚动日志（JSONL） |
+
+暂停标志另存。与旧版 tokentracker CLI 的 `~/.tokentracker/` 互不干扰，迁移期两套 CLI 可在同一台机器共存。
 
 ## 自包含运行时副本（0.2.4+）
 
@@ -170,7 +235,9 @@ init 会把当前 CLI 及其依赖闭包复制到 `~/.tokenusage/tracker/app`，
 
 ## provider 支持面
 
-解析器随上游全量保留（仅未配置对应工具时休眠不扫描）：claude、codex、zcode、opencode、cursor、trae / trae-cn、grok、kimi、gemini、qoder、antigravity、openclaw 等。操作者实际启用面以 `tokenusage status` 为准；未使用的解析器不产生任何上传。
+解析器随上游全量保留（仅未配置对应工具时休眠不扫描）。**完整来源清单以
+`tokenusage sync --help` 为准**（当前 46 个本地来源 + 5 个后台来源）；操作者实际启用面
+以 `tokenusage status` 为准，未使用的解析器不产生任何上传。
 
 注：`cursor` / `trae-cn` 为账户级来源，会话元数据不会为其上传（服务端契约亦整段跳过）。
 
@@ -182,4 +249,4 @@ pnpm --filter tokenusage-cli test
 ```
 
 发布走仓库的 `cli-v*` tag 触发的 GitHub Actions（Trusted Publishing，见
-`docs/cli-release.md`）。
+[CLI 发版手册](https://github.com/baiwumm/token-usage/blob/main/docs/cli-release.md)）。

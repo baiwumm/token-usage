@@ -738,7 +738,7 @@ export function fetchSyncRuns(params: {
   return callApp<SyncRunsPayload>("sync-runs", `?${query}`);
 }
 
-// Projects (/projects, docs/projects-page-plan.md 批次 1) — the dashboard's
+// Projects (/projects, docs/ui-spec.md「项目（`/projects`）」节) — the dashboard's
 // own aggregation over token_sessions, cookie-auth like sync-runs.
 
 export interface ProjectItem {
@@ -756,7 +756,7 @@ export interface ProjectItem {
 
 export type ProjectsCaliber = "sessions" | "hourly";
 
-/** Which projects payload the page reads (docs/projects-page-plan.md §5). */
+/** Which projects payload the page reads (docs/ui-spec.md「项目（`/projects`）」节). */
 export function projectsCaliber(): ProjectsCaliber {
   return process.env.NEXT_PUBLIC_PROJECTS_CALIBER === "hourly"
     ? "hourly"
@@ -803,7 +803,7 @@ export function fetchProjects(params: {
   if (params.limit != null) query.set("limit", String(params.limit));
   if (params.offset != null) query.set("offset", String(params.offset));
 
-  // docs/projects-page-plan.md §5: the exact bucket caliber lives beside the
+  // docs/ui-spec.md「项目（`/projects`）」节: the exact bucket caliber lives beside the
   // session caliber. Flip NEXT_PUBLIC_PROJECTS_CALIBER=hourly to read
   // token_usage_hourly instead; unset (or any other value) keeps the session
   // caliber. Revert = remove the env var, no code change.

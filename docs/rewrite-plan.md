@@ -1,6 +1,6 @@
 # Token Usage 重写计划（v1）
 
-TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写：**Next.js + HeroUI + Supabase** 全栈单应用，开源、可自部署。本文是唯一的执行计划；方向决策全部经过访谈定稿（2026-10-23），改动需回访更新本文。
+TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写：**Next.js + HeroUI + Supabase** 全栈单应用，开源、可自部署。本文是**架构与执行计划**的真源；**活需求以 `docs/requirements.md` 为准**（两者不一致时以 requirements 为准并回改本文）。方向决策全部经过访谈定稿（2026-10-23），改动需回访更新本文。
 
 ## 1. 已定决策（访谈结论）
 
@@ -46,7 +46,7 @@ TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写�
    ▼
 Next.js route.ts（server-only，service-role key）
    ├── /api/functions/token-usage-*  ← CLI 契约层（行为冻结；
-   │                                    旧 tokentracker-* 路径经 rewrites 永久别名）
+   │                                    旧 tokentracker-* 路径已于 2026-11-03 退役）
    └── /api/app/*                    ← 新增的仪表盘内部接口（自由演进）
    ▼
 Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
@@ -54,14 +54,13 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 
 要点：
 
-- **仓库布局**：pnpm workspace —— `apps/web`（本图除采集机外的全部）、预留 `apps/desktop`
-  （桌面端托盘，backlog）与 `packages/*`（共享代码 / CLI 包）。
-- **CLI 契约层与内部接口分离**：`/api/functions/token-usage-*` 逐字冻结（`docs/cli-contract.md`），仪表盘自己的数据需求走 `/api/app/*` 新路径，二者不得互相污染——内部接口改动永不触碰契约层。钉版 CLI 1.4.x 请求的旧 `tokentracker-*` 路径由 `next.config.mjs` rewrites 永久别名，行为逐字一致；自有 `tokenusage-cli` 全量替代后别名可退役。
+- **仓库布局**：pnpm workspace —— `apps/web`（本图除采集机外的全部）与 `packages/cli`（采集器 npm 包 `tokenusage-cli`）；`apps/desktop`（桌面端托盘）**尚未创建**，为 backlog。
+- **CLI 契约层与内部接口分离**：`/api/functions/token-usage-*` 逐字冻结（`docs/cli-contract.md`），仪表盘自己的数据需求走 `/api/app/*` 新路径，二者不得互相污染——内部接口改动永不触碰契约层。旧 `tokentracker-*` 路径别名曾由 `next.config.mjs` rewrites 承载，**已于 2026-11-03 退役**（契约 §1.5；旧 CLI 请求得到 GET 404 / 写动词 405，是有声失败而非静默丢数据）。
 - **自部署实例天然隔离**：CLI 与某个实例一一配对（base URL + 该实例签发的设备令牌），
   `sync` 只上传到配对实例；实例的 route.ts 用它自己环境里的 service-role 写入它自己的
   Supabase。数据跨实例零共享，自部署者无需任何额外配置。
 - 账户级来源（cursor / trae-cn）的去重与会话状态聚合、读取时定价引擎（vendored LiteLLM 快照 + curated 覆盖）从旧仓库 `api/_lib/` 移植，作为**纯函数模块**保留并被两层共用。
-- Vercel 函数预算：`account-[series]` 一个动态路由覆盖 8 个 series（2026-10-25 追加 `sessions`，2026-10-27 追加 `sync-runs`）。**2026-10-30 复核**：仓库实际有 14 个 route handler（含 `/api/app/sync-runs`、`/api/app/achievements` 与 `/auth/callback`），此前记载的 Hobby 12 上限在当前 Vercel 文档中已不再列出；P1.4 已核对控制台并线上验证 `/api/app/achievements` 正常部署（见 `docs/achievements-plan.md`），**无需改 Server Component 直出**。**2026-10-30 P3**：成就已读水位的 `POST` 复用 `/api/app/achievements` 同一个 route（导出 `GET` + `POST`），**不新增 route handler**。
+- Vercel 函数预算：`account-[series]` 一个动态路由覆盖 8 个 series（2026-10-25 追加 `sessions`，2026-10-27 追加 `sync-runs`）。**2026-11-05 复核**：仓库实际有 21 个 route handler（`apps/web/src/app` 下 `route.ts` 计数）；此前记载的 Hobby 12 函数上限在当前 Vercel 文档中已不再列出，因此**不再以 12 为硬约束**——新增端点优先并入 catch-all（`/api/functions/[...slug]`）或 `/api/app/*`。P1.4 曾核对控制台并线上验证 `/api/app/achievements` 正常部署（见 `docs/achievements-plan.md`）。
 - 数据访问（2026-10-24 修订，操作者指令）：route.ts 经 **@supabase/supabase-js**（secret key 客户端）访问 PostgREST；封装层保持异常式错误语义（唯一约束 → 409，其余 → 500），与 CLI 契约 §1.3 对齐。
 
 ## 3. 新表结构（M1 定稿成 migration；`token_sessions` 于 M5.6 追加，`token_sync_runs` 于 0.2.0 追加，`token_achievement_seen` 于 M7 P3 追加，credits 列于 2026-10-31 追加）
@@ -79,6 +78,7 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 | `token_allowed_emails` | 可选：自助注册白名单 | `email citext unique`, `added_by`, `created_at`；配套触发器迁移（单独文件，注释标明 optional） |
 | `token_sync_runs` | 采集端每轮 sync 运行记录（§2.11/§2.12，0.2.0，含空跑） | `id uuid pk`, `user_id → auth.users`, `device_id → token_devices`, `run_id`（check 1–128）, `started_at`, `ended_at`, `duration_ms`（服务端派生，≥0）, `trigger`（check scheduled/manual/watch/notify）, `result`（check ok/partial/error）, `error_code`（可空 ≤64）, `empty`（服务端派生 bool）, `parsed_files`/`buckets_uploaded`/`tokens_ingested`/`sessions_uploaded`/`sessions_skipped`（非负 check）, `credits_ingested numeric`（2026-10-31：可选遥测，非负，不参与对账）, `queue_bytes`（可空 ≥0）, `cli_version`, `os`（可空）, `created_at`, `updated_at`；唯一 `(user_id, device_id, run_id)`（幂等键，重放 duplicate:true、首写胜出）；check `ended_at >= started_at`；索引 `(user_id, started_at desc)`；RLS 零 policy |
 | `token_achievement_seen` | 成就已读水位（M7 P3，跨设备「新」标记与解锁 toast） | `user_id uuid pk → auth.users on delete cascade`, `seen_through date`（check `>= 2000-01-01`，只前进）, `created_at`, `updated_at`；每用户单行；RLS 零 policy，仅 `service_role`。**只存已读日，不存成就快照**——成就仍由现有表读时计算 |
+| `token_public_badges` | 公开徽章令牌（`/api/badge`、公开页 `/u/<token>`） | 2026-11-01 建表、2026-11-05 加分区字段；详见 `docs/badge.md` |
 
 与旧结构的映射（迁移用）：`tokentracker_* → token_*` 一一对应，`device_machine` 折叠进 `token_devices.machine_cluster_id`，其余列语义不变——**upsert 键与 last-wins 语义逐字保留**。
 
@@ -149,9 +149,11 @@ CNY/JPY/HKD，`as_of` 2026-10-25，USD 基准；具体数值为实现常量）+ 
 `scripts/admin/achievement-assets/generate.mjs` 解码出图 JPEG 与编码 256px 透明 PNG。
 二者不进 `apps/web` 依赖图、不参与 web 构建与 `pnpm verify` 的运行时拷贝，因此不计入
 运行时预算；`sharp`（原生二进制的调色板量化）仍为可选，未安装——18 张已入库徽章在资产
-侧完成量化（单张 17–30 KB），脚本不带 `sharp` 时跳过量化步骤。同日的成就 P3 收尾**无新增运行时依赖**：
-分享卡用现有 Canvas 2D 引擎（`html-to-image` 在本栈会挂起）、硬币翻面用纯 CSS transform
-（不装 `motion`）、toast 用 HeroUI、已读水位走同一 route 的 `POST`。
+侧完成量化（单张 17–30 KB），脚本不带 `sharp` 时跳过量化步骤。同日的成就 P3 收尾
+**无新增运行时依赖**：分享卡用现有 Canvas 2D 引擎（`html-to-image` 在本栈会挂起）、
+toast 用 HeroUI、已读水位走同一 route 的 `POST`；**硬币翻面另有一处例外**——`motion`
+已于 2026-11-01 实际引入用于入场旋转与惯性甩动弹簧（见上段），此处原「纯 CSS transform、
+不装 motion」的表述作废。
 
 CLI 依赖集单独维护在 `packages/cli/package.json`：2026-10-29 删除
 `@mongodb-js/zstd`（`engines.node >= 22.19` 已内置 zstd，`prebuild-install`
@@ -177,50 +179,41 @@ CLI 依赖集单独维护在 `packages/cli/package.json`：2026-10-29 删除
 
 工期参考：M1 约 2–4 天，M2–M4 各 2–5 天，M5 1–2 天，M5.5 约 2–4 天，M5.6 约 3–5 天（服务端 + UI，不含 M-CLI），M-CLI 约 1–2 天（fork 改造）+ 联调，M7 约 3–5 天（P0 领域层 / P1 数据面 / P2 界面，三阶段分别验收）；全程 Agent 开发，每个里程碑结束由操作者验收后再进下一个。桌面端（backlog）待 CLI 与 Web 稳定后单独立项。
 
-## 6. 数据迁移 runbook
+## 6. 数据迁移 runbook（已完成）
 
-新旧系统使用**两个独立的 Supabase 项目**：新系统落在新建项目（`token_*` 表），旧项目
-原样运行旧系统直至退役。迁移因此是跨项目的变换 ETL——旧表 `tokentracker_*` 按 §3 映射
-变换为新表 `token_*`，一次性脚本从旧项目 service key 读、向新项目 service key 写。
-数据量小（万级行），风险在**顺序与闸门**而不在体量。Sessions 明细不在旧系统中，无需 ETL；
-M5.6 上线后由新版 CLI 采集，旧 CLI 继续只报小时桶与 trae-cn 会话状态（不含 `sessions`）。
+新旧系统曾用**两个独立的 Supabase 项目**，迁移是跨项目的变换 ETL——旧表 `tokentracker_*`
+按 §3 映射为新表 `token_*`，一次性脚本 `scripts/replay-legacy-history.mjs` 从旧项目
+service key 读、向新项目写。数据量小（万级行），风险在**顺序与闸门**而不在体量。
 
-1. **演练（M6 之前可随时重跑）**：全量映射复制到新项目；用 verify 脚本对账（每台采集机
-   queue.jsonl last-wins 总数 vs 新表聚合 vs 旧系统聚合三方一致）；测试用户端到端走一遍
-   CLI 配对 + 上报；切换前清理开发期测试数据（测试用户/设备）。
-2. **切换日（G1）**：真实数据迁移完成、水位对齐后，新系统在 `token-usage.baiwumm.com`
-   上线；旧域名 `tokentracker.baiwumm.com` 原样继续运行旧系统（连着旧项目），两者互不干扰
-   （旧系统已于 2026-10-29 整体删除）。
-3. **迁移期（≥14 天）**：采集机逐台把 base URL 改为 `https://token-usage.baiwumm.com/api`
-   （G1 放行后执行）；每台只写一个系统，单机真值 = 该机 `queue.jsonl`；已迁移采集机每日
-   对账一次（新表 vs queue.jsonl）。
-4. **退役**（**2026-10-29 已执行**，操作者直接删除、未保留备份）：全部采集机迁移完成后
-   旧系统停止写入 → 旧 Supabase 项目删除（G2：新旧项目独立，无共用表可删）→
-   **旧 Vercel 项目、`tokentracker.baiwumm.com` 的域名 DNS 与旧仓库一并删除（G3；原
-   Archive 方案作废）**。旧系统不再有回滚路径。
+**执行结果**：G1 切换 2026-10-26 完成（两台采集机逐台改 base URL，历史重放 13.67B，
+总量对账达标）；G2/G3 退役 2026-10-29 由操作者执行完毕，旧 Supabase 项目、旧 Vercel 项目、
+`tokentracker.baiwumm.com` 域名 DNS 与旧仓库全部删除，未保留备份。
 
-回滚预案：旧系统已于 2026-10-29 整体删除，改回旧域名的回滚路径不存在。采集机异常只能
-在现行系统侧处理：该机本地 `queue.jsonl` 与水位保证不丢数据，修复后 `sync --drain` 补传
+**回滚预案**：旧系统已整体删除，改回旧域名的回滚路径**不存在**。采集机异常只能在现行系统侧
+处理：该机本地 `queue.jsonl` 与水位保证不丢数据，修复后 `tokenusage sync --drain` 补传
 断连窗口的数据。
 
 ## 7. 三个不可逆闸门（每个都必须操作者手动放行）
 
-| 闸门 | 危险 | 放行条件 |
-|------|------|----------|
-| G1 采集机切换（逐台改 base URL 到新域名）**（已完成 2026-10-26，两台采集机，旧系统零增量）** | 改错单台 = 该机断传（本地队列缓冲，改回即恢复） | M5 验收全绿 + 增量复制完成 + 操作者明确指令；M5.5/M5.6 可并行，不阻塞 G1 |
-| G2 旧 Supabase 项目退役 **（已执行 2026-10-29：项目删除，未保留备份；操作者执行）** | 唯一不可逆动作 | 操作者明确指令（原定 14 天观察与备份要求经操作者放弃） |
-| G3 旧仓库处置 **（已执行 2026-10-29：删除，操作者执行；原建议 Archive）** | 历史与运维脚本 | 操作者最终确认；旧系统的 Windows 计划任务须全部停用（2026-10-26 已确认：Sync / Drift Check / Backup 均已 Disable） |
+**G1 / G2 / G3 已全部执行完毕**（G1 2026-10-26、G2 与 G3 2026-10-29，均由操作者放行执行）。
+
+| 闸门 | 危险 | 结果 |
+|------|------|------|
+| G1 采集机切换（逐台改 base URL 到新域名） | 改错单台 = 该机断传（本地队列缓冲，改回即恢复） | 2026-10-26 完成，两台采集机，旧系统零增量 |
+| G2 旧 Supabase 项目退役 | 唯一不可逆动作 | 2026-10-29 项目删除，未保留备份 |
+| G3 旧仓库处置 | 历史与运维脚本 | 2026-10-29 删除（原 Archive 方案作废）；旧系统的 Windows 计划任务已全部停用 |
+
+**规则不变**：此类不可逆动作必须操作者明确放行，Agent 代行即违规。
 
 ## 8. 风险清单
 
+> 只保留仍然有效的风险。已消解的（契约字段凭印象移植、开发期测试数据混入、Sessions 依赖
+> M-CLI 上线顺序、Vercel 函数上限）见 `docs/cli-release.md` 与本文 §5 的验收记录。
+
 | 风险 | 对冲 |
 |------|------|
-| 契约字段凭印象移植 | 本文发布前逐端点核对过源码；golden 测试双保险 |
-| 开发期测试数据混入新项目生产数据 | 测试专用用户/设备隔离标识；G1 切换前清理测试数据再导入真实数据；对账脚本只认真实用户 |
 | UI 范围失控（重写经典死法） | 功能清单以旧系统活功能为准封闭；新想法记 backlog 不进 v1 |
-| Vercel Hobby 函数超限 | Hobby 上限 12 个 serverless function/部署。当前已用满：11 个命名 route + `[...slug]` catch-all（account series），新增 reconcile 后为 12/12。**下一个端点不得再开新 route**——要么并入 catch-all，要么升级计划；`account-sessions` 一直复用 catch-all |
 | 依赖蔓延 | §4 预算制，装前报批 |
-| Sessions 真实数据依赖 M-CLI | 服务端与 UI 先用 fixture 打通契约；M-CLI 未上线前 `/sessions` 只显示「等待新版采集器」空态，不从小时桶推导或伪造会话；M5.6 验收拆成「契约/UI 绿」与「真实数据对账」两段 |
 | Sessions 隐私与载荷 | `session_id` 拒绝路径分隔符；`project_key` 仅 basename；只持久化白名单字段；200 条/32 模型上限，且受全局 1 MiB 体积上限（超限 413，CLI 分批）；golden 测试断言响应与表中无 prompt、正文、标题、绝对路径、resume command |
 | Sessions 成本口径 | 成本读取时按定价引擎逐模型计算；未定价模型计 0，页面脚注说明；不存 provider 上报成本（v1 决策）；若后续需要 provider 成本，按 §4 追加可选字段并回写契约 |
 | 外观偏好 hydration / 闪烁 | 语言走 cookie + 服务端 `Accept-Language` 解析，SSR 首帧即正确；主题走 next-themes 注入脚本；货币/Token 显示/单位/分组在客户端挂载后读取 localStorage；数字用 `tabular-nums`，避免切换时布局跳动 |
@@ -241,7 +234,7 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 | `SUPABASE_SECRET_KEY` | secret key：route.ts 数据访问，绕过 RLS（回退：`SUPABASE_SERVICE_ROLE_KEY`）；绝不进浏览器包 |
 | `TOKEN_USAGE_DASHBOARD_URL` | 配对回调地址校验（device-flow-authorize 返回的 verification_uri）；同时作为 metadataBase 生成 canonical / Open Graph 绝对地址 |
 | `TOKEN_USAGE_SITE_NAME`（可选） | 页签标题后缀（`<page> - <name>`）与 Apple Web App 标题，默认 `TokenUsage`；不含机密，无需 `NEXT_PUBLIC_` |
-| `NEXT_PUBLIC_PROJECTS_CALIBER`（可选） | `/projects` 页口径开关：`hourly` = 桶口径，缺省 = sessions 口径；部署级、构建期内联，改值/删除均需重新部署（`docs/projects-page-plan.md` §5） |
+| `NEXT_PUBLIC_PROJECTS_CALIBER`（可选） | `/projects` 页口径开关：`hourly` = 桶口径，缺省 = sessions 口径；部署级、构建期内联，改值/删除均需重新部署（`docs/ui-spec.md`「项目（`/projects`）」节） |
 | `TOKEN_USAGE_FX_RATES`（可选） | 外观设置的汇率覆盖，JSON `{"as_of":"YYYY-MM-DD","rates":{"CNY":6.6849,...}}`；服务端根布局解析后注入 format provider，缺省/解析失败/缺键回退内置快照并记日志；不含机密，但无需 `NEXT_PUBLIC_` |
 
 契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），
@@ -251,29 +244,42 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 
 **里程碑**：M0–M7 全部交付；生产实例 `token-usage.baiwumm.com` 自 2026-10-26 起承载
 两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.6`（2026-11-05
-发布；本机全局包与 `~/.tokenusage/tracker/app` 运行时副本均已升级到 0.4.5，`doctor`
-15 项全 OK，7 天窗口 `reconcile` 0 missing / 0 mismatched，仅剩 2 条既有 server-only）。
+发布）。两台采集机的身份与状态（设备名即契约 §2.2 的 `<主机名> #<machine_id 前 8 位>`，
+对照表见 `docs/cli-release.md` 开头「机器称呼约定」与 `docs/launch-runbook.md` 的采集机清单）：
+
+| 机器 | 云端当前名 | 默认名（稳定标识） | CLI 版本 | 状态 |
+|---|---|---|---|---|
+| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | **0.4.6**（2026-11-05 升级） | `doctor` 15 项全 OK；`reconcile --days 1` / `--days 7` 均 OK（114 桶逐键匹配、0 drift、退出码 0）；首采 5,936,534,278 tokens / 13 providers；服务端 943 桶 / 8,366,238,399 tokens |
+| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | **0.4.6**（2026-11-05 操作者升级并验收） | `reconcile --days 7` 验收通过；服务端 2,037 桶 / 14,835,125,523 tokens，`last_used_at 2026-11-05T11:00:16Z` |
+
+两台 `device_id` 与服务端核对记录见 `docs/cli-release.md` 开头「机器称呼约定」与
+`docs/launch-runbook.md` 的采集机清单表；CLI 自报身份（`status` / `doctor` 输出设备行）
+与采集结果摘要补全见 `docs/cli-release.md` §八。
+
 版本沿革：0.4.0 交付 CLI 加固批与 `reconcile`，0.4.1 修 `reconcile` 的
 `conversation_count` 别名误报，0.4.2 让 `init` 的 degraded 摘要显示被拒原因，0.4.3 把该
 原因改取 `stderr` 并修掉中文 Windows 的代码页乱码、`reconcile` 区分 pending 与漂移，
 0.4.4 落契约 v2 桶级 `project_key`、DeepSeek 余额/状态卡与计价覆盖自检，0.4.5 修
-队列去重丢拆分项目行、上传确认、VBS 编码与首同步统计（清单见 `docs/cli-release.md`
-§五/§六）。「同小时键多行递增值」观测已用源库核对证伪（属累计重入队，见
+队列去重丢拆分项目行、上传确认、VBS 编码与首同步统计，0.4.6 修 Cursor 准入 / Qoder credits
+与限额快照、加 `status --limits`（清单见 `docs/cli-release.md`
+§五/§六/§七）；下个版本候选让 `status` / `doctor` 自报设备身份（§八）。
+「同小时键多行递增值」观测已用源库核对证伪（属累计重入队，见
 `docs/cli-release.md` §四 0.4.3 条）。
 
 **最近一批交付（2026-10-31 ~ 11-01）**：Trae CN 本地库、桶级 / 会话级 credits、
 `credits_ingested` 遥测、模型大小写归一、wrapped canonical 来源、成就条进度与详情弹窗、
 Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）、Sessions CSV 导出（筛选全集，
-10,000 行 / 4 MiB 双上限）。来源接入的验收记录见 `docs/sources-capture-plan.md`。
+10,000 行 / 4 MiB 双上限）。来源接入的结论索引见 `docs/sources-capture-plan.md`，
+机制细节见 `docs/sources-capture-audit.md`。
 
-**测试与部署**：`pnpm verify` 全绿（lint 0 error + 8 warnings——7 条既有 `no-console` +
-1 条 dashboard `useCallback` 依赖提示；web 44 files / 538 tests + build；CLI 210 tests）。
+**测试与部署**：`pnpm verify` 全绿（lint 0 error + 少量 `no-console` 警告；web 与 CLI 的
+测试文件数/用例数随功能增长，**不写死在此文档**——以 `pnpm verify` 当次输出为准）。
 CI 在 main 与 `cli-v*` tag 上运行；web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm
-（0.4.5 发版 run 41802352267 全绿，本机升级与复验记录见 `docs/cli-release.md` §六）。
+（本机升级与复验记录见 `docs/cli-release.md`）。
 0.4.2 期间 CI 的 Windows `init` smoke 曾连挂三次（仍在传 0.4.0 删掉的 `--no-auth`，见
 `docs/cli-release.md` §四），commit `c6d7b68` 去掉该参数后转绿。
 
-**Web 工程待办**：已清空，历史明细见 `docs/web-optimization-backlog.md`。
+**Web 工程待办**：已清空（2026-11-01），历史明细见 git 历史。
 
 **CLI 候选**（原「下个版本不做」，2026-11-01 操作者拍板改为随本版交付，见
 `docs/cli-release.md` §四「CLI 加固批」）：
@@ -292,16 +298,18 @@ CI 在 main 与 `cli-v*` tag 上运行；web 由 Vercel 部署，CLI 由 `releas
 golden 测试 `apps/web/tests/contract/reconcile.test.ts`）与 CLI 命令
 （`packages/cli/src/commands/reconcile.js`）均已落地；只读，按基线（AGENTS 约束 8 的
 queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` 偏移之后的桶记为
-`pending`（不计漂移）。已随 0.4.0 起发到 npm（最新 0.4.5）；真机验收（2026-11-01，本机
+`pending`（不计漂移）。已随 0.4.0 起发到 npm（最新 0.4.6）；真机验收（2026-11-01，本机
 7 天窗口 100/100 桶匹配、退出码 0）通过（0.4.1 修掉 `conversation_count` 别名比较的
-误报，0.4.2 复核同样 OK，0.4.3 加 pending 分类）。⚠ 该端点占用最后一个 Vercel function
-槽位（12/12，见 §8 风险行），后续端点须复用 catch-all。
+误报，0.4.2 复核同样 OK，0.4.3 加 pending 分类）。该端点由 catch-all 承接，
+后续端点优先复用 catch-all 或走 `/api/app/*`（见 §2 的 Vercel 函数预算结论）。
 
 **发版后剩余事项（2026-11-01，0.4.3 收尾）**：
 
-1. 另一台采集机升级：`npm i -g tokenusage-cli@0.4.3` → `tokenusage init --yes
-   --no-integrations --no-open`（刷新运行时副本）→ `tokenusage reconcile --days 7`；
-   步骤见 `docs/launch-runbook.md` 的采集机切换清单。
+1. ~~公司机 `PC-20260408RIKF #68e47b34` 升级~~ → **已闭环（2026-11-05）**：操作者在公司机
+   执行 `npm i -g tokenusage-cli@0.4.6` → `init --yes --no-integrations --no-open` →
+   `reconcile --days 7` 验收通过；服务端核对 device `1bd2ff67-653f-4b9c-80a9-c7589432d431`
+   （云端名 `Company · Partner`）、2,037 桶 / 14,835,125,523 tokens、升级后仍按小时上报。
+   家机 `DESKTOP-MHFON1J #48ea790e` 同日升到 0.4.6（见 §七）。
 2. macOS / Linux 调度真机验证：暂无真机，目前只有产物级测试（plist / systemd unit 与
    文案断言）。首次在真机跑 `init` 后需确认 `launchctl list` / `systemctl --user
    list-timers` 里有对应条目，再回填 `docs/cli-release.md` §四。
@@ -310,6 +318,7 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` �
    剩余动作是采集机升级：另一台机器仍为 0.4.3，升级后新桶才开始带 `project_key`
    （2026-11-04 生产库实测桶行 `project_key` 非空数为 0；本机随后用
    `scripts/admin/project-backfill.cjs` 回填 opencode 历史项目归因，见本批第 1 条）。
+   **2026-11-05 收口**：两台采集机均已到 0.4.6（见本节第 1、6 条）。
 
 **2026-11-04 审计修复批（已随 0.4.5 / main 交付）**：CLI 修「队列去重键丢项目拆分行 +
 偏移照旧推进」导致的永久丢数据，拆分行统一按 basename 身份合并，ingest / session 上传必须
@@ -328,7 +337,7 @@ web 修账户快照全主键分页（>100 万行显式 500，不静默截断）�
    回填 opencode 历史桶的 `project_key` 拆分行（255 组 / 337 项目行 + 255 余量行 / 14 个项目键 /
    1.471B token，upload 592 行 / 0 skipped）；多模型组、无项目证据来源与本地已不存在的行仍保持
    未归因。全量本地基线逐字段不变（total_tokens 2,932,085,133），reconcile 在本地 queue
-   覆盖范围内 missing=0、mismatch=0。详见 `docs/projects-page-plan.md` §5。
+   覆盖范围内 missing=0、mismatch=0。详见 `docs/ui-spec.md`「项目（`/projects`）」节。
 2. **`empty` 契约口径不改**：仍为 `tokens_ingested === 0 && sessions_uploaded === 0`
    （`docs/cli-contract.md` §2.11/§2.12），credits-only 运行继续算 empty；改用 §2.14
    data-version 补偿——取「最新非空 run / 最新 `credits_ingested > 0` run / 最新
@@ -340,9 +349,10 @@ web 修账户快照全主键分页（>100 万行显式 500，不静默截断）�
    作为上限。
 5. **keyset 分页 / 预聚合**：暂不立项，触发条件与远期 backlog「队列按月分片」一致
    （查询延迟或数据量有明显体感再说）。
-6. **另一台采集机**：直接升 0.4.6（`npm i -g tokenusage-cli@0.4.6` → `init --yes` →
-   `reconcile --days 7`）。npm 镜像未同步时用
-   `npm_config_registry=https://registry.npmjs.org`。
+6. ~~公司机 `PC-20260408RIKF #68e47b34`~~ → **已完成（2026-11-05）**，两台采集机 CLI 均为
+   0.4.6（家机 `reconcile --days 1` / `--days 7` 均 OK、0 drift；公司机由操作者在那台机器上
+   升级并验收）。机器称呼与身份对照见 `docs/cli-release.md` 开头「机器称呼约定」
+   与 `docs/launch-runbook.md` 的采集机清单表。
 
 已关闭：0.4.3 候选（降级原因改取 `stderr` + 代码页解码、`reconcile` pending 分类，已随
 0.4.3 发版并在本机验收）；「同小时键多行递增值」观测（zcode 源库核对证明 last-wins 行即
@@ -368,20 +378,28 @@ web 修账户快照全主键分页（>100 万行显式 500，不静默截断）�
    JSONL 日志）。当时未做的对账命令 `reconcile` 于同日第二批交付：契约文档 + golden
    测试先行（§2.13），操作者放行后实现端点与 CLI 命令。
 
-**远期 backlog（2026-11-03 上游对比后立项，明细见 `docs/upstream-comparison-plan.md`）**：
+**远期 backlog（2026-11-03 上游对比后立项，明细见 `docs/archive/upstream-2026-11-03.md`）**：
 
 1. **bucket project 维度（契约 v2）**：juejin 的去重键含 `project`（`queue/keys.ts`），
    可做每项目成本分析。~~本项目 bucket 键为 `hour_start|source|model`，project 仅在 session
    级~~ **2026-11-03 已放行并交付契约+存储+ingest**（`docs/cli-contract.md` §2.4、
    migration `20261103000000_token_hourly_project_key.sql`）；Projects 页阶段 0（sessions
-   口径）同日上线（`docs/projects-page-plan.md` §9）；CLI 逐源套用与口径切换见该计划
-   批次 3/4。
+   口径）同日上线（见 `docs/ui-spec.md` 的「项目（`/projects`）」节）。
 2. **定价差集人工月检**：不新增 CI 定时任务，每月人工核对 TT curated / LiteLLM seed /
-   models.dev 三向差集，方法与记录格式见 `docs/upstream-comparison-plan.md` §4。
+   models.dev 三向差集，方法与记录格式见 `docs/archive/upstream-2026-11-03.md`。
 3. **队列按月分片（原 D2）**：juejin 式 `queue/<month>.jsonl` 分片可控制 queue.jsonl
    增长与范围读取成本；触及对账基线文件格式（约束 8），留待有体感再立项。
    实测基线（2026-11-04，本机 `~/.tokenusage/tracker`）：`queue.jsonl` 511 行 / 162,755 B，
    `project.queue.jsonl` 390 行 / 150,613 B，`session.queue.jsonl` 182 行 / 1,455,392 B；
    未设数字阈值，以「队列体积或读取延迟有明显体感」为立项触发。
-4. **align-unknown 落地**：dry-run 结论见 `docs/upstream-comparison-plan.md` §7；
+4. **align-unknown 落地**：dry-run 结论见 `docs/archive/upstream-2026-11-03.md`；
    落地会改历史 unknown 桶归属，需再次确认后按两步走第二步执行。
+5. **curated 价目 exact 未达 220**（现 191，差 29）：候选 `u2-flash`、`step-5-preview`。
+   是否续做或就此收口，待操作者拍板。
+6. **项目名隐私开关默认值**（孤儿决策项，2026-11-05 归档时发现）：项目名现按工作目录
+   basename **明文**上报并原样展示，无脱敏开关。默认值（明文 vs 默认脱敏）待拍板——
+   涉及 CLI 上报口径与历史桶的可比性，改动须走契约变更流程。
+7. **Cursor 厂商真实成本是否接线**（A10，孤儿决策项）：`parseCursorCsv` 解析了厂商 Cost 列，
+   但 `normalizeCursorUsage` 不产出成本、`parseCursorApiIncremental` 不写 `total_cost_usd`，
+   Cursor 成本实际仍按「token × 定价」估算。是否接线待拍板——涉及队列/云端口径与历史重算，
+   详见 `docs/sources-capture-plan.md` §4。

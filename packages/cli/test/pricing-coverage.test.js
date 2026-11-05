@@ -1,6 +1,6 @@
 "use strict";
 
-// B3 + C2 tests (docs/upstream-comparison-plan.md §2/§3): pricing coverage
+// B3 + C2 tests (docs/archive/upstream-2026-11-03.md/§3): pricing coverage
 // over the local last-wins queue and the unknown-alignment dry-run preview.
 
 const assert = require("node:assert/strict");

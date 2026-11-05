@@ -1,4 +1,4 @@
-// Tests for the /api/app/projects data path (docs/projects-page-plan.md
+// Tests for the /api/app/projects data path (docs/ui-spec.md「项目（`/projects`）」节
 // 批次 1): cookie-auth gate, window/sort/limit handling, project_key grouping
 // with the pinned unattributed group, revoked-device exclusion and the
 // sessions-identical read-time cost pricing. The fake Supabase backend keeps

@@ -1,4 +1,4 @@
-// Tests for the /api/app/projects-detail data path (docs/projects-page-plan.md):
+// Tests for the /api/app/projects-detail data path (docs/ui-spec.md「项目（`/projects`）」节):
 // auth gate, sessions/hourly caliber parity, continuous daily fill,
 // __unattributed grouping, the whole-window range_total_tokens denominator,
 // 400 branches, source ordering and the credits-as-separate-dimension rule.

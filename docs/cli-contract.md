@@ -132,9 +132,16 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 
 1. 设备名 = `<client_info 中的主机名> #<machine_id 前 8 位>`（client_info 缺失时主机名回退为 `Token Usage CLI`，machine_id 缺失无后缀），总长 ≤128，`platform` 固定 `"cli-device-flow"`。（2026-10-27 品牌更名：原回退值 `TokenTracker CLI` 仅影响更名后新配对的设备显示名，既有设备名不变。）
 2. 按 `machine_id` → 精确 `device_name` 的顺序找**同账户**的活跃设备；找不到则新建（重名冲突自动追加 ` #<4位hex>` 重试，最多 5 次）。
-3. 写入 `token_device_machine`（`machine_cluster_id = machine_id ?? device_id`，已存在则幂等跳过）。
+3. 写入设备行的 `machine_cluster_id`（= `machine_id ?? device_id`；旧 `tokentracker_device_machine` 1:1 表已折叠为 `token_devices` 的列，已有值则幂等跳过）。
 4. **吊销该设备名下所有仍活跃的旧令牌**，再签发新令牌（新明文只出现在本响应中）。
 5. `machine_id` 缺失时响应中的 `machine_id` 回退为设备行上的值或 `null`。
+
+> **本地可见性（CLI 0.4.7 起，未发版）**：CLI 用同一规则在本地重算这个默认名
+> （`<主机名> #<machine_id 前 8 位>`），并在 `status` / `sync` / `upload` / `reconcile` /
+> `doctor` / `init` 的输出里打印 `- Device: <默认名> (id <device_id>)`。注意它打印的是
+> **默认名**，不是可被改名的 `device_name` 当前值——两台以上采集机时，默认名才是稳定标识
+> （对照表见 `docs/launch-runbook.md` 的采集机清单）。CLI 输出不属于本契约面，
+> 改动无需回写本文档；该批见 `docs/cli-release.md` §八。
 
 ### 2.3 `POST /api/functions/token-usage-device-flow-grant`（设备令牌或 JWT｜CLI 面）
 
@@ -234,8 +241,10 @@ Query：`from`、`to`（`YYYY-MM-DD`，缺省= 首日 / 调用方本地今天）
 
 八个只读序列。前六个共享一套时区上下文参数（`tz` / `tz_offset_minutes`）与 `device_id` 过滤；
 `sessions` 与 `sync-runs` 使用绝对瞬时窗口，不需要 `tz`。Next.js 实现为**一个**动态路由
-（对齐 Vercel Hobby 12 函数上限）：`app/api/functions/[...slug]/route.ts` catch-all 承接
-`token-usage-account-<series>` slug（App Router 的动态段必须独占整段，`token-usage-account-[series]` 形式的"半动态段"目录不成立），静态兄弟路由优先解析不受影响；series 既可来自路径也可来自 `?series=`。未知 series → `404 {"error":"Unknown account series: ...","series":[...]}`。
+（`app/api/functions/[...slug]/route.ts` catch-all 承接 `token-usage-account-<series>` slug，
+App Router 的动态段必须独占整段，`token-usage-account-[series]` 形式的"半动态段"目录不成立），
+静态兄弟路由优先解析不受影响；series 既可来自路径也可来自 `?series=`。
+未知 series → `404 {"error":"Unknown account series: ...","series":[...]}`。
 
 | series | 参数 | 响应顶层 |
 |---|---|---|
@@ -352,8 +361,8 @@ Query：`range`(≤20 字符，默认 `"custom"`)、`from`、`to`（ISO 时间�
 
 ### 2.12 `GET /api/functions/token-usage-account-sync-runs`（设备令牌或 JWT｜Dashboard 面）
 
-> §2.11 的读取面，作为 §2.7 catch-all 的**第 8 个 series**（不新增函数数目，对齐
-> Vercel 12 函数上限的既有约束）；分页与全集语义对齐 `sessions` series。
+> §2.11 的读取面，作为 §2.7 catch-all 的**第 8 个 series**（不新增函数数目）；
+> 分页与全集语义对齐 `sessions` series。
 
 Query：`from`、`to`（ISO 瞬时，按 `started_at ∈ [from,to)`）、`device_id`（可选，UUID）、`trigger`（可选，枚举同 §2.11）、`result`（可选，枚举同 §2.11）、`limit`(1–200，默认 50)、`offset`(≥0)。
 

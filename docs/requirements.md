@@ -21,25 +21,28 @@
 | 面 | 路由 | 内容 |
 |---|---|---|
 | 仪表盘 | `/` | 上游核心对齐：汇总与 rolling 7d/30d/日均、趋势图、活跃热力图、模型/来源/设备下钻、日/时/月明细表、成本分析、时间范围与时区切换、分享卡片 |
-| Sessions | `/sessions` | 会话列表与详情：按时间/设备/来源/项目筛选，展示时长、token、成本、模型拆分；仅设备级来源 |
-| 设置 | `/settings` | 账户资料、外观偏好（主题/语言/货币/Token 显示/单位/分组）、设备列表与吊销；退出登录在应用壳用户菜单 |
+| Sessions | `/sessions` | 会话列表与详情：按时间/设备/来源/项目筛选，展示时长、token、成本、模型拆分；仅设备级来源，支持按当前筛选导出 CSV |
+| 项目 | `/projects` | 项目维度用量：按工作目录 basename 归因；口径开关 `NEXT_PUBLIC_PROJECTS_CALIBER`（sessions / hourly），见 `docs/ui-spec.md`「项目（`/projects`）」节 |
+| 采集记录 | `/sync-runs` | 每轮 sync 的运行记录（触发方式、结果、耗时、解析文件数与上报量） |
+| 设置 | `/settings` | 账户资料、改密、头像、外观偏好（主题/语言/货币/Token 显示/单位/分组）、徽章配置、设备列表与吊销；退出登录在应用壳用户菜单 |
 | wrapped | `/wrapped` | 年度回顾（功能对齐旧版，视觉简化） |
 | 成就 | `/achievements` | 18 条成就 × 5 档（铜/银/金/钻/王者），账号级、只升不降；分类栅格、进度与达成日期、五档详情时间线、年度回顾独立成就卡（当前已获得成就 + 段位）；读时计算；仅 `token_achievement_seen` 存账号级已读水位（跨设备「新」标记与解锁 toast） |
 | 服务状态 | `/service-status` | 端点健康自查页 |
 | 配对 | `/device` | 页面批准 CLI 配对码 |
-| CLI API | `/api/functions/token-usage-*` | CLI 面 8 端点 + Dashboard 面 10 端点（`docs/cli-contract.md` §2） |
+| 公开页 | `/u/<token>` | **公开**（无需登录）：徽章令牌的持有者可见的用量页，规范见 `docs/badge.md` |
+| CLI API | `/api/functions/token-usage-*` | CLI 面 9 端点 + Dashboard 面 10 端点（`docs/cli-contract.md` §2） |
+| 公开徽章 API | `/api/badge` | 公开 SVG 徽章端点（无需鉴权，令牌即凭证），规范见 `docs/badge.md` |
+| 仪表盘内部 API | `/api/app/*` | 应用自有接口（非契约面，随 UI 自由演进） |
 | 产品落地页 | token-usage.cc | **独立建站**（不在本应用内）：产品介绍、自部署入口（部署指南 / GitHub）、登录入口；**2026-11-01 拍板延后**，等 web / 桌面端 / CLI 功能全部完成后启动 |
 | 开源自部署 | — | 中文部署指南、迁移脚本、Deploy to Vercel 按钮 |
 
-路由约定（2026-10-24 二次修订）：仪表盘挂 `/` 且**需要登录**；**除 `/login`、`/auth/callback`
+路由约定：仪表盘挂 `/` 且**需要登录**；**除 `/login`、`/auth/callback`、公开页 `/u/<token>`
 与 CLI API 外，所有页面未登录一律重定向到登录页**，重定向须保留原始路径与查询参数
 （配对链接 `?user_code=` 不得因跳转丢失），登录成功进入原目标（无 `?next=` 时缺省 `/`）。
-2026-10-25 新增 `/sessions`，同属登录后页面；2026-10-30 新增 `/achievements`，同属登录后页面；
 设置分区用 `/settings?section=appearance|account|devices` 深链，不新增顶层路由。
 产品落地页不在本应用内，使用 **token-usage.cc** 独立域名创建（开源自部署介绍站，与本
-应用部署域相互独立）；启动时机见上表（2026-11-01 拍板延后至 web / 桌面端 / CLI 功能
-全部完成）。CLI API 走 `docs/cli-contract.md` 自身的公开/鉴权规则，不受页面
-守卫影响。路由表变更需回写本表。
+应用部署域相互独立）；启动时机见上表。CLI API 走 `docs/cli-contract.md` 自身的公开/鉴权规则，
+不受页面守卫影响。路由表变更需回写本表。
 
 ## 边界（v1 不做什么）
 

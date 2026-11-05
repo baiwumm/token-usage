@@ -1,4 +1,4 @@
-// Exact bucket caliber for the projects page (docs/projects-page-plan.md §5
+// Exact bucket caliber for the projects page (docs/ui-spec.md「项目（`/projects`）」节
 // 批次 4): same cookie-session auth as /api/app/projects, over the hourly
 // bucket payload builder. Both routes stay live so the page can switch (or
 // revert) without changing the session caliber.

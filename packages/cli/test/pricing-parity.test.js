@@ -1,6 +1,6 @@
 "use strict";
 
-// Pricing data parity guard (plan A1, docs/upstream-comparison-plan.md §1).
+// Pricing data parity guard (plan A1, docs/archive/upstream-2026-11-03.md).
 // Pricing is computed at READ time by the web app (docs/cli-contract.md §2.7)
 // and locally by the CLI status paths; both sides ship their own copy of
 // seed-snapshot.json / curated-overrides.json. There is no shared package, so

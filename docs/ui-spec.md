@@ -14,7 +14,8 @@
 
 ## 组件规则（编码级）
 
-- 选取顺序：HeroUI 内置（75+，`node scripts/list_components.mjs` 查清单）→ HeroUI 组合 →
+- 选取顺序：HeroUI 内置（75+，`node .agents/skills/heroui-react/scripts/list_components.mjs`
+  查清单）→ HeroUI 组合 →
   自研；自研组件沿用主题变量与 tailwind-variants。
 - HeroUI 组件的交互回调统一 `onPress`；原生 `onClick` 仅用于非 HeroUI 元素。
 - 类名拼接统一 `cn`：凡 className 需要条件分支或多来源拼接，一律
@@ -265,6 +266,45 @@
 - 错误：401 跳登录并回跳 `/sessions`；其他错误在列表区重试。
 - 隐私：页面不出现 prompt、正文、标题、绝对路径、resume command；项目列只显示 basename。
 
+### 项目（`/projects`）
+
+- 导航：侧边栏与抽屉在 Sessions 之后新增「项目」；页面显式套 `AppShell`，metadata 走
+  `createPageMetadata({key:"projects"})`。定位是按项目聚合 AI 编码会话的用量、费用与活跃度。
+- **两套口径并存**：`sessions`（会话元数据聚合，默认）与 `hourly`（`token_usage_hourly`
+  用量桶聚合），由构建期环境变量 `NEXT_PUBLIC_PROJECTS_CALIBER=hourly` 切换
+  （`lib/dashboard/api.ts` `projectsCaliber()`；未设置或任何其他值一律回落 sessions）。
+  这是部署级动作，回退 = 删环境变量后重新部署。
+- 筛选条：数量（全部 / 前 3 / 5 / 10）、排序（按 Token / 按费用）、展示形态（列表 / 卡片）
+  + 刷新按钮。**无时间范围、无设备、无来源筛选**——时间恒为「全部」（服务端夹到 3 年上限）。
+  `sort` 与 `limit` 写 URL（`history.replaceState`），默认 `sort=tokens`、`limit=all`。
+- 摘要卡四格：总 Token（已归因）/ 总费用 / 项目数 / 未归因 Token；副标题「全部时间 · {from} – {to}」。
+- 列表**不是表格**：行与卡片是同一套信息层级——首字母头像 + 项目名、来源品牌图标（最多 5 个，
+  多余显示 `+N`）、占窗口百分比、Token 数与相对最高项的量条、底部 meta（费用 / 会话数 /
+  最近活跃）。排序由服务端做（降序，同值按 key 字典序），前端只做 Top-N 切片。
+- 「未归因」组：服务端恒单独拆出并沉底（即使为 0），行内是 warning `Chip` + 说明文案。
+  **Top-N 切片会把它切掉**（它在数组末尾），只有 `limit=all` 或列表较短时可见；摘要卡的
+  「未归因」Token 数不受影响。
+- 详情弹窗：点击行/卡片打开，头部有上一个/下一个（范围是当前可见列表）。左栏是项目名、
+  区间、`口径：{caliber}` 与 6 个指标（Token 总量 / 占比 / 费用 / 会话数 / 活跃天数 /
+  日均活跃日）+ 三条脚注（费用按刊例价、积分是独立维度、仅用量元数据）；右栏三段——「完整
+  字段」、「每日活跃」柱状图（点柱固定当天）+ Token 构成条（input / cached / cacheCreation /
+  output / reasoning）、「按来源」逐来源明细。
+- 口径说明条：卡内固定文案，随口径切两段（`scopeNote.sessions` / `scopeNote.hourly`）。
+- 状态：加载走骨架（摘要 + 6 行/6 卡，镜像真实结构）；无旧数据时 `SectionError` 重试，
+  有旧数据时顶部红条「刷新失败，当前显示的是上次成功加载的数据」；空态两分（无数据 /
+  仅剩零用量被过滤），给「配对设备」与「刷新」；刷新中盖半透明层 + `Spinner`。
+- 项目名：`resolveProjectDisplayName()`（`components/projects/identity.ts`）是展示层归一化
+  挂点，当前是原样透传——**无改名/合并映射、无脱敏**。项目名来源是采集端保留的目录
+  basename（服务端 `normalizeProjectKey` 剥离控制字符与路径、截断 120 字符）。隐私只体现为
+  脚注「仅展示用量元数据，不含对话内容、路径或命令」。
+- 演示审阅面板 `projects-review-panel.tsx` 仅在 `?review=1` 时渲染（默认演示数据 + 页顶
+  「演示数据 · 非真实用量」标记），仓库内无链接指向它；动效候选目录在 `projects-effects.ts`。
+- API：`/api/app/projects` 与 `/api/app/projects-hourly` 顶层同形
+  （`from/to/days/total/limit/offset/caliber/totals{...}/filtered_zero_usage_projects/projects[]`），
+  差异只在 `caliber` 与 `projects[].session_count` 的含义（sessions = 会话行数；
+  hourly = 各桶 conversations 求和，故 hourly 口径列头写「会话条目」）；详情走
+  `/api/app/projects-detail`。
+
 ### 年度回顾（`/wrapped`）
 
 - 页头：年份下拉只列**有数据的年份**（全历史月度桶去重、倒序；`aria-label` 为「选择
@@ -303,9 +343,10 @@
 - 导航：侧边栏与抽屉在 wrapped 后新增「成就」（`Medal` 图标），页面标题取菜单名；
   受登录保护（`src/proxy.ts` 的受保护页面与 matcher 均包含 `/achievements`，未登录直接跳
   `/login?next=/achievements`；接口 401 也跳登录并回跳）。
-- 数据源：`GET /api/app/achievements?tz=&tz_offset_minutes=`（cookie 会话鉴权；若 Vercel
-  函数预算不足则页面改 Server Component 直出，响应形状不变，见 `docs/achievements-plan.md`
-  P1.4）。**已读水位**由同一个 route 的 `POST`（body `{ seen_through: "YYYY-MM-DD" }`）
+- 数据源：`GET /api/app/achievements?tz=&tz_offset_minutes=`（cookie 会话鉴权；**不设**
+  Server Component 直出分支——Vercel 现行文档不再列出每次部署的函数数量上限，
+  `docs/rewrite-plan.md` §2 已复核，不再以 12 为硬约束）。**已读水位**由同一个 route 的
+  `POST`（body `{ seen_through: "YYYY-MM-DD" }`）
   推进，写失败静默，不影响页面。无筛选条；页头右侧放与 Sessions 同款的刷新图标按钮
   （`ArrowsRotateRight`，刷新中 `animate-spin`、按钮禁用并带 `aria-busy`，`Tooltip`
   显示上次更新时间）。手动刷新结束给 Toast 反馈：成功「成就已刷新」，失败显示加载失败
@@ -484,7 +525,7 @@
 | 公开展示 | `Switch`（拇指 Check / Xmark，同数据刷新卡） | 未生成令牌时禁用并提示先生成；切换即 PUT（带浏览器时区） |
 | 访问令牌 | 文本「已生成 · 末四位 xxxx」+ 按钮 | 无令牌：主按钮「生成令牌」；有令牌：「重置令牌」→ `AlertDialog`（`status="warning"`，确认按钮 `variant="danger"`），正文写明旧链接立即失效、已上报用量不受影响 |
 | 仓库白名单 | 多选 `Select`（`selectionMode="multiple"`）+「保存白名单」 | 选项 = `knownProjects` ∪ 已在白名单的项；有改动才可保存，>32 项禁用；下方两行说明：三项口径缺口（账户级来源不计、无项目名会话不计、同名合并）与「活跃天数按 {时区} 折算」 |
-| 预览 | 四组 `ToggleButtonGroup size="sm"`（风格 / 主题 / 范围 / 对象）+ 仓库单选 `Select` | 预览图走会话预览分支，切换即换参；换参到新图解码完成之间盖 `PanelOverlay` 遮罩（容器 `aria-busy`），不闪上一张图；白名单为空时「仓库」置灰并提示；600px 面板在卡内横向滚动容器里，不外溢页面 |
+| 预览 | 三组 `ToggleButtonGroup size="sm"`（风格 / 主题 / 范围）+ 仓库单选 `Select` | 预览图走会话预览分支，切换即换参；换参到新图解码完成之间盖 `PanelOverlay` 遮罩（容器 `aria-busy`），不闪上一张图；白名单为空时「仓库」置灰并提示；600px 面板在卡内横向滚动容器里，不外溢页面 |
 | README 片段 | `ToggleButtonGroup`（单主题 / 跟随 GitHub 明暗）+ 只读 `TextArea` + 复制 | 按当前预览参数生成，令牌以 `YOUR_BADGE_TOKEN` 占位 |
 
 - 生成/重置成功后弹「保存你的徽章令牌」`Modal`（`size="lg"`）：`Alert status="warning"` 写明
@@ -513,38 +554,25 @@
 访客语言，数字沿用徽章的固定口径（`lib/badge/format.ts`，与 README 里的 SVG 一致，
 不受访客本地偏好影响）。**不再展示近 30 天维度**，全页统一总数据口径。
 
-- 版式（A 档案式）：主栏 720–880px、区块间距 64 / 96px（8pt 网格）；拆掉等权 `Card`
-  堆叠，用 1px 发丝线与留白分区；accent ≤10% 面积，只用于主数字、热力图高值格与焦点态；
-  一律 HeroUI 语义 token / 复合结构 / `Typography` / `Description` 语义文本，零裸色值
-- 层级：口径行（眉题 + `全部时间 · 起止日 · 更新于` + 显示名）→ **唯一巨数**总 Tokens
-  （`tabular-nums`、`clamp` 防 375px 裁切）→ 四列无边框指标带（成本 / 活跃天数 /
-  来源数 / 模型数，成本带「读时定价估算」）→ 两枚全历史事实胶囊（最长连续天数、
-  单日峰值）→ 结构双栏（来源占比 `Meter` / 模型 TOP / 白名单仓库，仓库明示「总量子集」）
-  → 热力图 → 成就墙 → 页脚
-- 热力图（编年式，开关开启时）：只复用 `components/dashboard/heatmap-geometry.ts` 的
-  `HEATMAP_STOPS`，Mon-start 对齐与年度月格由 `u-heatmap.tsx` 的纯 CSS grid 完成
-  （不用 `use-responsive-weeks` / `ResizeObserver`）；**不复用 `HeatmapCard`**（自带来源
-  筛选与登录态 `useFormat` / `DashboardCopy`）。按自然年分行、Mon-start 周格、最新年在
-  最上、无年份切换器；色阶按全历史分位数统一分档（`--heatmap-0..4`），零值保留 0 级
-  底色、空白 padding 不画；窄屏改每年 12 个月格，页面零横向滚动；tooltip 用原生
-  `title` / `aria-label` 给日期 + 当日总 Tokens，无来源明细、无 portal、无点击下钻
-- 成就（开关开启时）：仅已解锁，段位降序前 6 枚 +「共 N 枚」；复用
-  `achievement-medallion.tsx` / `achievement-tiers.ts` 与既有 PNG；详情用独立轻量弹窗
-  （名称 / 段位 / 达成日），不复用 `achievement-detail.tsx`；不展示当前值、阈值与进度
-- 数字动画：动态数值统一走 `components/flow-number.tsx`（`FlowNumber`，
-  `@number-flow/react` 0.6.2），公开页传 `lib/badge/format.ts` 成品串、**不用
-  `useFormat`**（登录态偏好）；只给巨数与四个次级指标，列表数字不加。挂载从 0 滚动
-  沿用项目约定，另加 `<noscript>` 终值 + 容器 `aria-label` 完整数值 +
-  `aria-live="off"`；`respectMotionPreference` 默认开启，`prefers-reduced-motion` 静态
-- 动效节奏（纯 CSS、零新依赖、只播一次、总窗口 ≤1.5s）：0–120ms 眉题 / 口径行淡入
-  上移 8px；120–900ms 数字滚动（次级错峰 80ms）；600–1400ms 热力图按周 +20ms 级联
-  点亮（0 级 → 目标色阶，非 `opacity:0` 起步）、徽章每枚 +60ms 抬升并掠过一次金属
-  高光；滚动进入视口一次性 reveal（10px / ≤350ms）；hover 徽章 `-4px` + 外环高光
-  180ms、格子 tooltip 120ms。`prefers-reduced-motion` 全部静态，不用循环动画
-- 三态与响应式：各数据面保留 Loading / Empty / Error；增强模块开关关闭或数据失败时整块
-  缺席、不阻塞其余区块（公开页无客户端重试入口）；375px 单列、页面无横向滚动
-- 页脚：口径与估算说明、时区、隐私声明（默认「只公开聚合数字」，开关开启后追加
-  「另公开日级用量与已解锁成就」）、品牌落款
+- **现状**（2026-11-05 改版后）：口径行 → **唯一巨数**总 Tokens → 四列无边框指标带（成本 /
+  活跃天数 / 来源数 / 模型数）→ 两枚全历史事实胶囊（最长连续天数 / 单日峰值）→ 来源 / 模型
+  结构双栏 → **近一年热力图** → **成就墙** → 页脚；无 AppShell（同 `/login`）、`noindex`、
+  主题跟随系统，文案随访客语言，全页统一总数据口径（**不再展示近 30 天维度**）。
+- **规范以 `docs/badge.md` §6 为准**（页面唯一规范，数据口径见 §4.7；§6 中与 §0 的
+  2026-11-05 裁定冲突的条目以 §0 为准）；本篇不重复展开版式与动效细则，避免两篇各说一套。
+- UI 层面差异（相对仪表盘 / 成就页）：
+  - **热力图**：复用 `components/dashboard/heatmap-card.tsx` 的 `HeatmapCard bare hideFilter`
+    ——近一年 52 周、Mon-start 周格、月份 / 周几标尺、共享 portal tooltip（含来源明细）、
+    时区脚注与图例均与仪表盘同款；差异是**无平台来源筛选、无点击下钻、无卡片底色**，数字走
+    `HeatmapCard` 默认的访客偏好格式。
+  - **成就墙**：列出**全部已解锁成就**（`tier >= 1`，按目录顺序，3 / 5 / 6 列栅格，徽章
+    放大），复用 `achievement-medallion.tsx` / `achievement-tiers.ts` 与既有 PNG；点击打开
+    **共享的 `AchievementDialog`**（`apps/web/src/components/achievements/achievement-dialog.tsx`，
+    经 `components/u/u-achievement-dialog.tsx` 转接），与 `/achievements` 是同一个弹窗
+    （含当前值、阈值与五档历程）；公开页不传分享回调，故弹窗内隐藏「分享成就」入口。
+  - **数字**：动态数值走 `components/flow-number.tsx`（`FlowNumber`），公开页指标传
+    `lib/badge/format.ts` 的固定口径串（不使用登录态 `useFormat`），并补 `<noscript>` 与
+    `aria-label` 兜底。
 - 文件：`src/components/u/u-body.tsx` 编排，`u-hero.tsx` / `u-metrics.tsx` /
   `u-breakdown-section.tsx` / `u-heatmap.tsx` / `u-achievements.tsx` /
   `u-achievement-dialog.tsx` / `u-public-number.tsx`（按需）

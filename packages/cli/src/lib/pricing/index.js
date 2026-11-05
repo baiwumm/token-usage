@@ -113,7 +113,7 @@ function getPricingRevision() {
 
 // Read-only snapshot of where pricing data came from and how stale it is.
 // Surfaced by `status --json` so a $0 cost can be triaged as "not collected"
-// vs "not priced" without digging into cache files (docs/upstream-comparison-plan.md §1 A3).
+// vs "not priced" without digging into cache files (docs/archive/upstream-2026-11-03.md A3).
 function getPricingMeta() {
   return {
     source: state.source,

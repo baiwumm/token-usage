@@ -1,4 +1,4 @@
-# 邀请建号与首次登录流程（M2）
+# 邀请建号与首次登录流程
 
 本文面向自部署者（=管理员）：如何给新用户建号、用户如何完成首次登录。
 登录方式仅两种：**邮箱密码**（管理员下发临时密码）与**邮件魔法链接**；公开注册关闭
@@ -43,8 +43,10 @@ node scripts/admin/create-user.cjs --email user@example.com --password --passwor
 - 调 Auth Admin API `POST /auth/v1/admin/users`，`email_confirm=true` 直接建号；
 - 不发任何邮件（`--password-value` 缺省时脚本生成 20 位随机临时密码并打印）；
 - 把打印出的临时密码通过安全渠道交给用户，用户用「密码登录」进入；
-- 临时密码的重置：v1 暂无自助改密页面，管理员可在 Supabase Dashboard →
-  Authentication → Users 中删除/重建，或用本脚本重跑（邮箱已存在会报错，先删除旧号）。
+- 临时密码的重置有自助路径：登录页「忘记密码」走邮箱重置（`resetPasswordForEmail`，
+  回跳设置页设新密码），或在设置页「账户 → 密码」卡自助改密（≥8 位；魔法链接账号在此
+  开启密码登录）。管理员侧仍可在 Supabase Dashboard → Authentication → Users
+  中删除/重建，或用本脚本重跑（邮箱已存在会报错，先删除旧号）。
 
 ## 2. 用户首次登录
 
@@ -64,10 +66,12 @@ node scripts/admin/create-user.cjs --email user@example.com --password --passwor
 
 ## 3. 登录之后
 
-- 未登录访问受保护页（仪表盘 / 设置 / wrapped / 服务状态 / 配对页）一律跳登录页并
-  携带原路径与查询参数（配对链接 `?user_code=` 不丢失），登录后回跳原目标。
-- 设备的接入与吊销在设置页（`/settings`）管理；CLI 配对见 `docs/cli-contract.md` §2.1–2.3
-  与配对页任务（M5）。
+- 未登录访问受保护页一律跳登录页并携带原路径与查询参数（配对链接 `?user_code=` 不丢失），
+  登录后回跳原目标。受保护页共 9 个（`apps/web/src/proxy.ts` 的 `PROTECTED_PAGES`）：
+  `/`（仪表盘）、`/sessions`、`/projects`、`/sync-runs`、`/settings`、`/wrapped`、
+  `/achievements`、`/service-status`、`/device`（配对页）。
+  未登录可访问的例外只有 `/login`、`/auth/callback` 与公开页 `/u/<token>`。
+- 设备的接入与吊销在设置页（`/settings`）管理；CLI 配对流程见 `docs/cli-contract.md` §2.1–2.3。
 - 浏览器网络面板里除认证链路（`@supabase/ssr` 的会话 cookie / token 刷新，已裁决豁免）
   外，零 Supabase 直连；数据全部经本应用 route.ts 读取。
 

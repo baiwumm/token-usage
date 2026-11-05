@@ -1,4 +1,4 @@
-// Dashboard's own projects data path (docs/projects-page-plan.md 批次 1):
+// Dashboard's own projects data path (docs/ui-spec.md「项目（`/projects`）」节):
 // cookie-session auth like /api/app/sync-runs, then the shared service-role
 // payload builder over token_sessions.
 

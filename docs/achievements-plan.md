@@ -21,7 +21,8 @@
 
 - 当前阶段：**M7 全部收尾**（2026-10-30，P3 浏览器验收通过；提交 `772ec68..84f0ef6`）
 - 后续：无待办；元成就 / 赛季 / 写穿缓存按 §4 P3.6–P3.8 的触发条件关闭，需先满足触发条件再开新计划
-- 换机器恢复：`pnpm install` → `pnpm verify` 确认基线 → 读本节与 §8 → 从 §4 第一个未勾选条目继续
+- 换机器恢复：`pnpm install` → `pnpm verify` 确认基线 → 读本节（§0 当前进度）与 §8；§4
+  条目已全部打钩（无未勾选项），后续事项见 §0「后续」与 §4 P3.6–P3.8 的触发条件
 - 执行规则：
   1. 开始某阶段时，把 §0 对应行改为「进行中」并注明日期；
   2. 阶段内每完成一项就打钩（`- [x]`）；
@@ -53,7 +54,8 @@
 - **时间基准**：沿用 heatmap 的浏览器实时时区（`tz` + `tz_offset_minutes`），不做固定时区偏好
 - **页内附带「当前连续天数」统计**：仅展示，不参与成就判定
 - **文档联动**：P2 完成时更新 `docs/requirements.md`、`docs/ui-spec.md`；不触碰 `docs/cli-contract.md`
-- **不新增运行时依赖**：图标用 `@gravity-ui/icons`，动效纯 CSS
+- **不新增运行时依赖**：图标用 `@gravity-ui/icons`，动效纯 CSS（**唯一例外**：3D 翻面硬币于
+  2026-11-01 引入 `motion`，见 §1.3 决策 11 与 `docs/rewrite-plan.md` §4）
 
 ### 1.3 视觉改版决策（2026-10-30，操作者已确认）
 
@@ -63,7 +65,7 @@
 |---|---|---|
 | 9 | 徽章资产来源 | **A**：自有 AI 生成（MiniMax `image-01`），统一「浮雕硬币」风格模板；不取上游 PNG、不引用上游代码。生成脚本与 prompt 清单入库 `scripts/admin/achievement-assets/` |
 | 10 | 页面版式 | **B**：改「徽章墙」——分区保留，卡片边框去掉，徽章为主体，名称 + 段位文字 / 未解锁细进度条，数字与描述沉到弹窗 |
-| 11 | 3D 翻面硬币 | 暂不做（需新增 `motion` 依赖，属运行时预算变更，留 P3 再议）。**2026-10-30 P3 实现**：纯 CSS（`transform-style: preserve-3d` + `rotateY(180deg)` + `backface-visibility`，`motion-reduce:transition-none`），不新增 `motion` |
+| 11 | 3D 翻面硬币 | 暂不做（需新增 `motion` 依赖，属运行时预算变更，留 P3 再议）。**2026-10-30 P3 实现**：纯 CSS（`transform-style: preserve-3d` + `rotateY(180deg)` + `backface-visibility`，`motion-reduce:transition-none`）。**2026-11-01 升级**：为做拖拽 1:1 旋转与松手惯性弹簧，正式引入 `motion`（`motion/react`，`apps/web/package.json` 的 `motion@^14.9.0`），`achievement-coin.tsx` 改用 `motion` / `useMotionValue` / `useReducedMotion`；原「纯 CSS、不装 `motion`」的表述作废（背景见 `docs/rewrite-plan.md` §4） |
 | 12 | 资产段位表达 | 插画本身与段位无关：段位由徽章外的金属外环表达（青铜 / 白银 / 黄金 / 钻石 / 王者），一张图复用五档 |
 | 13 | 加载失败回退 | 必须回退到现有参数化 SVG 徽章（`achievement-art.tsx`），页面不得出现空徽章位 |
 
@@ -149,7 +151,7 @@
 - **计算**：`lib/achievements/compute.ts` 纯函数；不建快照表、不 cron、不写库
 - **已读水位（P3）**：`token_achievement_seen` 每用户单行 `seen_through`（本地日，只前进）；`GET` 在 payload 里下发 `seen_through`，`POST` 推进水位（`400` 非法日期 / `503` 写失败，迁移缺失时 GET 自动退化为 `null`）。成就本身仍是读时计算，这张表只存「看到哪一天」
 - **缓存**：v1 不加额外结果缓存；若实测单次 >300ms，再加按 `user + tz` 的 60s 内存缓存
-- **函数预算**：仓库现有 13 个 route handler（`docs/rewrite-plan.md` §2 记载 Hobby 上限 12，文档已过时或套餐已变）。P1.4 在 Vercel 控制台核对；若超限，改为 `app/achievements/page.tsx` Server Component 直出，零新增函数
+- **函数预算**：仓库现有 21 个 route handler（`apps/web/src/app` 下 `route.ts` 计数）；`docs/rewrite-plan.md` §2 已于 2026-11-05 复核，**不再以 12 为硬约束**（现行 Vercel 文档不再列出每次部署的函数数量上限），新增端点优先并入 catch-all（`/api/functions/[...slug]`）或 `/api/app/*`。故**不设** `app/achievements/page.tsx` Server Component 直出分支
 
 ### 3.2 模块布局（新增文件）
 
@@ -168,7 +170,7 @@ apps/web/src/components/achievements/
   achievements-body.tsx                         # 主体：摘要 + 分区栅格
   achievements-summary.tsx                      # 已解锁统计
   achievement-card.tsx                          # 单条墙格
-  achievement-coin.tsx                          # 详情里的 3D 翻面硬币（CSS）
+  achievement-coin.tsx                          # 详情里的 3D 翻面硬币（motion/react）
   achievement-dialog.tsx                        # 详情弹窗（五档时间线）
   achievement-share-dialog.tsx                  # 成就分享卡弹窗
   achievement-medallion.tsx                    # 位图徽章（段位外环 + 锁定灰化 + SVG 回退）
@@ -253,7 +255,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - **全局解锁 toast（P3）**：`achievement-unlock-watcher.tsx` 挂在 `AppShell`，无 UI、只弹 toast；每次整页加载跑一次（SPA 内导航不重复，刷新才重置），延迟约 1.2 s 启动，`/achievements` 页与隐藏标签页直接跳过。命中 `unlocksSince` 后用一条聚合 toast（`success`，6 s）列出最多 2 个「名称 · 段位」，其余写「等 N 枚」，随后推进水位；上一页刚解锁、下一轮登录在仪表盘看到的就是这条提示
 - **仪表盘成就条（P3）**：位于 **Heatmap 之后、趋势之前**（2026-10-30 操作者裁定下移），两组**上下纵向排列**、各 ≤5 条（2026-10-30 操作者裁定：取代左右两栏，由 3 条调为 5 条，徽章加大、间距收紧）——「最近解锁」（最晚达成日降序）与「最接近解锁」（`progressRatioForNext` 降序，跳过 0 进度与满王者）；每组采用成就页徽章墙的卡片形式（居中徽章 + 名称 + 段位标签），**点击打开与成就页一致的详情弹窗**（复用 `AchievementDetail`，详情 + 分享一体；2026-10-31 操作者裁定，取代原「只读不跳转」，瓦片不再画进度条）；全部无数据时整条隐藏。数据走 `fetchAchievementsShared`，与全局 watcher 同屏且时区参数一致时共用在途请求（无 TTL，settle 即清）
 - **分享卡（P3）**：已解锁的详情弹窗在正文最底部出现 `fullWidth` 的「分享成就」，先关详情再开分享弹窗（避免嵌套 Modal）；左侧预览、右侧「复制图片 / 下载 PNG」。卡片由 Canvas 2D 画出（1080×1350，`components/share-card/achievement.ts`），背景、段位色与金属外环取 `achievement-tiers.ts` 的原始色值；徽章位图走同源 `/achievements/<id>.png`（不污染 canvas），加载失败画金属盘 + 首字母占位，仍可导出。文件名 `token-usage-<id>-<tier>.png`；只含聚合数据（名称 / 描述 / 段位 / 当前值 / 达成日 / handle），不含行级信息
-- **3D 翻面硬币（P3）**：详情弹窗头部换成可翻面硬币（`achievement-coin.tsx`），纯 CSS `perspective` + `rotateY`（不装 `motion`）；原生 `button` + `aria-pressed`，Enter / Space 可翻，`Tooltip` 提示；背面为段位金属盘 + 段位名 + 达成日（未解锁显示「尚未解锁」与下一档阈值）；弹窗关闭或切换成就时复位正面，`prefers-reduced-motion` 下无过渡
+- **3D 翻面硬币（P3）**：详情弹窗头部换成可翻面硬币（`achievement-coin.tsx`）；**物理用 `motion`**（`motion/react`，2026-11-01 随成就 P3 收尾实际引入，`apps/web/package.json` 的 `motion@^14.9.0`，见 `docs/rewrite-plan.md` §4）——`useMotionValue` 驱动旋转、`useReducedMotion` 做分级降级，纯 CSS 无法表达松手物理；原生 `button` + `aria-pressed`，Enter / Space 可翻，`Tooltip` 提示；背面为段位金属盘 + 段位名 + 达成日（未解锁显示「尚未解锁」与下一档阈值）；弹窗关闭或切换成就时复位正面，`prefers-reduced-motion` 下无入场/摆动、松手短 tween 落位
 - **入口**：`components/app-shell/nav-items.tsx` 增加「成就」（`@gravity-ui/icons` 的 `Medal` 图标）；`src/proxy.ts` 把 `/achievements` 纳入受保护页面（未登录跳 `/login?next=/achievements`）
 - **wrapped**：年度回顾顶部保持四张统计卡；成就单独做成占一行的卡（`components/wrapped/achievements-card.tsx`），列出当前已获得的全部成就（`tier ≥ 1`，段位降序）并带段位标签；请求失败整卡隐藏，零解锁显示空态（2026-10-30 操作者裁定，取代原「今年解锁 N 枚」第五卡）
 - **空数据**：未配对设备/无用量时展示锁定栅格 + 引导文案；仪表盘成就条整条隐藏、全局 toast 不弹
@@ -322,7 +324,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P3.1** 仪表盘成就条：`components/dashboard/achievement-strip-section.tsx`（Card + 标题 + 「查看全部」+ `SectionSkeleton` / `SectionError`）+ `achievement-strip.tsx`（最近解锁 / 最接近解锁**上下两组、各 ≤5 条**，采用成就页徽章墙卡片形式；2026-10-31 改为**点击打开详情弹窗**，复用 `AchievementDetail`，取代原「只读不跳转」），插在 Heatmap 之后、趋势之前（2026-10-30 操作者调整）；`dashboard-client.tsx` 第 7 个加载槽走 `fetchAchievementsShared`（与全局 watcher 共用在途请求），空账号整条隐藏；骨架与 zh/en 文案同步
 - [x] **P3.2** 已读水位 + 全局解锁 toast：迁移 `20261030000000_token_achievement_seen.sql`（每用户单行 `seen_through`、RLS 零 policy）；`lib/achievements/seen.ts`（条件更新 + 首写 insert、主键冲突 409 重试；读失败降级 `null`）；`GET` 下发 `seen_through`、同一 route 新增 `POST`（401 / 400 非法或未来日 / 503 写失败，全部 `no-store`，零新增函数）；`lib/achievements/highlights.ts` + 单测；`achievement-unlock-watcher.tsx` 挂 `AppShell`（整页一次、1.2 s 延迟、跳过 `/achievements` 与隐藏页、聚合 toast 后推进水位）；成就页「新」标记改由服务端水位推导，旧 localStorage 键不再使用
 - [x] **P3.3** 成就分享卡：Canvas 2D 引擎 `components/share-card/achievement.ts`（1080×1350，等字体就绪后绘制，徽章同源 PNG + 金属盘占位回退），纯投影 `lib/achievements/share.ts`（`buildAchievementShareData` / `achievementShareFilename`），弹窗 `achievement-share-dialog.tsx`（预览 + 复制 / 下载 + 失败提示），详情弹窗已解锁时提供入口且先关详情再开分享；零新增依赖，只含聚合数据
-- [x] **P3.4** 3D 翻面硬币：`components/achievements/achievement-coin.tsx` 纯 CSS（`perspective` / `preserve-3d` / `rotateY`，`motion-reduce` 无过渡），原生 button + `aria-pressed` + Tooltip，正面徽章 / 背面段位盘 + 达成日或下一档阈值，切换成就与关闭弹窗复位
+- [x] **P3.4** 3D 翻面硬币：`components/achievements/achievement-coin.tsx`（初版纯 CSS `perspective` / `preserve-3d` / `rotateY`；**2026-11-01 随 P3 收尾实际引入 `motion`** 后改为 `motion/react` 的 `motion` / `useMotionValue` / `useReducedMotion` 驱动入场旋转、拖拽与惯性甩动，纯 CSS 表述作废，见 `docs/rewrite-plan.md` §4），原生 button + `aria-pressed` + Tooltip，正面徽章 / 背面段位盘 + 达成日或下一档阈值，切换成就与关闭弹窗复位
 - [x] **P3.5**（顺带修复）`/achievements` 纳入 `src/proxy.ts` 的受保护页面与 matcher，未登录跳 `/login?next=/achievements`；契约测试补齐。`docs/requirements.md` 要求除 `/login`、`/auth/callback` 与 CLI API 外全部需登录，此前漏配
 - [x] **P3.6** 元成就（集齐 N 个钻石 → 王者之证）—— **评估后不做**。理由：需要第 19 张专属插画资产（本机无 `mmx` 环境），且与「18 条独立指标」的目录设计相冲突。触发条件：操作者提供资产并明确要求
 - [x] **P3.7** 年度挑战 / 赛季机制 —— **评估后不做**。缺产品定义（窗口 / 重置 / 奖励 / 存储），需要单独的需求文档。触发条件：先有书面产品需求

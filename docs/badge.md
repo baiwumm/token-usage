@@ -18,100 +18,13 @@
 
 ## §0 2026-11-05 二轮裁定（操作者指令，**覆盖下文冲突条目**）
 
-浏览器验收前的六项调整，以下条目优先于 §1、§3.5、§4.7、§6、§7、§9 中
-「开关 / 隐私分级 / 成就详情 / 仓库模块」的旧描述：
-
-1. Hero 显示**用户头像**（内联 `data:` URI，无头像回退首字母圆）+ 显示名。
-2. 「来源占比」「主要模型」各 5 行、**逐行等高对齐**（来源行含 `Meter`）。
-3. 热力图改为**与仪表盘同款**：近一年 52 周、月份/周几标尺、共享 portal
-   tooltip（含来源明细）、时区脚注与图例；**无平台筛选、无点击下钻、无设置开关、
-   默认展示**；位置移到两列拆分**之前**。数字用 `lib/badge/format.ts` 固定口径。
-   同时修复仪表盘 `alignWeeks` 的首列 padding 计数 Bug 与占位单元不渲染问题。
-4. 成就**默认展示、全部已解锁徽章都列出**；点击打开与 `/achievements` **同一个**
-   `AchievementDialog`（含当前值、阈值时间线、达成日期），仅隐藏分享入口。
-5. Settings 删除「公开页增强模块 / 全历史热力图 / 成就徽章」三块；配置端点
-   `showHeatmap` / `showAchievements` 字段一并移除。DB 两列**保留但不再读写**
-   （避免不可逆 DDL，见 §3.5）。
-6. 公开页**删除仓库模块**，加载器不再拉取 repo badges。
-7. 隐私口径相应放宽为：公开聚合用量、近一年逐日用量（含 tooltip 来源明细）与
-   已解锁成就完整详情；仍绝不含会话明细、提示词、正文、路径、email、user_id、
-   原始令牌 / 哈希。页脚声明同步。
-
-**三轮微调（2026-11-05 15:53，操作者指令，同样覆盖下文冲突条目）**：
-
-- 页面所有 Token 数值改用 `useFormat().formatTokens`（随访客偏好，与仪表盘
-  「总 Tokens」一致）；成本仍走 §4.5 固定 USD 口径，SVG 徽章口径不变。
-- 热力图去掉卡片外壳与底色（`HeatmapCard bare`），并修复
-  `use-responsive-weeks` 少算一个列间距导致的**最右列被 `overflow-hidden` 裁切**；
-  抽出纯函数 `fitHeatmapWidth` / `heatmapGridWidth` 由
-  `tests/unit/heatmap-width.test.ts` 钉住「任意宽度下网格总宽 ≤ 容器宽」。
-- 成就徽章放大到 `size-20 md:size-24`，按钮加 `cursor-pointer`。
-- 顶部新增品牌栏：浅/深主题 Logo + 字标（链接 `/`）+ GitHub 链接
-  （`https://github.com/baiwumm/token-usage`，新标签页）；Hero 里重复的
-  `TOKEN USAGE` 眉题移除。
-
-**四轮微调（2026-11-05 16:12，操作者指令）**：
-
-- 品牌栏 hover 底色补左右内边距（`-mx-3 px-3 py-2`，负外边距抵消位移）。
-- 成本说明「按读时定价估算，未定价模型计 0。」从 KPI 列内移到指标带下方
-  **全宽一行**，避免窄列里把「0。」挤到第二行。
-- 热力图不可点击格子也加 `hover:scale-110`（原本只有仪表盘可下钻格子有），
-  公开页与仪表盘 hover 一致。
-- 「主要模型」每行显示 `token · 成本`：`PublicPageData` 增
-  `modelCosts: Record<modelGroupKey, number>`，由 `rowCost` 按同一分组键聚合
-  （与 §4.1 账户总成本同口径），显示走 `formatBadgeCost`。**不改 `BadgeData`**。
-- 页脚声明重写：明确公开全历史汇总、近一年逐日用量（含按来源构成）、
-  来源/模型分布及成本、成就完整详情与头像；明确不含会话明细、提示词、正文、
-  路径、邮箱、user_id、设备标识、徽章令牌。
-
-**五轮微调（2026-11-05 16:27，操作者指令，覆盖四轮的成本说明条目）**：
-
-- 顶部 GitHub 改 HeroUI `Button variant="outline" size="sm"`（`onPress` +
-  `window.open`，与 App Shell 的 GitHub 动作同款）；不再是裸 `<a>`。
-- **删除成本说明**（`PublicPageCopy.costHint` 及中英文案键一并移除，指标带下方
-  不再有单独说明行）；成本口径仍在页脚交代。
-- 「全部时间 · 起止日 · 更新于」移到**头像/名称行右侧并垂直居中**，
-  窄屏自动换行，Hero 少一行。
-- 代码规范复核（`docs/ui-spec.md` / AGENTS.md）：
-  - 成就项由裸 `<button onClick>` 改 HeroUI `Button variant="ghost" onPress`
-    （`h-auto! min-h-0! flex-col!` 等 important 覆盖尺寸，命名沿用项目惯例）；
-  - 徽章悬停抬升由自定义 `.u-medallion-art` CSS 改 Tailwind
-    `group-hover:-translate-y-1 motion-reduce:*`，focus ring 交给 Button 自带样式；
-    `globals.css` 只保留一次性入场 keyframes 与 reduced-motion 降级；
-  - 头像由裸 `<img>` + 手写首字母圆改 HeroUI `Avatar` 复合结构
-    （`Avatar.Image` / `Avatar.Fallback`）；SSR 先显示首字母，hydrate 后加载图片；
-  - 来源/模型行的名称与数值由裸 `<span>` 改 `Typography`；
-    指标带 `<dl>`（子元素非法）改语义中立的 `div` 栅格；
-  - Logo 仍是 `<img>`（浅/深双资源切换），与 `app-shell/brand.tsx` 保持一致，
-    属合理例外。
-
-**六轮微调（2026-11-05 16:39，操作者指令，覆盖五轮的「全部时间·起止日」条目）**：
-
-- Hero 口径行精简为「**全量数据 · 更新于 {UTC 时间}**」；原「全部时间 · 首日 →
-  末日 · 数据更新于 …」过长。精确起止日不丢弃，改由 HeroUI `Tooltip`
-  （`delay={0}` + `Tooltip.Content showArrow placement="bottom"`）展示；
-  **触发元素必须用 `Tooltip.Trigger` 包裹**：`Tooltip` 根是 react-aria 的
-  `TooltipTrigger`，hover/focus 与 `aria-describedby` 通过 `FocusableProvider`
-  传递，裸 DOM 子元素（含原生 `<button>`）不消费该 context，浮层不会打开。
-  `Tooltip.Trigger` 默认渲染 `div`，此处用 `render` 改渲染 `<span>` 以保持
-  `Description` 内联结构中的合法嵌套；它自带 `role="button"` + `tabIndex`，
-  键盘可聚焦。不再用原生 `title`。
-  范围文本由纯函数 `formatPublicPeriodRange` 生成（UTC 渲染、缺首末日返回 `null`），
-  浮层是客户端 portal、不进 SSR HTML，故单测直接断言该函数输出。
-  中英文案同步；窄屏仍可自然换行。
-- 两列拆分垂直对齐微调：来源行原本把「文字 + `Meter`」整组 `justify-center`，
-  模型行只居中一行文字，导致左列整体比右列高约半个进度条（≈6px）。现两列共用
-  `relative flex min-h-14 items-center` 且都只居中一个 `w-full` 文本行，
-  来源 `Meter` 移入 `absolute inset-x-0 bottom-2` 的容器脱离文档流。
-  `u-page-privacy.test.ts` 增加「10 行 class 完全相同 + 5 个绝对定位进度条」断言。
-- **同类裸 DOM 触发器一并修复（2026-11-05 17:26，操作者放行）**：问题不只在公开页。
-  `achievements/achievement-coin.tsx`（翻转硬币，裸 `<button>`）与
-  `achievements/achievement-dialog.tsx`（段位进度条、时间线徽标，两处裸 `<span>`）
-  同样改为 `Tooltip.Trigger` + `render` 渲染回原元素，完整保留点击 / 拖拽 / 键盘 /
-  `aria-pressed` 等 props。HeroUI `.tooltip__trigger` 的 unlayered `inline-block`
-  会压过 Tailwind 工具类，故硬币与进度条加 `inline-flex!` 维持原布局。
-  新增 `tests/contract/tooltip-trigger.test.ts`：扫描全部 6 个使用 HeroUI `Tooltip`
-  的组件，断言每个根标签后的首元素只能是 `Tooltip.Trigger` 或 HeroUI `Button`。
+1. 公开页默认展示：Hero 显示**用户头像**（内联 `data:` URI，无头像回退首字母圆）+ 显示名；「来源占比」「主要模型」各 5 行、**逐行等高对齐**（来源行含 `Meter`）。
+2. 热力图改为**与仪表盘同款**：近一年 52 周、月份/周几标尺、共享 portal tooltip（含来源明细）、时区脚注与图例；**无平台筛选、无点击下钻、无设置开关、默认展示**；位置移到两列拆分**之前**。
+3. 成就**默认展示、全部已解锁徽章都列出**；点击打开与 `/achievements` **同一个** `AchievementDialog`（含当前值、阈值时间线、达成日期），仅隐藏分享入口。
+4. Settings 删除「公开页增强模块 / 全历史热力图 / 成就徽章」三块；配置端点 `showHeatmap` / `showAchievements` 字段一并移除，DB 两列**保留但不再读写**（见 §3.5）；公开页**删除仓库模块**。
+5. 隐私口径相应放宽为：公开聚合用量、近一年逐日用量（含 tooltip 来源明细）与已解锁成就完整详情；仍绝不含会话明细、提示词、正文、路径、email、user_id、原始令牌 / 哈希，页脚声明同步。
+6. 公开页 Token 数值改用 `useFormat().formatTokens`（成本仍走 §4.5 固定 USD 口径）；顶部品牌栏用 HeroUI `Button variant="outline"`；Hero 口径行为「全量数据 · 更新于 {UTC 时间}」，起止日改由 `Tooltip.Trigger` 浮层展示；成就项用 `Button variant="ghost"`、头像用 `Avatar`。
+7. 后续各轮微调中仍然生效的部分已并入正文对应小节（§4.7、§6.2–§6.5、§6.8、§7.1、§7.2）；被下文正文吸收的旧描述（开关默认关 / 编年式全历史热力图 / 成就仅前 6 枚 + 独立轻量弹窗 / 仓库模块）一律以正文为准。
 
 ## §1 定位与隐私立场
 
@@ -130,11 +43,11 @@ JSON）永不包含 session 明细、提示词、正文、绝对路径、email�
 分级补充（2026-11-05 操作者放行，公开页改版）：
 
 - `GET /api/badge` 口径不变，仍只出账户 / 仓库的汇总数字。
-- `/u/<token>` 默认同样只出汇总数字；**仅当本人分别开启 §3.5 的两个开关后**，额外公开
-  ① 日级聚合用量（全历史逐日总 tokens，无来源明细）、② 已解锁成就的名称 / 段位 / 达成日。
-- 增强公开面仍**永不包含**：成就当前值与阈值进度、设备标识、单日来源构成，以及上段
-  列出的全部敏感项。开关默认关闭，既有用户升级后仍关闭，必须本人主动开启。
-- 页面页脚隐私声明须随开关状态同步表述（§6）。
+- `/u/<token>` **始终展示**（无开关）：聚合汇总数字之外，额外公开 ① 近一年逐日聚合用量
+  （含 tooltip 里的按来源构成）、② 已解锁成就的完整详情（当前值、阈值与达成日）。
+- 公开页仍**永不包含**：会话明细、提示词、正文、绝对路径、email、user_id、设备标识、
+  原始令牌 / 哈希，以及上段列出的全部敏感项（§3.5 的两个开关已移除）。
+- 页面页脚隐私声明按上述口径固定表述（§6）。
 
 ## §2 徽章端点 GET /api/badge
 
@@ -236,13 +149,11 @@ alter table public.token_public_badges
   add column if not exists show_achievements boolean not null default false;
 ```
 
-- 分别控制公开页是否渲染全历史热力图与已解锁成就墙；**默认 `false`**、无回填、无新表、
-  无新 policy，RLS 零 policy + 仅 `service_role` 姿态不变。
-- 未开启时服务端**不计算、不传输**对应数据，不是「算了再隐藏」：关闭热力图跳过日桶
-  投影，关闭成就跳过 sessions / syncRuns 加载与 `computeAchievements`（§4.7）。
-- 配置端点用驼峰别名 `showHeatmap` / `showAchievements`（§7.1 / §7.2），DB 列保持
-  蛇形；映射只在 `/api/app/badge` 一层完成，不进公开页数据契约。
-- 开关变更随 `invalidateBadgeData` 一并失效对应公开页缓存；端点字段见 §7.1，控件见 §7.2。
+- 两列曾用于控制公开页是否渲染全历史热力图与已解锁成就墙（默认 `false`、无回填、
+  无新表、无新 policy，RLS 零 policy + 仅 `service_role` 姿态不变）。
+- 2026-11-05 起两个开关随 §0 第 5 条**整体移除**：配置端点不再暴露 `showHeatmap` /
+  `showAchievements`，代码也不再读写这两列（避免不可逆 DDL，列与迁移保留）；公开页的热力图
+  与成就**始终计算并展示**，无开关、无「关了就不算不传」的分支。
 
 ## §4 数据与口径
 
@@ -325,28 +236,32 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   "total" 实为一年窗口，属形态参照不照搬）。与 §4.1 同源 `canonicalRows`（活跃设备、
   Cursor 跨设备去重、Trae CN 会话态）；成本仍逐行 `rowCost` 读时定价估算；活跃天数按
   §3.4 所有者时区折算。
-- 展示字段：`totals`（tokens / costUsd / activeDays）、`sources`、`models`、白名单仓库；
-  另增 `firstDay` / `lastDay` / `updatedAt`、来源数与模型数，以及两个全历史派生事实
-  （最长连续活跃天数、单日峰值日 + 用量）。仓库卡是账户总量的**子集投影**，页面须明示
-  「已包含在上述总量中」，不与总量相加。
-- 热力图日桶：与 `lib/badge/data.ts` `aggregateHourly` 的 `agg.days` 同源（全历史、所有者
-  时区），只投影 `{day, total}`；`level` 在客户端按**全历史分位数**统一分档，不按每年
-  各自最大值。设 10 年 / 3650 天硬上限，超出部分按年→月聚合；上限内一次给全，页面
-  不提供任何时间范围控件（热力图解释分布，不改变总量）。
+- 展示字段：`totals`（tokens / costUsd / activeDays）、`sources`、`models`；另增
+  `firstDay` / `lastDay` / `updatedAt`、来源数与模型数，以及两个全历史派生事实
+  （最长连续活跃天数、单日峰值日 + 用量）。公开页**不含仓库模块**（白名单仓库投影已删除，
+  §0 第 4 条）。
+- 热力图日桶：**与仪表盘同款**——近一年 52 周（`lib/public-page/data.ts` 的 `buildHeatmap`
+  按所有者时区取 52 周日桶，Mon-start），走 `HeatmapPayload` 链路交给
+  `components/dashboard/heatmap-card.tsx` 渲染；页面不提供任何时间范围控件（热力图解释
+  分布，不改变总量）。`lib/public-page/heatmap.ts` 的编年分段（`splitYears`）、分位数分档
+  （`quantileStops` / `levelFor`）**不再参与渲染**，但该模块仍供全历史派生事实（最长连续
+  天数、单日峰值）使用，10 年 / 3650 天上限也仍作用于全历史日桶（`capDayPoints`）。
 - 成就：SSR 直出 `computeAchievements`（组装沿用 `lib/achievements/payload.ts` 的
   `loadAccountUsage` / `loadSessionRows` / `loadSyncRunRows`，抽成纯函数复用，不读
-  `loadAchievementSeen`），只投影 `{id, tier, achieved_at}` 中 `tier >= 1` 的条目；**不公开**
-  `value` / `thresholds` / `next_threshold` / 进度 / 设备信息。解锁判定沿用既有 compute
-  （含历史设备），页面不展示任何数值，因此与徽章口径不会出现同页可对照的矛盾。
+  `loadAchievementSeen`）；`lib/public-page/data.ts` 传入**完整** `snapshot.achievements`，
+  `lib/public-page/project.ts` 的 `unlockedAchievements` 只保留 `tier >= 1` 的条目（目录
+  顺序不变），**投影字段完整**：含 `value` / `unit` / `thresholds` / `next_threshold` /
+  `achieved_at`，因此公开页展示当前值、下一段位阈值与进度、段位历史与阈值时间线（§6.5）。
+  解锁判定沿用既有 compute（含历史设备）。
 - 数据契约隔离：新增 `PublicPageData` 与 `src/lib/public-page/data.ts`（P9），**不改
   `BadgeData`**（§4.6，它是 §5 渲染输入，改动会牵动 §9 字节级快照）。日桶聚合抽成共享
   helper 供徽章与公开页复用，保证单一口径；不新增 SQL、不新增端点
   （`docs/rewrite-plan.md` §10 函数槽位 12/12）。
 - 加载与缓存：`page.tsx` SSR service-role 直出，不走 `/api/app`；公开页专用单飞键
-  `(userId, sections)`、TTL 60s；开关关闭时跳过对应加载与计算。
-- 文案：`lib/copy/public-page.ts` 删 `last30` / `last30Total`，增口径行、估算说明、子集
-  提示、热力图 / 成就空态与增强隐私声明；数字一律走 `lib/badge/format.ts`
-  （§4.5 固定口径），不随 `useFormat` 访客偏好。
+  `(userId)`、TTL 60s；热力图与成就**始终加载与计算**（无开关分支）。
+- 文案：`lib/copy/public-page.ts` 删 `last30` / `last30Total`，增口径行、热力图 / 成就空态
+  与页脚隐私声明；Token 数字走 `useFormat().formatTokens`（随访客偏好，§0 第 6 条），
+  成本与占比走 `lib/badge/format.ts` 的 `formatBadgeCost` / `formatBadgeShare`（固定口径）。
 
 ## §5 SVG 渲染规范
 
@@ -455,9 +370,9 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 ## §6 公开页 /u/\<token\>
 
-> **状态（2026-11-05）**：P9–P11 已实现。**§0 二轮裁定覆盖本节中**「开关默认关 /
-> 编年式全历史热力图 / 成就仅前 6 枚 + 轻量弹窗 / 仓库模块」等描述；实现以 §0 为准，
-> 下方文字保留作决策沿革。上游线上 `/u/:id` 仅作形态参照，端点、命名与实现不回搬。
+> **状态（2026-11-05）**：P9–P11 已实现。§0 二轮裁定（「开关默认关 / 编年式全历史
+> 热力图 / 成就仅前 6 枚 + 轻量弹窗 / 仓库模块」）已并入本节正文，实现以正文为准。
+> 上游线上 `/u/:id` 仅作形态参照，端点、命名与实现不回搬。
 
 ### §6.1 路由与基础约束
 
@@ -480,9 +395,9 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 |---|---|---|
 | L0 | 身份与口径：显示名（空则「AI 编码用量」）、`全部时间 · 起止日 · 数据更新于` | 主视区 |
 | L1 | 总 Tokens **唯一巨数**；成本（估算）/ 活跃天数 / 来源数 / 模型数降级为无边框指标带 | 强 |
-| L2 | 结构拆分：来源占比、模型 TOP、白名单仓库（明示总量子集）；两枚全历史事实胶囊 | 中 |
-| L3 | 编年式全历史热力图（开关开启时） | 中 |
-| L4 | 已解锁成就墙（开关开启时） | 弱 |
+| L2 | 结构拆分：来源占比与模型 TOP 两列；两枚全历史事实胶囊 | 中 |
+| L3 | 热力图（近一年 52 周，与仪表盘同款，始终展示） | 中 |
+| L4 | 已解锁成就墙（全部已解锁，始终展示） | 弱 |
 | L5 | 口径、估算说明、时区、隐私声明、品牌落款 | 辅助 |
 
 ### §6.3 模块与组件（`components/u/`，命名按 AGENTS.md）
@@ -492,43 +407,43 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 | `u-body.tsx` | 编排、区块间距、页脚口径与隐私声明 |
 | `u-hero.tsx` | L0 + 唯一巨数；空账号给 `—` 与空态文案，375px 数字用 `clamp` 不裁切 |
 | `u-metrics.tsx` | 四列指标带 + 最长连续天数 / 单日峰值两枚胶囊；`sm` 以下两列 |
-| `u-breakdown-section.tsx` | 来源占比（`Meter`）、模型 TOP、白名单仓库（标题带「总量子集」） |
-| `u-heatmap.tsx` | 编年式热力图；开关关闭或无数据时整块不渲染 |
-| `u-achievements.tsx` / `u-achievement-dialog.tsx` | 成就墙与轻量详情弹窗 |
+| `u-breakdown-section.tsx` | 来源占比（`Meter`）与模型 TOP 两列 |
+| `u-heatmap.tsx` | 仪表盘同款热力图（`HeatmapCard bare hideFilter`，近一年 52 周）；无数据时显示空态 |
+| `u-achievements.tsx` / `u-achievement-dialog.tsx` | 成就墙（全部已解锁）与共享详情弹窗 |
 | `u-public-number.tsx`（如需） | `FlowNumber` 的公开页包装：`<noscript>` 终值 + `aria-label` 完整数值 |
 
 ### §6.4 热力图
 
-- **复用色阶、不复用整卡**：只取 `components/dashboard/heatmap-geometry.ts` 的
-  `HEATMAP_STOPS`（`--heatmap-0..4`）；Mon-start 对齐与年度月格由 `u-heatmap.tsx`
-  的纯 CSS grid 完成，不用 `use-responsive-weeks` / `ResizeObserver`（P10 实现细化：
-  公开页只读、无筛选，纯 CSS 更稳且零 JS 测量）。`HeatmapCard` 自带来源筛选、
-  `useFormat` 登录态偏好与 `DashboardCopy`，不搬到公开页。
-- **编年式**：按自然年分行，每年一个 Mon-start 周格（52/53 列），年份标签在左、月份
-  标尺在上，最新年在最上；一次性铺开全历史，**无年份切换器**（切换器即范围筛选，
-  与 §4.7 统一总口径相悖）。
-- **窄屏换粒度**：375px 下改每年 12 个月格（月总量），同一份日桶、同一套色阶，不隐藏
-  数据、不出现页面横向滚动。零值保留 `--heatmap-0` 底色，空白 padding 不画，无数据
-  年份不渲染，未来日期不画。
-- **tooltip 最小化**：用原生 `title` / `aria-label` 给「日期 + 当日总 Tokens」，
-  无来源明细、无 portal tooltip、无 `onDaySelect`。
-- 数据只传 `{day, total}`，`level` 客户端按全历史分位数算；10 年 / 3650 天上限见 §4.7。
+- **与仪表盘同款**：`u-heatmap.tsx` 直接渲染 `components/dashboard/heatmap-card.tsx` 的
+  `HeatmapCard`，传 `bare`（去掉卡片外壳与底色）与 `hideFilter`（无平台 / 来源筛选），
+  复用 `DashboardCopy`；月份 / 周几标尺、共享 portal tooltip（`HeatmapTooltip`，含按来源
+  构成）、时区脚注与图例全部沿用仪表盘实现，不再有公开页自有的纯 CSS grid。
+- **窗口**：近一年 52 周（`lib/public-page/data.ts` 的 `buildHeatmap` 按所有者时区取 52 周
+  日桶，Mon-start），与仪表盘一致；不铺开全历史，也无年份切换器或任何范围控件。
+- **交互**：不传 `onDaySelect`，格子不可点击、不下钻；不可点击格子同样有
+  `hover:scale-110`；数字随访客偏好走 `HeatmapCard` 默认的 `useFormat`。
+- 原「编年式分年 / 全历史分位数分档 / 窄屏月格 / 原生 title tooltip」等公开页自有的热力图
+  实现描述作废：色阶、标尺、tooltip 与响应式全部由 `HeatmapCard` 承担（§4.7）。
 
 ### §6.5 成就
 
-- 仅 `tier >= 1`；按段位降序、同段位保持目录顺序，取前 6 枚 + 「共 N 枚」；未解锁、
-  当前值、阈值、进度一律不展示。
-- 徽章资产复用 `achievement-medallion.tsx` / `achievement-tiers.ts` 与既有 PNG；详情用
-  **独立轻量弹窗**（名称 / 段位 / 达成日），不复用 `achievement-detail.tsx`（含数值与
-  分享入口，会带出不该公开的信息）。
-- 无解锁条目时整块不渲染；开关关闭时服务端不算不传（§3.5）。
+- **全部已解锁**：`u-achievements.tsx` 列出全部 `tier >= 1` 的成就（目录顺序，不再取前 6 枚），
+  标题右侧给出「共 N 枚」计数；未解锁条目不展示。
+- **复用共享详情弹窗**：`u-achievement-dialog.tsx` 复用
+  `components/achievements/achievement-dialog.tsx` 的 `AchievementDialog`——与 `/achievements`
+  同一个弹窗，展示当前值与单位、当前段位与达成日期、下一段位阈值与进度条、五段段位历史
+  与五段阈值时间线（每段阈值与达成日）；只因不传分享回调而隐藏分享入口（原「独立轻量
+  弹窗」描述作废）。
+- 徽章资产复用 `achievement-medallion.tsx` / `achievement-tiers.ts` 与既有 PNG；徽章放大到
+  `size-20 md:size-24`，外层用 HeroUI `Button variant="ghost"`。
+- 无解锁条目时渲染空态文案；公开页始终计算并投影，无开关（§3.5）。
 
 ### §6.6 数字动画（2026-11-05 操作者指定 NumberFlow）
 
 - 复用 `components/flow-number.tsx`（`FlowNumber`，`@number-flow/react` 0.6.2 已在
   `apps/web`），不另写动画组件；传 §4.5 固定口径字符串：`18.48B` / `$1,318.40` / `214`
   均能解析，无法解析或万进制分组自动退化为静态文本。
-- 只给 **L1 巨数与四个次级指标**加滚动，来源 / 模型 / 仓库列表数字不加，避免全页跳动；
+- 只给 **L1 巨数与四个次级指标**加滚动，来源 / 模型列表数字不加，避免全页跳动；
   `tabular-nums` + 容器预留宽度防布局跳动。
 - 挂载从 `0` 滚到终值（沿用项目既有约定，`docs/ui-spec.md` 数字动画条目）。公开页补
   三层兜底：`<noscript>` 输出终值文本、容器 `aria-label` 给完整数值、
@@ -549,11 +464,13 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 ### §6.8 三态、响应式与隐私文案
 
-- 每个数据面保留 Loading / Empty / Error 三态；增强模块失败或开关关闭时**整块缺席**，
-  不阻塞其余区块；公开页不做客户端重试入口（无会话态）。
-- 375px 单列、页面零横向滚动；热力图窄屏走 §6.4 月格。
-- 页脚：默认「只公开聚合数字」；开关开启后追加「另公开日级用量与已解锁成就」；
-  常驻「成本为读时定价估算」「时区」「不含会话明细 / 提示词 / 路径 / 邮箱」与品牌落款。
+- 每个数据面保留 Loading / Empty / Error 三态；热力图与成就无数据时显示空态文案，不阻塞
+  其余区块；公开页不做客户端重试入口（无会话态）。
+- 375px 单列、页面零横向滚动。
+- 页脚固定声明：公开全历史汇总、近一年逐日用量（含按来源构成）、来源 / 模型分布及成本、
+  已解锁成就完整详情与头像；不含会话明细 / 提示词 / 正文 / 路径 / 邮箱 / user_id / 设备标识 /
+  徽章令牌；成本为读时定价估算、活跃天数按所有者时区折算，并带品牌落款（文案见
+  `lib/copy/public-page.ts` 的 `footer`）。
 
 ## §7 Settings 配置面
 
@@ -561,10 +478,10 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 | 方法 | 行为 |
 |---|---|
-| `GET` | 返回 `{enabled, timezone, allowedProjects, hasToken, tokenLast4, knownProjects, showHeatmap, showAchievements}`（永不回明文）；`knownProjects` 是本人 `token_sessions` 去重的非空 project_key（按 tokens 降序，≤200），白名单多选的数据源（§7.2）；末两项为 §3.5 开关，缺省 `false` |
+| `GET` | 返回 `{enabled, timezone, allowedProjects, hasToken, tokenLast4, knownProjects}`（永不回明文）；`knownProjects` 是本人 `token_sessions` 去重的非空 project_key（按 tokens 降序，≤200），白名单多选的数据源（§7.2）；**不含** `showHeatmap` / `showAchievements`（§3.5 已移除，契约测试断言响应无此两属性） |
 | `GET ?preview=1&style=…&theme=…&range=…&scope=…&project=…` | 本人预览（§7.3）：会话鉴权代替令牌，参数/加载器/渲染器与 `/api/badge` 同源，返回 SVG（`no-store`）；不看 `enabled`（未公开也可预览），repo 预览仍校验白名单 |
 | `POST {action:"generate"}` | 生成/重置令牌：写 `token_hash`、`token_last4`、`enabled=true`、`display_name` 快照（取会话 `user_metadata.display_name`，缺省空串），响应**一次性**携带明文 token |
-| `PUT` | 更新 `{enabled?, timezone?, allowedProjects?, showHeatmap?, showAchievements?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项报 `400`；timezone 按 `parseTzContext` 约定归一；两个开关只接受严格布尔值，否则 `400`；变更成功失效对应公开页缓存（§3.5） |
+| `PUT` | 更新 `{enabled?, timezone?, allowedProjects?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项报 `400`；timezone 按 `parseTzContext` 约定归一；**只接受这三个字段**（`showHeatmap` / `showAchievements` 已随 §3.5 移除，不解析）；变更成功失效公开页缓存 |
 | `DELETE` | 吊销：`enabled=false`（哈希与末 4 位保留，公开端呈现 `badge disabled`，§3.2） |
 
 - 无会话 → `401 {error:"Unauthorized"}`；非法体 → `400 {error}`；一律 `no-store`
@@ -575,10 +492,11 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 - 开关；令牌生成/重置（二次确认 + 明文只显示一次 + 复制）；白名单多选（数据源：
   §7.1 `knownProjects`——Sessions 已展示数据的投影，白名单里已不在会话中的项仍列出以便移除）；
   时区只读展示（浏览器时区，保存时随 PUT）
-- 公开增强开关（2026-11-05 新增，§3.5）：两个 `Switch`（`show_heatmap` /
-  `show_achievements`），沿用现有 `enabled` 开关的复合结构与 `onChange` 写法，默认关；
-  下方一行 `Description` 写明「开启后公开页会展示逐日用量与已解锁成就段位」。变更走
-  §7.1 PUT，成功 `toast.success`，失败保留原态不乐观更新
+- 公开展示开关：**仅 1 个 `Switch`**（`enabled`，公开展示开关），沿用现有 `enabled` 开关的复合
+  结构与 `onChange` 写法；变更走 §7.1 PUT，成功 `toast.success`，失败保留原态不乐观更新
+- 原「公开增强模块 / 全历史热力图 / 成就徽章」三块与其两个 `Switch`（`show_heatmap` /
+  `show_achievements`）已随 §0 第 5 条移除（2026-11-05，commit `064c1f2`）；DB 两列保留但
+  代码不再读写（§3.5）
 - 预览筛选（§7.3）：风格 / 主题 / 范围 / **仓库**；不再有「对象」开关——仓库下拉默认空
   = 账户徽章，选中 = 该仓库，清空（`Select.ClearButton`）= 回到账户（2026-11-04 操作者裁定，
   与 §2.1 的 project 开关同构）
@@ -622,7 +540,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 |---|---|
 | `tests/unit/badge-params.test.ts` | §2.1 参数默认值/非法值矩阵、§2.3 bad_request 分类 |
 | `tests/unit/badge-svg.test.ts` | §5 渲染器：确定性、XML 转义、截断、隐私不变量（无 script/外链/NaN）、两个 scope 共用区块、auto 媒体查询、零态渲染、品牌区站点行存在且 compact 不含（P6）；字节级快照（`toMatchSnapshot`）在 P2 实现时随操作者过目落盘 |
-| `tests/contract/badge.test.ts` | §2.2 响应头矩阵、§2.3 降级矩阵、方法守卫、隐私清扫（响应不含令牌/哈希/user_id）、§7.1 配置端点守卫与形状、两个 scope 都内联头像（P6）；P8 增两开关默认 `false` / PUT 非法值 `400` / 关闭时公开页 HTML 不含日级数据与成就标签 |
+| `tests/contract/badge.test.ts` | §2.2 响应头矩阵、§2.3 降级矩阵、方法守卫、隐私清扫（响应不含令牌/哈希/user_id）、§7.1 配置端点守卫与形状（GET 响应**不含** `showHeatmap` / `showAchievements`）、两个 scope 都内联头像（P6） |
 | `tests/unit/public-page-data.test.ts`（P9 新增） | §4.7 / §6：全历史日桶投影、编年分段、全历史分位数分级、`PublicPageData` 形状、空态、10 年上限 |
 
 - canonical fixtures（附录 A）是单测与实现的共同输入；契约测试经 FakeSupabase
@@ -665,7 +583,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 - P8 增量（2026-11-05，操作者确认公开页改版方向）：⑮ 上表两处契约 / 单测增补；
   ⑯ `tests/unit/badge-svg.test.ts` 字节级快照**不重录**——`PublicPageData` 与
   `BadgeData` 隔离（§4.7），§5 渲染输入未变；⑰ 验收清单含 375px、深浅主题、
-  `prefers-reduced-motion`、no-JS 终值、`noindex`、开关关闭时增强数据零传输
+  `prefers-reduced-motion`、no-JS 终值、`noindex`、公开页始终展示热力图与成就
 
 ## §10 实施阶段
 
@@ -693,7 +611,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 |---|---|---|---|
 | P8 文档先行 | §1 / §3.5 / §4.7 / §6 / §7 / §9 与 ui-spec 公开页节定稿 | `docs/badge.md`；`docs/ui-spec.md` | **已完成（仅文档）** |
 | P9 数据层 | 迁移两列、`PublicPageData` 加载器、共享日桶 helper、配置端点字段、Settings 双开关、单测 / 契约断言 | `supabase/migrations/20261105000000_token_public_badges_sections.sql`；`src/lib/public-page/*`；`src/lib/badge/data.ts`；`src/lib/achievements/payload.ts`；`src/app/api/app/badge/route.ts`；`src/components/settings/badge-card.tsx` | **已完成（待验收）** |
-| P10 页面 | Hero / 指标带 / 结构区 / 编年热力图 / 成就墙 / 页脚与文案字典 | `src/app/u/[token]/page.tsx`；`src/components/u/*`；`src/lib/copy/public-page.ts` | **已完成（待验收）** |
+| P10 页面 | Hero / 指标带 / 结构区 / 热力图（后改为复用 `HeatmapCard`）/ 成就墙 / 页脚与文案字典 | `src/app/u/[token]/page.tsx`；`src/components/u/*`；`src/lib/copy/public-page.ts` | **已完成（待验收）** |
 | P11 动效与验收 | NumberFlow 接入、CSS 动效、页面级隐私断言、定向与全量测试 | `src/styles/globals.css`；`src/components/u/u-public-number.tsx`；`tests/unit/u-page-privacy.test.ts` | **已完成（待浏览器人工验收）** |
 
 - P8 只改两份 markdown：未改代码、未跑构建 / 测试、未创建迁移、未执行任何 git 写操作。
@@ -712,13 +630,14 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   `badge` / `badge-settings` 契约测试 3 文件 28 例通过；改动文件 eslint 0 error。
   全量 `pnpm verify` 仍待操作者确认无并行任务后统一跑一次。
 - §9 的页面级隐私断言已由 `tests/unit/u-page-privacy.test.ts` 落地（服务端渲染
-  `UBody`，验证开关关闭时 HTML 无热力图 / 成就 / 近 30 天痕迹，开启时不含阈值与数值）。
+  `UBody`，验证头像 / 口径行 / 热力图 / 成就墙常在、两列各 5 行等高对齐、全部已解锁徽章
+  列出，HTML 无 30 天 / 仓库 / 令牌痕迹，页脚声明与实际公开口径一致）。
 - P10 / P11 定向验证：`tsc --noEmit --incremental false` 通过；`vitest run` 全量
   576 例断言通过。⚠ 其中一个既有套件 `tests/contract/legacy-alias-removed.test.ts`
   的 `afterAll` 清理 `.next-alias-test` 被本机安全删除机制拦截（trash 失败），
   8 个用例本身全部通过，与本次改动无关；需在可清理临时构建目录的环境里复跑。
 - 浏览器人工验收仍待操作者：375px、深浅主题、`prefers-reduced-motion`、no-JS 终值、
-  `noindex`、两种开关组合、迁移应用后的线上页面。
+  `noindex`、公开页热力图与成就展示、迁移应用后的线上页面。
 - 每阶段开工前复查工作区状态与目标文件 mtime。
 
 ---

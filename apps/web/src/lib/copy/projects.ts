@@ -1,4 +1,4 @@
-// Projects page copy (/projects, docs/projects-page-plan.md 批次 1/4). The
+// Projects page copy (/projects, docs/ui-spec.md「项目（`/projects`）」节). The
 // scope note and the session-count label follow the active caliber: session
 // metadata (session sidecar) vs hourly usage buckets.
 //

@@ -1,4 +1,4 @@
-// Tests for the /api/app/projects-hourly data path (docs/projects-page-plan.md
+// Tests for the /api/app/projects-hourly data path (docs/ui-spec.md「项目（`/projects`）」节
 // §5 批次 4): the exact bucket caliber that groups token_usage_hourly by
 // project_key. Covers the double-count guard (project rows already exclude the
 // "" residual), the pinned unattributed group, revoked-device exclusion and

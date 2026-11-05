@@ -8,11 +8,11 @@
 
 ## 1. 核心结论
 
-- CLI 全量 46+5 个来源（`packages/cli/src/commands/sync.js:338-393`）中，**非标准来源只有 6 处**（§4），其余约 40 个均为"本地真实 token 全量"或"本机未装/零数据"，机制完整。
+- CLI 全量 46+5 个来源（`packages/cli/src/commands/sync.js` `AUTO_SYNC_SOURCES` / `BACKGROUND_AUTO_SYNC_SOURCES`）中，**非标准来源只有 6 处**（§4），其余约 40 个均为"本地真实 token 全量"或"本机未装/零数据"，机制完整。
 - **Trae CN 本地库缺口已修（2026-10-31 P0）**：`resolveTraeDbPaths` 的 roots 已含 `Trae CN`（`packages/cli/src/lib/trae-db.js:29`），`%APPDATA%\Trae CN\ModularData\ai-agent\database.db` 真实 token 已进入持续采集。
 - **本机唯一"本地只有积分"的活跃源**：qoder-cn 新版 JSONL（`~/.qoder-cn/projects`），credits-only 行 token 记 0、conversation 照常、credits 进独立字段（2026-10-31 P1，`packages/cli/src/lib/rollout.js`）。
-- **行业事实（双重验证）**：订阅制工具的云端接口只有余额/百分比快照，**没有任何一家开放按 token 的消耗明细**——我们自己的 `lib/usage-limits.js` 覆盖 16 家、参照项目 12 个订阅渠道，结论一致。唯一例外是 Cursor 的 dashboard CSV 导出（逐事件 token 明细 + 真实美元成本），本项目已实现。
-- 改动任务共 2 批（Trae CN 接入 / credits 字段）+ 1 批 Sessions 遥测，均已完成，见 `docs/sources-capture-plan.md`；2026-11-05 的上游对齐修复见该文档 §7。
+- **行业事实（双重验证）**：订阅制工具的云端接口只有余额/百分比快照，**没有任何一家开放按 token 的消耗明细**——我们自己的 `lib/usage-limits.js` 覆盖 18 家、参照项目 12 个订阅渠道，结论一致。唯一例外是 Cursor 的 dashboard CSV 导出（逐事件 token 明细 + 真实美元成本），本项目已实现。
+- 改动任务共 2 批（Trae CN 接入 / credits 字段）+ 1 批 Sessions 遥测，均已完成，见 `docs/sources-capture-plan.md` §2；2026-11-05 的上游对齐修复见该文档 §2 表格末行。
 
 ## 2. 双平面原则（铁律）
 
@@ -59,7 +59,7 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 
 ## 5. 标准来源速览
 
-其余来源（claude、codex、zcode、dsh、opencode、workbuddy、minimax-code、pi、zed、codebuddy、grok、copilot、gemini、antigravity、cline、kilocode、roocode、kimi、kimi-code、devin、droid、goose、lmstudio、unsloth、anythingllm、craft、muse、omo、omp、hermes、reasonix、dumate、acode、every-code、command-code、openclaw、claude-science、kilo-cli、mimo、workbuddy-ai、qoder legacy 等）均为**本地文件/SQLite 直读真实 token**（个别为累计差分快照：goose、zed、reasonix、droid），路径与解析器见 `sync.js` 与 `rollout.js` 各自的 resolve/parse 函数。其中 grok/copilot/kimi/zcode 等**按积分/限额计费但本地有真实 token** 的源，云端限额已由 `lib/usage-limits.js`（16 家，status-only）覆盖——**它们没有采集问题**，只是 status 限额面板已有的素材。
+其余来源（claude、codex、zcode、dsh、opencode、workbuddy、minimax-code、pi、zed、codebuddy、grok、copilot、gemini、antigravity、cline、kilocode、roocode、kimi、kimi-code、devin、droid、goose、lmstudio、unsloth、anythingllm、craft、muse、omo、omp、hermes、reasonix、dumate、acode、every-code、command-code、openclaw、claude-science、kilo-cli、mimo、workbuddy-ai、qoder legacy 等）均为**本地文件/SQLite 直读真实 token**（个别为累计差分快照：goose、zed、reasonix、droid），路径与解析器见 `sync.js` 与 `rollout.js` 各自的 resolve/parse 函数。其中 grok/copilot/kimi/zcode 等**按积分/限额计费但本地有真实 token** 的源，云端限额已由 `lib/usage-limits.js`（18 家，status-only）覆盖——**它们没有采集问题**，只是 status 限额面板已有的素材。
 
 ## 6. 保持现状清单（带理由）
 
@@ -93,5 +93,5 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 | DB 约束 | `supabase/migrations/20261024000000_token_core_tables.sql:91-116`（hourly）、`:118-145`（account_session_states）；`20261025000000_token_sessions.sql:45-46`（CHECK） |
 | kiro 估算 / credits sidecar | `rollout.js:8497,8600-8603,8832-8849,9034+` |
 | workbuddy SQLite 忽略 | `rollout.js:11018-11023,11141,11770` |
-| 云端限额面板（16 家） | `packages/cli/src/lib/usage-limits.js:4003-4213` 及 qoder-limits（含 Desktop 0.4.x `main.log` 的 `[Auth] [AccountUsage]` 摘要扫描 + provenance，2026-11-05）/ qoder-cn-cli-limits / grok-limits / zcode-limits 等。读数由 `tokenusage status --limits`（opt-in，2026-11-05 接线；`--json` 的 `limits` 键）渲染为 plan + 各窗口 + credits + provenance；web 端仍无限额面板 |
+| 云端限额面板（18 家） | `packages/cli/src/lib/usage-limits.js` 的 `getUsageLimits` 及 qoder-limits（含 Desktop 0.4.x `main.log` 的 `[Auth] [AccountUsage]` 摘要扫描 + provenance，2026-11-05）/ qoder-cn-cli-limits / grok-limits / zcode-limits 等。读数由 `tokenusage status --limits`（opt-in，2026-11-05 接线；`--json` 的 `limits` 键）渲染为 plan + 各窗口 + credits + provenance；web 端仍无限额面板 |
 | 本机 baseline（2026-10-31） | qoder-cn：38 JSONL / 8397 usage 行 100% credits-only（≈0.64/条）、队列 conv=3146 token=0；Trae CN 库 17/18 行 token_usage（10-26~28，deepseek-v4.1-flash）；Qoder legacy 停写 2026-02-02；队列现有 source：zcode(331)/dsh(89)/opencode(56)/workbuddy(50)/codex(25)/qoder(21)/qoder-cn(14)/pi 系(10)/zed/minimax-code |

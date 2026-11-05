@@ -2,7 +2,7 @@
 
 // Read-only pricing-coverage and unknown-model alignment analysis over the
 // local last-wins queue baseline (queue.jsonl). Used by `doctor`
-// (docs/upstream-comparison-plan.md §2 B3 + §3 C2 dry-run). This module never
+// (docs/archive/upstream-2026-11-03.md B3 + §3 C2 dry-run). This module never
 // writes anything; the alignment preview is a dry-run projection only and does
 // NOT change any bucket's stored or displayed model.
 

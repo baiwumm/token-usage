@@ -1,4 +1,4 @@
-// Dashboard's per-project detail data path (docs/projects-page-plan.md):
+// Dashboard's per-project detail data path (docs/ui-spec.md「项目（`/projects`）」节):
 // cookie-session auth identical to /api/app/projects, then the shared
 // service-role detail payload builder over token_sessions / token_usage_hourly.
 

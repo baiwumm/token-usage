@@ -1,5 +1,5 @@
 // Per-project detail payload for the dashboard's /api/app/projects-detail
-// route (docs/projects-page-plan.md). One project — or the pinned unattributed
+// route (docs/ui-spec.md「项目（`/projects`）」节). One project — or the pinned unattributed
 // group — is broken down over a tz-aware day window into totals, a continuous
 // daily series, per-source splits and the whole-window token denominator that
 // backs the "share of total" ratio.

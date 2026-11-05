@@ -1,6 +1,6 @@
 "use client";
 
-// Fixed scope note for /projects (docs/projects-page-plan.md 建议 3/6): which
+// Fixed scope note for /projects (docs/ui-spec.md「项目（`/projects`）」节): which
 // sources the session-sidecar aggregation covers, which it misses, and the
 // list-price cost caveat. Standalone component so the wording is a one-file
 // swap when the coverage changes (批次 3/4).

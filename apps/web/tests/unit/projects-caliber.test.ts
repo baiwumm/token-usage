@@ -1,4 +1,4 @@
-// Guards for the projects caliber switch (docs/projects-page-plan.md §5):
+// Guards for the projects caliber switch (docs/ui-spec.md「项目（`/projects`）」节):
 // which endpoint the UI reads, and the caliber-specific copy that must not
 // describe the wrong data source.
 

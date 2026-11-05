@@ -1,105 +1,98 @@
 # 发布 Runbook（v1）
 
-部署、回滚、退役的操作手册，目标是人不在场也能重复执行。
-闸门与迁移的完整背景：`docs/rewrite-plan.md` §6–7。
+部署、冒烟与回滚的操作手册，目标是人不在场也能重复执行。**从零部署**看
+[`docs/deploy-guide.md`](deploy-guide.md)；本页只保留「升级已有部署」与日常运维增量。
+
+**现状**：生产实例 `token-usage.baiwumm.com`，两台采集机在传；旧系统（`tokentracker.baiwumm.com`
++ 旧 Supabase / Vercel / GitHub 仓库）已于 2026-10-29 整体删除，**无回滚路径**。
+
+## 采集机清单（设备身份对照）
+
+文档一律用「家机 / 公司机」指代，**并附云端设备名**。设备名分两个：
+
+- **默认名**（稳定标识）：契约 `docs/cli-contract.md` §2.2 规定的 `<主机名> #<machine_id 前 8 位>`，
+  签发时生成、不随改名更新。CLI 打印的也正是默认名（`status` / `doctor` / `sync` 等命令的
+  `- Device:` 行——**CLI 0.4.7 起，未发版**；npm 最新仍是 0.4.6）。
+- **云端当前名**：操作者可在仪表盘改名（`Home · C Future City` / `Company · Partner`）。
+
+| 别名 | 云端当前名 | 默认名（稳定标识） | device_id | 账号 / 数据目录 | Node 与安装方式 |
+|---|---|---|---|---|---|
+| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | `6a074a51-693b-48e3-9f65-0728f9f2ee5c` | `C:\Users\i\.tokenusage` | nvm-windows + npm 全局（`E:\nodejs` → `E:\nvm\nvm\v24.4.1` 符号链接） |
+| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | `1bd2ff67-653f-4b9c-80a9-c7589432d431` | `C:\Users\Administrator\.tokenusage` | Volta 管理的 node（`npm prefix -g` 路径不可用） |
+
+设备行以 `GET /api/functions/token-usage-dashboard?range=all_time`（设备令牌即可读）为准。
+每个账号还有账户级来源 `cursor`（跨设备去重，不计入任一设备行）。
 
 ## 环境变量
 
-清单以 `docs/rewrite-plan.md` §9 为准：`NEXT_PUBLIC_SUPABASE_URL` 与
-`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 是浏览器可见的公开值，`SUPABASE_SECRET_KEY` 等
-其余变量为 server-only；在 Vercel 项目的 Production 与 Preview 各配一份。
+清单以 `docs/rewrite-plan.md` §9 与 `apps/web/.env.example` 为准；
+部署操作步骤见 [`docs/deploy-guide.md`](deploy-guide.md) §4。
 
 ## 部署顺序
 
-0. 本地开发：`.env.local` 由操作者提供（或 `vercel env pull`）；开发用测试专用用户与设备
-   （操作者经 service-role 创建），生产数据零触碰。
-1. 新建**独立的 Supabase 项目**（与旧系统项目分离），跑 `supabase/migrations` 建表；
-   本仓库导入为新 Vercel 项目，绑定域名 `token-usage.baiwumm.com`，按 §9 配齐环境变量
-   （Supabase 三项指向新项目）。**升级已有部署时**，按文件名顺序补齐新增迁移；新版
-   ingest 会写 `credits` 列，必须先应用 `20261031000000` / `20261031000001` /
-   `20261031000003` 再部署新代码。
-2. 在新域名跑下方冒烟清单，全绿（含旧路径别名）。
-3. 【G1 闸门——操作者放行】采集机逐台把 base URL 改为
-   `https://token-usage.baiwumm.com/api`。
-4. 旧域名 `tokentracker.baiwumm.com` 与旧 Vercel 项目原样保留、继续运行旧系统，与新系统
-   互不冲突（**2026-10-29 已整体退役**：旧 Supabase 项目、旧 Vercel 项目、域名 DNS 与旧
-   GitHub 仓库全部删除，G2/G3 关闭）。
+1. **建库**：Supabase SQL Editor 按文件名顺序执行 `supabase/migrations/` 下的**全部**迁移
+   （当前 13 个）。漏跑会直接导致 ingest 整批失败：
+   - `20261031000000` / `20261031000001` / `20261031000003`——credits 列；
+   - `20261101000000` / `20261105000000`——公开徽章表；
+   - `20261103000000`——契约 v2 桶级 `project_key`（**新版 CLI 必需**，upsert 键的一部分）。
+2. **配环境变量**：`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`（浏览器可见）
+   与 server-only 的 `SUPABASE_SECRET_KEY` 等，Production 与 Preview 各配一份。
+3. **部署 web**：本仓库导入 Vercel，绑定域名；main 出 Production，push 出 Preview。
+4. **建管理员**：全新部署的库没有用户且公开注册关闭，用 service-role 建号脚本建管理员
+   （`scripts/admin/create-user.cjs`，细则见 [`docs/invite-flow.md`](invite-flow.md)），
+   登录后到 `/device` 批准采集机配对。
+5. **跑冒烟清单**（下方），全绿后逐台切采集机 base URL 到 `https://token-usage.baiwumm.com/api`。
 
-### 首个管理员账户
-
-全新部署的库没有任何用户且公开注册关闭：部署者先用 service-role 建号脚本创建管理员
-（M2 交付），登录后再在 `/device` 批准采集机配对。
+> 升级已有部署时，**只**补跑尚未应用的迁移（按文件名顺序），再部署新代码。
 
 ## 冒烟清单
 
 - `/` 返回 200；`/device` 可达且能提交配对码；
 - CLI 全链路：`authorize` → `/device` 批准 → `poll` 拿到令牌 → `ingest` 一批 → 200；
-- 旧路径别名：`GET /api/functions/tokentracker-public-config` 经 rewrite 返回与规范路径相同的结果；
 - 仪表盘数值与 `queue.jsonl` last-wins 对账一致；
-- 浏览器网络面板零 Supabase 直连请求。
+- 浏览器网络面板零 Supabase 直连请求；
+- **旧路径已退役**：`GET /api/functions/tokentracker-public-config` 应为 **404**、
+  写动词应为 **405**（契约 §1.5）。这是有声失败，钉版旧 CLI 会在这里被挡住而不是静默丢数据；
+  `apps/web/tests/contract/legacy-alias-removed.test.ts` 守护该行为。
 
-## 新 CLI 迁移（M-CLI，tokenusage-cli）
+## 新 CLI 迁移（tokenusage-cli）
 
-新版采集器 `packages/cli`（fork 上游 CLI，命名/契约已对齐本仓库）。与旧 CLI 的差异：
-数据目录 `~/.tokenusage`（旧为 `~/.tokentracker`）、命令名 `tokenusage`、契约路径
-`token-usage-*`（旧 `tokentracker-*` 别名仅服务端兼容保留）、新增会话元数据上报
-（`/sessions` 页面的数据源）。
+采集器 `packages/cli`（npm 包 `tokenusage-cli`）。与已退役的旧 CLI 的差异：数据目录
+`~/.tokenusage`（旧为 `~/.tokentracker`）、命令名 `tokenusage`、契约路径 `token-usage-*`。
 
-逐台迁移（每台完成后进下一台；属于 G1 闸门，操作者放行）：
+逐台迁移（每台完成后进下一台）：
 
-1. `npm i -g tokenusage-cli`（已发布，当前 0.4.6）或从仓库 `packages/cli` 安装；
+1. `npm i -g tokenusage-cli`（版本见 `docs/cli-release.md`）或从仓库 `packages/cli` 安装；
    升级后跑一次 `tokenusage init --yes --no-integrations --no-open` 刷新运行时副本；
 2. `tokenusage device-login` → 浏览器登录新站点 → `/device` 批准 `user_code`；
-3. `tokenusage sync --drain` → 仪表盘/Sessions 出现该设备数据；
+3. `tokenusage sync --drain` → 仪表盘 / Sessions 出现该设备数据；
 4. 桶级对账：`tokenusage reconcile --days 7` 应为 `OK`（有漂移会逐键列出并退出 1）；
-5. 会话元数据：`tokenusage sessions --format json` 与 /sessions 页一致（token、会话数），
-   无标题/绝对路径等敏感字段；
-6. 对账一致后撤旧计划任务/停旧 tokentracker CLI（该机 G1 完成）。
+5. 会话元数据：`tokenusage sessions --format json` 与 `/sessions` 页一致（token、会话数），
+   无标题 / 绝对路径等敏感字段；
+6. 对账一致后撤旧计划任务、停旧 hook。
 
-回滚：旧系统（Vercel + Supabase + 域名）已于 2026-10-29 整体删除，恢复旧计划任务已无意义。
-旧任务定义与旧数据目录仅作本地留档：
-`%USERPROFILE%\Backups\tokentracker-retired-20261029.zip`（`retired-tasks/` + `tracker/`）。
+**两台机器的迁移与历史重放已于 2026-10-26 完成**，首采与重放明细见 `docs/cli-release.md` §四/§五。
 
-### 第二台机器（公司机）迁移 + 历史补齐（已完成 2026-10-26，G1 全部完成）
+## 调度与运行时副本
 
-两台采集机均已切至新系统（逐台步骤见上文「逐台迁移」；公司机实际执行序：tarball 安装 →
-`device-login` 配对 → `sync --drain` 首采 → `scripts/replay-legacy-history.mjs` 重放历史 →
-注册每小时任务 → 停旧 hook 与计划任务）。实测记录：
+`tokenusage init` 注册每小时自动采集（Windows 计划任务 `TokenUsageSync`，macOS launchd，
+Linux systemd user timer），并在 `~/.tokenusage/tracker/app` 维护自包含运行时副本——
+全局包路径失效时（如 nvm-windows 切换 Node 版本）自动回落到副本。
+**升级 CLI 或切换 Node 版本后，务必重跑一次 `tokenusage init --yes --no-integrations --no-open`**。
+`tokenusage doctor` 的 `runtime.copy` 检查会报告副本缺失、缺标记或版本落后。
 
-- 设备 `PC-20260408RIKF #68e47b34`：首采 1,281 桶 + 350 会话（0 跳过）；历史重放
-  1,403 行 / 13.672B（脚本幂等，读刚配对的设备令牌，历史归该公司设备）。
-- 验收（`account-devices` 实测）：设备 2 台、总量 20.94B（公司机 13.675B + 本机
-  7.267B，本机含迁移后继续采集的增量），达成 ≈20.86B 预期。
-- 公司机每小时任务 `TokenUsageSync`（/sc hourly）。注意：公司机为 Volta 管理的 node，
-  全局包真实路径在 `%LOCALAPPDATA%\Volta\tools\image\packages\tokenusage-cli\...`，
-  `npm prefix -g` 给出的路径不可用。0.2.4 起 init 会维护 `~/.tokenusage/tracker/app`
-  自包含副本；Volta / NVM 切换 Node 版本后重跑 `init --yes --no-integrations --no-open`
-  即可刷新，计划任务不再依赖原包路径。
-- 旧 CLI 停用四处：Claude settings hooks 两处（备份 `settings.json.bak-tokentracker`）、
-  计划任务 `TokenTracker Selfhost Sync` / `Drift Check` / `Backup` 已 Disable；
-  2026-10-29 清理本机残留时连同 `~/.tokentracker` 与旧运行时数据一并移入归档并删除。
+## 回滚与退役
 
-旧库（`tokentracker.baiwumm.com` + 旧 Supabase 项目）**已于 2026-10-29 整体删除**：旧 Vercel
-项目、域名 DNS、旧 GitHub 仓库与旧 Supabase 项目均无残留，G2/G3 关闭。
+旧系统已整体退役，**改回旧 base URL 的回滚路径不存在**。采集机异常只能在现行系统侧处理：
+本地队列与水位保证不丢数据，修复后 `tokenusage sync --drain` 补传断连窗口。
 
-
-## 回滚
-
-旧系统已于 2026-10-29 整体退役（旧 Supabase 项目、旧 Vercel 项目、域名 DNS 与旧 GitHub
-仓库全部删除，G2/G3 关闭），改回旧 base URL 的回滚路径不再存在。采集机异常只能在现行系统
-侧处理：本地队列与水位保证不丢数据，修复后 `tokenusage sync --drain` 补传断连窗口。
-
-## 退役
-
-**已于 2026-10-29 完成**（操作者执行，未保留备份）：全部采集机迁移完成 → 旧定时任务停用
-→ 旧 Supabase 项目删除（G2；新旧项目独立，无删表动作）→ 旧 Vercel 项目、
-`tokentracker.baiwumm.com` 的域名 DNS 与旧 GitHub 仓库一并删除（G3，原 Archive 方案作废）。
-旧系统自此无任何残留。
+退役是不可逆的闸门：G1（切换）2026-10-26、G2（旧 Supabase 项目删除）与 G3（旧 Vercel 项目 /
+域名 DNS / 旧仓库删除）2026-10-29，均由操作者放行执行完毕，**Agent 代行即违规**。
 
 ## 自动发版
 
 - GitHub Actions 跑 `pnpm verify` 作为合并门禁；Vercel Git 集成负责构建：
-  每次 push 自动生成 Preview，main 产出 Production。
+  每次 push 生成 Preview，main 产出 Production。
 - CLI 已接入 tag 触发流水线：`.github/workflows/release-cli.yml` 在 `cli-v*` tag 上
   校验版本与 main 祖先、跑 `pnpm verify`、`npm publish --provenance` 并生成 GitHub
   Release；操作步骤见 `docs/cli-release.md`。web 端仍由 Vercel 部署，不发 npm 版本。

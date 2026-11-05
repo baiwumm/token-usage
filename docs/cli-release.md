@@ -6,6 +6,32 @@ npm 包 `tokenusage-cli` 的发布流程、首发未竟事项与发版后检查�
 `npm publish --provenance`（Trusted Publishing，OIDC 免 token）→ 从
 `packages/cli/CHANGELOG.md` 取本版本段落生成 GitHub Release。
 
+## 机器称呼约定（2026-11-05 起）
+
+两台采集机的身份对照。契约 `docs/cli-contract.md` §2.2 规定**默认名** = `<主机名> #<machine_id 前 8 位>`
+（与仪表盘设备卡同名），该默认名不随改名更新，是稳定标识：
+
+| 别名 | 云端当前名 | 默认名（稳定标识） | device_id | 账号 / 数据目录 | Node 与安装方式 |
+|---|---|---|---|---|---|
+| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | `6a074a51-693b-48e3-9f65-0728f9f2ee5c` | `C:\Users\i\.tokenusage` | nvm-windows + npm 全局（`E:\nodejs` → `E:\nvm\nvm\v24.4.1` 符号链接） |
+| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | `1bd2ff67-653f-4b9c-80a9-c7589432d431` | `C:\Users\Administrator\.tokenusage` | Volta 管理的 node（`npm prefix -g` 路径不可用） |
+
+⚠ 「云端当前名」是操作者在仪表盘改过的名字，可变；「默认名」是签发时按契约生成的快照，
+不随改名更新，是**稳定标识**——文档引用机器时两个都写，CLI 打印的也正是默认名。
+
+**从 §八起，本文档每条升级 / 验收记录都带设备名**；`本机` / `另一台` 这类相对称呼不再用于
+新记录。下个 CLI 版本起 `tokenusage status` 会自报设备身份（`- Device: <hostname> #<id8>`），
+任何一段命令输出都能自证是哪台机器。
+
+⚠ 历史段落里的「本机」含义**在 §四与 §五之间翻转过**，不要按字面理解：
+
+- §四（2026-10-29 及以前）的「本机」= **公司机**（该处记的 13.672B 迁移重放量即公司机），
+  同段「另一台 Volta 安装机」= 家机（当时家机也是 Volta）。
+- §五 / §六 / §七（2026-11-04 起）的「本机」= **家机**（Volta + npmmirror），同段
+  「另一台采集机 仍为 0.4.3」= 公司机。
+
+历史行文不回改，需要时按上表的安装方式（Volta / nvm、npmmirror / npmjs registry）对照判定。
+
 ## 0. 0.1.0 首发实录（2026-10-27，已完成）
 
 - tag `cli-v0.1.0` 已打在 `875dd54` 并推送，仍是 main 祖先，**无需重打**。
@@ -129,12 +155,13 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 
 ## 四、CLI 后续版本候选与实测记录（不阻塞已发版本）
 
-> **未发版批次（0.4.4 候选，2026-11-03 ~ 11-04）**：契约 v2 桶级 `project_key`（`fe4fb26`）、
-> 项目键父级回退（`823ee14`）、DeepSeek 余额/状态卡、`status --json` 的 pricing 块、`doctor`
-> 计价覆盖自检、curated 定价扩充、cursor/kimi/grok limits 磁盘缓存回退。明细以
-> `packages/cli/CHANGELOG.md` 的 `## Unreleased` 为准；bump / tag / `npm publish` 由操作者执行。
-> 注意：本机运行的 `0.4.3` 不含桶级 `project_key`，升级前 `/projects` 的 hourly 口径全部落在
-> 「未归因」（`docs/projects-page-plan.md` §5）。
+> **已发版批次（0.4.4 ~ 0.4.6，2026-11-03 ~ 11-05）**：契约 v2 桶级 `project_key`（`fe4fb26`，
+> 随 0.4.4 发版）、项目键父级回退（`823ee14`）、DeepSeek 余额/状态卡、`status --json` 的
+> pricing 块、`doctor` 计价覆盖自检、curated 定价扩充、cursor/kimi/grok limits 磁盘缓存回退
+> （均随 0.4.4 发版）；0.4.5 修队列去重丢项目拆分行，0.4.6 修 Cursor 准入 / Qoder credits 与
+> 限额快照并加 `status --limits`。明细以 `packages/cli/CHANGELOG.md` 的对应版本节为准。
+> 两台采集机均已升到 0.4.6；`/projects` 的 hourly 口径见
+> `docs/ui-spec.md`「项目（`/projects`）」节。
 
 > **原「未发版候选」（2026-11-01 盘点；两项均已随 0.4.0 交付）**：① `init` 逐工具集成
 > 选择（当时 `--no-integrations` 只有全有 / 全无）；② macOS / Linux 原生调度（当时仅
@@ -565,10 +592,10 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 | Release notes | 取 CHANGELOG `## 0.4.4` 段（44 行），未退回 `--generate-notes` |
 | 干净安装 | 临时目录 `npm i tokenusage-cli@0.4.4`（6 包 / 6s）后 `--version` → `v0.4.4`，`help` 正常；临时目录已删除，未污染全局 |
 | 安全审计 | `pnpm audit --prod --registry=https://registry.npmjs.org` → No known vulnerabilities found |
-| [x] 本机升级与验证（2026-11-04） | Volta `tokenusage-cli@0.4.3 → 0.4.4`，`init --yes` 刷新 runtime copy；`doctor` 15 OK / 0 warn / 0 fail；`sync --drain` 解析 2,150 文件、上传 4 行；`reconcile --days 7` 有 **3 个既有 server-only**（dsh `2026-10-28` 08:30/09:00/09:30，本地队列的 dsh 行从 10-29 起才有，升级前快照即如此），非本次升级引入。升级后 7 天窗口 `project_key` 非空仍为 0——新桶来自 trae/workbuddy，项目型来源产生新桶后才会带上项目名 |
-| [x] cursor 重新登录 | 本机已不使用 Cursor（2026-11-04 确认），跳过；如后续需要 Cursor 用量，再在客户端登录并跑 `tokenusage doctor` 复核 |
-| [ ] 另一台采集机升级 | 仍为 0.4.3：`npm i -g tokenusage-cli@0.4.4` 后重跑 `init --yes`（用户操作） |
-| [ ] 另一台机器升级后验收 | `tokenusage reconcile --days 7` 应为 OK / 0 drift；项目型来源的新桶开始带 `project_key`，`/projects` 的 hourly 口径不再整页落在「未归因」 |
+| [x] 家机 `DESKTOP-MHFON1J #48ea790e` 升级与验证（2026-11-04） | Volta `tokenusage-cli@0.4.3 → 0.4.4`，`init --yes` 刷新 runtime copy；`doctor` 15 OK / 0 warn / 0 fail；`sync --drain` 解析 2,150 文件、上传 4 行；`reconcile --days 7` 有 **3 个既有 server-only**（dsh `2026-10-28` 08:30/09:00/09:30，本地队列的 dsh 行从 10-29 起才有，升级前快照即如此），非本次升级引入。升级后 7 天窗口 `project_key` 非空仍为 0——新桶来自 trae/workbuddy，项目型来源产生新桶后才会带上项目名 |
+| [x] cursor 重新登录 | 家机已不使用 Cursor（2026-11-04 确认），跳过；如后续需要 Cursor 用量，再在客户端登录并跑 `tokenusage doctor` 复核 |
+| [x] 公司机 `Company · Partner`（默认名 `PC-20260408RIKF #68e47b34`）升级 | 当时仍为 0.4.3 → **2026-11-05 已完成**（操作者在那台机器上升级到 0.4.6 并验收，记录见 §七） |
+| [x] 公司机升级后验收 | **2026-11-05 完成**（操作者在那台机器上执行 `tokenusage reconcile --days 7` 验收通过；服务端侧核对见 §七） |
 
 ## 六、0.4.5 发版验证清单（2026-11-04）
 
@@ -586,12 +613,12 @@ offset / watermark；Windows 隐藏启动器写 UTF-16LE + BOM；`init` 首同�
 | Release notes | 取 CHANGELOG `## 0.4.5` 段（20 行），未退回 `--generate-notes` |
 | 干净安装 | 临时目录 `npm i tokenusage-cli@0.4.5 --registry=https://registry.npmjs.org`（6 包 / 20s）后 `--version` → `v0.4.5`，`help` 正常；临时目录已删除，未污染全局 |
 | 安全审计 | `pnpm audit --prod --registry=https://registry.npmjs.org` → No known vulnerabilities found |
-| [x] 本机升级与验证（2026-11-04） | Volta `tokenusage-cli@0.4.4 → 0.4.5`；`init --yes --no-integrations --no-open` 刷新 runtime copy（`.runtime-ready` v0.4.5，从 `C:\` 直跑副本 `--version` → v0.4.5）；`doctor` 15 OK / 0 warn / 0 fail（`runtime.copy` OK，7 天 token 计价覆盖 100%）；`sync --drain` 解析 1,886 文件、新入队 1 桶、上传 6 行，sessions 4/4 |
-| [x] 数据修复（本机） | 升级后首次 `reconcile --days 7` 报 1 条 `missing_on_server`：`2026-11-04T07:30Z opencode deepseek-v4.1-flash-free` 10,241,261 tokens——正是 0.4.4 旧去重键压掉项目拆分行后偏移照旧推进留下的缺口，本地队列仍保留该行。把该行重新追加到 `queue.jsonl` 末尾（追加即 last-wins，无需改 offset）→ `upload --drain` 上传 1 行 → 该缺口消失 |
+| [x] 家机 `DESKTOP-MHFON1J #48ea790e` 升级与验证（2026-11-04） | Volta `tokenusage-cli@0.4.4 → 0.4.5`；`init --yes --no-integrations --no-open` 刷新 runtime copy（`.runtime-ready` v0.4.5，从 `C:\` 直跑副本 `--version` → v0.4.5）；`doctor` 15 OK / 0 warn / 0 fail（`runtime.copy` OK，7 天 token 计价覆盖 100%）；`sync --drain` 解析 1,886 文件、新入队 1 桶、上传 6 行，sessions 4/4 |
+| [x] 数据修复（家机） | 升级后首次 `reconcile --days 7` 报 1 条 `missing_on_server`：`2026-11-04T07:30Z opencode deepseek-v4.1-flash-free` 10,241,261 tokens——正是 0.4.4 旧去重键压掉项目拆分行后偏移照旧推进留下的缺口，本地队列仍保留该行。把该行重新追加到 `queue.jsonl` 末尾（追加即 last-wins，无需改 offset）→ `upload --drain` 上传 1 行 → 该缺口消失 |
 | [x] 复验 | 再次 `reconcile --days 7`：0 missing / 0 mismatched，仅剩 **2 条既有 server-only**（dsh `2026-10-28` 09:00 / 09:30，0.4.4 升级时就存在，本地队列的 dsh 行从 10-29 起才有），非本次升级引入 |
-| [x] Cursor | 同步提示 `Cursor session expired`，本机已不使用 Cursor（2026-11-04 确认），跳过 |
-| npm 镜像注意 | 本机 npm registry 是 `registry.npmmirror.com`，发版后镜像尚未同步 0.4.5，`volta install` 会 `ETARGET`；用 `npm_config_registry=https://registry.npmjs.org volta install tokenusage-cli@0.4.5` 绕过。日常升级若不想等镜像，可沿用同一写法 |
-| [ ] 另一台采集机升级 | 仍为 0.4.3，可直接升到 0.4.5：`npm i -g tokenusage-cli@0.4.5` → `tokenusage init --yes` → `tokenusage reconcile --days 7`（用户操作） |
+| [x] Cursor | 同步提示 `Cursor session expired`，家机已不使用 Cursor（2026-11-04 确认），跳过 |
+| npm 镜像注意 | 家机 npm registry 是 `registry.npmmirror.com`（**2026-11-05 起家机已换成 nvm + npm 全局，registry 为 `registry.npmjs.org`，本条不再适用**），发版后镜像尚未同步 0.4.5，`volta install` 会 `ETARGET`；用 `npm_config_registry=https://registry.npmjs.org volta install tokenusage-cli@0.4.5` 绕过。日常升级若不想等镜像，可沿用同一写法 |
+| [x] 公司机 `Company · Partner`（默认名 `PC-20260408RIKF #68e47b34`）升级 | **2026-11-05 完成**（操作者在那台机器上升级到 0.4.6 并验收，记录见 §七） |
 
 ## 七、0.4.6 发版验证清单（2026-11-05）
 
@@ -607,7 +634,82 @@ offset / watermark；Windows 隐藏启动器写 UTF-16LE + BOM；`init` 首同�
 | GitHub Actions | main CI run `42010816281` 全绿；Release run `42010824329` 成功（版本校验 → main 祖先校验 → `pnpm verify` → Trusted Publishing 发包 → Release） |
 | provenance | 已写入 npm attestations（`dist.attestations.url` 可查） |
 | Release notes | 取 CHANGELOG `## 0.4.6` 段，未退回 `--generate-notes` |
-| [x] 本机升级与验证（2026-11-05） | Volta `tokenusage-cli@0.4.5 → 0.4.6`；`init --yes --no-integrations --no-open` 刷新 runtime copy（`.runtime-ready` v0.4.6，首采 3,201,292,093 tokens / 13 providers）；`doctor` 15 OK / 0 warn / 0 fail（`runtime.copy` v0.4.6，7 天 token 计价覆盖 100%）；`status --limits` 首次可见 Qoder 两行：CN `Personal Standard, 0%, add-on: 40.8%, 1061/2600 credits, cli-api, 0s ago`、国际版 `disk-cache, stale, 36m ago`；`reconcile --days 7` **OK**（243 桶、51 条未上传、0 drift） |
-| npm 镜像注意 | 本机 npm registry 是 `registry.npmmirror.com`，发版后镜像通常滞后，`volta install` 会 `ETARGET`；用 `npm_config_registry=https://registry.npmjs.org volta install tokenusage-cli@0.4.6` 绕过 |
-| [ ] 另一台采集机升级 | 仍为 0.4.3，可直接升到 0.4.6：`npm i -g tokenusage-cli@0.4.6` → `tokenusage init --yes` → `tokenusage reconcile --days 7`（用户操作） |
-| [ ] 另一台机器升级后验收 | `tokenusage reconcile --days 7` 应为 OK / 0 drift；项目型来源的新桶开始带 `project_key`，`/projects` 的 hourly 口径不再整页落在「未归因」 |
+| [x] 家机 `DESKTOP-MHFON1J #48ea790e` 升级与验证（2026-11-05，Volta 时期） | Volta `tokenusage-cli@0.4.5 → 0.4.6`；`init --yes --no-integrations --no-open` 刷新 runtime copy（`.runtime-ready` v0.4.6，首采 3,201,292,093 tokens / 13 providers）；`doctor` 15 OK / 0 warn / 0 fail（`runtime.copy` v0.4.6，7 天 token 计价覆盖 100%）；`status --limits` 首次可见 Qoder 两行：CN `Personal Standard, 0%, add-on: 40.8%, 1061/2600 credits, cli-api, 0s ago`、国际版 `disk-cache, stale, 36m ago`；`reconcile --days 7` **OK**（243 桶、51 条未上传、0 drift） |
+| npm 镜像注意 | 家机 npm registry 是 `registry.npmmirror.com`（**2026-11-05 起家机已换成 nvm + npm 全局，registry 为 `registry.npmjs.org`，本条不再适用**），发版后镜像通常滞后，`volta install` 会 `ETARGET`；用 `npm_config_registry=https://registry.npmjs.org volta install tokenusage-cli@0.4.6` 绕过 |
+| [x] 家机 `DESKTOP-MHFON1J #48ea790e` 重新升级与验收（2026-11-05，换装 nvm 后） | 家机已从 Volta 换成 nvm-windows + npm 全局（`E:\nodejs` 是指向 `E:\nvm\nvm\v24.4.1` 的符号链接），npm registry = `registry.npmjs.org`，故镜像滞后不适用。换装后全局包落在 **0.4.5**（较 §七 Volta 时期的 0.4.6 落后一档）→ `npm i -g tokenusage-cli@0.4.6 --prefer-online` → `tokenusage --version` = v0.4.6；`init --yes --no-integrations --no-open` 刷新 runtime copy（`.runtime-ready` v0.4.6，14:29:31Z），首采 **5,936,534,278 tokens / 13 providers**；从 `C:\` 直跑运行时副本 `--version` → v0.4.6 |
+| [x] 家机升级后验收（2026-11-05） | `sync` 解析 30,124 文件、上传 **231 行 / 0 跳过**；`reconcile --days 1` 与 `--days 7` 均 **OK**（114 桶逐键匹配、0 drift、退出码 0）；`doctor` 15 OK / 0 warn / 0 fail（`runtime.copy` v0.4.6，7 天 token 计价覆盖 100%）；计划任务 `\TokenUsageSync` 手动触发后 `LastTaskResult=0`，`tracker/logs/sync.log` 记录 `parsed 30126 files, +1 buckets, uploaded 1`，队列清空——确认 VBS 里写死的 `E:\nvm\nvm\v24.4.1\node_modules\tokenusage-cli` 与 npm 全局是同一份安装（符号链接指向同一目录），不存在旧副本残留 |
+| 调度降级（家机预期） | `init` 摘要仍为 `degraded: xml_rejected — 错误: 拒绝访问。`：非提升 shell 下 `schtasks /Create /XML` 需管理员权限，自动降级为每小时触发，丢失 catch-up / retry / 无执行时限三项增强；采集与上传不受影响，要启用需以管理员身份重跑 `tokenusage init` |
+| `status --limits` 观察（家机） | ZCode `Lite, 0%, secondary: 16%, resets 2026-11-09T07:45:03Z, provider-api`；Qoder CN `Personal Standard, 0%, add-on: 40.8%, 1061/2600 credits, cli-api`；Codex 一行 `error: fetch failed`（该 provider 限额接口在家机不可达，非升级引入） |
+| 家机遗留项 | `Trae SOLO CN: usage sync off`（需 `TOKENUSAGE_TRAE_CN_USAGE=1` 开启）——0.4.6 已修 Trae CN 双 app dir 识别，开启后即可采到 Trae CN 用量 |
+| [x] 公司机 `Company · Partner`（默认名 `PC-20260408RIKF #68e47b34`）升级与验收 | **2026-11-05 操作者在那台机器上完成**：`npm i -g tokenusage-cli@0.4.6` → `tokenusage init --yes --no-integrations --no-open` → `tokenusage reconcile --days 7` 验收通过。服务端核对（`token-usage-dashboard?range=all_time`，设备令牌只读）：device `1bd2ff67-653f-4b9c-80a9-c7589432d431`、云端名 `Company · Partner`、active、2,037 桶 / 14,835,125,523 tokens、`last_used_at 2026-11-05T11:00:16Z`（升级后仍在按小时上报） |
+
+## 八、下个版本候选（未发版）：CLI 自报设备身份
+
+**背景**：一个账户两台采集机，而 `status` / `doctor` 的输出正是被贴进发版清单与工单的那段
+文字。旧版 CLI 从不说「我是哪台机器」，于是「本机」与「另一台」在文档里混成一团——本文件
+§四与§五之间「本机」的指代就翻转过一次（§四 = 公司机，§五起 = 家机）。本批把身份写进输出，
+让机器归属不再依赖人记。
+
+**范围**：纯 CLI 输出面，零契约变更，服务端与 web 不需要跟着升级。
+
+### 8.1 设备身份（机器是谁）
+
+| 项 | 内容 |
+|---|---|
+| `status` 文本输出 | 新增 `- Device: <hostname> #<machine_id 前 8 位> (id <device_id>)`；未配对时显示 `(not paired)` |
+| `status --json` | 新增 `device` 块：`name` / `hostname` / `machine_id` / `device_id` |
+| `status --light` | 表格新增 `Device` 与 `Device ID` 两行（AI / CI 友好输出同样可辨识机器） |
+| `doctor` | 新增 `runtime.device_identity` 检查：有 `machine_id` 记 OK，缺失记 warn；检查项由 15 增至 16 |
+| `sync` / `upload` / `reconcile` | 同样打印 `- Device:` 行；`reconcile` 额外加 `Local device:` 一行，与 `Cloud device:` 并列 |
+| `init` | `Setup complete!` 段落里加一行 `Device: <name> (id <device_id>)` |
+| 身份来源 | `~/.tokenusage/tracker/config.json` 的 `machineId` / `deviceId`；config 丢失时回退到 purge 存活的 `~/.config/tokenusage/machine-id`。全程只读，不生成也不改写 id |
+| 设备名规则 | 与契约 `docs/cli-contract.md` §2.2 一致（`<主机名> #<machine_id 前 8 位>`）——注意打印的是**默认名**；仪表盘里改过的云端当前名（如 `Home · C Future City` / `Company · Partner`）不改变这个稳定标识 |
+| 测试 | `packages/cli/test/device-identity.test.js` 7 条 |
+
+### 8.2 采集结果摘要（采了多少）
+
+`sync` 过去的输出只有「解析了几个文件 / 排了几桶 / 插入了几行」，既不说是哪台机器，也不说
+传了多少 token、多久、还剩多少。这批把摘要补全并抽成纯函数（`buildSyncSummaryLines`）：
+
+```
+Sync finished:
+- Device: DESKTOP-MHFON1J #48ea790e (id 6a074a51-693b-48e3-9f65-0728f9f2ee5c)
+- Parsed files: 30,285
+- New 30-min buckets queued: 2
+- Uploaded: 2 rows (23,604,640 tokens), 0 skipped
+- Sessions: 4/5 uploaded (upserted 4, skipped 1)
+- Remaining: 2.00 KB pending (run sync again, or use --drain)
+- Duration: 7.7s
+- Warning: <原有问题提示>
+```
+
+| 变化 | 说明 |
+|---|---|
+| 新增 `- Device:` | 每条命令自报机器 |
+| 新增 token 数 | 「插入了几行」不够，token 总量才是仪表盘上的数字 |
+| 新增 `- Sessions:` | 会话上传原本单独打一行、且排在汇总之前；现在并入汇总，顺序正确 |
+| 新增 `- Credits:` | 仅当本次上传带积分时显示（积分是独立维度，不并入 token） |
+| 新增 `- Duration:` | 采集耗时，便于判断是否卡在大目录扫描上 |
+| 新增 `- Upload error:` | 上传失败时明确出现在汇总里，而不是只静默留在日志 |
+| 千分位 | 文件数 / 行数 / token 数统一 `1,234` 格式 |
+| 自动运行日志 | `sync.log` 的 JSONL 同步补 `tokens` / `credits` / `sessions_uploaded` / `sessions_skipped` / `duration_ms` 字段（纯追加，不改既有字段） |
+| `upload` 命令 | 同样加 `- Device:` 与 `- Credits in this upload:` |
+
+**升级后怎么用**（两台机器都跑一遍即可自动对上号）：
+
+```bash
+tokenusage status            # 文本输出里的 - Device: 就是这台机器
+tokenusage status --json     # .device.name / .device.device_id
+tokenusage doctor            # 新增 runtime.device_identity 检查
+```
+
+**公司机 `device_id` 已核对**（2026-11-05）：`1bd2ff67-653f-4b9c-80a9-c7589432d431`，
+云端当前名 `Company · Partner`，默认名 `PC-20260408RIKF #68e47b34`。取值方式：
+家机用设备令牌读 `GET /api/functions/token-usage-dashboard?range=all_time`，
+`devices[]` 里逐台核对；已回填本文档开头「机器称呼约定」与 `docs/launch-runbook.md`
+的采集机清单表。
+
+**发版**：bump / tag / `npm publish` 由操作者执行（见 §二）。发布后两台机器各跑一次
+`npm i -g tokenusage-cli@latest` + `tokenusage init --yes --no-integrations --no-open`，
+`status` 即会自报身份。
+

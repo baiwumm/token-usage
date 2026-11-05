@@ -3,6 +3,36 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+> 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
+> 与 `docs/archive/`。
+
+## Unreleased
+
+未发版批次（CLI 输出面，零契约变更，服务端无需同步升级）：命令自报设备身份 + 采集结果摘要补全。
+一个账户有两台采集机（家机 / 公司机），而 `status` / `sync` 的输出正是被贴进发版清单与工单的
+那段文字——以前它从不说「我是哪台机器」，也不说「传了多少 token」，于是「本机」与「另一台」
+在文档里混成一团（`docs/cli-release.md` §四与§五之间「本机」的指代就翻转过一次）。
+
+- **每条命令自报设备身份**：`status` / `sync` / `upload` / `reconcile` / `doctor` / `init`
+  的文本输出都带一行 `- Device: <hostname> #<machine_id 前 8 位> (id <device_id>)`，未配对时
+  显示 `(not paired)`；`reconcile` 另加 `Local device:` 与 `Cloud device:` 并列。
+  设备名规则与契约 `docs/cli-contract.md` §2.2 一致（打印的是**默认名**；仪表盘里改过的
+  云端当前名不改变这个稳定标识）。
+- **`status --json` 新增 `device` 块**：`name` / `hostname` / `machine_id` / `device_id`；
+  `--light` 表格新增 `Device` 与 `Device ID` 两行。
+- **`doctor` 新增 `runtime.device_identity` 检查**：有 `machine_id` 记 OK，缺失记 warn；
+  检查项数由 15 增至 16。
+- **`sync` 摘要补全**：新增 token 数（`Uploaded: 2 rows (23,604,640 tokens), 0 skipped`）、
+  会话数、积分、耗时、失败原因；会话上传原本单独打一行且排在汇总之前，现并入汇总。
+  摘要抽成纯函数 `buildSyncSummaryLines` 以便单测。
+- **数字统一千分位**：文件数 / 行数 / token 数按 `1,234` 输出。
+- **自动运行日志**：`sync.log` 的 JSONL 补 `tokens` / `credits` / `sessions_uploaded` /
+  `sessions_skipped` / `duration_ms` 字段（纯追加，不改既有字段）。
+- **`upload` 命令**：加 `- Device:` 与 `- Credits in this upload:`。
+- **身份种子回退**：`uninstall --purge` 删掉 `~/.tokenusage` 后，purge 存活的
+  `~/.config/tokenusage/machine-id` 仍能恢复 `machine_id`，命令依旧认得出这台机器。
+  身份计算全程只读，不生成也不改写 id。
+
 ## 0.4.6
 
 2026-11-05。上游对齐补丁 + 限额面板落地：Cursor cache-only 行、Qoder credits/准入/时间戳、
@@ -59,7 +89,7 @@ curated 定价扩到 191 条，Cursor / Kimi / Grok 限额卡补磁盘缓存回�
   `sync` 补传，不丢历史。
 - **桶级 `project_key`（契约 v2，2026-11-03）**：小时用量桶按项目名拆行——每个项目一行，
   再加一条 `project_key` 为空的余量行，两者相加等于原聚合值，不重复计数；无法归因的
-  历史/账户级用量留在余量行（`docs/cli-contract.md` §2.4、`docs/projects-page-plan.md` §5）。
+  历史/账户级用量留在余量行（契约 §2.4）。
 - **项目键父级回退（2026-11-04）**：`projectKey()` 不再把 `<repo>/.claude/worktrees/<id>`、
   `<repo>/worktrees/<id>`、`<project>/<session>/subagents` 这类工具目录当成项目名，而是向上
   取真实项目目录；qoder-cn 子代理转录继承记录里的 `cwd`。只影响新采集——历史键不回填
@@ -73,9 +103,9 @@ curated 定价扩到 191 条，Cursor / Kimi / Grok 限额卡补磁盘缓存回�
 - **`doctor` 新增计价覆盖自检**：近 7 天本地队列的桶/token 计价命中率、Top 未定价模型
   （零 token 的积分桶单独计数、不再误报），以及 unknown 模型「对齐到同时段主导模型」的
   只读 dry-run 预览（不改变任何历史归属）。
-- **计价覆盖大幅扩充**：curated exact 91 → 191。同步上游 TokenTracker 新增的 29+9 条
-  （claude-opus-4-5/4-6、gpt-5.4/5.5 系、kimi-k3.1-pro 等）；从 juejin-usage 选摘
-  volcengine/alibaba-cn/xiaomi/muse 四组 69 条（署名见 THIRD_PARTY_NOTICES）；补
+- **计价覆盖大幅扩充**：curated exact 91 → 191。同步上游新增的 29+9 条
+  （claude-opus-4-5/4-6、gpt-5.4/5.5 系、kimi-k3.1-pro 等）；从参照项目选摘
+  volcengine/alibaba-cn/xiaomi/muse 四组 69 条（署名见 `THIRD_PARTY_NOTICES.md`）；补
   Unisound `u2-flash` 与 StepFun `step-5-preview` 官价。本机 7 天窗口 token 计价覆盖率
   97.3% → 100%。
 - **Cursor / Kimi / Grok 限额卡新增磁盘缓存回退**：请求超时或 5xx 时展示最近一次成功
@@ -103,7 +133,7 @@ curated 定价扩到 191 条，Cursor / Kimi / Grok 限额卡补磁盘缓存回�
   共用这一处）。
 - **Windows 控制台代码页不再乱码**：只取 stderr 后又暴露一层——中文 Windows 的
   `schtasks` 按控制台代码页（936/GBK）写字节，Node 按 UTF-8 解出来是
-  `����: �ܾ����ʡ�`。现按 `chcp.com` 报告的活动代码页（932/936/949/950）回退
+  `: ܾʡ`。现按 `chcp.com` 报告的活动代码页（932/936/949/950）回退
   `TextDecoder` 重解，解不通才回到原 UTF-8 文本；65001 与单字节页原样直出。
   zh-CN 非提升 shell 下现在的摘要就是可读的 `错误: 拒绝访问。`。
 - **`reconcile` 区分 pending 与 drift**：`queue.state.json` 上传偏移之后的本地桶记入
@@ -118,22 +148,17 @@ curated 定价扩到 191 条，Cursor / Kimi / Grok 限额卡补磁盘缓存回�
 
 2026-11-01。`init` 的调度摘要不再只写 `degraded: xml_rejected`：现在把被拒的第一行原因
 （如 `ERROR: Access is denied.`，超过 100 字符截断）一并打印，用户能据此判断是「需要
-管理员权限」还是「任务定义本身有问题」。
-
-- Windows：非提升 shell 下 `schtasks /Create /XML` 必然 `Access is denied`，降级路径照旧
-  每小时采集（隐藏窗口）；要启用 catch-up / retry / 无执行时限，需以管理员身份重跑
-  `tokenusage init`。
-- 单测覆盖：原因可见、超长命令输出截断（`test/scheduled-task.test.js`）。
+管理员权限」还是「任务定义本身有问题」。Windows：非提升 shell 下 `schtasks /Create /XML`
+必然 `Access is denied`，降级路径照旧每小时采集（隐藏窗口）；要启用 catch-up / retry /
+无执行时限，需以管理员身份重跑 `tokenusage init`。单测覆盖原因可见与超长输出截断。
 
 ## 0.4.1
 
 2026-11-01。修复 `tokenusage reconcile` 在真实队列上的误报：队列行写的是
-`conversation_count`（`docs/cli-contract.md` §2.4 的线名），小时表列名是
-`conversations`，按字段名直接比较会把每一行都报成 `conversations local 0 → cloud N`
-（本机首跑 41/43 行误报）。现在按别名归一后比较，真实差异仍照常报出。
-
-- 会话数比较读 `conversations`，缺失时回退 `conversation_count`（两者都没有按 0）。
-- 单测按真实队列形态（只带 `conversation_count`）覆盖，并断言真差异仍落在 `conversations` 字段。
+`conversation_count`（契约 §2.4 的线名），小时表列名是 `conversations`，按字段名直接比较
+会把每一行都报成 `conversations local 0 → cloud N`（本机首跑 41/43 行误报）。现在按别名
+归一后比较，真实差异仍照常报出。会话数比较读 `conversations`，缺失时回退
+`conversation_count`（两者都没有按 0）。
 
 ## 0.4.0
 
@@ -147,10 +172,9 @@ curated 定价扩到 191 条，Cursor / Kimi / Grok 限额卡补磁盘缓存回�
   命令都有效，未知命令抛 `UNKNOWN_COMMAND`。
 - **新增 `tokenusage upload`**：只刷本地队列、不扫描来源（`--drain` / `--force`
   抬批次上限，`--json` 输出结构），与 `sync` 共用 `drainQueueToCloud` 与
-  `sync.lock`；`sync --upload-only` 为同一实现的别名。积压较多时不必再等
-  全量扫描。
-- **`--source` 严格校验**：非法 id 直接报错并列出可用列表（此前静默降级为全量
-  扫描，容易误以为只采了某个来源）。
+  `sync.lock`；`sync --upload-only` 为同一实现的别名。积压较多时不必再等全量扫描。
+- **`--source` 严格校验**：非法 id 直接报错并列出可用列表（此前静默降级为全量扫描，
+  容易误以为只采了某个来源）。
 - **`sessions` 严格解析**：未知参数、缺值、非法 `--format` 均报错；`--out` 改为
   原子写（0600），避免脚本拿到半截 JSON / CSV。
 - **`--watch` 失败退避**：连续失败按 1x → 2x → 5x 拉长间隔并在 stderr 提示，
@@ -181,13 +205,11 @@ curated 定价扩到 191 条，Cursor / Kimi / Grok 限额卡补磁盘缓存回�
   明细。命令不上传、不改写队列、不动上传 offset，后端读取面为
   `GET /api/functions/token-usage-reconcile`（契约 §2.13）。
 - 测试 76 → 130 条（新增 `cli-dispatch` / `args-strict` / `scheduled-task` /
-  `queue-row-normalize` / `integration-gate` / `reconcile`；`integration-gate` 锁定
-  「选中才写工具配置」与 `upload` 未配对即拒绝，`reconcile` 锁定窗口解析、last-wins
-  基线、漂移分类与退出码）。
+  `queue-row-normalize` / `integration-gate` / `reconcile`）。
 
 ## 0.3.0
 
-新增三个采集来源/维度，修复 Windows 下 Qoder 会话的发现与口径问题。
+2026-10-31。新增三个采集来源/维度，修复 Windows 下 Qoder 会话的发现与口径问题。
 
 - **Trae CN 本地库接入**：`resolveTraeDbPaths` 新增 `Trae CN` 安装目录
   （与 `Trae` / `TRAE SOLO` 同 schema，共享应用密钥直接解密）。此前国内版
@@ -207,157 +229,111 @@ curated 定价扩到 191 条，Cursor / Kimi / Grok 限额卡补磁盘缓存回�
 
 ## 0.2.6
 
-移除从未接线的错误上报 SDK，安装体积与运行时副本明显变小；采集行为不变。
+2026-10-30。移除从未接线的错误上报 SDK，安装体积与运行时副本明显变小；采集行为不变。
 
 - 删除 `@sentry/node` 与 `src/lib/sentry.js`、`src/lib/telemetry-pref.js`：
   CLI 只在启动时 init 了 Sentry，`captureException` 没有任何调用点，实际从不上报；
   但它在运行时副本里占 44 MB（67.5 MB 的约 65%），全局安装还带入
   `@sentry/bundler-plugins` 的构建期依赖链（安装总量 93.1 MB 中约 59 MB）。
-  移除后运行时副本 22.9 MB（实测 462 个文件）、干净 prefix 安装 23 MB
-  （此前 93.1 MB），且不再有第三方上报入口。
+  移除后运行时副本 22.9 MB（实测 462 个文件）、干净 prefix 安装 23 MB。
 - `bin/tokenusage.js` 未捕获异常的兜底里还留着一个 `require('../src/lib/sentry')`
   （包在 try/catch 里，删模块后永不生效的残留）；一并删除，守卫测试改为同时扫描
   `src/` 与 `bin/`。
 - README 隐私边界同步：CLI 不做匿名心跳、也不做任何第三方错误上报。
-- `THIRD_PARTY_NOTICES.md` 的运行时依赖示例去掉 `@sentry/node`。
 - 新增 `test/packaging.test.js` 守卫：`@sentry/*` 不得重新出现在依赖或源码中；
   运行时副本回归测试改用 `yauzl` 的传递依赖 `pend` 验证扁平闭包复制。
-- 未随本版改动：macOS/Linux 原生调度、`init` 逐工具集成选择（见
-  `docs/cli-release.md` §四，等真机验证/形态确认后再做）。
 
 ## 0.2.5
 
-0.2.4 验收后的小修：去掉安装警告、修正初始化重复文案，并补 Windows CI。
+2026-10-30。0.2.4 验收后的小修：去掉安装警告、修正初始化重复文案，并补 Windows CI。
 
 - 移除 `@mongodb-js/zstd` 与两处 Node 20 zstd 回落分支：包 `engines` 已是
   `>=22.19`，`node:zlib` 自带 zstd。`npm i -g` 不再出现 `prebuild-install`
   弃用警告，运行时副本也少一个 native 依赖。
-- 修 `init` 跳过行重复文案：detail 已以 `Skipped` 开头时不再叠加
-  `Skipped - ` 前缀（此前显示 `Skipped - Skipped (--no-integrations)`）。
-- 顺手去掉 `--dry-run` 收尾的重复 `Dry run complete` 行，只保留
-  `Run init without --dry-run to apply changes.`。
-- README 补齐 `init` 的 `--yes` / `--dry-run` / `--no-open` / `--link-code`
-  参数说明。
+- 修 `init` 跳过行重复文案与 `--dry-run` 收尾的重复行。
 - CI 新增 `windows-latest` job：跑 CLI 测试 + `init --dry-run` 烟测并断言
   输出不含 `Skipped - Skipped`，避免 VBS / 入口类回归只靠发版前人工验收。
 
 ## 0.2.4
 
-计划任务抗 Node 版本切换 + 自检一次性收口的采集可靠性修复（发 0.2.3 后立即补；
-家里机实测发现）。
+2026-10-29。计划任务抗 Node 版本切换 + 自检一次性收口的采集可靠性修复。
 
-- 0.2.3 的隐藏 VBS 把 npm 全局前缀里的包路径写死，而 nvm-windows 的全局前缀
-  按 Node 版本分目录（如 `E:\nvm\nvm\v24.4.1\node_modules\tokenusage-cli`）。
-  `nvm use` 之后该路径消失，任务每小时以 "file not found" 失败
-  （`LastTaskResult` 非 0、日志停更），而任务本身看起来仍"已注册"。
-- VBS 现在先 `FileExists` 探测包路径，缺失时回落到 init 复制到数据目录的自包含
-  运行时 `~/.tokenusage/tracker/app/bin/tracker.js`，采集不中断。
-- VBS 的引号改用 `Chr(34)` 拼接（不再依赖转义写法），行为不变：wscript 直接起
-  node、隐藏窗口、用退出码回填 `LastTaskResult`。
-- 运行时副本改为"依赖闭包"复制：旧实现整目录 `fs.cp`，在 pnpm 安装下只复制到
-  junction 链接（副本里 `node_modules` 只有 1 项），副本一跑就是
-  `Cannot find module`；现在按依赖图逐个复制真实目录，npm / pnpm 两种布局都能
-  得到自包含副本。
-- 副本先复制到 `app.new` 暂存目录，**实际启动一遍**（`require` 全部直接依赖 +
-  `--version`）通过后才替换 `app` 并写 `.runtime-ready` 标记。没有标记的副本
-  一律不使用——半成品副本在忽略输出的后台进程里静默死掉，表现与"采集正常"
-  完全一样，这是最难排查的一类失败。
-- notify / OpenClaw hook / OpenClaw session plugin / sync 自动重试脚本统一按
-  "带标记的副本 → 已安装包入口 → npx" 三级选择启动器。
-- `tokenusage doctor` 新增 `runtime.copy` 检查：缺标记、版本落后都会给出
-  warn 与重跑 `init` 的建议（升级 CLI 后重跑之前先能看见）。
-- `init` 复制失败不再静默：报告里列一行（stderr 同时提示），并说明会自动回退。
-- `uninstall` 一并清理暂存目录 `app.new`。
-- 后台 spawn 全部加 `windowsHide`（notify 之外的 hook / 自动重试 / 本地 API），
-  避免 GUI 宿主（如 oh-my-pi）每轮闪一个控制台窗口。
+- 0.2.3 的隐藏 VBS 把 npm 全局前缀里的包路径写死，而 nvm-windows 的全局前缀按
+  Node 版本分目录。`nvm use` 之后该路径消失，任务每小时以 "file not found" 失败
+  （`LastTaskResult` 非 0、日志停更），而任务本身看起来仍"已注册"。VBS 现在先
+  `FileExists` 探测包路径，缺失时回落到 init 复制到数据目录的自包含运行时。
+- 运行时副本改为"依赖闭包"复制（旧实现整目录 `fs.cp`，在 pnpm 安装下只复制到
+  junction 链接，副本一跑就是 `Cannot find module`），并先复制到 `app.new` 暂存
+  目录、**实际启动一遍**通过后才替换并写 `.runtime-ready` 标记。
+- notify / OpenClaw hook / 自动重试脚本统一按"带标记的副本 → 已安装包入口 → npx"
+  三级选择启动器。
+- `tokenusage doctor` 新增 `runtime.copy` 检查；`init` 复制失败不再静默；
+  `uninstall` 一并清理暂存目录 `app.new`；后台 spawn 全部加 `windowsHide`。
 - `sync --watch --interval=<毫秒>` 等号写法不再泄漏进 sync 参数（此前会被当成
-  未知参数导致每一轮失败）；低于 1 分钟仍按 15 分钟处理。
-- 仍然建议升级或切换 Node 版本后重跑一次
-  `tokenusage init --yes --no-integrations --no-open`：回落副本是上次 init 的
-  快照，重跑才会同步到最新版本。
+  未知参数导致每一轮失败）。
 
 ## 0.2.3
 
-修复 0.2.x 计划任务的两个隐藏缺陷（0.2.2 升级验收时实测发现）。
+2026-10-28。修复 0.2.x 计划任务的两个隐藏缺陷（0.2.2 升级验收时实测发现）。
 
 - 计划任务指向错误入口：init 注册的隐藏 VBS 调用的是 `src/cli.js`——那是只
   导出 `run()` 的库文件、没有命令行入口，任务 0.1 秒内以退出码 0 结束，
-  既不采集也不写日志，`LastTaskResult` 永远是 0（看起来永远成功）。VBS 现
-  固定指向包内 `bin/tokenusage.js`，并有回归测试锁定（禁止再指向 `src/cli.js`）。
-- 定时运行不落日志：`sync --from-scheduled` 只打印到 stdout，隐藏窗口下没有
-  任何 trail，与 0.2.2 发布说明不符。现在所有自动风味运行（scheduled / hook /
-  retry / watch）统一追加到滚动日志 `~/.tokenusage/tracker/logs/sync.log`。
-- 已注册过任务的机器：升级后重跑一次
-  `tokenusage init --yes --no-integrations --no-open` 即可修正任务入口。
-- 品牌残留：init 启动横幅的 ASCII 与大标题仍是上游的 TOKEN TRACKER，
-  local-api 的兜底设备名也写 Token Tracker；按 AGENTS 命名约束统一为
-  Token Usage，并加回归测试防回潮。
+  既不采集也不写日志。VBS 现固定指向包内 `bin/tokenusage.js`，并有回归测试锁定。
+- 定时运行不落日志：所有自动风味运行（scheduled / hook / retry / watch）统一追加
+  到滚动日志 `~/.tokenusage/tracker/logs/sync.log`。
+- 品牌残留：init 启动横幅与 local-api 兜底设备名统一为 Token Usage，并加回归测试防回潮。
 - 移除上游遗留的匿名安装心跳（`POST /api/functions/tokenusage-telemetry`）：
-  本仓库契约与 Web 端都没有该路由，每次 sync 只会拿到 404 并进退避，还与启动屏
-  "只有 token 计数离开本机"的口径冲突。要统计安装量，先补服务端路由再恢复。
-- 修正 local-api 遗留的本地服务 spawn 路径（`bin/tracker.js` 自 fork 起就不
-  存在），并新增发包自检测试：bin 入口存在、spawn 路径可解析、无孤儿端点。
-- `--help` 补齐 `init --no-integrations/--no-task` 与 `sync --interval`。
-- 修正 `sync --watch --interval <ms>` 的非法值处理：README 承诺低于 1 分钟回退
-  15 分钟，但此前参数会漏进 cmdSync，导致每轮以 `Unknown option: --interval`
-  失败；现在该参数始终被剥离，并有单测覆盖。
+  本仓库契约与 Web 端都没有该路由，每次 sync 只会拿到 404 并进退避。
+- 修正 `sync --watch --interval <ms>` 的非法值处理：该参数始终被剥离，并有单测覆盖。
 - 署名与包元数据收敛：`description` 去掉 fork 字样；`THIRD_PARTY_NOTICES.md`
-  只保留上游 TokenTracker 一节（其余条目是 Web 端资产，本仓库已不存在也不随包）；
-  README 的来源说明收为一句，指向 `LICENSE` / `THIRD_PARTY_NOTICES.md`。
+  只保留上游一节。
 
 ## 0.2.2
 
-新机初始化修复与采集口径修正。
+2026-10-27。新机初始化修复与采集口径修正。
 
 - 修复严重初始化缺陷：从 npm 安装后 `tokenusage init` 必崩（包内缺少
   `bin/tracker.js`——fork 改名 bin 后安装器没跟着改，0.1.0 起所有已发布版本
   受影响；单测因跳过运行时拷贝未覆盖）。新增防回归测试直接执行运行时拷贝。
 - init 新增 `--no-integrations`：只做扫描根配置、计划任务注册与运行上报，
-  **不改动任何 AI 工具的配置**（不装 hooks/notify/插件）。只要定时采集、
-  不想被触碰各工具配置的机器终于可以安全重跑 init。
-- init 的欢迎屏与完成屏改为显示真实站点地址（原先写死一个本地端口残留）。
-- 计划任务运行的口径修正：init 注册的隐藏任务改跑 `sync --from-scheduled`，
-  运行记录正确标记为"定时"（此前记成"手动"），并写入滚动日志（此前隐藏
-  运行无任何日志痕迹）。已在 0.2.0/0.2.1 注册过任务的机器重跑一次 init 即可升级。
+  **不改动任何 AI 工具的配置**。
+- init 的欢迎屏与完成屏改为显示真实站点地址。
+- 计划任务运行的口径修正：改跑 `sync --from-scheduled`，运行记录正确标记为"定时"
+  并写入滚动日志。
 
 ## 0.2.1
 
-修复 0.2.0 的严重回归：运行上报的版本号读取用了错误的相对路径（`Cannot find
-module '../package.json'`），导致每轮 `sync` 启动即崩溃——定时与手动采集全部
-中断。本地包实测通过后发布；并新增防回归测试，锁定嵌套模块的 package.json
-require 深度，此类问题不再可能静默通过测试。
+2026-10-27。修复 0.2.0 的严重回归：运行上报的版本号读取用了错误的相对路径
+（`Cannot find module '../package.json'`），导致每轮 `sync` 启动即崩溃——定时与手动
+采集全部中断。本地包实测通过后发布；并新增防回归测试，锁定嵌套模块的 package.json
+require 深度。
 
 ## 0.2.0
 
-采集控制与运行记录：采集器从此可暂停、可审计。
+2026-10-26。采集控制与运行记录：采集器从此可暂停、可审计。
 
 - 新增 `tokenusage pause` / `resume`：一键暂停/恢复自动采集。暂停期间
   `sync --auto` / `--watch`（含通知触发）静默退出，手动 `tokenusage sync`
   不受影响；`status` 显示当前采集状态。
-- `init` 接管 Windows 计划任务注册：每小时任务由 init 创建（默认经 VBS
-  隐藏窗口运行，不再弹 conhost 黑框；`--no-task` 可跳过）；pause/resume
-  顺势启停任务；`uninstall` 一并清理任务与脚本。
-- 同步日志改为滚动文件（`~/.tokenusage/tracker/logs/sync.log`，1 MiB 轮转
-  一代），不再依赖注册时的 `>>` 重定向。
-- 每轮 sync 结束后向服务端上报一条运行记录（时间、触发方式、结果、耗时、
-  上报量），仪表盘新增"采集记录"页；空跑也上报，作为采集器心跳。上报为
-  尽力而为，失败只记本地日志，绝不影响用量数据采集；不想上报可在 init 时
+- `init` 接管 Windows 计划任务注册（默认经 VBS 隐藏窗口运行；`--no-task` 可跳过）；
+  pause/resume 顺势启停任务；`uninstall` 一并清理任务与脚本。
+- 同步日志改为滚动文件（`~/.tokenusage/tracker/logs/sync.log`，1 MiB 轮转一代）。
+- 每轮 sync 结束后向服务端上报一条运行记录（时间、触发方式、结果、耗时、上报量），
+  仪表盘新增"采集记录"页；空跑也上报，作为采集器心跳。不想上报可在 init 时
   `--run-report=off` 关闭。
 - 正确性修复：zcode 恢复行补齐 billable/cost 字段；含 `|` 的模型名不再破坏
   用量桶键的往返解析；OpenCode 负 delta 不再产生负计数；`TOKENUSAGE_*`
-  环境变量优先于旧 `INSFORGE_*` 名（旧名保留兼容）；移除 init 中的死常量。
+  环境变量优先于旧 `INSFORGE_*` 名（旧名保留兼容）。
 
 ## 0.1.0
 
-首个公开发布版本：TokenTracker CLI 采集端 fork，重接到 token-usage 契约
-（`docs/cli-contract.md`）。
+2026-10-24。首个公开发布版本：上游 CLI 采集端 fork，重接到 token-usage 契约。
 
 - 设备流配对（`device-login`）、`init`、`sync`（含 `--watch` / `--drain`）、
   `status`、`sessions`、`doctor`、`diagnostics`、`uninstall`
 - 会话上传走隐私白名单：只传聚合 token 数字，标题 / 路径 / 正文永不出本机
 - 上传链路防毒行硬化：契约非法的用量桶 / 账户会话状态在出批前丢弃或修正，
-  而不是让 ingest 边缘整批 400、队头永久停摆；Grok ACP 小数计数器解析期取整；
-  会话 ID 校验对齐服务端的完整 Unicode Cc 控制字符范围
+  而不是让 ingest 边缘整批 400、队头永久停摆
 - 请求日志降噪：`node:sqlite` 每次加载都打印的 ExperimentalWarning 不再
   混入重定向的同步日志
 - 要求 Node ≥ 22.19（undici 8 的引擎下限；undici 仅用于代理支持）

@@ -48,8 +48,8 @@
 </p>
 
 > [!NOTE]
-> 独立社区项目，与任何上游项目无隶属关系；代码来源与第三方许可见
-> [`LICENSE`](./LICENSE) 与 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。
+> 独立社区项目。代码来源与第三方许可见 [`LICENSE`](./LICENSE) 与
+> [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。
 
 ## ✨ 简介
 
@@ -70,11 +70,16 @@ Supabase（Auth + Postgres，RLS 全拒客户端角色，服务端 service-role 
 ```text
 token-usage/
 ├── apps/
-│   ├── web/        # Next.js：仪表盘 + CLI 契约层（src/ 目录结构）
-│   └── desktop/    # 桌面端（预留，backlog）
-├── docs/           # 需求真源 / API 契约 / 计划 / UI 规范 / 发布手册
-├── .agents/        # 项目级 Agent Skills（heroui-react、vercel-react-best-practices）
-├── AGENTS.md       # 开发规范（含 AI Agent 硬性约束）
+│   └── web/          # Next.js：仪表盘 + CLI 契约层（src/ 目录结构）
+├── packages/
+│   └── cli/          # 采集 CLI（npm: tokenusage-cli）
+├── supabase/
+│   └── migrations/   # Postgres 迁移（按时间戳顺序）
+├── scripts/          # 运维脚本（admin 工具等）
+├── docs/             # 需求真源 / API 契约 / 计划 / UI 规范 / 发布手册
+├── .agents/          # 项目级 Agent Skills（heroui-react、vercel-react-best-practices）
+├── .github/          # CI 工作流
+├── AGENTS.md         # 开发规范（含 AI Agent 硬性约束）
 ├── THIRD_PARTY_NOTICES.md  # 第三方资产与许可登记
 └── LICENSE         # MIT
 ```
@@ -87,33 +92,14 @@ pnpm dev        # http://localhost:3000
 pnpm verify     # 提交前门禁：lint + typecheck + test + build
 ```
 
-前置要求：Node.js 24+、pnpm（版本由根 `packageManager` 字段锁定）。
+前置要求：Node.js 22.19+（CLI 采集端的 `engines` 下限）、pnpm（版本由根 `packageManager` 字段锁定）。
 完整运行需配置服务端环境变量（见 [`docs/rewrite-plan.md`](docs/rewrite-plan.md) §9，
 本地放 `apps/web/.env.local`，**密钥严禁提交仓库**）。
 
-## ⬆️ 从旧版 CLI 升级（tokentracker-* 入口已退役）
-
-服务端已于 2026-11-03 移除旧 `/api/functions/tokentracker-*` 别名（契约
-[`docs/cli-contract.md`](docs/cli-contract.md) §1.5）。钉版旧 CLI（`tokentracker-cli@1.4.x`）
-的请求会得到 **GET 404 / 写动词 405**——这是有声失败，不静默丢数据：本地未上报的积压
-仍在磁盘日志与旧队列里，新 CLI 首跑会全量重扫本地日志重建并补传。
-
-```bash
-npm i -g tokenusage-cli@latest    # 1. 安装新 CLI
-tokenusage init --yes             # 2. 重建 hook 与调度（自托管后端加 --base-url https://<你的域名>/api）
-tokenusage reconcile --days 7     # 3. 与云端逐键对账，确认无漂移
-```
-
-> 新 CLI 数据目录独立（`~/.tokenusage`），与旧 CLI 可共存；逐台迁移细节见
-> [`docs/launch-runbook.md`](docs/launch-runbook.md)「新 CLI 迁移」段。
-
 ## 🗺️ 路线图
 
-M0 脚手架 → M1 契约层 → M2 认证与设置 → M3 仪表盘 → M4 wrapped / 分享 / 服务状态 →
-M5 配对页与部署文档 → M5.5 上游 Dashboard 核心 + 外观设置 → M5.6 Sessions →
-M-CLI 采集端（`tokenusage-cli`，当前 0.4.6）→ M6 数据迁移与切换 → M7 成就系统。
-**v1 全部完成并上线（2026-10-30）**；剩余待办与待拍板事项见
-[`docs/rewrite-plan.md`](docs/rewrite-plan.md) §10。
+v1（M0–M7）已于 2026-10-30 全部完成并上线；采集端 CLI 当前 0.4.6。
+剩余待办与待拍板事项见 [`docs/rewrite-plan.md`](docs/rewrite-plan.md) §10。
 
 ## 📚 文档
 
@@ -121,17 +107,18 @@ M-CLI 采集端（`tokenusage-cli`，当前 0.4.6）→ M6 数据迁移与切换
 | --- | --- |
 | [`AGENTS.md`](AGENTS.md) | 开发规范与 AI Agent 硬性约束 |
 | [`docs/requirements.md`](docs/requirements.md) | 需求真源：范围、边界、角色、验收标准 |
-| [`docs/cli-contract.md`](docs/cli-contract.md) | API 契约（两档制）：CLI 面硬冻结 + Dashboard 面可演进 |
-| [`docs/ui-spec.md`](docs/ui-spec.md) | UI 规范：Design Tokens、组件规则、三态与响应式 |
 | [`docs/rewrite-plan.md`](docs/rewrite-plan.md) | 计划：表结构、里程碑、数据迁移、当前状态与剩余事项 |
+| [`docs/cli-contract.md`](docs/cli-contract.md) | API 契约（两档制）：CLI 面硬冻结 + Dashboard 面可演进 |
+| [`docs/ui-spec.md`](docs/ui-spec.md) | UI 规范：Design Tokens、组件规则、三态与响应式、各页面版式 |
 | [`docs/achievements-plan.md`](docs/achievements-plan.md) | 成就系统：18 条 × 5 档、阈值校准、实施与验收记录 |
 | [`docs/badge.md`](docs/badge.md) | 公开徽章与公开页：SVG 端点、令牌、口径、Settings 配置面 |
 | [`docs/sources-capture-audit.md`](docs/sources-capture-audit.md) | 来源采集机制：双平面原则、账户级来源、缺口审计 |
-| [`docs/sources-capture-plan.md`](docs/sources-capture-plan.md) | 来源接入任务：Trae CN、credits 全链路、Sessions credits |
+| [`docs/sources-capture-plan.md`](docs/sources-capture-plan.md) | 来源接入结论索引（Trae CN / credits 全链路 / 上游对齐） |
 | [`docs/cli-release.md`](docs/cli-release.md) | CLI 发版手册：tag 流水线、版本升级与实测记录 |
-| [`docs/web-optimization-backlog.md`](docs/web-optimization-backlog.md) | Web 端优化历史清单（2026-11-01 已清） |
+| [`docs/invite-flow.md`](docs/invite-flow.md) | 邀请注册与设备配对流程 |
 | [`docs/deploy-guide.md`](docs/deploy-guide.md) | 部署指南：Supabase + Vercel 从零跑通 |
 | [`docs/launch-runbook.md`](docs/launch-runbook.md) | 发布手册：部署顺序、冒烟清单、回滚 |
+| [`docs/archive/`](docs/archive/) | 历史归档（已完成且不再维护的计划与对比结论） |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 第三方资产与许可登记（品牌图标、字体、定价快照、代码来源） |
 
 ## 🌍 English
@@ -144,16 +131,13 @@ independent community project; code provenance and third-party licenses live in
 [`LICENSE`](./LICENSE) and [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
 
 - **Stack**: Next.js 16 (App Router) · React 19 · HeroUI 3 · Tailwind CSS 4 · Supabase (Auth + Postgres, RLS denies all client roles) · pnpm workspace
-- **Deploy**: Supabase (free tier) + Vercel (Hobby) is enough — see the [English-friendly deploy guide](docs/deploy-guide.md) (Chinese, step by step) or use the Deploy button above
+- **Deploy**: Supabase (free tier) + Vercel (Hobby) is enough — see the [deploy guide](docs/deploy-guide.md) (Chinese, step by step) or use the Deploy button above
 - **Pairing**: the collector CLI prints a `XXXX-XXXX` code and opens `/device?user_code=...`; you approve it after signing in, and reporting starts immediately
 - **CLI contract**: two-tier — the collector-facing API is frozen, the dashboard API evolves with the UI ([`docs/cli-contract.md`](docs/cli-contract.md))
-- **Upgrading from `tokentracker-cli@1.4.x`**: the legacy `/api/functions/tokentracker-*` aliases were removed on 2026-11-03 (GET 404 / write verbs 405 — a loud failure, nothing is silently dropped; pending local data is re-scanned and backfilled on the first run). Run `npm i -g tokenusage-cli@latest` → `tokenusage init --yes` → `tokenusage reconcile --days 7`
 - **Plaintext project names**: the collector reports each project as the working directory's basename and the dashboard shows it verbatim (so the same name merges across devices). There is no redaction switch yet — evaluate sensitive directory names before collecting
 
 ## ⚖️ License
 
-[MIT](./LICENSE)。CLI 采集端的会话解析器与部分代码衍生自
-[TokenTracker](https://github.com/xiufengsun/TokenTracker)（MIT，Copyright (c) xiufengsun）；
-本项目为独立社区维护版，与上游无隶属或背书关系。品牌图标、字体、定价快照等第三方资产的
-来源登记在 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)，CLI 包另有
+[MIT](./LICENSE)。代码来源与第三方资产的许可登记见
+[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) 与
 [`packages/cli/THIRD_PARTY_NOTICES.md`](./packages/cli/THIRD_PARTY_NOTICES.md)。

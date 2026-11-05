@@ -1,4 +1,4 @@
--- Read-time pricing semantics (2026-11-04, docs/projects-page-plan.md §5):
+-- Read-time pricing semantics (2026-11-04, docs/cli-contract.md §2.4):
 -- CLI-written buckets store total_cost_usd = 0 as a sentinel; the real amount is
 -- derived at read time by computeRowCost() (curated overrides + LiteLLM snapshot).
 -- Only sources with an authoritative vendor-reported cost (grok / cline) may

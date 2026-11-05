@@ -1,5 +1,5 @@
 // Projects aggregation for the dashboard's own /api/app/projects route
-// (docs/projects-page-plan.md 批次 1 / 阶段 0): group token_sessions rows by
+// (docs/ui-spec.md「项目（`/projects`）」节 / 阶段 0): group token_sessions rows by
 // project_key over a tz-aware day window. This is a dashboard-face payload,
 // NOT part of the CLI contract — docs/cli-contract.md stays untouched.
 //

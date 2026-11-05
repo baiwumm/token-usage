@@ -1,6 +1,6 @@
 "use strict";
 
-// A3 (docs/upstream-comparison-plan.md §1): `status --json` exposes pricing
+// A3 (docs/archive/upstream-2026-11-03.md): `status --json` exposes pricing
 // data provenance + staleness via getPricingMeta(). This guards the accessor's
 // shape so the status payload never silently loses the block.
 

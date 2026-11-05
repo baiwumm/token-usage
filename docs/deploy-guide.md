@@ -37,7 +37,7 @@ npx supabase db push
 
 **方式 B：SQL Editor 手动执行**
 
-Supabase Dashboard → SQL Editor → 按文件名顺序依次粘贴执行：
+Supabase Dashboard → SQL Editor → 按文件名顺序依次粘贴执行（**当前共 13 个，不要漏**）：
 
 1. `supabase/migrations/20261024000000_token_core_tables.sql`（必需：全部 `token_*` 表）
 2. `supabase/migrations/20261024000001_token_allowed_emails_optional.sql`（可选：自助注册白名单）
@@ -48,11 +48,15 @@ Supabase Dashboard → SQL Editor → 按文件名顺序依次粘贴执行：
 7. `supabase/migrations/20261031000000_token_usage_credits.sql`（必需：小时桶 `credits` 列；缺列时新版 CLI 的 ingest 会整批报错）
 8. `supabase/migrations/20261031000001_token_sync_runs_credits.sql`（必需：采集记录 `credits_ingested` 遥测列）
 9. `supabase/migrations/20261031000003_token_sessions_credits.sql`（必需：会话级 `credits` 列与 `token_upsert_sessions` RPC 替换）
+10. `supabase/migrations/20261101000000_token_public_badges.sql`（必需：公开徽章表）
+11. `supabase/migrations/20261103000000_token_hourly_project_key.sql`（**必需**：契约 v2 桶级 `project_key`——它是 upsert 键的一部分，缺列时新版 CLI 的 ingest 整批失败）
+12. `supabase/migrations/20261104000000_token_hourly_cost_usd_comment.sql`（必需：`total_cost_usd` 列注释）
+13. `supabase/migrations/20261105000000_token_public_badges_sections.sql`（必需：徽章分区字段）
 
 执行后确认 Table Editor 里出现 `token_devices`、`token_device_tokens`、`token_device_codes`、
 `token_usage_hourly`、`token_account_session_states`、`token_sessions`、`token_sync_runs`、
-`token_achievement_seen`。**不要**给这些表添加任何 policy——RLS 全拒（客户端零直连）是本项目
-的安全姿态，数据只经部署应用的服务端读写。
+`token_achievement_seen`、`token_public_badges`。**不要**给这些表添加任何 policy——RLS 全拒
+（客户端零直连）是本项目的安全姿态，数据只经部署应用的服务端读写。
 
 ## 3. 配置 Supabase Auth
 
@@ -84,7 +88,7 @@ Dashboard → **Authentication → URL Configuration**：
 （标题格式为 `<页面名> - <TOKEN_USAGE_SITE_NAME>`）。
 
 可选：`NEXT_PUBLIC_PROJECTS_CALIBER` 控制 `/projects` 页口径（详见
-[`docs/projects-page-plan.md`](projects-page-plan.md) §5）。它是**部署级、构建期内联**的开关，
+[`docs/ui-spec.md`](ui-spec.md)「项目（`/projects`）」节）。它是**部署级、构建期内联**的开关，
 CLI 采集端不读它：未设置时走 sessions 口径（覆盖约 77% 历史，`cursor` / `trae-cn` 永不出现），
 设为 `hourly` 走桶口径（100% token，只有带项目名的桶才有归因；本机 2026-11-04 已用
 `scripts/admin/project-backfill.cjs` 回填 opencode 的历史项目行，其他来源、多模型组与无项目
