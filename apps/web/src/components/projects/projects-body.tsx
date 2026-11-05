@@ -5,6 +5,7 @@
 // states and its own review-mode effect switches (operator decision
 // 2026-11-05 — no other page adopts these components).
 
+import type { CSSProperties } from "react";
 import type { ProjectsPayload, ProjectItem } from "@/lib/dashboard/api";
 import type { ProjectsCopy } from "@/lib/copy/projects";
 import type { ProjectEffectState } from "./projects-effects";
@@ -103,20 +104,244 @@ function Summary({
   );
 }
 
-function RowsSkeleton({
+function SkeletonBar({
+  className,
+  effects,
+  styles,
+  style,
+}: {
+  className?: string;
+  effects: ProjectEffectState;
+  styles: Readonly<Record<string, string>>;
+  style?: CSSProperties;
+}) {
+  return (
+    <Skeleton
+      aria-hidden="true"
+      className={cn(className, effects.skeletonShimmer && styles.shimmer)}
+      style={style}
+    />
+  );
+}
+
+/** Mirrors the summary card (title + period line + four label/value cells) so
+ *  the card does not pop in above the list once the payload lands. */
+function SummarySkeleton({
   copy,
   effects,
   styles,
 }: Pick<ProjectsBodyProps, "copy" | "effects" | "styles">) {
   return (
-    <div aria-label={copy.list.title} className="flex flex-col gap-2">
+    <Card
+      aria-busy="true"
+      aria-label={copy.summary.title}
+      className="p-4 md:p-6"
+    >
+      <Card.Header className="flex-col items-start gap-1">
+        <SkeletonBar
+          className="h-5 w-24 rounded-full"
+          effects={effects}
+          styles={styles}
+        />
+        <SkeletonBar
+          className="h-3 w-52 rounded-full"
+          effects={effects}
+          styles={styles}
+        />
+      </Card.Header>
+      <Card.Content className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => (
+          <span key={index} className="flex flex-col gap-1.5">
+            <SkeletonBar
+              className="h-3 w-16 rounded-full"
+              effects={effects}
+              styles={styles}
+            />
+            <SkeletonBar
+              className="h-3.5 w-24 rounded-full"
+              effects={effects}
+              styles={styles}
+            />
+          </span>
+        ))}
+      </Card.Content>
+    </Card>
+  );
+}
+
+// Deterministic width rotation keeps the placeholder rows from looking stamped
+// while still rendering identically on every load.
+const SKELETON_NAME_WIDTHS = [
+  "w-32",
+  "w-24",
+  "w-40",
+  "w-28",
+  "w-36",
+  "w-20",
+] as const;
+
+/** Same anatomy as ProjectRow: avatar + two text lines, right token/meter
+ *  column, then the hairline meta strip. */
+function RowSkeleton({
+  effects,
+  index,
+  styles,
+}: Pick<ProjectsBodyProps, "effects" | "styles"> & { index: number }) {
+  return (
+    <div className="flex w-full flex-col">
+      <div className="flex w-full items-start justify-between gap-3 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <SkeletonBar
+            className="size-8 shrink-0 rounded-xl"
+            effects={effects}
+            styles={styles}
+          />
+          <span className="flex flex-col gap-1.5">
+            <SkeletonBar
+              className={cn(
+                "h-3.5 rounded-full",
+                SKELETON_NAME_WIDTHS[index % SKELETON_NAME_WIDTHS.length],
+              )}
+              effects={effects}
+              styles={styles}
+            />
+            <SkeletonBar
+              className="h-2.5 w-44 rounded-full"
+              effects={effects}
+              styles={styles}
+            />
+          </span>
+        </div>
+        <span className="flex w-24 shrink-0 flex-col items-end gap-2 md:w-32">
+          <SkeletonBar
+            className="h-3.5 w-16 rounded-full"
+            effects={effects}
+            styles={styles}
+          />
+          <SkeletonBar
+            className="h-1 w-full rounded-full"
+            effects={effects}
+            styles={styles}
+          />
+        </span>
+      </div>
+      <div className="border-border/60 flex w-full flex-wrap items-center gap-x-3 gap-y-0.5 border-t px-4 py-2">
+        <SkeletonBar
+          className="h-2.5 w-20 rounded-full"
+          effects={effects}
+          styles={styles}
+        />
+        <SkeletonBar
+          className="h-2.5 w-16 rounded-full"
+          effects={effects}
+          styles={styles}
+        />
+        <SkeletonBar
+          className="hidden h-2.5 w-28 rounded-full sm:block"
+          effects={effects}
+          styles={styles}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Same anatomy as ProjectCardTile: identity block, big value + meter, meta
+ *  lines, all inside the bordered card shell. */
+function CardTileSkeleton({
+  effects,
+  index,
+  styles,
+}: Pick<ProjectsBodyProps, "effects" | "styles"> & { index: number }) {
+  return (
+    <div className="border-border bg-surface flex w-full flex-col gap-4 rounded-3xl border p-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <SkeletonBar
+          className="size-10 shrink-0 rounded-xl"
+          effects={effects}
+          styles={styles}
+        />
+        <span className="flex flex-col gap-1.5">
+          <SkeletonBar
+            className={cn(
+              "h-3.5 rounded-full",
+              SKELETON_NAME_WIDTHS[index % SKELETON_NAME_WIDTHS.length],
+            )}
+            effects={effects}
+            styles={styles}
+          />
+          <SkeletonBar
+            className="h-2.5 w-40 rounded-full"
+            effects={effects}
+            styles={styles}
+          />
+        </span>
+      </div>
+      <span className="flex flex-col gap-2">
+        <SkeletonBar
+          className="h-5 w-24 rounded-full"
+          effects={effects}
+          styles={styles}
+        />
+        <SkeletonBar
+          className="h-1 w-full rounded-full"
+          effects={effects}
+          styles={styles}
+        />
+      </span>
+      <span className="flex flex-col gap-1.5">
+        <SkeletonBar
+          className="h-2.5 w-40 rounded-full"
+          effects={effects}
+          styles={styles}
+        />
+        <SkeletonBar
+          className="h-2.5 w-28 rounded-full"
+          effects={effects}
+          styles={styles}
+        />
+      </span>
+    </div>
+  );
+}
+
+function ListSkeleton({
+  copy,
+  effects,
+  styles,
+  view,
+}: Pick<ProjectsBodyProps, "copy" | "effects" | "styles" | "view">) {
+  if (view === "cards") {
+    return (
+      <div
+        aria-busy="true"
+        aria-label={copy.list.title}
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+      >
+        {Array.from({ length: 6 }, (_, index) => (
+          <CardTileSkeleton
+            key={index}
+            effects={effects}
+            index={index}
+            styles={styles}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      aria-busy="true"
+      aria-label={copy.list.title}
+      className="flex flex-col gap-2"
+    >
       {Array.from({ length: 6 }, (_, index) => (
-        <Skeleton
+        <RowSkeleton
           key={index}
-          className={cn(
-            "h-20 w-full rounded-2xl",
-            effects.skeletonShimmer && styles.shimmer,
-          )}
+          effects={effects}
+          index={index}
+          styles={styles}
         />
       ))}
     </div>
@@ -210,29 +435,41 @@ export function ProjectsBody(props: ProjectsBodyProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Summary
-        copy={copy}
-        effects={effects}
-        locale={locale}
-        payload={payload}
-        styles={styles}
-      />
+      {payload ? (
+        <Summary
+          copy={copy}
+          effects={effects}
+          locale={locale}
+          payload={payload}
+          styles={styles}
+        />
+      ) : isLoading ? (
+        <SummarySkeleton copy={copy} effects={effects} styles={styles} />
+      ) : null}
 
       <Card className="p-4 md:p-6">
         <Card.Header className="flex-col items-start gap-1">
           <Card.Title>{copy.list.title}</Card.Title>
-          <Typography color="muted" type="body-xs">
-            {limit === "all"
-              ? formatMessage(copy.list.count, locale, {
-                  count: String(allProjects.length),
-                })
-              : formatMessage(copy.list.showing, locale, {
-                  count: String(projects.length),
-                  total: String(allProjects.length),
-                })}{" "}
-            · {formatMessage(copy.list.sortedBy, locale, { sort: sortLabel })} ·{" "}
-            {copy.list.relativeBar}
-          </Typography>
+          {isLoading ? (
+            <SkeletonBar
+              className="h-3 w-64 rounded-full"
+              effects={effects}
+              styles={styles}
+            />
+          ) : (
+            <Typography color="muted" type="body-xs">
+              {limit === "all"
+                ? formatMessage(copy.list.count, locale, {
+                    count: String(allProjects.length),
+                  })
+                : formatMessage(copy.list.showing, locale, {
+                    count: String(projects.length),
+                    total: String(allProjects.length),
+                  })}{" "}
+              · {formatMessage(copy.list.sortedBy, locale, { sort: sortLabel })}{" "}
+              · {copy.list.relativeBar}
+            </Typography>
+          )}
         </Card.Header>
 
         <Card.Content className="relative flex flex-col gap-2">
@@ -257,7 +494,12 @@ export function ProjectsBody(props: ProjectsBodyProps) {
               retryLabel={copy.states.retry}
             />
           ) : isLoading ? (
-            <RowsSkeleton copy={copy} effects={effects} styles={styles} />
+            <ListSkeleton
+              copy={copy}
+              effects={effects}
+              styles={styles}
+              view={view}
+            />
           ) : isEmpty ? (
             <EmptyState
               copy={copy}

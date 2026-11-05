@@ -6,6 +6,7 @@
 // /api/app/projects-detail face; the list row is kept as the fallback source
 // for the six original columns when the detail request has not landed yet.
 
+import type { CSSProperties } from "react";
 import type {
   ProjectDetailDay,
   ProjectDetailPayload,
@@ -409,6 +410,175 @@ function SourceRows({
   );
 }
 
+// Deterministic bar heights so the chart placeholder reads as a chart instead
+// of a solid block; varied heights also survive the shimmer sweep.
+const DETAIL_BAR_HEIGHTS = [
+  38, 61, 45, 77, 54, 86, 47, 66, 41, 72, 58, 83, 49, 68,
+] as const;
+
+function DetailSkeletonBar({
+  className,
+  effects,
+  styles,
+  style,
+}: {
+  className?: string;
+  effects: ProjectEffectState;
+  styles: Readonly<Record<string, string>>;
+  style?: CSSProperties;
+}) {
+  return (
+    <Skeleton
+      aria-hidden="true"
+      className={cn(className, effects.skeletonShimmer && styles.shimmer)}
+      style={style}
+    />
+  );
+}
+
+/** Detail-loading placeholder: mirrors the fields grid, the daily chart plus
+ *  its composition strip, and the per-source bars so the loaded content drops
+ *  into the same slots without a jump. */
+function DetailSkeleton({
+  copy,
+  effects,
+  styles,
+}: {
+  copy: ProjectsCopy;
+  effects: ProjectEffectState;
+  styles: Readonly<Record<string, string>>;
+}) {
+  return (
+    <div
+      aria-busy="true"
+      aria-label={copy.detail.title}
+      className="flex flex-col"
+    >
+      <section className="border-border/60 flex flex-col gap-3 border-b px-5 py-5 md:px-6">
+        <DetailSkeletonBar
+          className="h-4 w-20 rounded-full"
+          effects={effects}
+          styles={styles}
+        />
+        <div className="grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div
+              key={index}
+              className="flex items-baseline justify-between gap-2"
+            >
+              <DetailSkeletonBar
+                className="h-3 w-16 rounded-full"
+                effects={effects}
+                styles={styles}
+              />
+              <DetailSkeletonBar
+                className={cn(
+                  "h-3 rounded-full",
+                  index % 2 === 0 ? "w-24" : "w-16",
+                )}
+                effects={effects}
+                styles={styles}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-border/60 flex flex-col gap-3 border-b px-5 py-5 md:px-6">
+        <div className="flex items-center gap-2">
+          <DetailSkeletonBar
+            className="h-4 w-20 rounded-full"
+            effects={effects}
+            styles={styles}
+          />
+          <DetailSkeletonBar
+            className="ms-auto h-3 w-32 rounded-full"
+            effects={effects}
+            styles={styles}
+          />
+        </div>
+        <div className="flex h-44 w-full items-end gap-1.5">
+          {DETAIL_BAR_HEIGHTS.map((height, index) => (
+            <DetailSkeletonBar
+              key={index}
+              className={cn(
+                "w-full rounded-t-[3px]",
+                index > 8 && "hidden sm:block",
+              )}
+              effects={effects}
+              style={{ height: `${height}%` }}
+              styles={styles}
+            />
+          ))}
+        </div>
+        <div className="flex flex-col gap-2">
+          <DetailSkeletonBar
+            className="h-4 w-24 rounded-full"
+            effects={effects}
+            styles={styles}
+          />
+          <DetailSkeletonBar
+            className="h-1.5 w-full rounded-full"
+            effects={effects}
+            styles={styles}
+          />
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {Array.from({ length: 4 }, (_, index) => (
+              <DetailSkeletonBar
+                key={index}
+                className="h-3 w-20 rounded-full"
+                effects={effects}
+                styles={styles}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-5 py-5 md:px-6">
+        <div className="flex flex-col gap-3">
+          <DetailSkeletonBar
+            className="h-4 w-16 rounded-full"
+            effects={effects}
+            styles={styles}
+          />
+          {Array.from({ length: 4 }, (_, index) => (
+            <div key={index} className="flex flex-col gap-1.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <DetailSkeletonBar
+                  className="size-3.5 rounded-[4px]"
+                  effects={effects}
+                  styles={styles}
+                />
+                <DetailSkeletonBar
+                  className="h-3 w-28 rounded-full"
+                  effects={effects}
+                  styles={styles}
+                />
+                <DetailSkeletonBar
+                  className="ms-auto h-3 w-16 rounded-full"
+                  effects={effects}
+                  styles={styles}
+                />
+                <DetailSkeletonBar
+                  className="h-3 w-10 rounded-full"
+                  effects={effects}
+                  styles={styles}
+                />
+              </div>
+              <DetailSkeletonBar
+                className="h-1 w-full rounded-full"
+                effects={effects}
+                styles={styles}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
   const {
     project,
@@ -610,26 +780,11 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
                     </Button>
                   </div>
                 ) : loading ? (
-                  <div className="flex flex-col gap-5 p-5 md:p-6">
-                    <Skeleton
-                      className={cn(
-                        "h-44 w-full rounded-2xl",
-                        effects.skeletonShimmer && styles.shimmer,
-                      )}
-                    />
-                    <Skeleton
-                      className={cn(
-                        "h-16 w-full rounded-2xl",
-                        effects.skeletonShimmer && styles.shimmer,
-                      )}
-                    />
-                    <Skeleton
-                      className={cn(
-                        "h-32 w-full rounded-2xl",
-                        effects.skeletonShimmer && styles.shimmer,
-                      )}
-                    />
-                  </div>
+                  <DetailSkeleton
+                    copy={copy}
+                    effects={effects}
+                    styles={styles}
+                  />
                 ) : detail && tokens === 0 ? (
                   <div
                     className={cn(
