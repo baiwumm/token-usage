@@ -162,6 +162,7 @@ const COMMANDS = [
       "  --diagnostics               Include diagnostics (paths, cursors, WSL/Kiro probes)",
       "  --json                      Machine-readable output",
       "  --light                     Deterministic ASCII table (no ANSI, no emoji)",
+      "  --limits                    Include the provider quota panel (reads local credentials and provider APIs)",
       "  --no-spinner                Disable the progress spinner",
       "  --probe-keychain            Probe the macOS keychain (may prompt)",
       "  --probe-keychain-details    Include per-item keychain details",

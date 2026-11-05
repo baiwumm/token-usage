@@ -156,6 +156,17 @@ P1 只覆盖小时桶；本批把积分带到会话粒度与采集运行记录�
   （行时间戳，缺失回落文件 mtime），缓存写入保留该时间，避免把旧配额当新鲜值；`userType` 的
   `invalid` 视为无 `plan_label`；百分比由配额数字推导（OpenAPI 返回分数、桌面端返回百分数，
   混合标度不可信）。零契约 / 零 DB / 零 token 采集改动。
+  **本机验收（2026-11-05）**：Qoder CN 本地日志读出 1143/2400 积分，`cached_at` 为行时间
+  2026-11-02T01:01:55Z 而文件 mtime 是 11-05（证明 provenance 取快照时间、不是读取时间）；
+  Qoder CN CLI 端（`~/.qoder-cn/.auth` 解密 → `/api/v2/quota/usage`）返回 1061/2600，
+  `source: cli-api`，全链优先级高于旧日志；intl 只有 2026-08-19 的日志，超出 7 天窗返回 null，
+  全链回落 12h 磁盘缓存（含 `stale/cached_at`）。
+  **面板落点（2026-11-05 已接线）**：`tokenusage status --limits` 渲染 18 家限额行
+  （plan + primary/secondary/add-on/other 窗口 + credits + provenance 的 source/stale/年龄），
+  `--json` 时在 `limits` 键输出完整 payload（含每 provider 的 `provenance`）；该开关 opt-in，
+  默认 `status` 保持纯本地快路径。本机实测行：Qoder CN
+  `Personal Standard, 0%, add-on: 40.8%, 1061/2600 credits, cli-api, 0s ago`；
+  Qoder `Personal Standard, 0%, disk-cache, stale, 25m ago`。web 端仍无限额面板。
 - [ ] A10（backlog，仅文档校正已做）**Cursor CSV 的 Cost 列未被使用**：`parseCursorCsv` 解析了
   厂商 Cost，但 `normalizeCursorUsage` 不产出成本、`parseCursorApiIncremental` 不写
   `total_cost_usd`，因此 Cursor 成本实际与其他来源一样是「按 token × 定价」估算。本次只校正

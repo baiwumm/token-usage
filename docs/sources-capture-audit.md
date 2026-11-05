@@ -93,5 +93,5 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 | DB 约束 | `supabase/migrations/20261024000000_token_core_tables.sql:91-116`（hourly）、`:118-145`（account_session_states）；`20261025000000_token_sessions.sql:45-46`（CHECK） |
 | kiro 估算 / credits sidecar | `rollout.js:8497,8600-8603,8832-8849,9034+` |
 | workbuddy SQLite 忽略 | `rollout.js:11018-11023,11141,11770` |
-| 云端限额面板（16 家） | `packages/cli/src/lib/usage-limits.js:4003-4213` 及 qoder-limits（含 Desktop 0.4.x `main.log` 的 `[Auth] [AccountUsage]` 摘要扫描 + provenance，2026-11-05）/ qoder-cn-cli-limits / grok-limits / zcode-limits 等 |
+| 云端限额面板（16 家） | `packages/cli/src/lib/usage-limits.js:4003-4213` 及 qoder-limits（含 Desktop 0.4.x `main.log` 的 `[Auth] [AccountUsage]` 摘要扫描 + provenance，2026-11-05）/ qoder-cn-cli-limits / grok-limits / zcode-limits 等。读数由 `tokenusage status --limits`（opt-in，2026-11-05 接线；`--json` 的 `limits` 键）渲染为 plan + 各窗口 + credits + provenance；web 端仍无限额面板 |
 | 本机 baseline（2026-10-31） | qoder-cn：38 JSONL / 8397 usage 行 100% credits-only（≈0.64/条）、队列 conv=3146 token=0；Trae CN 库 17/18 行 token_usage（10-26~28，deepseek-v4.1-flash）；Qoder legacy 停写 2026-02-02；队列现有 source：zcode(331)/dsh(89)/opencode(56)/workbuddy(50)/codex(25)/qoder(21)/qoder-cn(14)/pi 系(10)/zed/minimax-code |

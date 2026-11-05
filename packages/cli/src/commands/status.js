@@ -35,6 +35,7 @@ const {
 const { collectLocalSubscriptions } = require("../lib/subscriptions");
 const {
   describeCopilotOtelStatus,
+  getUsageLimits,
   readCopilotOauthToken,
 } = require("../lib/usage-limits");
 const {
@@ -379,6 +380,19 @@ async function cmdStatus(argv = []) {
   });
   const subscriptionLines =
     subscriptions.length > 0 ? subscriptions.map(formatSubscriptionLine) : [];
+  // Quota panel (opt-in, `--limits`): the aggregate reads local app credentials
+  // and provider APIs, so it stays off the default status path. The payload
+  // carries per-provider provenance, which is what makes a stale log snapshot
+  // distinguishable from a live reading.
+  const usageLimits = opts.limits
+    ? await getUsageLimits({
+        home,
+        env: process.env,
+        platform: process.platform,
+      })
+    : null;
+  const usageLimitRows = formatUsageLimitRows(usageLimits);
+  const usageLimitLines = usageLimitRows.map(([label, value]) => `- ${label}: ${value}`);
 
   const kimiWireFiles = resolveKimiWireFiles(process.env);
   const kimiHome = process.env.KIMI_HOME || path.join(home, ".kimi");
@@ -1282,6 +1296,7 @@ async function cmdStatus(argv = []) {
           }
         : {}),
       subscriptions,
+      ...(usageLimits ? { limits: usageLimits } : {}),
       // Pricing data provenance + staleness, so a $0 cost row can be triaged
       // as "not collected" vs "not priced" from `status --json` alone.
       pricing: getPricingMeta(),
@@ -1501,6 +1516,7 @@ async function cmdStatus(argv = []) {
         return lines;
       })() : []),
       ...subscriptionLines,
+      ...usageLimitLines,
       "",
     ]
       .filter(Boolean)
@@ -1597,11 +1613,111 @@ function formatSubscriptionLine(entry = {}) {
   return `- ${toolLabel} ${productLabel}: ${planType}`;
 }
 
+const USAGE_LIMIT_PROVIDERS = [
+  ["claude", "Claude"],
+  ["codex", "Codex"],
+  ["cursor", "Cursor"],
+  ["grok", "Grok"],
+  ["kimi", "Kimi"],
+  ["gemini", "Gemini"],
+  ["kiro", "Kiro"],
+  ["antigravity", "Antigravity"],
+  ["copilot", "Copilot"],
+  ["zcode", "ZCode"],
+  ["opencodeGo", "OpenCode Go"],
+  ["commandCode", "CommandCode"],
+  ["devin", "Devin"],
+  ["qoder", "Qoder"],
+  ["qoderCn", "Qoder CN"],
+  ["codingPlan", "Ark Coding Plan"],
+  ["agentPlan", "Ark Agent Plan"],
+  ["deepseek", "DeepSeek"],
+];
+
+// Primary window first and unprefixed (it is the headline quota); the rest keep
+// their role so a three-window provider stays readable on one row.
+const USAGE_LIMIT_WINDOWS = [
+  ["primary_window", null],
+  ["secondary_window", "secondary"],
+  ["tertiary_window", "add-on"],
+  ["quaternary_window", "other"],
+];
+
+function formatLimitAge(seconds) {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value < 0) return null;
+  if (value < 60) return `${Math.round(value)}s ago`;
+  if (value < 3600) return `${Math.round(value / 60)}m ago`;
+  if (value < 86_400) return `${Math.round(value / 3600)}h ago`;
+  return `${Math.round(value / 86_400)}d ago`;
+}
+
+function formatLimitCredits(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return String(Math.round(number * 100) / 100);
+}
+
+function formatUsageLimitWindow(window) {
+  if (!window || typeof window !== "object") return null;
+  const parts = [];
+  const percent = Number(window.used_percent);
+  if (Number.isFinite(percent)) parts.push(`${Math.round(percent * 10) / 10}%`);
+  const used = formatLimitCredits(window.used_credits);
+  const limit = formatLimitCredits(window.limit_credits);
+  if (used !== null && limit !== null && Number(window.limit_credits) > 0) {
+    parts.push(`${used}/${limit} credits`);
+  }
+  if (window.reset_at) parts.push(`resets ${window.reset_at}`);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
+/**
+ * Pure formatter for the opt-in quota panel (`status --limits`). One row per
+ * configured provider; plan, windows, error and provenance share a row so
+ * `--light` output stays greppable by provider name.
+ */
+function formatUsageLimitRows(limits) {
+  if (!limits || typeof limits !== "object") return [];
+  const rows = [];
+
+  for (const [key, label] of USAGE_LIMIT_PROVIDERS) {
+    const entry = limits[key];
+    if (!entry || typeof entry !== "object" || entry.configured === false) continue;
+    const parts = [];
+    if (entry.error) parts.push(`error: ${entry.error}`);
+    const plan = entry.plan_label || entry.plan_name || entry.plan_type || null;
+    if (plan) parts.push(String(plan));
+    for (const [windowKey, prefix] of USAGE_LIMIT_WINDOWS) {
+      const windowText = formatUsageLimitWindow(entry[windowKey]);
+      if (!windowText) continue;
+      parts.push(prefix ? `${prefix}: ${windowText}` : windowText);
+    }
+    const provenance = entry.provenance;
+    if (provenance && typeof provenance === "object") {
+      const age = formatLimitAge(provenance.age_seconds);
+      parts.push(
+        [
+          provenance.source || "unknown",
+          provenance.stale === true ? "stale" : null,
+          age,
+        ]
+          .filter(Boolean)
+          .join(", "),
+      );
+    }
+    rows.push([`Limit · ${label}`, parts.length > 0 ? parts.join(", ") : "—"]);
+  }
+
+  return rows;
+}
+
 function parseArgs(argv) {
   const out = {
     diagnostics: false,
     json: false,
     light: false,
+    limits: false,
     noSpinner: false,
     probeKeychain: false,
     probeKeychainDetails: false,
@@ -1612,6 +1728,7 @@ function parseArgs(argv) {
     if (a === "--diagnostics") out.diagnostics = true;
     else if (a === "--json") out.json = true;
     else if (a === "--light") out.light = true;
+    else if (a === "--limits") out.limits = true;
     else if (a === "--no-spinner") out.noSpinner = true;
     else if (a === "--probe-keychain") out.probeKeychain = true;
     else if (a === "--probe-keychain-details") {
@@ -1668,6 +1785,10 @@ function renderLightTable(summary) {
       detail.push(`WSL: ${info.wsl_distros.map((d) => `${d.name} (v${d.version ?? "?"})`).join(", ")}`);
     }
     push(`Provider · ${name}`, detail.length ? detail.join(", ") : "—");
+  }
+
+  for (const [label, value] of formatUsageLimitRows(summary.limits)) {
+    push(label, value);
   }
 
   // Mirror formatCopilotLines(): stay silent for machines with no Copilot
@@ -1762,4 +1883,9 @@ function parseEpochMsToIso(v) {
   return d.toISOString();
 }
 
-module.exports = { cmdStatus, summarizeQoderDetail };
+module.exports = {
+  cmdStatus,
+  formatUsageLimitRows,
+  parseArgs,
+  summarizeQoderDetail,
+};
