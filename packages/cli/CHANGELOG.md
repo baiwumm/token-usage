@@ -3,6 +3,28 @@
 本包（`tokenusage-cli`）的用户可见变更记录。发版时在顶部新增一节，
 `## <版本号>` 行会被 release workflow 取作 GitHub Release 正文。
 
+## 0.4.6
+
+2026-11-05。上游对齐补丁 + 限额面板落地：Cursor cache-only 行、Qoder credits/准入/时间戳、
+Trae CN 双目录，Qoder Desktop 0.4.x 的限额改读本机 `main.log` 快照（带 provenance），
+`status --limits` 首次把 18 家限额读数暴露出来。无契约变更，服务端无需同步升级。
+
+- **Cursor 准入按 token 分量判断**：CSV 行改用 input / cache write / cache read / output 四列
+  判断是否有用量，`Total Tokens=0` 的 cache-only 行不再被丢；0-token request-only 行仍按
+  A8 决策不入库（会把 bot/automation 计成对话、凭空造出活跃日）。
+- **Qoder credits 与准入**：credits 取 `credits` / `original_credits` 较大值；`billable:false`
+  但 credits>0 的 0.4.x 行不再被丢；坏时间戳（> 8.64e15）按行丢弃，不再中断整源。
+- **Trae CN 账户级目录**：同时发现 `TRAE SOLO CN` 与 `Trae CN`，优先已安装目录。
+- **Qoder Desktop 0.4.x 限额快照**：扫 `main.log` 的 `[Auth] [AccountUsage]` 摘要
+  （bundle-id 与旧 `Qoder[CN]` 两种布局、单文件逆向 8 MB 分块、7 天新鲜度、跨文件取最新行、
+  旧 `renderer.log` 保留为回退），`cached_at` 记录快照自身观测时间而非读取时间。
+- **`status --limits`（新增）**：opt-in 渲染 18 家 provider 的限额行（plan + 各窗口 +
+  credits + provenance 的 source/stale/年龄），`--json` 输出 `limits` 键；默认 `status`
+  仍是纯本地快路径。
+- **文档校正**：Cursor CSV 的 Cost 列实际未接线（成本仍按 token × 定价估算），
+  `docs/sources-capture-audit.md` 里 reported-first 的错误表述已改正。
+- 回归测试：`qoder-log-limits`（7 例）、`status-usage-limits`（5 例），CLI 共 244 例全绿。
+
 ## 0.4.5
 
 2026-11-04。一轮审计修复：`sync` 读队列时把契约 v2 的项目拆分行压回余量行、随后照旧推进
