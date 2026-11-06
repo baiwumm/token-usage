@@ -214,6 +214,7 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 - `account_session_states` 条目：`source` 当前**必须是 `"trae-cn"`**，`session_id` 非空 ≤256，`total_tokens` 必须等于 `input + cached_input + cache_creation + output`；按 `user_id + source + session_id` upsert。
 - 会话落库键 `(user_id, device_id, source, session_id)`；**last-wins 以 `ended_at` 严格大于现有值为准**。迁移提供原子 RPC `token_upsert_sessions` 做条件 upsert；旧快照或等值重放只计 `sessions_skipped`，不得覆盖新快照。
 - **项目仓库落库（契约 v3）**：表 `token_project_repos`，键 `(user_id, device_id, project_key)`，**每台设备只维护自己的检测结果**——按请求 last-wins 覆盖本设备的值，`null` 同样落库，即只清本设备、不影响其他设备；`updated_at` 取服务端时钟。CLI 只上报相对本地「已确认状态」的变化，设备独占自己的行正是这种增量协议成立的前提（多台设备共用一行时，被另一台覆盖后本机无从得知、也不会重发）。ingest **永不写**仪表盘手动维护的项目资料表 `token_project_profiles`。读取侧属仪表盘自有接口（`/api/app/*`，规则见 `docs/ui-spec.md` 项目节）：手动设置优先；否则取**未吊销设备**中 `updated_at` 最新的非空检测值。
+- **项目写入尽力而为（契约 v3）**：`projects` 在桶、会话之后写入；写入失败（例如自托管实例还没执行本次迁移、数据库瞬时错误）只记服务端日志，不影响同请求已提交的写入，响应仍为 `200`，但**省略** `projects_upserted` / `projects_skipped`（与旧服务端同形），CLI 视为未确认、下次同步重试。结构性错误（非数组、超 200 条）仍按上文整批 `400`。
 - **credits 语义（2026-10-31 P1）**：credits-only 上报（六个 token 列全 0、`conversations ≥ 1`、仅 `credits` > 0）是合法桶；桶 upsert 是**整行覆盖**，重放自不携带 credits 的客户端会把既有行 credits 覆盖回 0——这是桶粒度 last-wins 的直接推论；credits 不参与请求内"取 `total_tokens` 最大"的去重比较。
 - 服务端只持久化上表白名单字段；未知字段一律忽略。`project_key` 只保留 basename，`session_id` 拒绝路径分隔符；不存 prompt、正文、标题、绝对路径、resume command；`repo_url` 只存 github.com / gitee.com 的规范地址，不存本地路径、remote 原文与凭据。
 - **隐私评审（2026-11-06，操作者放行）**：`projects` 只收 github.com / gitee.com 两个公共托管主机；gitlab.com、自建 GitLab、企业版主机由 CLI 与服务端双重过滤。托管在 GitHub / Gitee 上的**私有仓库**地址（owner/repo 名）仍会上报，CLI 因此提供关闭开关（默认开启；关闭后既不读取也不上报，已上报的值保留，可在仪表盘手动隐藏）。
@@ -498,7 +499,8 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
     `.git` 尾）或显式 `null`；`project_key` 与 session 同一清洗；先校验后去重、同键保留靠后
     条目；落库键 `(user_id, device_id, project_key)` 按设备 last-wins、`null` 只清本设备；
     落库列白名单；永不写 `token_project_profiles`；`projects_upserted + projects_skipped =
-    projects.length`；不携带时请求与响应逐字不变，仅带 `projects` 的请求合法。
+    projects.length`；写入失败尽力而为（响应省略 `projects_*` 计数，同批其他写入照常）；
+    不携带时请求与响应逐字不变，仅带 `projects` 的请求合法。
 
 > §2.11 / §2.12 已于 2026-10-27 随 0.2.0 实现转正式：golden 测试
 > `tests/contract/sync-runs.test.ts` 覆盖两端点（校验、幂等重放、空跑派生、筛选分页、

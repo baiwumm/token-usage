@@ -1014,4 +1014,23 @@ describe("ingest projects (contract v3)", () => {
     ]);
     expect(fake.table("token_project_profiles")).toEqual([profile]);
   });
+
+  it("treats the projects write as best effort: a failed write never fails the upload", async () => {
+    // A self-hosted instance that has not run the contract v3 migration yet:
+    // the table is missing, so the projects write fails.
+    delete fake.tables.token_project_repos;
+
+    const res = await ingest({ hourly: [bucket()], projects: [project()] });
+    expect(res.status).toBe(200);
+    // No projects counters: the CLI treats the entries as unconfirmed and
+    // retries next sync, exactly as against a pre-v3 server.
+    expect(await res.json()).toEqual({ inserted: 1, skipped: 0, upload_scope: "private" });
+    expect(
+      fake.table("token_usage_hourly").filter((r) => r.hour_start === "2026-10-21T09:00:00.000Z"),
+    ).toHaveLength(1);
+
+    const projectsOnly = await ingest({ projects: [project()] });
+    expect(projectsOnly.status).toBe(200);
+    expect(await projectsOnly.json()).toEqual({ inserted: 0, skipped: 0, upload_scope: "private" });
+  });
 });
