@@ -185,9 +185,14 @@ export class FakeSupabase {
   otpChallenges = new Map<string, OtpChallenge>();
   issuedSessions: IssuedSession[] = [];
   // Admin user metadata (the badge avatar loader reads user_metadata) and the
-  // public storage objects it may inline (docs/badge.md §5.2).
+  // public storage objects it may inline (docs/badge.md §5.2). Keys are object
+  // paths inside the avatars bucket (project logos nest under
+  // <user_id>/projects/).
   adminUsers = new Map<string, { user_metadata: Record<string, unknown> }>();
   storageObjects = new Map<string, { type: string; body: Buffer }>();
+  // Existing storage buckets; tests delete "avatars" to simulate a deployment
+  // without the optional bucket.
+  buckets = new Set<string>(["avatars"]);
   // Most recent magic-link request, exposed so tests can play the role of the
   // email body (the auth code the user would click).
   lastOtp: OtpChallenge | null = null;
@@ -206,6 +211,7 @@ export class FakeSupabase {
     this.lastOtp = null;
     this.adminUsers.clear();
     this.storageObjects.clear();
+    this.buckets = new Set(["avatars"]);
   }
 
   async listen(): Promise<string> {
@@ -400,9 +406,73 @@ export class FakeSupabase {
   }
 
   private async readBody(req: IncomingMessage): Promise<string> {
+    return (await this.readRawBody(req)).toString("utf8");
+  }
+
+  private async readRawBody(req: IncomingMessage): Promise<Buffer> {
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk as Buffer);
-    return Buffer.concat(chunks).toString("utf8");
+    return Buffer.concat(chunks);
+  }
+
+  private bucketNotFound(res: ServerResponse): void {
+    // Storage API shape for a missing bucket.
+    this.json(res, 400, { statusCode: "404", error: "Bucket not found", message: "Bucket not found" });
+  }
+
+  // Storage surface used by the server (service-role): bucket lookup,
+  // binary-safe upload and bulk remove, mirroring storage-js requests.
+  private async handleStorage(path: string, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+    const bucketMatch = path.match(/^\/storage\/v1\/bucket\/([^/]+)$/);
+
+    if (bucketMatch && req.method === "GET") {
+      const id = decodeURIComponent(bucketMatch[1]);
+
+      if (!this.buckets.has(id)) {
+        this.bucketNotFound(res);
+        return true;
+      }
+      this.json(res, 200, { id, name: id, public: true });
+      return true;
+    }
+
+    const removeMatch = path.match(/^\/storage\/v1\/object\/([^/]+)$/);
+
+    if (removeMatch && req.method === "DELETE") {
+      const bucket = decodeURIComponent(removeMatch[1]);
+
+      if (!this.buckets.has(bucket)) {
+        this.bucketNotFound(res);
+        return true;
+      }
+      const body = await this.readJsonBody(req);
+      const prefixes = Array.isArray(body.prefixes) ? (body.prefixes as unknown[]).map(String) : [];
+      const removed = prefixes.filter((name) => this.storageObjects.delete(name));
+      this.json(res, 200, removed.map((name) => ({ name, bucket_id: bucket })));
+      return true;
+    }
+
+    const uploadMatch = path.match(/^\/storage\/v1\/object\/(?!public\/)([^/]+)\/(.+)$/);
+
+    if (uploadMatch && req.method === "POST") {
+      const bucket = decodeURIComponent(uploadMatch[1]);
+      const name = decodeURIComponent(uploadMatch[2]);
+
+      if (!this.buckets.has(bucket)) {
+        this.bucketNotFound(res);
+        return true;
+      }
+      if (this.storageObjects.has(name) && req.headers["x-upsert"] !== "true") {
+        this.json(res, 400, { statusCode: "409", error: "Duplicate", message: "The resource already exists" });
+        return true;
+      }
+      const body = await this.readRawBody(req);
+      this.storageObjects.set(name, { type: String(req.headers["content-type"] || ""), body });
+      this.json(res, 200, { Id: randomUUID(), Key: `${bucket}/${name}` });
+      return true;
+    }
+
+    return false;
   }
 
   private applyDefaults(table: TableDef, row: Row): Row {
@@ -468,7 +538,7 @@ export class FakeSupabase {
     }
 
     const storageMatch = path.match(
-      /^\/storage\/v1\/object\/public\/avatars\/([^/]+)$/,
+      /^\/storage\/v1\/object\/public\/avatars\/(.+)$/,
     );
 
     if (storageMatch && req.method === "GET") {
@@ -482,6 +552,8 @@ export class FakeSupabase {
       res.end(object.body);
       return;
     }
+
+    if (path.startsWith("/storage/v1/") && (await this.handleStorage(path, req, res))) return;
 
     const restMatch = path.match(/^\/rest\/v1\/([^/]+)$/);
     const rpcMatch = path.match(/^\/rest\/v1\/rpc\/([^/]+)$/);
@@ -502,6 +574,7 @@ export class FakeSupabase {
     if (req.method === "GET") return this.handleSelect(def, url, res);
     if (req.method === "POST") return this.handleInsert(def, table, url, req, res);
     if (req.method === "PATCH") return this.handleUpdate(def, url, req, res);
+    if (req.method === "DELETE") return this.handleDelete(def, url, req, res);
     return this.json(res, 405, { message: "Method not allowed" });
   }
 
@@ -687,5 +760,20 @@ export class FakeSupabase {
       updated.push(row);
     }
     this.json(res, 200, returning ? updated : null);
+  }
+
+  // PostgREST refuses an unfiltered DELETE by default; mirror that.
+  private handleDelete(def: TableDef, url: URL, req: IncomingMessage, res: ServerResponse): void {
+    const prefer = String(req.headers.prefer || "");
+    const returning = prefer.includes("return=representation");
+    const filters = this.parseFilters(url);
+
+    if (filters.length === 0) return this.json(res, 400, { message: "DELETE requires a WHERE clause" });
+    const removed = def.rows.filter((row) => filters.every(([col, op, value]) => matchesFilter(row, col, op, value)));
+    // In place, so a test holding fake.table(...) keeps seeing live rows.
+    for (let index = def.rows.length - 1; index >= 0; index -= 1) {
+      if (removed.includes(def.rows[index])) def.rows.splice(index, 1);
+    }
+    this.json(res, 200, returning ? removed : null);
   }
 }

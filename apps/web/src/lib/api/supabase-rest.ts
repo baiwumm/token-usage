@@ -321,6 +321,61 @@ export async function rpc(name: string, args: RestRow = {}): Promise<unknown> {
   return data;
 }
 
+/** DELETE rows matching every filter; an unfiltered delete is refused. */
+export async function remove(table: string, filters: Filter[]): Promise<void> {
+  if (filters.length === 0) {
+    throw new SupabaseError("Refusing an unfiltered delete", 500);
+  }
+  const builder = applyFilters(adminClient().from(table).delete(), filters);
+
+  await runQuery(builder as unknown as AwaitableQuery, false);
+}
+
+// ---------------------------------------------------------------------------
+// Storage (service-role). The browser never writes storage for server-owned
+// objects; it only loads the public URLs built here.
+// ---------------------------------------------------------------------------
+
+/** Public URL of an object in a public bucket. */
+export function storagePublicUrl(bucket: string, path: string): string {
+  return `${supabaseUrl()}/storage/v1/object/public/${bucket}/${path}`;
+}
+
+/** Whether the bucket exists (optional buckets are deployment choices). */
+export async function storageBucketExists(bucket: string): Promise<boolean> {
+  const { data, error } = await adminClient().storage.getBucket(bucket);
+
+  return !error && Boolean(data);
+}
+
+export async function storageUpload(
+  bucket: string,
+  path: string,
+  body: Uint8Array,
+  contentType: string,
+): Promise<void> {
+  const { error } = await adminClient()
+    .storage.from(bucket)
+    .upload(path, body, {
+      contentType,
+      // Object names are unique per upload, so the bytes never change.
+      cacheControl: "31536000",
+      upsert: false,
+    });
+
+  if (error) throw new SupabaseError(error.message, 500, error);
+}
+
+export async function storageRemove(
+  bucket: string,
+  paths: string[],
+): Promise<void> {
+  if (paths.length === 0) return;
+  const { error } = await adminClient().storage.from(bucket).remove(paths);
+
+  if (error) throw new SupabaseError(error.message, 500, error);
+}
+
 export interface AuthUser {
   id: string;
   email?: string | null;

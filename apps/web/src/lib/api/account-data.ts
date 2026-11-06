@@ -11,7 +11,7 @@ const PAGE_SIZE = 1000;
 const MAX_PAGES = 1000;
 const MAX_ROWS = PAGE_SIZE * MAX_PAGES;
 
-async function selectAll(
+export async function selectAll(
   table: string,
   {
     columns = "*",
