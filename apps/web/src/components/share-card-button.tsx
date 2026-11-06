@@ -10,16 +10,26 @@ import type { ShareCardData } from "@/components/share-card";
 
 import { NodesRight } from "@gravity-ui/icons";
 import { Button, Tooltip, Typography } from "@heroui/react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 
-import { ShareCardDialog } from "@/components/share-card-dialog";
 import { useLocale } from "@/lib/copy/locale";
 import { SHARE_CARD_COPY } from "@/lib/copy/share-card";
+
+// The dialog pulls in the four Canvas engines + helpers (~1.7k lines). Keep
+// them out of the dashboard/wrapped first-load chunk: the code only loads on
+// the first open, and stays mounted afterwards for the exit animation.
+const ShareCardDialog = dynamic(
+  () =>
+    import("@/components/share-card-dialog").then((mod) => mod.ShareCardDialog),
+  { ssr: false, loading: () => null },
+);
 
 export function ShareCardButton({ input }: { input: ShareCardData | null }) {
   const [locale] = useLocale();
   const copy = SHARE_CARD_COPY[locale];
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   return (
     <>
@@ -30,7 +40,10 @@ export function ShareCardButton({ input }: { input: ShareCardData | null }) {
           isDisabled={!input}
           size="sm"
           variant="tertiary"
-          onPress={() => setOpen(true)}
+          onPress={() => {
+            setMounted(true);
+            setOpen(true);
+          }}
         >
           <NodesRight aria-hidden="true" className="size-4" />
         </Button>
@@ -39,7 +52,9 @@ export function ShareCardButton({ input }: { input: ShareCardData | null }) {
           <Typography type="body-xs">{copy.share}</Typography>
         </Tooltip.Content>
       </Tooltip>
-      <ShareCardDialog input={input} open={open} onOpenChange={setOpen} />
+      {mounted ? (
+        <ShareCardDialog input={input} open={open} onOpenChange={setOpen} />
+      ) : null}
     </>
   );
 }

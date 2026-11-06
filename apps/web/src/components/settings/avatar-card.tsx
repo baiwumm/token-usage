@@ -6,12 +6,20 @@
 
 import { Camera, TrashBin } from "@gravity-ui/icons";
 import { Avatar, Button, Card, Spinner, toast } from "@heroui/react";
+import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 
-import { ImageCropDialog } from "@/components/image-crop-dialog";
 import { useAvatarUpload, useProfile } from "@/lib/auth/profile";
 import { useLocale } from "@/lib/copy/locale";
 import { SETTINGS_COPY } from "@/lib/copy/settings";
+
+// react-easy-crop is only needed once a file is picked; keep it out of the
+// settings first-load chunk.
+const ImageCropDialog = dynamic(
+  () =>
+    import("@/components/image-crop-dialog").then((mod) => mod.ImageCropDialog),
+  { ssr: false, loading: () => null },
+);
 
 export function AvatarCard() {
   const { profile } = useProfile();
@@ -22,6 +30,7 @@ export function AvatarCard() {
   const [deleting, setDeleting] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
+  const [cropLoaded, setCropLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const initial = (profile?.displayName || profile?.email || "?")
@@ -32,6 +41,7 @@ export function AvatarCard() {
     // Revoke the previous objectURL before replacing it.
     if (imageSrc) URL.revokeObjectURL(imageSrc);
     setImageSrc(URL.createObjectURL(file));
+    setCropLoaded(true);
     setCropOpen(true);
   }
 
@@ -127,28 +137,30 @@ export function AvatarCard() {
           </div>
         </div>
       </Card.Content>
-      <ImageCropDialog
-        copy={{
-          title: copy.cropTitle,
-          zoom: copy.cropZoom,
-          rotateLeft: copy.cropRotateLeft,
-          rotateRight: copy.cropRotateRight,
-          upload: copy.cropUpload,
-          uploading: copy.cropUploading,
-          cancel: copy.renameCancel,
-        }}
-        fileName="avatar"
-        imageSrc={imageSrc}
-        isOpen={cropOpen}
-        upload={runUpload}
-        onFailed={() => {
-          /* toast already shown by runUpload */
-        }}
-        onOpenChange={(open) => {
-          if (!open) closeCrop();
-        }}
-        onUploaded={closeCrop}
-      />
+      {cropLoaded ? (
+        <ImageCropDialog
+          copy={{
+            title: copy.cropTitle,
+            zoom: copy.cropZoom,
+            rotateLeft: copy.cropRotateLeft,
+            rotateRight: copy.cropRotateRight,
+            upload: copy.cropUpload,
+            uploading: copy.cropUploading,
+            cancel: copy.renameCancel,
+          }}
+          fileName="avatar"
+          imageSrc={imageSrc}
+          isOpen={cropOpen}
+          upload={runUpload}
+          onFailed={() => {
+            /* toast already shown by runUpload */
+          }}
+          onOpenChange={(open) => {
+            if (!open) closeCrop();
+          }}
+          onUploaded={closeCrop}
+        />
+      ) : null}
     </Card>
   );
 }

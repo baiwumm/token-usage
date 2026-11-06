@@ -78,19 +78,26 @@ export function ShareCardDialog({
     if (open) setName(input?.handle ?? "");
   }, [open, input?.handle]);
 
-  // Derived from the deferred input only — keying on `open` would null the
-  // image the moment close starts, flashing a spinner through the exit
-  // animation. Redraws happen when the page refreshes the input (rare, and
-  // cheap).
+  // Derived from the deferred input only, kept independently of `open` so
+  // closing never nulls the image and flashes a spinner through the exit
+  // animation.
   const cardData = useMemo(
     () =>
       input ? { ...input, handle: deferredName.trim() || input.handle } : null,
     [deferredName, input],
   );
-  const dataUrl = useMemo(
-    () => (cardData ? drawShareCard(variant, cardData) : null),
-    [cardData, variant],
-  );
+  // Draw only while the dialog is open. The 2x canvas is 2400x3260 (~7.8M
+  // pixels) and toDataURL is synchronous; the page refreshes its input on
+  // every load, so drawing from a closed dialog used to block the main thread
+  // several times per visit. Keeping the last frame in state preserves the
+  // exit animation without any redraw.
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !cardData) return;
+
+    setDataUrl(drawShareCard(variant, cardData));
+  }, [open, cardData, variant]);
 
   // Drop the outgoing frame shortly after its fade-out ends. A timer (rather
   // than `onAnimationEnd`) also covers reduced-motion users, whose layer is
@@ -179,6 +186,7 @@ export function ShareCardDialog({
                     className="grid w-full grid-cols-2 gap-2"
                     selectedKeys={new Set([variant])}
                     selectionMode="single"
+                    size="sm"
                     onSelectionChange={(keys) => {
                       const next = [...keys][0];
 

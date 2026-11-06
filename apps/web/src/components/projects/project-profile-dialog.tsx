@@ -24,11 +24,11 @@ import {
   Typography,
   toast,
 } from "@heroui/react";
+import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 
 import { ProjectLogo } from "./project-logo";
 
-import { ImageCropDialog } from "@/components/image-crop-dialog";
 import { PendingButton } from "@/components/pending-button";
 import { formatMessage } from "@/lib/copy/message";
 import {
@@ -42,6 +42,13 @@ import {
   parseDisplayName,
   parseHttpsUrl,
 } from "@/lib/projects/profile";
+
+// react-easy-crop is only needed after a logo file is picked.
+const ImageCropDialog = dynamic(
+  () =>
+    import("@/components/image-crop-dialog").then((mod) => mod.ImageCropDialog),
+  { ssr: false, loading: () => null },
+);
 
 const ACCEPTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
@@ -78,6 +85,7 @@ export function ProjectProfileDialog({
   const [confirmReset, setConfirmReset] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
+  const [cropLoaded, setCropLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const nameCheck = parseDisplayName(displayName);
@@ -195,6 +203,7 @@ export function ProjectProfileDialog({
     // Revoke the previous objectURL before replacing it.
     if (imageSrc) URL.revokeObjectURL(imageSrc);
     setImageSrc(URL.createObjectURL(file));
+    setCropLoaded(true);
     setCropOpen(true);
   }
 
@@ -426,20 +435,22 @@ export function ProjectProfileDialog({
         </Modal.Container>
       </Modal.Backdrop>
 
-      <ImageCropDialog
-        copy={{ ...text.crop, cancel: text.cancel }}
-        fileName="logo"
-        imageSrc={imageSrc}
-        isOpen={cropOpen}
-        upload={uploadLogo}
-        onFailed={() => {
-          /* the toast is already shown by uploadLogo */
-        }}
-        onOpenChange={(next) => {
-          if (!next) closeCrop();
-        }}
-        onUploaded={closeCrop}
-      />
+      {cropLoaded ? (
+        <ImageCropDialog
+          copy={{ ...text.crop, cancel: text.cancel }}
+          fileName="logo"
+          imageSrc={imageSrc}
+          isOpen={cropOpen}
+          upload={uploadLogo}
+          onFailed={() => {
+            /* the toast is already shown by uploadLogo */
+          }}
+          onOpenChange={(next) => {
+            if (!next) closeCrop();
+          }}
+          onUploaded={closeCrop}
+        />
+      ) : null}
     </>
   );
 }
