@@ -23,11 +23,12 @@ import {
   Typography,
   parseColor,
 } from "@heroui/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { NAV_COPY } from "@/lib/copy/nav";
+import { DEVICE_COPY } from "@/lib/copy/device";
 import { useLocalePreference, type LocalePreference } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
 import { REPO_URL } from "@/lib/links";
@@ -325,10 +326,22 @@ export function ThemeColorPicker() {
   );
 }
 
+// The device page listens for this event to drop its current pairing code and
+// return to the manual-input state; no URL query flag is needed on the shell.
+const DEVICE_RESET_EVENT = "token-usage:device-reset";
+
 export function TopActions() {
   const router = useRouter();
+  const pathname = usePathname();
   const { locale } = useLocalePreference();
   const copy = NAV_COPY[locale];
+  // On /device the primary action is a "start over" affordance: pushing the
+  // same path would be a no-op, so it resets the pairing flow in place
+  // (docs/ui-spec.md 配对 · 顶栏主操作复位语义).
+  const onDevicePage = pathname === "/device";
+  const pairingLabel = onDevicePage
+    ? DEVICE_COPY[locale].startOver
+    : copy.pairDevice;
 
   return (
     <div className="flex shrink-0 items-center gap-1 md:gap-1.5">
@@ -337,14 +350,21 @@ export function TopActions() {
       <ThemeColorPicker />
       <ThemeModeToggle />
       <Button
-        aria-label={copy.pairDevice}
+        aria-label={pairingLabel}
         className="ml-0.5 rounded-full px-3 shadow-sm md:px-4"
         size="sm"
         variant="primary"
-        onPress={() => router.push("/device")}
+        onPress={() => {
+          if (onDevicePage) {
+            window.dispatchEvent(new Event(DEVICE_RESET_EVENT));
+
+            return;
+          }
+          router.push("/device");
+        }}
       >
         <Plus className="size-4" />
-        <span className="hidden sm:inline">{copy.pairDevice}</span>
+        <span className="hidden sm:inline">{pairingLabel}</span>
       </Button>
     </div>
   );

@@ -14,7 +14,13 @@ import {
   Typography,
 } from "@heroui/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useState, type FormEvent } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+  type FormEvent,
+} from "react";
 
 import { authBrowserClient } from "@/lib/auth/browser";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
@@ -28,6 +34,9 @@ import {
 
 // Contract alphabet: no 0/1/I/L/O (docs/cli-contract.md §2.1).
 const USER_CODE_PATTERN = /^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/;
+// Dispatched by the app shell's primary action while already on /device
+// (docs/ui-spec.md 配对 · 顶栏主操作复位语义).
+const DEVICE_RESET_EVENT = "token-usage:device-reset";
 
 type Phase = "input" | "confirm" | "approving" | "success" | "error";
 
@@ -67,6 +76,26 @@ function DeviceClientInner() {
 
     router.replace(`${LOGIN_PATH}?next=${encodeURIComponent(target)}`);
   }, [activeCode, router]);
+
+  // Reset to a fresh manual-input pairing: drop the current code, draft and
+  // error, and clear a deep-linked ?user_code= so a reload cannot restore it.
+  // React Compiler infers the state setters too, so the dependency list has
+  // to be explicit rather than just [router] (stable setters are harmless).
+  const resetToInput = useCallback(() => {
+    setDraft("");
+    setActiveCode("");
+    setErrorDetail(null);
+    setPhase("input");
+    router.replace("/device");
+  }, [router, setActiveCode, setDraft, setErrorDetail, setPhase]);
+
+  useEffect(() => {
+    const onReset = () => resetToInput();
+
+    window.addEventListener(DEVICE_RESET_EVENT, onReset);
+
+    return () => window.removeEventListener(DEVICE_RESET_EVENT, onReset);
+  }, [resetToInput]);
 
   async function approve(code: string) {
     const supabase = authBrowserClient();
@@ -227,16 +256,7 @@ function DeviceClientInner() {
                 {copy.retry}
               </Button>
             ) : null}
-            <Button
-              size="sm"
-              variant="secondary"
-              onPress={() => {
-                setDraft("");
-                setActiveCode("");
-                setErrorDetail(null);
-                setPhase("input");
-              }}
-            >
+            <Button size="sm" variant="secondary" onPress={resetToInput}>
               {copy.startOver}
             </Button>
           </Card.Content>
