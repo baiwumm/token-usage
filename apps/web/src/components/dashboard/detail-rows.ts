@@ -60,7 +60,10 @@ export function buildDetailRows({
   return daily.map((point) => ({
     id: point.day ?? "",
     time: point.day
-      ? formatDate(`${point.day}T12:00:00Z`, { dateStyle: "medium" })
+      ? formatDate(`${point.day}T12:00:00Z`, {
+          dateStyle: "medium",
+          timeZone: "UTC",
+        })
       : "—",
     tokens: point.total_tokens,
     input: point.input_tokens,
