@@ -119,7 +119,9 @@ export const NAV_ITEMS = [
   { href: "/sessions", key: "sessions" },
   { href: "/projects", key: "projects" },
   { href: "/sync-runs", key: "syncRuns" },
-  { href: "/wrapped", key: "wrapped", badge: true },
+  // Wrapped shipped on 2026-10-30; the "new" chip had no expiry logic and
+  // stayed on permanently. Drop it rather than keep a stale marker.
+  { href: "/wrapped", key: "wrapped" },
   { href: "/achievements", key: "achievements" },
   { href: "/service-status", key: "status" },
   { href: "/settings", key: "settings" },
