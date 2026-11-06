@@ -77,6 +77,10 @@ export async function markAchievementsSeen(
     if (!response.ok) return null;
     const payload = (await response.json()) as { seen_through?: unknown };
 
+    // The shared payload carries the old seen-water mark; drop the cache so
+    // the next read reflects the write.
+    invalidateAchievementsShared();
+
     return typeof payload.seen_through === "string"
       ? payload.seen_through
       : day;
@@ -86,9 +90,19 @@ export async function markAchievementsSeen(
 }
 
 // Concurrent callers on one screen (the unlock watcher and the dashboard
-// strip) must not run the whole-history compute twice. There is no TTL: the
-// entry disappears as soon as the request settles.
+// strip) must not run the whole-history compute twice. The watcher starts
+// 1.2s after mount, by which time the dashboard request has usually settled —
+// an in-flight-only dedupe therefore missed it entirely (docs/ui-spec.md
+// § achievements: "share the same in-flight request"). A short settled-promise
+// TTL closes that gap without keeping unlock/seen state stale for long.
+const SHARED_TTL_MS = 15_000;
 const inFlight = new Map<string, Promise<AchievementsPayload>>();
+const settled = new Map<string, { at: number; payload: AchievementsPayload }>();
+
+/** Forget cached payloads after a seen-water mark write or a forced refresh. */
+export function invalidateAchievementsShared(): void {
+  settled.clear();
+}
 
 export function fetchAchievementsShared({
   tz = null,
@@ -102,14 +116,39 @@ export function fetchAchievementsShared({
 
   if (existing) return existing;
 
+  const recent = settled.get(key);
+
+  if (recent && Date.now() - recent.at < SHARED_TTL_MS) {
+    return Promise.resolve(recent.payload);
+  }
+  settled.delete(key);
+
   const request: Promise<AchievementsPayload> = fetchAchievements({
     tz,
     offsetMinutes,
-  }).finally(() => {
-    if (inFlight.get(key) === request) inFlight.delete(key);
-  });
+  }).then(
+    (payload) => {
+      settled.set(key, { at: Date.now(), payload });
+
+      return payload;
+    },
+    (error: unknown) => {
+      settled.delete(key);
+      throw error;
+    },
+  );
 
   inFlight.set(key, request);
+  // Both handlers are supplied so a failed request never leaves an
+  // unhandled rejection behind from the cleanup chain.
+  void request.then(
+    () => {
+      if (inFlight.get(key) === request) inFlight.delete(key);
+    },
+    () => {
+      if (inFlight.get(key) === request) inFlight.delete(key);
+    },
+  );
 
   return request;
 }

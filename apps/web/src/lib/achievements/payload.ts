@@ -24,6 +24,49 @@ import { jsonResponse } from "@/lib/api/http";
 const HISTORY_START = "2000-01-01T00:00:00.000Z";
 const DAY_MS = 86_400_000;
 
+// Computing 18 achievements walks the whole account history plus two full
+// tables. Several surfaces ask for it within seconds of each other (dashboard
+// strip, unlock watcher, /achievements, public page). A short per-user /
+// per-zone cache keeps one compute per burst. The seen watermark is never
+// cached — it is read fresh on every request and can change via POST.
+const SNAPSHOT_TTL_MS = 30_000;
+
+type SnapshotEntry = {
+  at: number;
+  snapshot?: AchievementsSnapshot;
+  inFlight?: Promise<AchievementsSnapshot>;
+};
+const snapshotCache = new Map<string, SnapshotEntry>();
+
+function cachedSnapshot(
+  key: string,
+  load: () => Promise<AchievementsSnapshot>,
+): Promise<AchievementsSnapshot> {
+  const existing = snapshotCache.get(key);
+  const now = Date.now();
+
+  if (existing?.inFlight) return existing.inFlight;
+  if (existing?.snapshot && now - existing.at < SNAPSHOT_TTL_MS) {
+    return Promise.resolve(existing.snapshot);
+  }
+
+  const inFlight = load().then(
+    (snapshot) => {
+      snapshotCache.set(key, { at: Date.now(), snapshot });
+
+      return snapshot;
+    },
+    (error: unknown) => {
+      snapshotCache.delete(key);
+      throw error;
+    },
+  );
+
+  snapshotCache.set(key, { at: now, inFlight });
+
+  return inFlight;
+}
+
 /** [fixed history start, next UTC midnight) — stable within a UTC day. */
 function sessionWindow(now: Date): { from: string; to: string } {
   const dayStart = Date.UTC(
@@ -69,8 +112,14 @@ export async function achievementsPayloadForUser(
   now: Date = new Date(),
 ): Promise<Response> {
   const tzContext = parseTzContext(searchParams);
+  // Include the UTC day: streak/active-day achievements depend on `now`.
+  const cacheKey = `${userId}|${searchParams.toString()}|${now
+    .toISOString()
+    .slice(0, 10)}`;
   const [snapshot, seenThrough] = await Promise.all([
-    loadAchievementsSnapshot(userId, tzContext, now),
+    cachedSnapshot(cacheKey, () =>
+      loadAchievementsSnapshot(userId, tzContext, now),
+    ),
     loadAchievementSeen(userId),
   ]);
 
