@@ -43,8 +43,18 @@ function pick<T extends string>(
 // is still accepted (existing README embeds) but no longer decides anything;
 // its value stays validated, and `scope=repo` without a project is still an
 // error so a stale link can never quietly turn into an account badge.
+/** Issued tokens are `tu_badge_` + base64url(24 bytes), i.e. 41 chars. */
+const MAX_TOKEN_LENGTH = 128;
+const TOKEN_CHARS = /^[A-Za-z0-9_-]+$/;
+
 export function parseBadgeParams(search: URLSearchParams): ParsedBadgeParams {
   const token = (search.get("token") ?? "").trim();
+  // This is a public, unauthenticated endpoint: reject oversized / junk
+  // tokens before hashing them and hitting the database.
+  const tokenValid =
+    token.length > 0 &&
+    token.length <= MAX_TOKEN_LENGTH &&
+    TOKEN_CHARS.test(token);
   const style = pick(search, "style", STYLES, "panel");
   const theme = pick(search, "theme", THEMES, "dark");
   const range = pick(search, "range", RANGES, "all");
@@ -52,7 +62,7 @@ export function parseBadgeParams(search: URLSearchParams): ParsedBadgeParams {
   const scopeValid =
     scopeRaw === null || (SCOPES as readonly string[]).includes(scopeRaw);
 
-  if (!token || !style || !theme || !range || !scopeValid) {
+  if (!tokenValid || !style || !theme || !range || !scopeValid) {
     return { ok: false, reason: "bad_request" };
   }
 
