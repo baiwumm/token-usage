@@ -214,7 +214,7 @@ export function normalizeUnslothModel(
   const lower = model.trim().toLowerCase();
 
   if (lower.startsWith("local/") || lower.startsWith("unpriced/")) {
-    return "__tokentracker_unpriced_unsloth_model__";
+    return "__unpriced_unsloth_model__";
   }
 
   return model;

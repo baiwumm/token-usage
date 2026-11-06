@@ -147,7 +147,6 @@ async function main() {
   const baseUrl = (
     readArg("--base-url")
     || process.env.TOKEN_USAGE_BASE_URL
-    || process.env.TOKENTRACKER_BASE_URL
     || BASE_URL_DEFAULT
   ).replace(/\/$/, "");
   const keep = hasFlag("--keep");
