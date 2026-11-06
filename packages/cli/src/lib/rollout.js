@@ -11314,6 +11314,34 @@ const WORKBUDDY_VARIANTS = {
   "workbuddy-ai": { dir: ".workbuddy-ai", envVar: "WORKBUDDY_AI_HOME" },
 };
 
+// Bump when the project pass changes how it derives a bucket's model. Version 2
+// pairs project usage with the hourly model, which is what enqueueTouchedBuckets
+// needs to emit project + residual rows; version-1 buckets have no model and can
+// never be split. An install below the current version resets only WorkBuddy's
+// project cursors and drops those model-less buckets — the totals cursors stay
+// untouched, so history is re-attributed without re-counting a single token.
+const WORKBUDDY_PROJECT_ATTRIBUTION_VERSION = 2;
+
+// Remove project buckets written before the model dimension existed. Only the
+// buckets owned by the given WorkBuddy variant are touched; other sources and
+// every model-bearing bucket are left exactly as they are.
+function dropLegacyWorkbuddyProjectBuckets(projectState, variant) {
+  if (!projectState || !projectState.buckets || typeof projectState.buckets !== "object") {
+    return 0;
+  }
+  const source = normalizeSourceInput(variant) || DEFAULT_SOURCE;
+  let removed = 0;
+  for (const [key, bucket] of Object.entries(projectState.buckets)) {
+    if (!bucket || typeof bucket !== "object") continue;
+    // A legacy bucket is exactly the one getProjectBucket wrote with model == null.
+    if (bucket.model != null) continue;
+    if ((normalizeSourceInput(bucket.source) || DEFAULT_SOURCE) !== source) continue;
+    delete projectState.buckets[key];
+    removed += 1;
+  }
+  return removed;
+}
+
 function resolveWorkbuddyVariant(variant) {
   return Object.prototype.hasOwnProperty.call(WORKBUDDY_VARIANTS, variant)
     ? variant
@@ -11617,13 +11645,27 @@ async function parseWorkbuddyIncremental({
   const projectTouchedBuckets = projectEnabled ? new Set() : null;
   const projectMetaCache = projectEnabled ? new Map() : null;
   const publicRepoCache = projectEnabled ? new Map() : null;
+  // Version 2 pairs every project bucket with the hourly model so the split in
+  // enqueueTouchedBuckets can emit project rows (a model-less bucket is never
+  // splittable). An install still carrying version-1 state rescan its WorkBuddy
+  // history in the project pass alone — the totals cursors are untouched, so no
+  // token is counted twice.
+  const projectAttributionNeedsRescan =
+    Number(workbuddyState.projectAttributionVersion || 0) < WORKBUDDY_PROJECT_ATTRIBUTION_VERSION;
   const projectSeenIds = new Set(
-    Array.isArray(workbuddyState.projectSeenIds) ? workbuddyState.projectSeenIds : [],
+    !projectAttributionNeedsRescan && Array.isArray(workbuddyState.projectSeenIds)
+      ? workbuddyState.projectSeenIds
+      : [],
   );
   const projectFileOffsets =
-    workbuddyState.projectFileOffsets && typeof workbuddyState.projectFileOffsets === "object"
+    !projectAttributionNeedsRescan &&
+    workbuddyState.projectFileOffsets &&
+    typeof workbuddyState.projectFileOffsets === "object"
       ? { ...workbuddyState.projectFileOffsets }
       : {};
+  if (projectState && projectAttributionNeedsRescan) {
+    dropLegacyWorkbuddyProjectBuckets(projectState, variant);
+  }
   let projectBucketsQueued = 0;
   let projectCursorUpdated = false;
 
@@ -11644,6 +11686,7 @@ async function parseWorkbuddyIncremental({
   if (files.length === 0 && !dbExists) {
     cursors[variant] = {
       ...workbuddyState,
+      projectAttributionVersion: WORKBUDDY_PROJECT_ATTRIBUTION_VERSION,
       seenIds: Array.from(seenIds),
       seenTraceIds: Array.from(seenTraceIds),
       tracedSessionIds: Array.from(tracedSessionIds),
@@ -11919,16 +11962,27 @@ async function parseWorkbuddyIncremental({
           const bucketStart = toUtcHalfHourStart(new Date(tsMs).toISOString());
           if (!bucketStart) return;
 
+          // Same model expression as the totals pass, so the project bucket and
+          // the hourly bucket it belongs to always share one model key. Without
+          // this the split can never match the hour and WorkBuddy usage stays
+          // unattributed forever.
+          const projectModel =
+            normalizeModelInput(provider.model) ||
+            normalizeModelInput(provider.requestModelId) ||
+            normalizeModelInput(entry.model) ||
+            fallbackModel;
           const projectBucket = getProjectBucket(
             projectState,
             projectKey,
             source,
-            null,
+            projectModel,
             bucketStart,
             projectRef,
           );
           addTotals(projectBucket.totals, delta);
-          projectTouchedBuckets.add(projectBucketKey(projectKey, source, null, bucketStart));
+          projectTouchedBuckets.add(
+            projectBucketKey(projectKey, source, projectModel, bucketStart),
+          );
         },
       );
 
@@ -12236,6 +12290,7 @@ async function parseWorkbuddyIncremental({
   }
   cursors[variant] = {
     ...workbuddyState,
+    projectAttributionVersion: WORKBUDDY_PROJECT_ATTRIBUTION_VERSION,
     seenIds: cappedSeen,
     seenTraceIds: cappedSeenTraceIds,
     tracedSessionIds: cappedTracedSessionIds,
@@ -26309,4 +26364,8 @@ module.exports = {
   commandCodeUsageToTotals,
   extractCommandCodeSessionUsage,
   parseCommandCodeIncremental,
+
+  // WorkBuddy project attribution (v2: project buckets carry the hourly model)
+  WORKBUDDY_PROJECT_ATTRIBUTION_VERSION,
+  dropLegacyWorkbuddyProjectBuckets,
 };
