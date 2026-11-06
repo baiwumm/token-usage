@@ -5,6 +5,7 @@
 
 import type { ModelBreakdownSource, SeriesPoint } from "@/lib/dashboard/api";
 
+import { ModelDisplayName, modelGroupKey } from "@/lib/model-names";
 import { canonicalSource, sourceDisplayLabel } from "@/lib/sources";
 
 export interface CanonicalSourceRow {
@@ -35,7 +36,7 @@ export function canonicalSourceRows(
     };
 
     agg.totalTokens += entry.totals.total_tokens;
-    agg.totalCost += Number(entry.totals.total_cost_usd);
+    agg.totalCost += Number(entry.totals.total_cost_usd) || 0;
     agg.totalCredits += entry.totals.credits || 0;
     agg.models.push(...entry.models);
     byId.set(id, agg);
@@ -59,16 +60,22 @@ export interface MergedModelRow {
 
 /**
  * Merge same-name model rows across sources (e.g. one model reported by both
- * zcode and opencode) so rankings and their React keys stay unique.
+ * zcode and opencode) so rankings and their React keys stay unique. Grouping
+ * uses the folded key (docs/ui-spec.md § model names, lib/model-names.ts), so
+ * casing drift across collectors never splits one model into two rows. The
+ * displayed spelling is the variant carrying the most tokens, matching the
+ * server-side ModelDisplayName resolution.
  */
 export function mergeModelsAcrossSources(
   sources: ModelBreakdownSource[],
 ): MergedModelRow[] {
   const byModel = new Map<string, MergedModelRow>();
+  const displayNames = new Map<string, ModelDisplayName>();
 
   for (const source of sources) {
     for (const entry of source.models) {
-      const agg = byModel.get(entry.model) ?? {
+      const key = modelGroupKey(entry.model);
+      const agg = byModel.get(key) ?? {
         model: entry.model,
         sources: [],
         totals: {
@@ -88,7 +95,14 @@ export function mergeModelsAcrossSources(
       if (!agg.sources.includes(source.source)) {
         agg.sources.push(source.source);
       }
-      byModel.set(entry.model, agg);
+      // Token-weighted display name, identical to the server-side resolver:
+      // the variant with the largest token sum wins, ties keep the first one.
+      const resolver = displayNames.get(key) ?? new ModelDisplayName();
+
+      resolver.add(entry.model, entry.totals.total_tokens);
+      displayNames.set(key, resolver);
+      agg.model = resolver.resolve();
+      byModel.set(key, agg);
     }
   }
 
