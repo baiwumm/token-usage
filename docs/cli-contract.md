@@ -159,7 +159,8 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 {
   "hourly": [ /* 或别名 "buckets"，二者皆接受 */ ],
   "account_session_states": [ ],
-  "sessions": [ /* 可选，≤200；旧 CLI 不传时行为逐字不变 */ ]
+  "sessions": [ /* 可选，≤200；旧 CLI 不传时行为逐字不变 */ ],
+  "projects": [ /* 可选，≤200；契约 v3（2026-11-06）；旧 CLI 不传时行为逐字不变 */ ]
 }
 ```
 
@@ -190,20 +191,34 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 | `credits` | **可选**（2026-10-31 增量）。数值，四舍五入 6 位小数，缺省 0；非法/负值按 0 计（对齐桶字段的钳制哲学，不整批拒绝——避免卡住已部署采集机的队列）。会话级积分（仅积分制来源上报）；**不参与** `total_tokens` 恒等校验与 `models` 求和校验；老 CLI 不传行为逐字不变 |
 | `models` | 可选数组，≤32 条；每条 `{model, input_tokens, cached_input_tokens, cache_creation_input_tokens, output_tokens, reasoning_output_tokens, total_tokens}`。`model` trim、≤200、空则 `"unknown"`；同名模型合并求和；每条 `total_tokens` 必须等于自身四项之和；数组非空时 `sum(models.total_tokens)` 必须等于会话 `total_tokens`。缺省或空数组允许，成本按 0 计 |
 
+**project 条目字段**（`projects` 可选，≤200 条；2026-11-06 契约 v3，操作者放行。用途：仪表盘
+项目页的仓库链接）。与桶 / 会话不同，**条目逐条丢弃、不整批 400**：不合规的条目（含非对象条目）
+丢弃并计入 `projects_skipped`，同请求的桶、会话照常写入——仓库地址是附属元数据，不得卡住采集机
+的上传队列（与 `total_cost_usd` / `credits` 钳制而非拒绝同一哲学）。
+
+| 字段 | 说明 |
+|---|---|
+| `project_key` | 必填字符串；清洗规则与 session 的 `project_key` **同一实现**（去尾部路径分隔符后取 basename、去控制字符、截断 120）；非字符串，或清洗后为空、`.`、`..` → 该条丢弃 |
+| `repo_url` | 必填，字符串或显式 `null`（缺省 → 该条丢弃）。字符串必须**逐字**是规范形态 `https://github.com/<owner>/<repo>` 或 `https://gitee.com/<owner>/<repo>`：主机名小写且完全一致（gitlab.com、自建 GitLab、GitHub 企业版等其他主机一律不收）；路径恰好两段，每段 1–100 个 `[A-Za-z0-9._-]` 字符且不为 `.` / `..`，仓库段不以 `.git` 结尾（不区分大小写）；不含凭据、端口、查询串、片段与尾部斜杠；全长 ≤200。服务端只校验、不改写（规范化由 CLI 完成），不合规 → 该条丢弃。`null` = 本设备已检测不到 GitHub / Gitee remote，清除**本设备**此前上报的值 |
+
 **语义与不变量**：
 
-- `hourly` / `account_session_states` 各 **≤500 条**，`sessions` **≤200 条**，超出 `400`；三者皆空 → `400 {"error":"No usage buckets provided"}`（仅带 `sessions` 的请求合法）。
+- `hourly` / `account_session_states` 各 **≤500 条**，`sessions` 与 `projects` 各 **≤200 条**，超出 `400`（`projects` 为 `400 {"error":"Too many projects (max 200)"}`）；四者皆空 → `400 {"error":"No usage buckets provided"}`（仅带 `sessions` 或仅带 `projects` 的请求合法；契约 v3 之前是「三者皆空」，旧客户端无可观察差异）。
 - `sessions` 缺省、`null` 或空数组均视为未提供；非数组 → `400 {"error":"Invalid session"}`。`models` 非数组、条目非对象同样按非法会话处理。
+- `projects` 缺省、`null` 或空数组均视为未提供；非数组 → `400 {"error":"Invalid project"}`。非数组与超 200 条这两类**结构性**错误同样先于任何写入、整批拒绝；条目级不合规只丢该条（见上表）。
 - 全局 1 MiB 请求体上限仍然适用（§1.2）；`sessions` 的 200 条上限与体积上限相互独立，超体积按 `413` 拒绝，CLI 需分批上报。
-- 请求内去重：用量桶按 `hour_start|source|model|project_key` 分组（2026-11-03 契约 v2 起含 project_key；缺省/未归因按空串参与分组），**保留 `total_tokens` 最大的一条**；会话按 `source|session_id` 分组，**保留 `ended_at` 最大的一条**（同刻取 `total_tokens` 最大，再同取数组靠后者）。
+- 请求内去重：用量桶按 `hour_start|source|model|project_key` 分组（2026-11-03 契约 v2 起含 project_key；缺省/未归因按空串参与分组），**保留 `total_tokens` 最大的一条**；会话按 `source|session_id` 分组，**保留 `ended_at` 最大的一条**（同刻取 `total_tokens` 最大，再同取数组靠后者）；project 条目**先逐条校验、再去重**：在合格条目中按清洗后的 `project_key` 分组，**保留数组中靠后的一条**（被覆盖的计入 `projects_skipped`；不合规的靠后条目不会顶掉合格的靠前条目）。
 - 落库 upsert 键：用量桶 `(user_id, device_id, hour_start, source, model, project_key)`（2026-11-03 契约 v2 起含 project_key，操作者放行；**桶粒度 last-wins**，这是全系统对账基线（本地 `queue.jsonl` last-wins 总数）的根基）。未归因桶的 `project_key` 在 `token_usage_hourly` 落为**空串 `''`**（主键列不可为 NULL 的工程约束；`token_sessions.project_key` 保持 `null`，两表空值形态不同属有意）。向后兼容承诺：旧客户端不携带 `project_key` 时全部落入未归因桶，键的其余部分与去重/响应行为逐字不变。
 - **客户端归因覆盖（2026-11-03 批次 3）**：CLI 对能可靠取得项目路径的来源，在 hourly 行写入 `project_key`。写法是**同键拆行**：同一 `(source, model, hour)` 下按项目各出一条行，再加一条 `project_key: ''` 的「未归因余量」行（聚合值减去各项目桶，逐列 clamp 到 0），拆行合计恒等于原聚合值——不丢行、不改数值、不重复计。项目桶按 `(project, source, model, hour)` 记账；没有项目信息的用量一律留在空串桶。已覆盖（项目解析与增量解析在同一遍、模型可配对）：`claude`、`codex`、`opencode` / `zcode`（含 SQLite 增量）、`qoder` / `qoder-cn`、`grok`、`devin`、`droid`、`antigravity`、`command-code`、`omp`/`omo`/`dsh` 系列。**本轮未归因**：`workbuddy` 与 `gemini` 的项目归属在独立扫描里做、拿不到逐事件的可靠模型，因此暂只登记本地项目队列而不写 hourly `project_key`；`kimi` 解析器尚未建立项目桶。**明确不做**：`cursor`、`trae-cn`、`kiro` —— 三者按估算/账户口径产出用量，没有可对应的项目路径，写任何推断值都会污染项目口径。
 - 校验先于任何写入：任一条非法则整批拒绝（`400 {"error":"Invalid usage bucket"}` / `"Invalid account session state"` / `"Invalid session"`）。**例外**：账户级来源的会话按上表整条跳过，不触发 400；旧/等值 `ended_at` 快照在写入阶段跳过。
 - `account_session_states` 条目：`source` 当前**必须是 `"trae-cn"`**，`session_id` 非空 ≤256，`total_tokens` 必须等于 `input + cached_input + cache_creation + output`；按 `user_id + source + session_id` upsert。
 - 会话落库键 `(user_id, device_id, source, session_id)`；**last-wins 以 `ended_at` 严格大于现有值为准**。迁移提供原子 RPC `token_upsert_sessions` 做条件 upsert；旧快照或等值重放只计 `sessions_skipped`，不得覆盖新快照。
+- **项目仓库落库（契约 v3）**：表 `token_project_repos`，键 `(user_id, device_id, project_key)`，**每台设备只维护自己的检测结果**——按请求 last-wins 覆盖本设备的值，`null` 同样落库，即只清本设备、不影响其他设备；`updated_at` 取服务端时钟。CLI 只上报相对本地「已确认状态」的变化，设备独占自己的行正是这种增量协议成立的前提（多台设备共用一行时，被另一台覆盖后本机无从得知、也不会重发）。ingest **永不写**仪表盘手动维护的项目资料表 `token_project_profiles`。读取侧属仪表盘自有接口（`/api/app/*`，规则见 `docs/ui-spec.md` 项目节）：手动设置优先；否则取**未吊销设备**中 `updated_at` 最新的非空检测值。
 - **credits 语义（2026-10-31 P1）**：credits-only 上报（六个 token 列全 0、`conversations ≥ 1`、仅 `credits` > 0）是合法桶；桶 upsert 是**整行覆盖**，重放自不携带 credits 的客户端会把既有行 credits 覆盖回 0——这是桶粒度 last-wins 的直接推论；credits 不参与请求内"取 `total_tokens` 最大"的去重比较。
-- 服务端只持久化上表白名单字段；未知字段一律忽略。`project_key` 只保留 basename，`session_id` 拒绝路径分隔符；不存 prompt、正文、标题、绝对路径、resume command。
-- 成功 `200`：`{ "inserted": <桶数>, "skipped": 0, "upload_scope": "private" }`；仅带 `sessions` 时 `inserted` 为 0。请求携带 `sessions` 时追加可选字段 `sessions_upserted`（插入+更新条数）与 `sessions_skipped`（请求内去重丢弃 + 账户级来源 + 旧/等值快照）。旧 CLI 不传 `sessions` 时响应逐字不变。
+- 服务端只持久化上表白名单字段；未知字段一律忽略。`project_key` 只保留 basename，`session_id` 拒绝路径分隔符；不存 prompt、正文、标题、绝对路径、resume command；`repo_url` 只存 github.com / gitee.com 的规范地址，不存本地路径、remote 原文与凭据。
+- **隐私评审（2026-11-06，操作者放行）**：`projects` 只收 github.com / gitee.com 两个公共托管主机；gitlab.com、自建 GitLab、企业版主机由 CLI 与服务端双重过滤。托管在 GitHub / Gitee 上的**私有仓库**地址（owner/repo 名）仍会上报，CLI 因此提供关闭开关（默认开启；关闭后既不读取也不上报，已上报的值保留，可在仪表盘手动隐藏）。
+- 成功 `200`：`{ "inserted": <桶数>, "skipped": 0, "upload_scope": "private" }`；仅带 `sessions` 时 `inserted` 为 0。请求携带 `sessions` 时追加可选字段 `sessions_upserted`（插入+更新条数）与 `sessions_skipped`（请求内去重丢弃 + 账户级来源 + 旧/等值快照）。旧 CLI 不传 `sessions` 时响应逐字不变。请求携带非空 `projects` 时追加 `projects_upserted`（落库条数）与 `projects_skipped`（条目级丢弃 + 请求内被覆盖），二者之和恒等于 `projects` 数组长度；仅带 `projects` 时 `inserted` 为 0；不传 `projects` 时响应逐字不变。
+- **新 CLI × 旧服务端（契约 v3）**：旧服务端忽略 `projects`——带用量的请求照常 `200`，但响应没有 `projects_upserted`，CLI 视为未确认、下次同步重试；仅带 `projects` 的请求在旧服务端得到 `400 {"error":"No usage buckets provided"}`（新服务端对非空 `projects` 永不返回此码），CLI 据此判定服务端不支持，跳过而不算同步失败。上线顺序：服务端先于 CLI。
 - 附带一次尽力而为的 `last_used_at` 更新（失败只记日志，**不影响已提交的写入**，响应仍 200）。
 
 ### 2.5 `GET /api/functions/token-usage-public-config`（公开｜CLI 面）
@@ -450,7 +465,7 @@ Query：`from`、`to`（ISO 瞬时，按 `hour_start ∈ [from,to)`）、`limit`
 
 适用范围：涉及 §2.6–2.10 的条目（6、7 的字段形态与聚合规则，含 `sessions` series）属
 Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）；其余条目为 CLI 面硬冻结
-（§2.4 的 `sessions` ingest 校验与 upsert 语义属于 CLI 面）。
+（§2.4 的 `sessions` / `projects` ingest 校验与 upsert 语义属于 CLI 面）。
 
 1. 规范路径（`token-usage-*`）行为逐字一致，`/device` 页面可达；旧 `tokentracker-*`
    路径已退役（§1.5）：GET 返回 404，写动词返回 405，均无处理器。
@@ -477,6 +492,13 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
     model` 升序分页（limit 1–2000）、设备令牌专用鉴权（JWT `401`、吊销设备 `403`、不接受
     `device_id` 参数）、只回本设备行且**不聚合 / 不剔除账户级来源**、响应字段白名单
     （不含 `total_cost_usd`，`credits` 6 位小数、`billable_total_tokens` 可空）。
+16. ingest `projects`（契约 v3）：非数组 `400 Invalid project`、超 200 条 `400 Too many projects
+    (max 200)`（均先于任何写入）；条目级不合规只丢该条、不影响同批写入；`repo_url` 仅
+    GitHub / Gitee 规范形态（主机白名单、恰好两段路径与字符集、每段 ≤100、全长 ≤200、拒
+    `.git` 尾）或显式 `null`；`project_key` 与 session 同一清洗；先校验后去重、同键保留靠后
+    条目；落库键 `(user_id, device_id, project_key)` 按设备 last-wins、`null` 只清本设备；
+    落库列白名单；永不写 `token_project_profiles`；`projects_upserted + projects_skipped =
+    projects.length`；不携带时请求与响应逐字不变，仅带 `projects` 的请求合法。
 
 > §2.11 / §2.12 已于 2026-10-27 随 0.2.0 实现转正式：golden 测试
 > `tests/contract/sync-runs.test.ts` 覆盖两端点（校验、幂等重放、空跑派生、筛选分页、
@@ -487,6 +509,10 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
 > `tests/contract/ingest.test.ts` 的 credits 分组，机制背景见
 > `docs/sources-capture-audit.md` §2。
 
+> `projects` 可选字段于 2026-11-06 随契约 v3 立项（§2.4 新增可选请求字段，§4 规则允许）：
+> 不改变任何既有字段、校验阈值与错误码，旧 CLI 不传时请求与响应逐字不变；golden 覆盖见
+> `tests/contract/ingest.test.ts` 的 projects 分组，冻结条目为 §3 的 16。
+
 ## 4. 兼容演进规则
 
 - 只允许**追加可选响应字段**、**新增端点/series** 与**新增可选请求字段**。
@@ -496,6 +522,10 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
   携带 `sessions` 时追加。
 - `credits` 是 ingest 桶的可选追加字段（2026-10-31）；旧 CLI 不传时行为逐字不变，读取侧
   以 0 为缺省（独立维度，不参与 token/成本聚合）。
+- `projects` 是 ingest 的可选追加字段（2026-11-06，契约 v3）；旧 CLI 不传时行为逐字不变，
+  `projects_upserted` / `projects_skipped` 只在请求携带非空 `projects` 时追加；它把「全空即
+  400」的判定从三者扩到四者，对旧客户端无可观察差异。仓库主机白名单（github.com /
+  gitee.com）同属隐私白名单：只可收紧，放宽须先回写本文并过隐私评审。
 - Sessions 的隐私白名单（不存 prompt、正文、标题、绝对路径、resume command）属于契约，
   不得以"调试字段"或"未来扩展"为名放宽；新增会话字段必须先回写本文并过隐私评审。
 - 规范路径命名为 `token-usage-*`；旧 `tokentracker-*` 路径别名已于 2026-11-03 退役

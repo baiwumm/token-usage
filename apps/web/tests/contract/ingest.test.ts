@@ -8,9 +8,12 @@ import { POST as ingestPost } from "@/app/api/functions/token-usage-ingest/route
 import { FakeSupabase } from "../helpers/fake-supabase";
 import {
   DEVICE_A,
+  DEVICE_B,
   TOKEN_A,
+  TOKEN_B,
   TOKEN_ON_REVOKED_DEVICE,
   TOKEN_REVOKED,
+  USER_ID,
   base,
   initContractEnv,
   jsonRequest,
@@ -740,5 +743,275 @@ describe("ingest project_key (contract v2)", () => {
     expect(res.status).toBe(200);
     const stored = rowsAt()[0].project_key as string;
     expect(stored).toHaveLength(120);
+  });
+});
+
+// Contract v3 (2026-11-06, docs/cli-contract.md §2.4 / §3 item 16): optional
+// `projects` names the GitHub / Gitee repo behind each project directory.
+// Entries are dropped one by one (never failing the batch), each device keeps
+// its own detection row, and ingest never writes the manual profile table.
+describe("ingest projects (contract v3)", () => {
+  const REPO = "https://github.com/octo-org/demo-app";
+  const repoRows = () => fake.table("token_project_repos");
+
+  function project(over: Record<string, unknown> = {}) {
+    return { project_key: "demo-app", repo_url: REPO, ...over };
+  }
+
+  it("leaves the legacy response byte-for-byte unchanged without projects", async () => {
+    for (const body of [
+      { hourly: [bucket()] },
+      { hourly: [bucket()], projects: [] },
+      { hourly: [bucket()], projects: null },
+    ]) {
+      const res = await ingest(body);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ inserted: 1, skipped: 0, upload_scope: "private" });
+    }
+    expect(repoRows()).toHaveLength(0);
+  });
+
+  it("an empty projects array alone is still an empty upload", async () => {
+    const res = await ingest({ projects: [] });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "No usage buckets provided" });
+  });
+
+  it("accepts a projects-only payload and stores the repo on this device's row", async () => {
+    const res = await ingest({ projects: [project()] });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      inserted: 0,
+      skipped: 0,
+      upload_scope: "private",
+      projects_upserted: 1,
+      projects_skipped: 0,
+    });
+    expect(repoRows()).toHaveLength(1);
+    expect(repoRows()[0]).toMatchObject({
+      user_id: USER_ID,
+      device_id: DEVICE_A,
+      project_key: "demo-app",
+      repo_url: REPO,
+    });
+    expect(new Date(String(repoRows()[0].updated_at)).getTime()).toBeGreaterThan(
+      Date.now() - 60_000,
+    );
+  });
+
+  it("appends projects counters next to the sessions counters", async () => {
+    const res = await ingest({ hourly: [bucket()], sessions: [session()], projects: [project()] });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      inserted: 1,
+      skipped: 0,
+      upload_scope: "private",
+      sessions_upserted: 1,
+      sessions_skipped: 0,
+      projects_upserted: 1,
+      projects_skipped: 0,
+    });
+  });
+
+  it("accepts the canonical GitHub and Gitee forms verbatim", async () => {
+    const res = await ingest({
+      projects: [
+        project({ project_key: "gh", repo_url: "https://github.com/Octo-Org/my.repo_v2" }),
+        project({ project_key: "ge", repo_url: "https://gitee.com/some-user/demo-app" }),
+      ],
+    });
+    expect(await res.json()).toMatchObject({ projects_upserted: 2, projects_skipped: 0 });
+    const byKey = Object.fromEntries(repoRows().map((r) => [r.project_key, r.repo_url]));
+    expect(byKey).toEqual({
+      gh: "https://github.com/Octo-Org/my.repo_v2",
+      ge: "https://gitee.com/some-user/demo-app",
+    });
+  });
+
+  it("cleans project_key with the session rules", async () => {
+    const cases: Array<[string, string]> = [
+      ["/home/me/work/demo-app/", "demo-app"],
+      ["C:\\Users\\me\\repo\\", "repo"],
+      ["/home/me/dir/\u0007proj\u0007", "proj"],
+      [`/tmp/${"x".repeat(200)}`, "x".repeat(120)],
+    ];
+
+    for (const [input, expected] of cases) {
+      fake.table("token_project_repos").length = 0;
+      const res = await ingest({ projects: [project({ project_key: input })] });
+      expect(res.status).toBe(200);
+      expect(repoRows()).toHaveLength(1);
+      expect(repoRows()[0].project_key).toBe(expected);
+    }
+  });
+
+  it("drops non-canonical and non-GitHub/Gitee entries one by one, never the batch", async () => {
+    const badUrls: unknown[] = [
+      "https://gitlab.com/acme/app",
+      "https://gitlab.acme.internal/team/app",
+      "https://github.acme.com/team/app",
+      "https://www.github.com/acme/app",
+      "https://GitHub.com/acme/app",
+      "http://github.com/acme/app",
+      "git@github.com:acme/app.git",
+      "ssh://git@github.com/acme/app",
+      "https://github.com/acme/app.git",
+      "https://github.com/acme/app.GIT",
+      "https://github.com/acme/app/",
+      "https://github.com/acme",
+      "https://github.com/acme/app/tree/main",
+      "https://fake-user:fake-pass@github.com/acme/app",
+      "https://github.com:443/acme/app",
+      "https://github.com/acme/app?tab=readme",
+      "https://github.com/acme/app#readme",
+      "https://github.com/../app",
+      "https://github.com/acme/.",
+      "https://github.com/ac me/app",
+      "https://github.com/acme/%61pp",
+      " https://github.com/acme/app",
+      `https://gitee.com/acme/${"r".repeat(101)}`,
+      "",
+      42,
+      {},
+    ];
+    const badKeys: unknown[] = ["", ".", "..", "/", "\u0007", 42, null];
+    const entries: unknown[] = [
+      ...badUrls.map((repo_url, index) => project({ project_key: `bad-url-${index}`, repo_url })),
+      ...badKeys.map((project_key) => project({ project_key })),
+      { repo_url: REPO },
+      { project_key: "missing-repo-url" },
+      null,
+      "demo-app",
+      7,
+      [],
+      project({ project_key: "kept" }),
+    ];
+
+    const res = await ingest({ hourly: [bucket()], projects: entries });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      inserted: 1,
+      skipped: 0,
+      upload_scope: "private",
+      projects_upserted: 1,
+      projects_skipped: entries.length - 1,
+    });
+    expect(repoRows().map((r) => r.project_key)).toEqual(["kept"]);
+    // The usage write of the same request lands regardless.
+    expect(
+      fake.table("token_usage_hourly").filter((r) => r.hour_start === "2026-10-21T09:00:00.000Z"),
+    ).toHaveLength(1);
+  });
+
+  it("caps repo_url at 200 characters", async () => {
+    const at200 = `https://github.com/${"o".repeat(90)}/${"r".repeat(90)}`;
+    const at201 = `https://github.com/${"o".repeat(91)}/${"r".repeat(90)}`;
+    expect(at200).toHaveLength(200);
+    expect(at201).toHaveLength(201);
+
+    const res = await ingest({
+      projects: [
+        project({ project_key: "at-cap", repo_url: at200 }),
+        project({ project_key: "over-cap", repo_url: at201 }),
+      ],
+    });
+    expect(await res.json()).toMatchObject({ projects_upserted: 1, projects_skipped: 1 });
+    expect(repoRows().map((r) => r.project_key)).toEqual(["at-cap"]);
+  });
+
+  it("validates first, then keeps the later valid entry per cleaned project_key", async () => {
+    const later = "https://github.com/octo-org/demo-app-v2";
+    const res = await ingest({
+      projects: [
+        project({ project_key: "/work/demo-app" }),
+        project({ project_key: "demo-app", repo_url: later }),
+        // An invalid later entry never displaces a valid earlier one.
+        project({ project_key: "demo-app", repo_url: "https://gitlab.com/octo-org/demo-app" }),
+      ],
+    });
+    expect(await res.json()).toMatchObject({ projects_upserted: 1, projects_skipped: 2 });
+    expect(repoRows()).toHaveLength(1);
+    expect(repoRows()[0].repo_url).toBe(later);
+  });
+
+  it("last-wins per (user, device, project_key) across requests", async () => {
+    const moved = "https://gitee.com/octo-org/demo-app";
+    await ingest({ projects: [project()] });
+    const res = await ingest({ projects: [project({ repo_url: moved })] });
+    expect(res.status).toBe(200);
+    expect(repoRows()).toHaveLength(1);
+    expect(repoRows()[0].repo_url).toBe(moved);
+  });
+
+  it("keeps one row per device; a null repo_url clears only the sender's row", async () => {
+    await ingest({ projects: [project()] }, TOKEN_A);
+    await ingest({ projects: [project()] }, TOKEN_B);
+    const res = await ingest({ projects: [project({ repo_url: null })] }, TOKEN_B);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ projects_upserted: 1, projects_skipped: 0 });
+
+    const byDevice = Object.fromEntries(repoRows().map((r) => [r.device_id, r.repo_url]));
+    expect(byDevice).toEqual({ [DEVICE_A]: REPO, [DEVICE_B]: null });
+  });
+
+  it("rejects a non-array or oversize projects field before any write", async () => {
+    const before = fake.table("token_usage_hourly").length;
+
+    for (const projects of ["nope", { project_key: "demo-app", repo_url: REPO }, 7]) {
+      const res = await ingest({ hourly: [bucket()], projects });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "Invalid project" });
+    }
+
+    const tooMany = await ingest({
+      hourly: [bucket()],
+      projects: Array.from({ length: 201 }, (_, index) => project({ project_key: `p${index}` })),
+    });
+    expect(tooMany.status).toBe(400);
+    expect(await tooMany.json()).toEqual({ error: "Too many projects (max 200)" });
+
+    expect(fake.table("token_usage_hourly")).toHaveLength(before);
+    expect(repoRows()).toHaveLength(0);
+
+    const atCap = await ingest({
+      projects: Array.from({ length: 200 }, (_, index) => project({ project_key: `p${index}` })),
+    });
+    expect(atCap.status).toBe(200);
+    expect(await atCap.json()).toMatchObject({ projects_upserted: 200, projects_skipped: 0 });
+  });
+
+  it("stores only whitelisted columns and never writes the manual profile table", async () => {
+    const profile = {
+      user_id: USER_ID,
+      project_key: "demo-app",
+      display_name: "Demo",
+      repo_url: "https://example.test/manual",
+      repo_hidden: false,
+      logo_url: "https://example.test/logo.png",
+      logo_object: null,
+      created_at: "2026-11-01T00:00:00.000Z",
+      updated_at: "2026-11-01T00:00:00.000Z",
+    };
+    fake.table("token_project_profiles").push({ ...profile });
+
+    const res = await ingest({
+      projects: [
+        project({
+          path: "C:\\Users\\me\\work\\demo-app",
+          remote: "git@github.com:octo-org/demo-app.git",
+          token: "fake-token-value",
+        }),
+      ],
+    });
+    expect(res.status).toBe(200);
+    expect(Object.keys(repoRows()[0]).sort()).toEqual([
+      "created_at",
+      "device_id",
+      "project_key",
+      "repo_url",
+      "updated_at",
+      "user_id",
+    ]);
+    expect(fake.table("token_project_profiles")).toEqual([profile]);
   });
 });

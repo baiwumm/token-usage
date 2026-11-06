@@ -125,6 +125,19 @@ function defaultTables(): Record<string, TableDef> {
       ],
     },
     token_allowed_emails: { rows: [], generate: ["created_at"], unique: [{ name: "token_allowed_emails_email_key", columns: ["email"] }] },
+    // contract v3 (2026-11-06): ingest `projects` keeps one repo detection
+    // per device; the dashboard's manual project profile lives in its own
+    // table, which ingest never writes.
+    token_project_repos: {
+      rows: [],
+      generate: ["created_at", "updated_at"],
+      unique: [{ name: "token_project_repos_pkey", columns: ["user_id", "device_id", "project_key"] }],
+    },
+    token_project_profiles: {
+      rows: [],
+      generate: ["created_at", "updated_at"],
+      unique: [{ name: "token_project_profiles_pkey", columns: ["user_id", "project_key"] }],
+    },
   };
 }
 
