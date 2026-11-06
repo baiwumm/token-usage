@@ -278,32 +278,57 @@
   + 刷新按钮。**无时间范围、无设备、无来源筛选**——时间恒为「全部」（服务端夹到 3 年上限）。
   `sort` 与 `limit` 写 URL（`history.replaceState`），默认 `sort=tokens`、`limit=all`。
 - 摘要卡四格：总 Token（已归因）/ 总费用 / 项目数 / 未归因 Token；副标题「全部时间 · {from} – {to}」。
-- 列表**不是表格**：行与卡片是同一套信息层级——首字母头像 + 项目名、来源品牌图标（最多 5 个，
-  多余显示 `+N`）、占窗口百分比、Token 数与相对最高项的量条、底部 meta（费用 / 会话数 /
-  最近活跃）。排序由服务端做（降序，同值按 key 字典序），前端只做 Top-N 切片。
+- 列表**不是表格**：行与卡片是同一套信息层级——项目 Logo（无 Logo 时为首字母方块）+ 项目名
+  （有仓库时名字旁带一枚**不可点击**的仓库标记：GitHub / Gitee 各自图标，其他主机为通用链接图标）、
+  来源品牌图标（最多 5 个，多余显示 `+N`）、占窗口百分比、Token 数与相对最高项的量条、底部 meta
+  （费用 / 会话数 / 最近活跃）。排序由服务端做（降序，同值按 key 字典序），前端只做 Top-N 切片。
 - 「未归因」组：服务端恒单独拆出并沉底（即使为 0），行内是 warning `Chip` + 说明文案。
   **Top-N 切片会把它切掉**（它在数组末尾），只有 `limit=all` 或列表较短时可见；摘要卡的
   「未归因」Token 数不受影响。
-- 详情弹窗：点击行/卡片打开，头部有上一个/下一个（范围是当前可见列表）。左栏是项目名、
-  区间、`口径：{caliber}` 与 6 个指标（Token 总量 / 占比 / 费用 / 会话数 / 活跃天数 /
-  日均活跃日）+ 三条脚注（费用按刊例价、积分是独立维度、仅用量元数据）；右栏三段——「完整
-  字段」、「每日活跃」柱状图（点柱固定当天）+ Token 构成条（input / cached / cacheCreation /
-  output / reasoning）、「按来源」逐来源明细。
+- 详情弹窗：点击行/卡片打开，头部有上一个/下一个（范围是当前可见列表），以及项目资料的两个动作：
+  「在 GitHub / Gitee 打开」（其他主机为「打开仓库」；新标签页，`noopener,noreferrer`；有仓库时才出现）
+  与「编辑」（窄屏只留图标）；「未归因」与审阅演示数据不显示这两个动作。左栏是 Logo + 项目名
+  （设了显示名时下方注明「目录名 {basename}」）、区间、`口径：{caliber}` 与 6 个指标（Token 总量 /
+  占比 / 费用 / 会话数 / 活跃天数 / 日均活跃日）+ 三条脚注（费用按刊例价、积分是独立维度、仅用量
+  元数据）；右栏三段——「完整字段」、「每日活跃」柱状图（点柱固定当天）+ Token 构成条（input /
+  cached / cacheCreation / output / reasoning）、「按来源」逐来源明细。
 - 口径说明条：卡内固定文案，随口径切两段（`scopeNote.sessions` / `scopeNote.hourly`）。
 - 状态：加载走骨架（摘要 + 6 行/6 卡，镜像真实结构）；无旧数据时 `SectionError` 重试，
   有旧数据时顶部红条「刷新失败，当前显示的是上次成功加载的数据」；空态两分（无数据 /
   仅剩零用量被过滤），给「配对设备」与「刷新」；刷新中盖半透明层 + `Spinner`。
-- 项目名：`resolveProjectDisplayName()`（`components/projects/identity.ts`）是展示层归一化
-  挂点，当前是原样透传——**无改名/合并映射、无脱敏**。项目名来源是采集端保留的目录
-  basename（服务端 `normalizeProjectKey` 剥离控制字符与路径、截断 120 字符）。隐私只体现为
-  脚注「仅展示用量元数据，不含对话内容、路径或命令」。
+- **项目资料**（2026-11-06；数据来源与契约见下条 API）：
+  - 项目名：`resolveProjectDisplayName()`（`components/projects/identity.ts`）= 手动显示名，否则
+    目录 basename（服务端 `normalizeProjectKey` 剥离控制字符与路径、截断 120 字符）。显示名只作用于
+    展示层，搜索、行 key 与接口仍用 basename；**无合并映射、无脱敏**。隐私脚注「仅展示用量元数据，
+    不含对话内容、路径或命令」不变。
+  - 仓库：手动地址（任意 https）→ 采集器检测到的地址（契约 v3，仅 github.com / gitee.com；多设备
+    取未吊销设备中最近上报的非空值）→ 不显示；「不显示仓库」开关只屏蔽检测值，不屏蔽手动地址。
+  - Logo：`components/projects/project-logo.tsx`，HeroUI `Avatar`（圆角沿用原首字母方块）——手填
+    Logo 地址 → 上传的图片 → 首字母，图片加载失败自动换下一级；进入视口附近（200px）才请求，
+    `referrerPolicy="no-referrer"`。
+  - 编辑弹窗 `components/projects/project-profile-dialog.tsx`（由详情弹窗的「编辑」打开，与详情弹窗
+    并列渲染）：显示名（可选，≤60 字符）、仓库地址（https；下方提示检测值并可「使用检测值」）、
+    「不显示仓库」开关、Logo（实时预览；上传 / 更换 / 移除上传的图片；Logo 地址；有 GitHub 仓库时
+    可「填入 GitHub 头像」）。文本字段点「保存」一起提交；上传与移除图片**即时生效**（同设置页头像）。
+    「恢复默认」两段确认，清空手动设置并删除上传的图片，检测值保留。部署未建 `avatars` 存储桶时
+    隐藏上传入口并给说明。字段校验与服务端共用 `lib/projects/profile.ts`。
+  - 上传沿用头像的裁剪流程：共享组件 `components/image-crop-dialog.tsx`（react-easy-crop，缩放 +
+    90° 旋转，输出 256×256 WebP，浏览器不支持时为 PNG），选图只收 PNG / JPEG / WebP。
 - 演示审阅面板 `projects-review-panel.tsx` 仅在 `?review=1` 时渲染（默认演示数据 + 页顶
   「演示数据 · 非真实用量」标记），仓库内无链接指向它；动效候选目录在 `projects-effects.ts`。
 - API：`/api/app/projects` 与 `/api/app/projects-hourly` 顶层同形
   （`from/to/days/total/limit/offset/caliber/totals{...}/filtered_zero_usage_projects/projects[]`），
   差异只在 `caliber` 与 `projects[].session_count` 的含义（sessions = 会话行数；
   hourly = 各桶 conversations 求和，故 hourly 口径列头写「会话条目」）；详情走
-  `/api/app/projects-detail`。
+  `/api/app/projects-detail`。项目资料走独立的 `/api/app/project-profiles`（cookie 会话鉴权，
+  service-role 读写；与窗口和口径无关，页面加载与刷新时各拉一次，保存后就地更新）：
+  `GET` → `{ upload_enabled, profiles[] }`（每项含 `display_name`、生效 `repo_url` 与
+  `repo_source: manual | detected`、`detected_repo_url`、`manual_repo_url`、`repo_hidden`、
+  `logo_url`、`logo_upload_url`）；`PUT` 整体替换手动字段（可带 `clear_logo_upload`；全空即删行）；
+  `POST ?project_key=` 原始字节上传裁剪后的 Logo（按文件头只收 WebP / PNG，≤512 KB，存
+  `avatars/<user_id>/projects/<uuid>.<ext>`，公开地址不含项目名，替换时删除旧图）；`DELETE
+  ?project_key=` 恢复默认。表结构见 `docs/rewrite-plan.md` §3，检测值的上报规则见
+  `docs/cli-contract.md` §2.4。
 
 ### 年度回顾（`/wrapped`）
 
@@ -461,7 +486,8 @@
 设置页用 `Tabs` / 分段导航：账户 / 偏好 / 设备（tab 状态为组件内 state，不写 URL）；
 各分区用 `Card` 复合结构。账户分区自上而下为个人信息卡（名称 + 只读邮箱）、头像卡
 （更换走 `react-easy-crop` 裁剪弹窗：缩放滑杆 + ±90° 旋转，canvas 合成 256×256 WebP
-后上传，更换/删除按钮并列）、预算卡（月度 USD 上限，`NumberField`：最小 0、最大
+后上传，更换/删除按钮并列；弹窗是与项目 Logo 共用的 `components/image-crop-dialog.tsx`，
+文案与上传函数由调用方传入）、预算卡（月度 USD 上限，`NumberField`：最小 0、最大
 1,000,000、步长 1、整数美元，保存写本机 `token-usage.budget`，0 关闭）、密码卡
 （设置/更新密码，≥8 位；
 魔法链接账号在此开启密码登录）。登录页为 HeroUI `Tabs`（密码登录 `Lock` / 魔法链接

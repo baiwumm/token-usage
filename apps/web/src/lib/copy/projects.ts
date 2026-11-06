@@ -118,6 +118,53 @@ export interface ProjectsCopy {
     emptyFilterAction: string;
     stale: string;
   };
+  /** Project profile: logo, repo link and display name (2026-11-06). */
+  profile: {
+    edit: string;
+    title: string;
+    directory: string;
+    openRepo: Record<"github" | "gitee" | "other", string>;
+    repoMark: Record<"github" | "gitee" | "other", string>;
+    displayName: string;
+    displayNameHint: string;
+    displayNameTooLong: string;
+    repoUrl: string;
+    repoUrlHint: string;
+    repoDetected: string;
+    repoNotDetected: string;
+    useDetected: string;
+    repoHidden: string;
+    repoHiddenHint: string;
+    logo: string;
+    logoUrl: string;
+    logoUrlHint: string;
+    useOwnerAvatar: string;
+    logoUpload: string;
+    logoReplace: string;
+    logoRemove: string;
+    logoUploadUnavailable: string;
+    logoOrder: string;
+    invalidHttps: string;
+    invalidImage: string;
+    save: string;
+    reset: string;
+    resetConfirm: string;
+    resetHint: string;
+    cancel: string;
+    saved: string;
+    resetDone: string;
+    logoUploaded: string;
+    logoRemoved: string;
+    failed: string;
+    crop: {
+      title: string;
+      zoom: string;
+      rotateLeft: string;
+      rotateRight: string;
+      upload: string;
+      uploading: string;
+    };
+  };
   review: {
     open: string;
     close: string;
@@ -257,6 +304,62 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
         "部分项目只有会话壳、没有 token / 费用 / 积分，已被隐藏。",
       emptyFilterAction: "刷新",
       stale: "刷新失败，当前显示的是上次成功加载的数据。",
+    },
+    profile: {
+      edit: "编辑",
+      title: "编辑项目信息",
+      directory: "目录名 {name}",
+      openRepo: {
+        github: "在 GitHub 打开",
+        gitee: "在 Gitee 打开",
+        other: "打开仓库",
+      },
+      repoMark: {
+        github: "GitHub 仓库",
+        gitee: "Gitee 仓库",
+        other: "仓库链接",
+      },
+      displayName: "显示名",
+      displayNameHint: "可选，最多 60 个字符；留空则显示目录名。",
+      displayNameTooLong: "显示名最多 60 个字符。",
+      repoUrl: "仓库地址",
+      repoUrlHint: "任意 https 地址；留空则使用采集器检测到的地址。",
+      repoDetected: "采集器检测到：{url}",
+      repoNotDetected: "采集器尚未检测到 GitHub / Gitee 仓库。",
+      useDetected: "使用检测值",
+      repoHidden: "不显示仓库",
+      repoHiddenHint: "开启后不再显示采集器检测到的仓库地址。",
+      logo: "Logo",
+      logoUrl: "Logo 地址",
+      logoUrlHint: "https 图片地址，可直接引用线上 Logo。",
+      useOwnerAvatar: "填入 GitHub 头像",
+      logoUpload: "上传图片",
+      logoReplace: "更换图片",
+      logoRemove: "移除上传的图片",
+      logoUploadUnavailable: "当前部署未启用 avatars 存储桶，暂不支持上传。",
+      logoOrder:
+        "显示顺序：Logo 地址 → 上传的图片 → 首字母，加载失败时自动换下一个。",
+      invalidHttps: "请输入以 https:// 开头的有效地址。",
+      invalidImage: "请选择 PNG、JPEG 或 WebP 图片。",
+      save: "保存",
+      reset: "恢复默认",
+      resetConfirm: "确认恢复默认",
+      resetHint:
+        "恢复默认会清空手动设置并删除上传的图片，采集器检测到的仓库保留。",
+      cancel: "取消",
+      saved: "项目信息已保存",
+      resetDone: "已恢复默认",
+      logoUploaded: "Logo 已上传",
+      logoRemoved: "已移除上传的图片",
+      failed: "操作失败：{error}",
+      crop: {
+        title: "裁剪 Logo",
+        zoom: "缩放",
+        rotateLeft: "左转 90°",
+        rotateRight: "右转 90°",
+        upload: "上传",
+        uploading: "上传中…",
+      },
     },
     review: {
       open: "效果审阅",
@@ -440,6 +543,68 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
         "Projects with session shells but no tokens, cost or credits are hidden.",
       emptyFilterAction: "Refresh",
       stale: "Refresh failed. Showing the last successfully loaded data.",
+    },
+    profile: {
+      edit: "Edit",
+      title: "Edit project info",
+      directory: "Directory {name}",
+      openRepo: {
+        github: "Open on GitHub",
+        gitee: "Open on Gitee",
+        other: "Open repository",
+      },
+      repoMark: {
+        github: "GitHub repository",
+        gitee: "Gitee repository",
+        other: "Repository link",
+      },
+      displayName: "Display name",
+      displayNameHint:
+        "Optional, up to 60 characters; leave empty to show the directory name.",
+      displayNameTooLong: "Display names are limited to 60 characters.",
+      repoUrl: "Repository URL",
+      repoUrlHint:
+        "Any https URL; leave empty to use the one the collector detected.",
+      repoDetected: "Detected by the collector: {url}",
+      repoNotDetected:
+        "The collector has not detected a GitHub / Gitee repository yet.",
+      useDetected: "Use detected",
+      repoHidden: "Hide repository",
+      repoHiddenHint:
+        "When on, the repository detected by the collector is not shown.",
+      logo: "Logo",
+      logoUrl: "Logo URL",
+      logoUrlHint:
+        "An https image URL, so an existing online logo can be used.",
+      useOwnerAvatar: "Use GitHub avatar",
+      logoUpload: "Upload image",
+      logoReplace: "Replace image",
+      logoRemove: "Remove uploaded image",
+      logoUploadUnavailable:
+        "Uploads are unavailable: this deployment has no avatars storage bucket.",
+      logoOrder:
+        "Display order: logo URL → uploaded image → initials, falling through when one fails to load.",
+      invalidHttps: "Enter a valid address that starts with https://.",
+      invalidImage: "Choose a PNG, JPEG or WebP image.",
+      save: "Save",
+      reset: "Reset to default",
+      resetConfirm: "Confirm reset",
+      resetHint:
+        "Resetting clears the manual settings and deletes the uploaded image; the repository detected by the collector stays.",
+      cancel: "Cancel",
+      saved: "Project info saved",
+      resetDone: "Reset to default",
+      logoUploaded: "Logo uploaded",
+      logoRemoved: "Uploaded image removed",
+      failed: "Something went wrong: {error}",
+      crop: {
+        title: "Crop logo",
+        zoom: "Zoom",
+        rotateLeft: "Rotate left 90°",
+        rotateRight: "Rotate right 90°",
+        upload: "Upload",
+        uploading: "Uploading…",
+      },
     },
     review: {
       open: "Effect review",

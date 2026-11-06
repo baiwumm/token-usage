@@ -3,6 +3,11 @@
 // with the browser session's JWT — the dual-principal path of
 // docs/cli-contract.md §1.4. Shapes mirror §2.10 / §2.7 wire payloads.
 
+import type {
+  ProjectProfile,
+  ProjectProfilesPayload,
+} from "@/lib/projects/profile";
+
 export interface DashboardTotals {
   total_tokens: number;
   billable_total_tokens: number;
@@ -877,4 +882,84 @@ export function fetchProjectDetail(params: {
   if (params.tz) query.set("tz", params.tz);
 
   return callApp<ProjectDetailPayload>("projects-detail", `?${query}`);
+}
+
+// Project profiles (/projects edit dialog): manual display name, repo link and
+// logo merged with the CLI-detected repo (contract v3). Cookie session auth.
+
+async function sendApp<T>(
+  path: string,
+  init: { method: "PUT" | "POST" | "DELETE"; body?: BodyInit; json?: unknown },
+): Promise<T> {
+  const response = await fetch(`/api/app/${path}`, {
+    method: init.method,
+    headers:
+      init.json !== undefined ? { "Content-Type": "application/json" } : {},
+    body: init.json !== undefined ? JSON.stringify(init.json) : init.body,
+  });
+
+  if (response.status === 401) {
+    throw new DashboardApiError("unauthorized", 401);
+  }
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: string;
+    };
+
+    throw new DashboardApiError(
+      payload.error || `HTTP ${response.status}`,
+      response.status,
+    );
+  }
+
+  return (await response.json()) as T;
+}
+
+export function fetchProjectProfiles(): Promise<ProjectProfilesPayload> {
+  return callApp<ProjectProfilesPayload>("project-profiles", "");
+}
+
+export interface ProjectProfileInput {
+  project_key: string;
+  display_name: string | null;
+  repo_url: string | null;
+  repo_hidden: boolean;
+  logo_url: string | null;
+  clear_logo_upload?: boolean;
+}
+
+export async function saveProjectProfile(
+  input: ProjectProfileInput,
+): Promise<ProjectProfile> {
+  const result = await sendApp<{ profile: ProjectProfile }>(
+    "project-profiles",
+    { method: "PUT", json: input },
+  );
+
+  return result.profile;
+}
+
+export async function uploadProjectLogo(
+  projectKey: string,
+  file: Blob,
+): Promise<ProjectProfile> {
+  const query = new URLSearchParams({ project_key: projectKey });
+  const result = await sendApp<{ profile: ProjectProfile }>(
+    `project-profiles?${query}`,
+    { method: "POST", body: file },
+  );
+
+  return result.profile;
+}
+
+export async function resetProjectProfile(
+  projectKey: string,
+): Promise<ProjectProfile> {
+  const query = new URLSearchParams({ project_key: projectKey });
+  const result = await sendApp<{ profile: ProjectProfile }>(
+    `project-profiles?${query}`,
+    { method: "DELETE" },
+  );
+
+  return result.profile;
 }

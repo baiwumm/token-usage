@@ -11,6 +11,7 @@ import type {
   ProjectsPayload,
 } from "@/lib/dashboard/api";
 import type { ProjectEffectId } from "@/lib/copy/projects";
+import type { ProjectProfile } from "@/lib/projects/profile";
 import type { EffectPreviewAction } from "./projects-effects";
 import type { SimulatedState } from "./projects-review-panel";
 import type { ProjectView } from "./projects-row";
@@ -42,6 +43,7 @@ import {
 } from "./projects-filters";
 import { ProjectsReviewPanel } from "./projects-review-panel";
 import { ProjectDetailDialog } from "./projects-detail-dialog";
+import { ProjectProfileDialog } from "./project-profile-dialog";
 import {
   allEffects,
   defaultEffects,
@@ -58,6 +60,7 @@ import { useUrlFilters } from "@/lib/dashboard/url-filters";
 import { loadable, type Loadable } from "@/lib/loadable";
 import {
   fetchProjectDetail,
+  fetchProjectProfiles,
   fetchProjects,
   isUnauthorized,
   projectsCaliber,
@@ -67,6 +70,8 @@ import { useFormat } from "@/lib/format/format";
 
 const PROJECTS_LIMIT = 200;
 const UNATTRIBUTED = "__unattributed";
+// Demo mode never shows (or edits) live profiles.
+const EMPTY_PROFILES: ReadonlyMap<string, ProjectProfile> = new Map();
 
 function keyOf(project: ProjectItem): string {
   return project.project_key ?? UNATTRIBUTED;
@@ -110,6 +115,20 @@ export function ProjectsClient() {
     status: "loading" | "ready" | "error";
     data: ProjectDetailPayload | null;
   }>({ status: "loading", data: null });
+
+  // Project profiles (logo / repo / display name) ride beside the list:
+  // window-independent, loaded once per refresh, patched in place on save.
+  const [profiles, setProfiles] = useState<ReadonlyMap<string, ProjectProfile>>(
+    () => new Map(),
+  );
+  const [uploadEnabled, setUploadEnabled] = useState(false);
+  const profilesRequestId = useRef(0);
+  // The editor remounts per open (nonce key) so its drafts start clean.
+  const [edit, setEdit] = useState<{
+    key: string;
+    nonce: number;
+    open: boolean;
+  } | null>(null);
 
   const timezone = browserTimezone();
   const caliber = projectsCaliber();
@@ -169,9 +188,56 @@ export function ProjectsClient() {
     void load();
   }, [accessToken, demoMode, load]);
 
+  // Decoration only: a failed profiles load keeps the last map (initials and
+  // no repo links at worst) and never blocks the list.
+  const loadProfiles = useCallback(async () => {
+    const id = profilesRequestId.current + 1;
+
+    profilesRequestId.current = id;
+    try {
+      const payload = await fetchProjectProfiles();
+
+      if (profilesRequestId.current !== id) return;
+      setProfiles(
+        new Map(
+          payload.profiles.map((profile) => [profile.project_key, profile]),
+        ),
+      );
+      setUploadEnabled(payload.upload_enabled);
+    } catch (error) {
+      if (profilesRequestId.current === id && isUnauthorized(error)) {
+        redirectToLogin();
+      }
+    }
+  }, [redirectToLogin]);
+
+  useEffect(() => {
+    if (demoMode || !accessToken) return;
+    void loadProfiles();
+  }, [accessToken, demoMode, loadProfiles]);
+
   const retry = useCallback(() => {
     void load();
-  }, [load]);
+    if (!demoMode) void loadProfiles();
+  }, [demoMode, load, loadProfiles]);
+
+  const updateProfile = useCallback((profile: ProjectProfile) => {
+    setProfiles((previous) =>
+      new Map(previous).set(profile.project_key, profile),
+    );
+  }, []);
+
+  const openEdit = useCallback((key: string) => {
+    setEdit((previous) => ({
+      key,
+      nonce: (previous?.nonce ?? 0) + 1,
+      open: true,
+    }));
+  }, []);
+
+  const closeEdit = useCallback(() => {
+    setEdit((previous) => (previous ? { ...previous, open: false } : null));
+  }, []);
 
   const activePayload = useMemo(
     () =>
@@ -524,6 +590,7 @@ export function ProjectsClient() {
         limit={filters.limit}
         locale={locale}
         payload={activePayload}
+        profiles={demoMode ? EMPTY_PROFILES : profiles}
         refreshing={activeRefreshing}
         replayNonce={replayNonce}
         selectedKey={activeKey}
@@ -546,17 +613,42 @@ export function ProjectsClient() {
         hasNext={index >= 0 && index < visibleProjects.length - 1}
         hasPrevious={index > 0}
         locale={locale}
+        profile={
+          !demoMode && activeProject?.project_key
+            ? profiles.get(activeProject.project_key)
+            : undefined
+        }
         project={activeProject}
         selectedDay={selectedDay}
         simulatedDetailError={simulatedState === "detailError"}
         status={detail.status}
         styles={styles}
         onClose={requestClose}
+        onEdit={
+          !demoMode && activeProject?.project_key
+            ? () => openEdit(activeProject.project_key as string)
+            : undefined
+        }
         onNext={() => step(1)}
         onPrevious={() => step(-1)}
         onRetry={retryDetail}
         onSelectDay={setSelectedDay}
       />
+
+      {edit ? (
+        <ProjectProfileDialog
+          key={edit.nonce}
+          copy={copy}
+          locale={locale}
+          open={edit.open}
+          profile={profiles.get(edit.key)}
+          projectKey={edit.key}
+          uploadEnabled={uploadEnabled}
+          onClose={closeEdit}
+          onProfileChange={updateProfile}
+          onUnauthorized={redirectToLogin}
+        />
+      ) : null}
     </main>
   );
 }

@@ -12,21 +12,27 @@
 import type { CSSProperties } from "react";
 import type { ProjectItem } from "@/lib/dashboard/api";
 import type { ProjectsCopy } from "@/lib/copy/projects";
+import type { ProjectProfile } from "@/lib/projects/profile";
 import type { ProjectEffectState } from "./projects-effects";
 
 import { Button, Chip, Typography, cn } from "@heroui/react";
 import { memo } from "react";
 
 import { resolveProjectDisplayName } from "./identity";
+import { ProjectLogo } from "./project-logo";
+import { RepoHostIcon } from "./repo-host-icon";
 
 import { formatMessage } from "@/lib/copy/message";
 import { useFormat } from "@/lib/format/format";
+import { repoHostOf } from "@/lib/projects/profile";
 import { SourceIcon } from "@/components/source-icon";
 
 export type ProjectView = "list" | "cards";
 
 interface RowProps {
   project: ProjectItem;
+  /** Manual profile merged with the CLI-detected repo, when there is one. */
+  profile?: ProjectProfile;
   copy: ProjectsCopy;
   locale: "zh" | "en";
   maxTokens: number;
@@ -44,14 +50,9 @@ interface RowProps {
 
 const SOURCE_ICON_LIMIT = 5;
 
-function initialsOf(name: string): string {
-  return (name.trim().replace(/^[^a-z0-9]+/i, "") || "?")
-    .charAt(0)
-    .toUpperCase();
-}
-
 function Identity({
   project,
+  profile,
   copy,
   locale,
   sources,
@@ -60,6 +61,7 @@ function Identity({
   size,
 }: {
   project: ProjectItem;
+  profile?: ProjectProfile;
   copy: ProjectsCopy;
   locale: "zh" | "en";
   sources: string[];
@@ -67,34 +69,42 @@ function Identity({
   unattributedHint: string;
   size: "sm" | "lg";
 }) {
-  const name = project.project_key;
+  const key = project.project_key;
+  const name = key ? resolveProjectDisplayName(key, profile) : null;
+  const host = profile?.repo_url ? repoHostOf(profile.repo_url) : null;
   const visible = sources.slice(0, SOURCE_ICON_LIMIT);
   const overflow = sources.length - visible.length;
 
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span
-        aria-hidden="true"
-        className={cn(
-          "bg-accent/10 text-accent flex shrink-0 items-center justify-center rounded-xl font-medium",
-          size === "lg" ? "size-10 text-base" : "size-8 text-sm",
-        )}
-      >
-        {name ? initialsOf(resolveProjectDisplayName(name)) : "·"}
-      </span>
+      <ProjectLogo name={name} profile={profile} size={size} />
       <span className="flex min-w-0 flex-col gap-1">
         {name == null ? (
           <Chip color="warning" size="sm" variant="soft">
             {copy.list.unattributed}
           </Chip>
         ) : (
-          <Typography
-            className="block max-w-56 truncate md:max-w-80"
-            type="body-sm"
-            weight="semibold"
-          >
-            <span title={name}>{resolveProjectDisplayName(name)}</span>
-          </Typography>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <Typography
+              className="block max-w-56 truncate md:max-w-80"
+              type="body-sm"
+              weight="semibold"
+            >
+              <span title={key ?? undefined}>{name}</span>
+            </Typography>
+            {host ? (
+              // Not a link: the whole row is one button, so the repo opens
+              // from the detail dialog instead.
+              <span
+                aria-label={copy.profile.repoMark[host]}
+                className="text-muted inline-flex shrink-0"
+                role="img"
+                title={copy.profile.repoMark[host]}
+              >
+                <RepoHostIcon className="size-3.5" host={host} />
+              </span>
+            ) : null}
+          </span>
         )}
         <span className="flex min-h-4 items-center gap-1">
           {name == null ? (
@@ -165,6 +175,7 @@ function Meter({
 
 export const ProjectRow = memo(function ProjectRow({
   project,
+  profile,
   copy,
   locale,
   maxTokens,
@@ -196,7 +207,9 @@ export const ProjectRow = memo(function ProjectRow({
   return (
     <Button
       aria-label={formatMessage(copy.list.openDetail, locale, {
-        project: project.project_key ?? copy.list.unattributed,
+        project: project.project_key
+          ? resolveProjectDisplayName(project.project_key, profile)
+          : copy.list.unattributed,
       })}
       className={cn(
         "h-auto! min-h-0! w-full justify-start rounded-2xl! p-0! text-start",
@@ -216,6 +229,7 @@ export const ProjectRow = memo(function ProjectRow({
             copy={copy}
             fallbackText={fallbackText}
             locale={locale}
+            profile={profile}
             project={project}
             size="sm"
             sources={sources}
@@ -258,6 +272,7 @@ export const ProjectRow = memo(function ProjectRow({
 
 export const ProjectCardTile = memo(function ProjectCardTile({
   project,
+  profile,
   copy,
   locale,
   maxTokens,
@@ -289,7 +304,9 @@ export const ProjectCardTile = memo(function ProjectCardTile({
   return (
     <Button
       aria-label={formatMessage(copy.list.openDetail, locale, {
-        project: project.project_key ?? copy.list.unattributed,
+        project: project.project_key
+          ? resolveProjectDisplayName(project.project_key, profile)
+          : copy.list.unattributed,
       })}
       className={cn(
         "border-border bg-surface h-auto! min-h-0! w-full justify-start rounded-3xl! border p-0! text-start",
@@ -308,6 +325,7 @@ export const ProjectCardTile = memo(function ProjectCardTile({
           copy={copy}
           fallbackText={fallbackText}
           locale={locale}
+          profile={profile}
           project={project}
           size="lg"
           sources={sources}

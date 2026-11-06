@@ -8,8 +8,7 @@ import { Camera, TrashBin } from "@gravity-ui/icons";
 import { Avatar, Button, Card, Spinner, toast } from "@heroui/react";
 import { useRef, useState } from "react";
 
-import { AvatarCropDialog } from "./avatar-crop-dialog";
-
+import { ImageCropDialog } from "@/components/image-crop-dialog";
 import { useAvatarUpload, useProfile } from "@/lib/auth/profile";
 import { useLocale } from "@/lib/copy/locale";
 import { SETTINGS_COPY } from "@/lib/copy/settings";
@@ -128,7 +127,17 @@ export function AvatarCard() {
           </div>
         </div>
       </Card.Content>
-      <AvatarCropDialog
+      <ImageCropDialog
+        copy={{
+          title: copy.cropTitle,
+          zoom: copy.cropZoom,
+          rotateLeft: copy.cropRotateLeft,
+          rotateRight: copy.cropRotateRight,
+          upload: copy.cropUpload,
+          uploading: copy.cropUploading,
+          cancel: copy.renameCancel,
+        }}
+        fileName="avatar"
         imageSrc={imageSrc}
         isOpen={cropOpen}
         upload={runUpload}

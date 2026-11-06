@@ -5,6 +5,8 @@
 // composition and per-source breakdown. The data comes from the page-local
 // /api/app/projects-detail face; the list row is kept as the fallback source
 // for the six original columns when the detail request has not landed yet.
+// The header carries the profile actions: open the repository (new tab, no
+// opener / referrer) and edit the project profile.
 
 import type { CSSProperties } from "react";
 import type {
@@ -14,6 +16,7 @@ import type {
   ProjectsCaliber,
 } from "@/lib/dashboard/api";
 import type { ProjectsCopy } from "@/lib/copy/projects";
+import type { ProjectProfile } from "@/lib/projects/profile";
 import type { ProjectEffectState } from "./projects-effects";
 
 import {
@@ -26,7 +29,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowLeft, ArrowRight, CircleQuestion } from "@gravity-ui/icons";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CircleQuestion,
+  Pencil,
+} from "@gravity-ui/icons";
 import {
   Button,
   Chip,
@@ -38,12 +46,15 @@ import {
 } from "@heroui/react";
 
 import { resolveProjectDisplayName } from "./identity";
+import { ProjectLogo } from "./project-logo";
+import { RepoHostIcon } from "./repo-host-icon";
 
 import { FlowNumber } from "@/components/flow-number";
 import { SourceIcon } from "@/components/source-icon";
 import { sourceDisplayLabel } from "@/lib/sources";
 import { formatMessage } from "@/lib/copy/message";
 import { useFormat } from "@/lib/format/format";
+import { repoHostOf } from "@/lib/projects/profile";
 
 const CHART_COLORS = [
   "var(--color-chart-1)",
@@ -57,6 +68,8 @@ const AXIS_STYLE = { fontSize: 11, fill: "currentColor", opacity: 0.55 };
 
 export interface ProjectDetailDialogProps {
   project: ProjectItem | null;
+  /** Manual profile merged with the CLI-detected repo, when there is one. */
+  profile?: ProjectProfile;
   detail: ProjectDetailPayload | null;
   status: "loading" | "ready" | "error";
   copy: ProjectsCopy;
@@ -70,6 +83,8 @@ export interface ProjectDetailDialogProps {
   simulatedDetailError: boolean;
   hasPrevious: boolean;
   hasNext: boolean;
+  /** Absent in demo mode: the profile editor needs the live API. */
+  onEdit?: () => void;
   onClose: () => void;
   onRetry: () => void;
   onPrevious: () => void;
@@ -582,6 +597,7 @@ function DetailSkeleton({
 export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
   const {
     project,
+    profile,
     detail,
     status,
     copy,
@@ -595,6 +611,7 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
     simulatedDetailError,
     hasPrevious,
     hasNext,
+    onEdit,
     onClose,
     onRetry,
     onPrevious,
@@ -613,9 +630,12 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
   const open = project != null;
   const failed = status === "error" || simulatedDetailError;
   const loading = status === "loading" && !failed;
-  const name = project?.project_key
-    ? resolveProjectDisplayName(project.project_key)
+  const projectKey = project?.project_key ?? null;
+  const name = projectKey
+    ? resolveProjectDisplayName(projectKey, profile)
     : copy.list.unattributed;
+  const repoUrl = projectKey ? (profile?.repo_url ?? null) : null;
+  const repoHost = repoUrl ? repoHostOf(repoUrl) : null;
   const tokens = detail?.totals.total_tokens ?? project?.total_tokens ?? 0;
   const share =
     detail && detail.range_total_tokens > 0
@@ -650,6 +670,32 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
               {copy.detail.title}
             </Modal.Heading>
             <div className="ms-auto flex items-center gap-1">
+              {repoUrl && repoHost ? (
+                <Button
+                  aria-label={copy.profile.openRepo[repoHost]}
+                  size="sm"
+                  variant="tertiary"
+                  onPress={() =>
+                    window.open(repoUrl, "_blank", "noopener,noreferrer")
+                  }
+                >
+                  <RepoHostIcon className="size-4" host={repoHost} />
+                  <span className="hidden sm:inline">
+                    {copy.profile.openRepo[repoHost]}
+                  </span>
+                </Button>
+              ) : null}
+              {projectKey && onEdit ? (
+                <Button
+                  aria-label={copy.profile.title}
+                  size="sm"
+                  variant="tertiary"
+                  onPress={onEdit}
+                >
+                  <Pencil aria-hidden="true" className="size-4" />
+                  <span className="hidden sm:inline">{copy.profile.edit}</span>
+                </Button>
+              ) : null}
               <Button
                 isIconOnly
                 aria-label={copy.detail.previous}
@@ -686,9 +732,32 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
                   </Typography>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Typography className="truncate text-xl" weight="semibold">
-                    {name}
-                  </Typography>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <ProjectLogo
+                      name={projectKey ? name : null}
+                      profile={profile}
+                      size="lg"
+                    />
+                    <div className="flex min-w-0 flex-col">
+                      <Typography
+                        className="truncate text-xl"
+                        weight="semibold"
+                      >
+                        {name}
+                      </Typography>
+                      {projectKey && profile?.display_name ? (
+                        <Typography
+                          className="truncate"
+                          color="muted"
+                          type="body-xs"
+                        >
+                          {formatMessage(copy.profile.directory, locale, {
+                            name: projectKey,
+                          })}
+                        </Typography>
+                      ) : null}
+                    </div>
+                  </div>
                   <Typography
                     className="tabular-nums"
                     color="muted"

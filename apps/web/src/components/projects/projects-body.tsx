@@ -8,6 +8,7 @@
 import type { CSSProperties } from "react";
 import type { ProjectsPayload, ProjectItem } from "@/lib/dashboard/api";
 import type { ProjectsCopy } from "@/lib/copy/projects";
+import type { ProjectProfile } from "@/lib/projects/profile";
 import type { ProjectEffectState } from "./projects-effects";
 import type { ProjectLimit } from "./projects-filters";
 
@@ -28,6 +29,8 @@ export interface ProjectsBodyProps {
   copy: ProjectsCopy;
   locale: "zh" | "en";
   payload: ProjectsPayload | null;
+  /** Project profiles by project_key (logo, repo, display name). */
+  profiles: ReadonlyMap<string, ProjectProfile>;
   status: "loading" | "ready" | "error";
   refreshing: boolean;
   view: ProjectView;
@@ -399,6 +402,7 @@ export function ProjectsBody(props: ProjectsBodyProps) {
     copy,
     locale,
     payload,
+    profiles,
     status,
     refreshing,
     view,
@@ -525,6 +529,9 @@ export function ProjectsBody(props: ProjectsBodyProps) {
                   index,
                   locale,
                   maxTokens,
+                  profile: project.project_key
+                    ? profiles.get(project.project_key)
+                    : undefined,
                   project,
                   selected: selectedKey === key,
                   sources: project.sources ?? [],

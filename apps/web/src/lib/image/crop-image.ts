@@ -1,15 +1,16 @@
 "use client";
 
 /**
- * Avatar crop output: composites the react-easy-crop area + rotation onto a
- * canvas and scales the result to a 256×256 WebP blob (falls back to PNG in
- * browsers whose canvas.toBlob lacks WebP support — both are accepted).
+ * Square image crop output (avatars and project logos): composites the
+ * react-easy-crop area + rotation onto a canvas and scales the result to a
+ * 256×256 WebP blob (falls back to PNG in browsers whose canvas.toBlob lacks
+ * WebP support — both are accepted).
  * Ported from better-admin's crop-image.ts.
  */
 
 import type { Area } from "react-easy-crop";
 
-/** Output size (square, matching the "one avatar per user" small-image role). */
+/** Output size (square, matching the small-image role of avatars and logos). */
 const OUTPUT_SIZE = 256;
 
 function getRadianAngle(degrees: number): number {
