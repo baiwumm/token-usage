@@ -17,11 +17,13 @@
 
 | 别名 | 云端当前名 | 默认名（稳定标识） | device_id | 账号 / 数据目录 | Node 与安装方式 |
 |---|---|---|---|---|---|
-| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | `6a074a51-693b-48e3-9f65-0728f9f2ee5c` | `C:\Users\i\.tokenusage` | nvm-windows + npm 全局（`E:\nodejs` → `E:\nvm\nvm\v24.4.1` 符号链接） |
-| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | `1bd2ff67-653f-4b9c-80a9-c7589432d431` | `C:\Users\Administrator\.tokenusage` | Volta 管理的 node（`npm prefix -g` 路径不可用） |
+| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | `6a074a51-693b-48e3-9f65-0728f9f2ee5c` | `C:\Users\i\.tokenusage` | nvm-windows + npm 全局（`E:\nodejs` → `E:\nvm\nvm\v24.4.1` 符号链接），registry 为 npmjs |
+| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | `1bd2ff67-653f-4b9c-80a9-c7589432d431` | `C:\Users\Administrator\.tokenusage` | Volta 管理的 node（`npm i -g` 由 Volta 接管，`npm prefix -g` 路径不可用），registry 为 npmmirror |
 
 设备行以 `GET /api/functions/token-usage-dashboard?range=all_time`（设备令牌即可读）为准。
-每个账号还有账户级来源 `cursor`（跨设备去重，不计入任一设备行）。
+每个账号还有账户级来源 `cursor`（跨设备去重，不计入任一设备行）。两台均已到 CLI 0.4.7
+（家机 2026-11-05、公司机 2026-11-06）；0.4.7 之前的历史记录里「本机」/「家机」的归属判定规则
+见 `docs/cli-release.md` 开头「机器称呼约定」。
 
 ## 环境变量
 

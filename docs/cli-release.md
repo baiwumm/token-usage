@@ -13,8 +13,8 @@ npm 包 `tokenusage-cli` 的发布流程、首发未竟事项与发版后检查�
 
 | 别名 | 云端当前名 | 默认名（稳定标识） | device_id | 账号 / 数据目录 | Node 与安装方式 |
 |---|---|---|---|---|---|
-| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | `6a074a51-693b-48e3-9f65-0728f9f2ee5c` | `C:\Users\i\.tokenusage` | nvm-windows + npm 全局（`E:\nodejs` → `E:\nvm\nvm\v24.4.1` 符号链接） |
-| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | `1bd2ff67-653f-4b9c-80a9-c7589432d431` | `C:\Users\Administrator\.tokenusage` | Volta 管理的 node（`npm prefix -g` 路径不可用） |
+| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | `6a074a51-693b-48e3-9f65-0728f9f2ee5c` | `C:\Users\i\.tokenusage` | nvm-windows + npm 全局（`E:\nodejs` → `E:\nvm\nvm\v24.4.1` 符号链接），registry 为 npmjs |
+| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | `1bd2ff67-653f-4b9c-80a9-c7589432d431` | `C:\Users\Administrator\.tokenusage` | Volta 管理的 node（`npm i -g` 由 Volta 接管，`npm prefix -g` 路径不可用），registry 为 npmmirror |
 
 ⚠ 「云端当前名」是操作者在仪表盘改过的名字，可变；「默认名」是签发时按契约生成的快照，
 不随改名更新，是**稳定标识**——文档引用机器时两个都写，CLI 打印的也正是默认名。
@@ -23,14 +23,29 @@ npm 包 `tokenusage-cli` 的发布流程、首发未竟事项与发版后检查�
 新记录。**CLI 0.4.7 起 `tokenusage status` 会自报设备身份**（`- Device: <hostname> #<id8>`），
 任何一段命令输出都能自证是哪台机器。
 
-⚠ 历史段落里的「本机」含义**在 §四与 §五之间翻转过**，不要按字面理解：
+⚠ 历史段落里的「本机」/「家机」**不能按字面理解**：0.4.7 之前的输出不带设备身份，记录者只能凭
+印象判断身在哪台机器，判错过不止一次。**判定规则**（2026-11-06 在公司机实测核定）：按上表的数据
+目录与 Node / registry 列区分——**Volta + npmmirror = 公司机，nvm-windows（`E:\nodejs`）= 家机**；
+量级上公司机本地基线约 3B tokens / 数千文件（10-29 误删事故后），家机约 5–6B tokens / 3 万文件。
+按此对照，原先的两条注解需更正（2026-11-06）：
 
-- §四（2026-10-29 及以前）的「本机」= **公司机**（该处记的 13.672B 迁移重放量即公司机），
-  同段「另一台 Volta 安装机」= 家机（当时家机也是 Volta）。
-- §五 / §六 / §七（2026-11-04 起）的「本机」= **家机**（Volta + npmmirror），同段
-  「另一台采集机 仍为 0.4.3」= 公司机。
+- §四 原注「本机 = 公司机、另一台 Volta 安装机 = 家机（当时家机也是 Volta）」只对一部分段落成立
+  ——0.2.4 段（2026-10-28）已写明家机是 nvm-windows。按规则：`volta install` 的几段（0.2.4
+  「另一台 Volta 安装机复验」、0.2.5、0.2.6 首跑 2.53B）是公司机，5B 量级的本机验收（0.2.4、
+  0.2.6 晚间复核、0.4.1–0.4.3）是家机。
+- **§五 0.4.4、§六 0.4.5（含数据修复与复验）、§七「Volta 时期」三处记作「家机」的行，实为公司机。**
+  证据（2026-11-06 公司机实测）：① 升级前运行时副本 `.runtime-ready` 为 0.4.6、
+  `installedAt 2026-11-05T10:31:55Z`（0.4.6 发布后 38 秒）；② init 首采 3,201,752,710 tokens、
+  `reconcile --days 7` 239 桶，与 §七「Volta 时期」的 3,201,292,093 / 243 桶吻合（家机同日
+  5.94B / 114 桶）；③ §六 重新追加的 `2026-11-04T07:30Z opencode deepseek-v4.1-flash-free`
+  10,241,261 行就在公司机 `queue.jsonl`；④ §五 / §六 的 dsh `2026-10-28` 08:30 / 09:00 / 09:30
+  server-only 桶属于公司机云端设备 `1bd2ff67-…`（`reconcile --days 10`）。
+  由此推论（**待操作者确认**）：同段「另一台采集机 仍为 0.4.3」指的是家机；§六 / §七「npm 镜像
+  注意」描述的也是公司机，「家机 2026-11-05 从 Volta 换成 nvm」多半并未发生；§五 / §六 的
+  `Cursor session expired` 出自公司机（2026-11-06 仍在），「家机已不使用 Cursor」的确认是否也
+  适用于公司机需另行确认。
 
-历史行文不回改，需要时按上表的安装方式（Volta / nvm、npmmirror / npmjs registry）对照判定。
+历史行文不回改，按上述规则对照判定；0.4.7 起每段命令输出自带 `- Device:` 行，新记录不再需要推断。
 
 ## 0. 0.1.0 首发实录（2026-10-27，已完成）
 
@@ -162,7 +177,7 @@ gh release view cli-v0.1.0             # 正文来自 CHANGELOG 的 0.1.0 段
 > （均随 0.4.4 发版）；0.4.5 修队列去重丢项目拆分行，0.4.6 修 Cursor 准入 / Qoder credits 与
 > 限额快照并加 `status --limits`，0.4.7 让每条命令自报设备身份并补全采集结果摘要。
 > 明细以 `packages/cli/CHANGELOG.md` 的对应版本节为准。
-> 家机已升到 0.4.7、公司机停在 0.4.6（待操作者升级）；`/projects` 的 hourly 口径见
+> 两台采集机均已升到 0.4.7（家机 2026-11-05、公司机 2026-11-06，见 §八 8.3）；`/projects` 的 hourly 口径见
 > `docs/ui-spec.md`「项目（`/projects`）」节。
 
 > **原「未发版候选」（2026-11-01 盘点；两项均已随 0.4.0 交付）**：① `init` 逐工具集成
@@ -725,7 +740,12 @@ tokenusage doctor            # 新增 runtime.device_identity 检查
 | [x] 家机计划任务 | 手动触发 `\TokenUsageSync` → `LastTaskResult=0`；`sync.log` 记录 `parsed 30127 files, +1 buckets, uploaded 1, 31373059 tokens, queue drained`，JSONL 已带新字段 `tokens` / `credits` / `sessions_uploaded` / `sessions_skipped` / `duration_ms` |
 | [x] 家机输出面抽查 | `status --json` 的 `device` 块四字段齐全（`name` / `hostname` / `machine_id` / `device_id`）；`status --light` 表格含 `Device` 与 `Device ID` 两行 |
 | 调度降级（家机预期） | `init` 摘要仍为 `degraded: xml_rejected — 错误: 拒绝访问。`：非提升 shell 下 `schtasks /Create /XML` 需管理员权限，自动降级为每小时触发；采集与上传不受影响 |
-| [ ] 公司机 `Company · Partner`（默认名 `PC-20260408RIKF #68e47b34`）升级 | **待操作者执行**：`npm i -g tokenusage-cli@0.4.7` → `init --yes --no-integrations --no-open` → `reconcile --days 7`；该机当前为 0.4.6，不影响采集（仅输出面差异） |
+| [x] 公司机 `PC-20260408RIKF #68e47b34`（云端名 `Company · Partner`）升级与验证（2026-11-06） | Volta + npmmirror，镜像已同步（两源 `dist-tags.latest` 均为 0.4.7），无需绕道 npmjs：`npm i -g tokenusage-cli@0.4.7`（由 Volta 接管，6 包 / 1s）→ `tokenusage --version` = **v0.4.7**（`volta list`：`tokenusage-cli@0.4.7 / node@24.15.0`）；`init --yes --no-integrations --no-open --dry-run` 预览集成 Skipped → 正式 init 把运行时副本从 0.4.6 刷到 **0.4.7**（`.runtime-ready` 01:32:42Z），首采 **3,201,752,710 tokens / 13 providers**，完成页 `Device: PC-20260408RIKF #68e47b34 (id 1bd2ff67-653f-4b9c-80a9-c7589432d431)` 与开头对照表一致 |
+| [x] 公司机采集验证 | `sync` 解析 **3,389** 文件、新入队 1 桶、上传 **4 行 / 587,381 tokens / 0 跳过**、sessions 1/1，耗时 9.4s，摘要带 `- Device:`；`reconcile --days 1` **OK**（28 桶）、`--days 7` **OK**（239 桶），逐键匹配、`Local device` / `Cloud device` 并列、退出码 0 |
+| [x] 公司机体检 | `doctor` **16 OK / 0 warn / 0 fail / 0 critical**（`runtime.device_identity` OK；`runtime.copy` v0.4.7；7 天 token 计价覆盖 100%） |
+| [x] 公司机输出面抽查 | `status` 文本带 `- Device:`；`status --json` 的 `device` 块四字段齐全；`status --light` 含 `Device` / `Device ID` 两行 |
+| [x] 公司机计划任务（增强调度首次真机验证） | 该机 shell 为提升权限，init 摘要为 `TokenUsageSync: hourly, hidden window`、**无 degraded**——`schtasks /Create /XML` 注册成功：每小时（Daily 触发 + `PT1H` 重复）+ 登录触发、`StartWhenAvailable=True`、失败重试 3 次 / `PT5M`、`ExecutionTimeLimit=PT0S`，即 §四 0.4.1 所记「以管理员身份重跑 init 启用增强调度（行为未验证）」的首次真机验证。手动触发 → `LastTaskResult=0`，`sync.log` 记 `parsed 3397 files, +1 buckets, uploaded 1, 1047761 tokens, queue drained`，JSONL 带 0.4.7 新字段（定时任务已走新版本） |
+| 公司机观察（均非本次升级引入） | ① `reconcile --days 10` 报 22 个 server-only，全部落在 10-27 / 10-28：10-29 误删用户目录事故后本地队列已无这些行、服务端保留（§四 0.2.6），7 天窗口不受影响；② `sync` 提示 `Cursor session expired`（账户级来源，见开头更正）；③ `codex rescan repair: rebuild produced 0 codex buckets from 2 files — skipping to avoid data loss`：CLI 骨架起即有的保护性跳过，本地队列 0 条 codex 行，无影响；④ Volta 的 Windows shim 会把非零退出码改写为 **126**：`reconcile` 有漂移时直跑 `node <包>/bin/tokenusage.js` 退出码为约定的 1、经 `tokenusage` shim 为 126，脚本按退出码判漂移时只判非零或直调 node |
 
 **升级后怎么用**（两台机器都跑一遍即可自动对上号）：
 

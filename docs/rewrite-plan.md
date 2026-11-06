@@ -240,7 +240,7 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），
 其值从 publishable key 取——公开客户端值的语义不变。
 
-## 10. 当前状态与剩余事项（2026-11-05 复核）
+## 10. 当前状态与剩余事项（2026-11-06 复核）
 
 **里程碑**：M0–M7 全部交付；生产实例 `token-usage.baiwumm.com` 自 2026-10-26 起承载
 两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.7`（2026-11-05
@@ -250,11 +250,13 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 | 机器 | 云端当前名 | 默认名（稳定标识） | CLI 版本 | 状态 |
 |---|---|---|---|---|
 | 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | **0.4.7**（2026-11-05 升级） | `doctor` 16 项全 OK；`reconcile --days 1` / `--days 7` 均 OK（4 / 117 桶逐键匹配、0 drift、退出码 0）；首采 6,035,697,672 tokens / 13 providers |
-| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | **0.4.6**（2026-11-05 操作者升级并验收；0.4.7 待升） | `reconcile --days 7` 验收通过；服务端 2,037 桶 / 14,835,125,523 tokens，`last_used_at 2026-11-05T11:00:16Z` |
+| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | **0.4.7**（2026-11-06 升级） | `doctor` 16 项全 OK；`reconcile --days 1` / `--days 7` 均 OK（28 / 239 桶逐键匹配、0 drift、退出码 0）；首采 3,201,752,710 tokens / 13 providers；计划任务以 XML 增强定义注册（提升权限 shell，无 degraded） |
 
 两台 `device_id` 与服务端核对记录见 `docs/cli-release.md` 开头「机器称呼约定」与
 `docs/launch-runbook.md` 的采集机清单表；CLI 自报身份（`status` / `doctor` 输出设备行）
-与采集结果摘要补全已随 **0.4.7** 发版，发版与本机验收记录见 `docs/cli-release.md` §八。
+与采集结果摘要补全已随 **0.4.7** 发版，发版与两台采集机的验收记录见 `docs/cli-release.md` §八。
+历史记录里「本机」/「家机」的归属判定规则与 2026-11-06 更正（`docs/cli-release.md` §五–§七
+标「Volta」的家机行实为公司机）见同文件开头「机器称呼约定」。
 
 版本沿革：0.4.0 交付 CLI 加固批与 `reconcile`，0.4.1 修 `reconcile` 的
 `conversation_count` 别名误报，0.4.2 让 `init` 的 degraded 摘要显示被拒原因，0.4.3 把该
@@ -310,14 +312,14 @@ queue.jsonl last-wins）逐键比对，漂移退出码 1，`queue.state.json` �
    `reconcile --days 7` 验收通过；服务端核对 device `1bd2ff67-653f-4b9c-80a9-c7589432d431`
    （云端名 `Company · Partner`）、2,037 桶 / 14,835,125,523 tokens、升级后仍按小时上报。
    家机 `DESKTOP-MHFON1J #48ea790e` 同日升到 0.4.6（见 §七），并在 0.4.7 发版后升到
-   **0.4.7**（见 §八；公司机 0.4.7 待操作者升级，不影响采集）。
+   **0.4.7**（见 §八）；公司机 2026-11-06 也升到 **0.4.7** 并验收（见 §八 8.3）。
 2. macOS / Linux 调度真机验证：暂无真机，目前只有产物级测试（plist / systemd unit 与
    文案断言）。首次在真机跑 `init` 后需确认 `launchctl list` / `systemctl --user
    list-timers` 里有对应条目，再回填 `docs/cli-release.md` §四。
 3. ~~下一版 CLI（0.4.4）发版~~ → **已发版（2026-11-04）**：npm `tokenusage-cli@0.4.4` + tag
    `cli-v0.4.4`，CI 自动发包与 Release 均成功（验证清单见 `docs/cli-release.md` §五）。
    剩余动作是采集机升级：另一台机器仍为 0.4.3，升级后新桶才开始带 `project_key`
-   （2026-11-04 生产库实测桶行 `project_key` 非空数为 0；本机随后用
+   （2026-11-04 生产库实测桶行 `project_key` 非空数为 0；公司机随后用
    `scripts/admin/project-backfill.cjs` 回填 opencode 历史项目归因，见本批第 1 条）。
    **2026-11-05 收口**：两台采集机均已到 0.4.6（见本节第 1、6 条）。
 
@@ -331,8 +333,9 @@ web 修账户快照全主键分页（>100 万行显式 500，不静默截断）�
 
 本批剩余决策与结论：
 
-1. **历史丢失数据不重建，但项目归因可回填**：0.4.5 只保证今后不丢。本机升级时发现 1 条
-   仍留在本地 `queue.jsonl` 的缺口（旧去重键压掉的项目拆分行），已用「重新追加该行 +
+1. **历史丢失数据不重建，但项目归因可回填**：0.4.5 只保证今后不丢。公司机（原记「本机」，
+   2026-11-06 核定：补行与回填备份 `queue.jsonl.bak.backfill.2026-11-04T09-37-21-119Z` 都在该机）
+   升级时发现 1 条仍留在本地 `queue.jsonl` 的缺口（旧去重键压掉的项目拆分行），已用「重新追加该行 +
    `upload`」补回；对本地已不存在的行不做重建。**2026-11-04 例外已执行**：用
    `scripts/admin/project-backfill.cjs` 从本地 `project.queue.jsonl` + `session.queue.jsonl`
    回填 opencode 历史桶的 `project_key` 拆分行（255 组 / 337 项目行 + 255 余量行 / 14 个项目键 /
@@ -352,7 +355,8 @@ web 修账户快照全主键分页（>100 万行显式 500，不静默截断）�
    （查询延迟或数据量有明显体感再说）。
 6. ~~公司机 `PC-20260408RIKF #68e47b34`~~ → **已完成（2026-11-05）**，两台采集机 CLI 均已到
    0.4.6（家机 `reconcile --days 1` / `--days 7` 均 OK、0 drift；公司机由操作者在那台机器上
-   升级并验收），家机随后升到 0.4.7。机器称呼与身份对照见 `docs/cli-release.md` 开头
+   升级并验收），家机随后升到 0.4.7，公司机 2026-11-06 升到 0.4.7（`doctor` 16 OK、
+   `reconcile` 1 / 7 天均 OK）。机器称呼与身份对照见 `docs/cli-release.md` 开头
    「机器称呼约定」与 `docs/launch-runbook.md` 的采集机清单表。
 
 已关闭：0.4.3 候选（降级原因改取 `stderr` + 代码页解码、`reconcile` pending 分类，已随
@@ -390,7 +394,7 @@ web 修账户快照全主键分页（>100 万行显式 500，不静默截断）�
    models.dev 三向差集，方法与记录格式见 `docs/archive/upstream-2026-11-03.md`。
 3. **队列按月分片（原 D2）**：juejin 式 `queue/<month>.jsonl` 分片可控制 queue.jsonl
    增长与范围读取成本；触及对账基线文件格式（约束 8），留待有体感再立项。
-   实测基线（2026-11-04，本机 `~/.tokenusage/tracker`）：`queue.jsonl` 511 行 / 162,755 B，
+   实测基线（2026-11-04，公司机 `~/.tokenusage/tracker`）：`queue.jsonl` 511 行 / 162,755 B，
    `project.queue.jsonl` 390 行 / 150,613 B，`session.queue.jsonl` 182 行 / 1,455,392 B；
    未设数字阈值，以「队列体积或读取延迟有明显体感」为立项触发。
 4. **align-unknown 落地**：dry-run 结论见 `docs/archive/upstream-2026-11-03.md`；
