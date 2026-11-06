@@ -251,7 +251,7 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 
 | 机器 | 云端当前名 | 默认名（稳定标识） | CLI 版本 | 状态 |
 |---|---|---|---|---|
-| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | **0.4.7**（2026-11-05 升级） | `doctor` 16 项全 OK；`reconcile --days 1` / `--days 7` 均 OK（4 / 117 桶逐键匹配、0 drift、退出码 0）；首采 6,035,697,672 tokens / 13 providers |
+| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | **0.5.0**（2026-11-06 升级） | `doctor` 16 项全 OK（7 天计价覆盖 100%）；`sync --drain` 上传 36 行 / 133,526,693 tokens、sessions 1/1；`reconcile --days 1` / `--days 7` 均 OK（7 / 122 桶逐键匹配、0 drift、退出码 0）；WorkBuddy 项目行 16 行（27.2% token 已归因）；`project.repos.state.json` 确认 16 条仓库；首采 6,053,545,539 tokens / 13 providers；计划任务已按修复后的 XML 重注册（登录触发带 `UserId`、补跑/重试齐全，`LastTaskResult=0`） |
 | 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | **0.5.0**（2026-11-06 升级） | `doctor` 16 项全 OK（7 天计价覆盖 99.9%）；`sync --drain` 上传 54 行 / 242,022,064 tokens；`reconcile --days 1` / `--days 7` 均 OK（48 / 261 桶逐键匹配、0 drift、退出码 0）；WorkBuddy 项目行已写入（29 行项目行 + 27 余量行，49.9% token 已归因）；`project.repos.state.json` 确认 15 条仓库；首采 3,338,516,793 tokens / 13 providers；计划任务以 XML 增强定义注册（提升权限 shell，无 degraded） |
 
 两台 `device_id` 与服务端核对记录见 `docs/cli-release.md` 开头「机器称呼约定」与
@@ -270,13 +270,16 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 「同小时键多行递增值」观测已用源库核对证伪（属累计重入队，见
 `docs/cli-release.md` §四 0.4.3 条）。
 
-**2026-11-06 批次（0.5.0，待发版）**：定价数据从 LiteLLM 上游重建，两份
+**2026-11-06 批次（0.5.0，已发版 2026-11-06）**：定价数据从 LiteLLM 上游重建，两份
 `seed-snapshot.json`（web + CLI）同步刷新到 2026-11-06（2284 → 3930 个模型：新增 1996 /
 删除 350 / 调价 264），历史费用按读取时价目重算（操作者已接受）；WorkBuddy 项目 pass 带上
 小时桶同一模型并加 `projectAttributionVersion: 2` 状态迁移（只重扫项目游标，历史由项目
 pass 回填，总量与对账基线不变）；CLI 补齐契约 v3 的仓库地址上报（只报 github.com /
 gitee.com，按 `project.repos.state.json` 的已确认状态差量上报、`null` 清除本设备值，旧服务端
 视为未支持并留待重试）。挂账 5–7 项据此关闭（见下）。
+0.5.0 验收同时暴露 Windows 计划任务的 XML 缺陷（`<LogonTrigger>` 缺 `<UserId>` → 非提升权限
+注册被拒 → 静默降级成纯每小时）：修复已在 main（先补当前用户，再退「无登录触发」的完整定义），
+未发版，待 0.5.1 窗口带上；两台采集机的记录见 `docs/cli-release.md` §九。
 
 **最近一批交付（2026-10-31 ~ 11-01）**：Trae CN 本地库、桶级 / 会话级 credits、
 `credits_ingested` 遥测、模型大小写归一、wrapped canonical 来源、成就条进度与详情弹窗、

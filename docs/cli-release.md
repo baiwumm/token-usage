@@ -779,8 +779,9 @@ run `42198295142` 成功（1m34s，2026-11-06T09:52:23Z 触发）；GitHub Relea
 - [x] 公司机升级后 `sync --drain`：生成 `project.repos.state.json`（15 个项目已确认上报）
 - [x] 公司机 `reconcile --days 1` / `--days 7` 均 OK（48 / 261 桶逐键匹配、0 drift）
 - [x] 公司机 WorkBuddy 归因：本地队列 92 行 WorkBuddy/Buddy AI 行中 29 行为项目行（余量行 27），**247,234,081 / 494,997,604 tokens = 49.9%** 已归因（余量为模型不齐的小时，按设计保留在残差）
-- [ ] 家机 `DESKTOP-MHFON1J #48ea790e` 升级到 0.5.0 并按同口径验收
+- [x] 家机 `DESKTOP-MHFON1J #48ea790e` 升级到 0.5.0 并按同口径验收（2026-11-06，见下表）
 - [ ] web 先部署新 seed，确认历史费用变化符合预期
+- [ ] 0.5.1 修掉调度器 XML 缺陷（见下「家机验收记录 · 调度器缺陷」），待发版窗口
 
 公司机验收记录（2026-11-06，`PC-20260408RIKF #68e47b34`）：
 
@@ -791,5 +792,35 @@ run `42198295142` 成功（1m34s，2026-11-06T09:52:23Z 触发）；GitHub Relea
 | `sync --drain` | 解析 3,832 文件、新入队 0 桶、上传 **54 行 / 242,022,064 tokens / 0 跳过**、sessions 1/1，耗时 14s |
 | 状态迁移 | `cursors.json` 的 `workbuddy` / `workbuddy-ai` 均 `projectAttributionVersion: 2`；26 个 WorkBuddy 项目桶全部带 model |
 | 仓库上报 | `project.repos.state.json` 15 条已确认（github.com；自建 GitLab remote 被白名单过滤，不上报） |
+
+家机验收记录（2026-11-06，`DESKTOP-MHFON1J #48ea790e`，nvm + `registry.npmjs.org`）：
+
+| 项 | 结果 |
+|---|---|
+| 安装 | `npm i -g tokenusage-cli@latest --prefer-online`（0.4.7 → **0.5.0**）；`init --yes --no-integrations --no-open` 刷新运行时副本（`runtime.copy` v0.5.0） |
+| 首采 | 6,053,545,539 tokens / 13 providers |
+| `doctor` | 16 项全 OK / 0 warn / 0 fail（`runtime.device_identity` = `DESKTOP-MHFON1J #48ea790e`、`6a074a51-…`；7 天计价覆盖 100%，61/106 桶） |
+| `sync --drain` | 解析 30,133 文件、新入队 1 桶、上传 **36 行 / 133,526,693 tokens / 0 跳过**、sessions 1/1，耗时 16s |
+| 对账 | `reconcile --days 1` OK（7 桶逐键匹配）、`--days 7` OK（122 桶、0 drift、退出码 0） |
+| 状态迁移 | `cursor-store-v2` 的当前代 `core-v3.json` 里 `workbuddy` / `workbuddy-ai` 均 `projectAttributionVersion: 2`（旧 `cursors.json` 自 10-31 起已停写，属 v2 存储的上一代） |
+| WorkBuddy 归因 | 本地队列 88 行 WorkBuddy/Buddy AI 行中 16 行为项目行，**84,896,952 / 312,509,091 tokens = 27.2%** 已归因（家机项目行少于公司机，余量行按设计留在残差） |
+| 仓库上报 | `project.repos.state.json` 16 条已确认（全部 github.com：baiwumm/* 15 个 + heroui-inc/heroui） |
+| 服务端核对 | 设备 `6a074a51-693b-48e3-9f65-0728f9f2ee5c`（`Home · C Future City`）`last_hour 2026-11-06T12:00Z`、`last_used_at 2026-11-06T12:23:41Z`、964 桶 / 8,484,961,906 tokens；账号 all_time 23,457,312,129 tokens |
+| 计划任务 | 手动 `schtasks /run /tn TokenUsageSync` → `LastTaskResult=0`，`sync.log` 记录 `parsed 30138 files, +1 buckets, uploaded 1, queue drained` |
+
+**家机验收记录 · 调度器缺陷（0.5.0，待 0.5.1 修）**：`init` 首次注册 XML 时输出
+`TokenUsageSync: hourly, hidden window (degraded: xml_rejected — 错误: 拒绝访问。; no catch-up/retry settings)`。
+排查结论：`buildWindowsTaskXml` 的 `<LogonTrigger>` 没带 `<UserId>`，`schtasks` 把它解析成「任意用户」，
+非提升权限的 `/Create /XML` 直接 `Access is denied`，于是整份定义被丢弃、退回纯 `-SC HOURLY`（丢掉
+`StartWhenAvailable` 补跑、登录触发、失败重试、无限运行时长）。取证：同一份 XML 去掉 `LogonTrigger`
+节点即可注册；补 `<UserId>DESKTOP-MHFON1J\i</UserId>` 后同样可注册（PowerShell
+`Register-ScheduledTask -AtLogOn` 亦可，说明不是策略禁止登录触发）。
+
+修复（未发版，代码在 main）：`buildWindowsTaskXml({ userId, logonTrigger })` 现把当前用户写进
+`LogonTrigger`；注册失败时先重试「无登录触发」的完整定义（保留补跑/重试/无限时长，摘要标注
+`degraded: logon_trigger_rejected — …; catch-up/retry kept, no logon trigger`），再不行才退回纯每小时。
+本机已用修复后的生成器重注册 `\TokenUsageSync`：`StartWhenAvailable=True`、`RestartCount=3`、
+`ExecutionTimeLimit=PT0S`、`MultipleInstances=IgnoreNew`、登录触发 `UserId=DESKTOP-MHFON1J\i`，
+手动触发 `LastTaskResult=0`。`pnpm verify` 全绿（CLI 270 个用例）。
 
 砍单线：WorkBuddy 那条若测试或对账不干净，砍到 0.5.1，仓库上报照发。
