@@ -274,10 +274,12 @@ Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）、Sessions CSV 导�
 10,000 行 / 4 MiB 双上限）。来源接入的结论索引见 `docs/sources-capture-plan.md`，
 机制细节见 `docs/sources-capture-audit.md`。
 
-**测试与部署**：`pnpm verify` 全绿（lint 0 error + 少量 `no-console` 警告；web 与 CLI 的
+**测试与部署**：`pnpm verify` 全绿且零告警（lint 0 error / 0 warning：有意的服务端日志与 error
+boundary 逐行 `eslint-disable-next-line no-console` 标注，2026-11-06 清零；web 与 CLI 的
 测试文件数/用例数随功能增长，**不写死在此文档**——以 `pnpm verify` 当次输出为准）。
-CI 在 main 与 `cli-v*` tag 上运行；web 由 Vercel 部署，CLI 由 `release-cli.yml` 发 npm
-（本机升级与复验记录见 `docs/cli-release.md`）。
+CI 在 main 与 `cli-v*` tag 上运行（Ubuntu runner 固定 `ubuntu-26.04`，actions 为 checkout /
+setup-node v7、pnpm/action-setup v6，均为 Node 24 运行时）；web 由 Vercel 部署，CLI 由
+`release-cli.yml` 发 npm（采集机升级与复验记录见 `docs/cli-release.md`）。
 0.4.2 期间 CI 的 Windows `init` smoke 曾连挂三次（仍在传 0.4.0 删掉的 `--no-auth`，见
 `docs/cli-release.md` §四），commit `c6d7b68` 去掉该参数后转绿。
 
