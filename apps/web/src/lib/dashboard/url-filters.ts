@@ -53,12 +53,17 @@ export function useUrlFilters<F>(config: {
   // setState updater) keeps StrictMode double-invocation safe.
   useEffect(() => {
     const query = serialize(filters);
+    const target = query ? `${basePath}?${query}` : basePath;
 
-    window.history.replaceState(
-      null,
-      "",
-      query ? `${basePath}?${query}` : basePath,
-    );
+    // On back/forward the address bar is already the entry we just parsed.
+    // Rewriting it with replaceState here would clobber that history entry and
+    // drop the forward stack; only rewrite when the URL actually differs
+    // (this still scrubs invalid / reversed from-to params on first render).
+    if (`${window.location.pathname}${window.location.search}` === target) {
+      return;
+    }
+
+    window.history.replaceState(null, "", target);
   }, [basePath, filters, serialize]);
 
   const applyFilters = useCallback(
