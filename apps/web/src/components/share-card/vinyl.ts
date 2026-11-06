@@ -14,22 +14,19 @@ import {
   truncateToWidth,
 } from "./helpers";
 
+import {
+  VINYL_HEATMAP_PALETTE as HEATMAP_PALETTE,
+  INK,
+  INK_SOFT,
+  PAPER,
+  VERMILLION,
+} from "./palette";
+
 export const SIZE = { width: 1080, height: 1080 };
 
 const BG = "#171410";
-const PAPER = "#f6f2e9";
-const INK = "#221e18";
-const INK_SOFT = "#6c6457";
-const VERMILLION = "#c2402a";
 const WHITE = "rgba(255,255,255,0.88)";
 const DIM = "rgba(255,255,255,0.5)";
-const HEATMAP_PALETTE = [
-  "rgba(255,255,255,0.06)",
-  "#312e81",
-  "#4338ca",
-  "#6366f1",
-  "#818cf8",
-];
 
 export function drawVinyl(
   ctx: CanvasRenderingContext2D,

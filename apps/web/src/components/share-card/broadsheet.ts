@@ -19,20 +19,17 @@ import {
   truncateToWidth,
 } from "./helpers";
 
+import {
+  BROADSHEET_HEATMAP_PALETTE as HEATMAP_PALETTE,
+  INK,
+  INK_SOFT,
+  PAPER,
+  VERMILLION,
+} from "./palette";
+
 export const SIZE = { width: 1200, height: 1630 };
 
-const PAPER = "#f6f2e9";
-const INK = "#221e18";
-const INK_SOFT = "#6c6457";
 const RULE = "#d8d0bf";
-const VERMILLION = "#c2402a";
-const HEATMAP_PALETTE = [
-  "#eee7d8",
-  "#e8c9a8",
-  "#e0996e",
-  "#d4694b",
-  VERMILLION,
-];
 
 export function drawBroadsheet(
   ctx: CanvasRenderingContext2D,

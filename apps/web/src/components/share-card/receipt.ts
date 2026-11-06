@@ -14,12 +14,14 @@ import {
   truncateToWidth,
 } from "./helpers";
 
-export const SIZE = { width: 800, height: 1240 };
+import {
+  RECEIPT_PAPER as PAPER,
+  RECEIPT_INK as INK,
+  RECEIPT_INK_SOFT as INK_SOFT,
+  RECEIPT_STAMP as STAMP,
+} from "./palette";
 
-const PAPER = "#fffdf8";
-const INK = "#1f1b16";
-const INK_SOFT = "#8d867a";
-const STAMP = "#c2402a";
+export const SIZE = { width: 800, height: 1240 };
 
 const MARGIN = 64;
 const CONTENT = SIZE.width - MARGIN * 2;
