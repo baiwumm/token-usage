@@ -16,7 +16,6 @@ import type { EffectPreviewAction } from "./projects-effects";
 import type { SimulatedState } from "./projects-review-panel";
 import type { ProjectView } from "./projects-row";
 
-import { ArrowsRotateRight } from "@gravity-ui/icons";
 import {
   Button,
   Chip,
@@ -25,9 +24,9 @@ import {
   Select,
   ToggleButton,
   ToggleButtonGroup,
-  Tooltip,
   Typography,
 } from "@heroui/react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -41,7 +40,6 @@ import {
   type ProjectLimit,
   type ProjectSort,
 } from "./projects-filters";
-import { ProjectsReviewPanel } from "./projects-review-panel";
 import { ProjectDetailDialog } from "./projects-detail-dialog";
 import { ProjectProfileDialog } from "./project-profile-dialog";
 import {
@@ -49,9 +47,9 @@ import {
   defaultEffects,
   type ProjectEffectState,
 } from "./projects-effects";
-import { demoDetailPayload, demoProjectsPayload } from "./projects-showcase";
 import styles from "./projects-effects.module.css";
 
+import { RefreshButton } from "@/components/refresh-button";
 import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
@@ -66,7 +64,15 @@ import {
   projectsCaliber,
 } from "@/lib/dashboard/api";
 import { browserTimezone, rangeForPreset } from "@/lib/dashboard/ranges";
-import { useFormat } from "@/lib/format/format";
+
+// Review-only panel + the ~290-line deterministic demo dataset are split
+// into their own chunks: a normal visit to /projects never downloads them.
+const ProjectsReviewPanel = dynamic(
+  () =>
+    import("./projects-review-panel").then((mod) => mod.ProjectsReviewPanel),
+  { ssr: false, loading: () => null },
+);
+type DemoModule = typeof import("./projects-showcase");
 
 const PROJECTS_LIMIT = 200;
 const UNATTRIBUTED = "__unattributed";
@@ -80,7 +86,6 @@ function keyOf(project: ProjectItem): string {
 export function ProjectsClient() {
   const [locale] = useLocale();
   const copy = PROJECTS_COPY[locale];
-  const { formatDateTime } = useFormat();
   const searchParams = useSearchParams();
 
   const { accessToken, redirectToLogin } = useSessionBootstrap("/projects");
@@ -97,6 +102,21 @@ export function ProjectsClient() {
 
   const [review] = useState(() => searchParams.get("review") === "1");
   const [useDemo, setUseDemo] = useState(true);
+  // Demo payload is fetched as a separate chunk only for ?review=1 visits.
+  const [demo, setDemo] = useState<DemoModule | null>(null);
+
+  useEffect(() => {
+    if (!review) return;
+    let alive = true;
+
+    void import("./projects-showcase").then((mod) => {
+      if (alive) setDemo(mod);
+    });
+
+    return () => {
+      alive = false;
+    };
+  }, [review]);
   const [view, setView] = useState<ProjectView>("list");
   const [effects, setEffects] = useState<ProjectEffectState>(defaultEffects);
   const [simulatedState, setSimulatedState] = useState<SimulatedState | null>(
@@ -135,6 +155,9 @@ export function ProjectsClient() {
   // The page always reads the full series ("all" reaches back to the server's
   // 3-year clamp); narrowing happens client-side via the Top-N selector.
   const range = useMemo(() => rangeForPreset("all", timezone), [timezone]);
+  // Request suppression must not wait for the demo chunk to arrive, or the
+  // first review-mode render would fire live API calls. Rendering waits for
+  // `demo` instead (see activeStatus / activePayload below).
   const demoMode = review && useDemo;
 
   const load = useCallback(async () => {
@@ -221,6 +244,14 @@ export function ProjectsClient() {
     if (!demoMode) void loadProfiles();
   }, [demoMode, load, loadProfiles]);
 
+  // Same affordance as Sessions / Sync-runs / Dashboard: one press returns
+  // sort / limit to their defaults (URL round-trips through applyFilters) and
+  // the list/card switch back to its initial state.
+  const clearFilters = useCallback(() => {
+    applyFilters({ sort: "tokens", limit: "all" });
+    setView("list");
+  }, [applyFilters]);
+
   const updateProfile = useCallback((profile: ProjectProfile) => {
     setProfiles((previous) =>
       new Map(previous).set(profile.project_key, profile),
@@ -242,11 +273,17 @@ export function ProjectsClient() {
   const activePayload = useMemo(
     () =>
       demoMode
-        ? demoProjectsPayload(range.fromDay, range.toDay, caliber)
+        ? demo
+          ? demo.demoProjectsPayload(range.fromDay, range.toDay, caliber)
+          : null
         : state.data,
-    [caliber, demoMode, range.fromDay, range.toDay, state.data],
+    [caliber, demo, demoMode, range.fromDay, range.toDay, state.data],
   );
-  const activeStatus = demoMode ? "ready" : state.status;
+  const activeStatus = demoMode
+    ? demo
+      ? "ready"
+      : "loading"
+    : state.status;
   const activeRefreshing = demoMode ? false : refreshing;
   const projects = useMemo(
     () => activePayload?.projects ?? [],
@@ -263,6 +300,13 @@ export function ProjectsClient() {
 
   const loadDetail = useCallback(
     async (key: string, force = false) => {
+      // The demo chunk is still in flight — show a loading detail instead of
+      // falling through to the live endpoint.
+      if (demoMode && !demo) {
+        setDetail({ status: "loading", data: null });
+
+        return;
+      }
       const cacheKey = `${demoMode ? "demo" : "live"}|${key}|${range.fromDay}|${range.toDay}|${timezone}`;
       const cached = detailCache.current.get(cacheKey);
       const id = detailRequestId.current + 1;
@@ -276,8 +320,8 @@ export function ProjectsClient() {
       setDetail({ status: "loading", data: null });
 
       try {
-        const payload = demoMode
-          ? demoDetailPayload(
+        const payload = demoMode && demo
+          ? demo.demoDetailPayload(
               key === UNATTRIBUTED ? null : key,
               range.fromDay,
               range.toDay,
@@ -303,7 +347,15 @@ export function ProjectsClient() {
         setDetail({ status: "error", data: null });
       }
     },
-    [caliber, demoMode, range.fromDay, range.toDay, redirectToLogin, timezone],
+    [
+      caliber,
+      demo,
+      demoMode,
+      range.fromDay,
+      range.toDay,
+      redirectToLogin,
+      timezone,
+    ],
   );
 
   useEffect(() => {
@@ -383,12 +435,13 @@ export function ProjectsClient() {
             openDetail(firstKey);
             const daily =
               detail.data?.daily ??
-              demoDetailPayload(
+              demo?.demoDetailPayload(
                 projects[0].project_key,
                 range.fromDay,
                 range.toDay,
                 caliber,
-              ).daily;
+              ).daily ??
+              [];
             const day = daily.find((entry) => entry.total_tokens > 0);
 
             previewTimers.current.push(
@@ -415,6 +468,7 @@ export function ProjectsClient() {
       activeKey,
       caliber,
       clearPreviewTimers,
+      demo,
       detail.data,
       openDetail,
       projects,
@@ -428,6 +482,8 @@ export function ProjectsClient() {
     setEffects((previous) => ({ ...previous, [id]: !previous[id] }));
   }, []);
 
+  const hasNarrowingFilters =
+    filters.sort !== "tokens" || filters.limit !== "all" || view !== "list";
   const sortLabel = filters.sort === "cost" ? copy.sortCost : copy.sortTokens;
   // Hourly buckets count conversations, not sessions: the row/card meta has to
   // say the same thing the column header and the detail dialog do.
@@ -521,31 +577,22 @@ export function ProjectsClient() {
           </ToggleButtonGroup>
         </div>
 
+        {hasNarrowingFilters ? (
+          <Button size="sm" variant="ghost" onPress={clearFilters}>
+            {copy.clearFilters}
+          </Button>
+        ) : null}
+
         <div className="ml-auto flex items-center gap-1.5">
-          <Tooltip delay={0}>
-            <Button
-              isIconOnly
-              aria-label={copy.refresh}
-              size="sm"
-              variant="tertiary"
-              onPress={retry}
-            >
-              <ArrowsRotateRight
-                aria-hidden="true"
-                className={activeRefreshing ? "size-4 animate-spin" : "size-4"}
-              />
-            </Button>
-            <Tooltip.Content showArrow placement="bottom">
-              <Tooltip.Arrow />
-              <Typography type="body-xs">
-                {lastUpdatedAt == null
-                  ? copy.lastUpdatedNone
-                  : formatMessage(copy.lastUpdated, locale, {
-                      time: formatDateTime(new Date(lastUpdatedAt)),
-                    })}
-              </Typography>
-            </Tooltip.Content>
-          </Tooltip>
+          <RefreshButton
+            lastUpdatedAt={lastUpdatedAt}
+            lastUpdatedNone={copy.lastUpdatedNone}
+            lastUpdatedTemplate={copy.lastUpdated}
+            locale={locale}
+            refreshLabel={copy.refresh}
+            refreshing={activeRefreshing}
+            onPress={retry}
+          />
         </div>
       </div>
 

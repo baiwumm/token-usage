@@ -22,6 +22,7 @@ export interface ProjectsCopy {
   sortLabel: string;
   sortTokens: string;
   sortCost: string;
+  clearFilters: string;
   refresh: string;
   lastUpdated: string;
   lastUpdatedNone: string;
@@ -195,6 +196,7 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
     sortLabel: "排序",
     sortTokens: "按 Token",
     sortCost: "按费用",
+    clearFilters: "清除筛选",
     scopeNoteTitle: "口径说明",
     refresh: "刷新",
     lastUpdated: "上次更新 {time}",
@@ -427,6 +429,7 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
     sortLabel: "Sort",
     sortTokens: "By tokens",
     sortCost: "By cost",
+    clearFilters: "Clear filters",
     scopeNoteTitle: "What this page counts",
     refresh: "Refresh",
     lastUpdated: "Updated {time}",
