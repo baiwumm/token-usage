@@ -1,6 +1,8 @@
 // POST /api/functions/token-usage-ingest — device token only. CLI face, frozen
 // by docs/cli-contract.md §2.4. Bucket-granular last-wins upsert is the
 // reconciliation baseline; never change the key or the dedup semantics.
+// The optional `projects` array (contract v3) is per-device, best-effort
+// repo detection that never fails the batch.
 
 import {
   errorResponse,
@@ -21,14 +23,18 @@ import {
 import { invalidateAccountUsage } from "@/lib/api/account-data";
 import { sha256Hex } from "@/lib/device-codes";
 import {
+  MAX_PROJECT_ENTRIES,
   dedupeBuckets,
+  dedupeProjectRepos,
   dedupeSessions,
   dedupeStates,
   isAccountLevelSessionSource,
   normalizeBucket,
+  normalizeProjectRepo,
   normalizeSession,
   normalizeSessionSource,
   normalizeSessionState,
+  type NormalizedProjectRepo,
   type NormalizedSession,
 } from "@/lib/ingest/normalize";
 
@@ -88,6 +94,14 @@ export async function POST(request: Request) {
       return jsonResponse(400, { error: "Invalid session" });
     }
     const rawSessions = Array.isArray(rawSessionsValue) ? rawSessionsValue : [];
+    const rawProjectsValue = body.projects;
+
+    // contract v3: only the container shape can reject the request; entries
+    // are dropped one by one below.
+    if (rawProjectsValue != null && !Array.isArray(rawProjectsValue)) {
+      return jsonResponse(400, { error: "Invalid project" });
+    }
+    const rawProjects = Array.isArray(rawProjectsValue) ? rawProjectsValue : [];
 
     if (rawBuckets.length > 500) {
       return jsonResponse(400, { error: "Too many buckets (max 500)" });
@@ -100,10 +114,14 @@ export async function POST(request: Request) {
     if (rawSessions.length > 200) {
       return jsonResponse(400, { error: "Too many sessions (max 200)" });
     }
+    if (rawProjects.length > MAX_PROJECT_ENTRIES) {
+      return jsonResponse(400, { error: "Too many projects (max 200)" });
+    }
     if (
       rawBuckets.length === 0 &&
       rawStates.length === 0 &&
-      rawSessions.length === 0
+      rawSessions.length === 0 &&
+      rawProjects.length === 0
     ) {
       return jsonResponse(400, { error: "No usage buckets provided" });
     }
@@ -149,6 +167,17 @@ export async function POST(request: Request) {
       if (!session) return jsonResponse(400, { error: "Invalid session" });
       normalizedSessions.push(session);
     }
+
+    // Validate first, then let the later valid entry win per project_key; an
+    // invalid entry is only counted, never a 400.
+    const validProjects: NormalizedProjectRepo[] = [];
+
+    for (const raw of rawProjects) {
+      const entry = normalizeProjectRepo(raw);
+
+      if (entry) validProjects.push(entry);
+    }
+    const projects = dedupeProjectRepos(validProjects);
 
     const now = new Date().toISOString();
     const buckets = dedupeBuckets(normalizedBuckets);
@@ -205,6 +234,37 @@ export async function POST(request: Request) {
     if (buckets.length > 0 || states.length > 0 || dedupedSessions.length > 0)
       invalidateAccountUsage(String(tokenRow.user_id));
 
+    // contract v3: repo detection is best effort and written last. Each device
+    // owns its rows (a null clears only this device). A failed write — e.g. a
+    // self-hosted instance that has not run the migration — must not fail an
+    // upload whose usage rows already landed: the counters are left out, so
+    // the CLI treats the entries as unconfirmed and resends them next sync.
+    let projectsConfirmed = rawProjects.length > 0;
+
+    if (projects.length > 0) {
+      try {
+        await upsert(
+          "token_project_repos",
+          projects.map((entry): RestRow => ({
+            user_id: tokenRow.user_id,
+            device_id: tokenRow.device_id,
+            project_key: entry.project_key,
+            repo_url: entry.repo_url,
+            updated_at: now,
+          })),
+          "user_id,device_id,project_key",
+          { returning: false },
+        );
+      } catch (error) {
+        projectsConfirmed = false;
+        // eslint-disable-next-line no-console
+        console.error(
+          "ingest: projects write failed",
+          (error as Error)?.message || error,
+        );
+      }
+    }
+
     // Best effort: a telemetry write must not fail an already-committed upload.
     try {
       await update(
@@ -233,6 +293,11 @@ export async function POST(request: Request) {
       response.sessions_upserted = sessionsUpserted;
       response.sessions_skipped =
         dedupeSkipped + accountLevelSkipped + sessionsRpcSkipped;
+    }
+    // Same rule for contract v3: no `projects`, no counters.
+    if (projectsConfirmed) {
+      response.projects_upserted = projects.length;
+      response.projects_skipped = rawProjects.length - projects.length;
     }
 
     return jsonResponse(200, response);

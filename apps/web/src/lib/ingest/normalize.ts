@@ -386,3 +386,62 @@ export function dedupeStates(
 
   return Array.from(stateMap.values());
 }
+
+// contract v3 (docs/cli-contract.md §2.4): the repo each project directory
+// points at. Only the canonical GitHub / Gitee form is accepted, verbatim —
+// the CLI canonicalizes, the server only validates. The route drops invalid
+// entries one by one; they never fail the batch.
+export const MAX_PROJECT_ENTRIES = 200;
+const MAX_REPO_URL_LENGTH = 200;
+const REPO_URL_PATTERN =
+  /^https:\/\/(?:github\.com|gitee\.com)\/([A-Za-z0-9._-]{1,100})\/([A-Za-z0-9._-]{1,100})$/;
+
+export interface NormalizedProjectRepo {
+  project_key: string;
+  /** null = this device no longer detects a GitHub / Gitee remote. */
+  repo_url: string | null;
+}
+
+export function isCanonicalRepoUrl(value: string): boolean {
+  if (value.length > MAX_REPO_URL_LENGTH) return false;
+  const match = REPO_URL_PATTERN.exec(value);
+
+  if (!match) return false;
+  const [, owner, repo] = match;
+
+  if (owner === "." || owner === ".." || repo === "." || repo === "..") {
+    return false;
+  }
+
+  return !repo.toLowerCase().endsWith(".git");
+}
+
+export function normalizeProjectRepo(
+  raw: unknown,
+): NormalizedProjectRepo | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const record = raw as RawRecord;
+
+  if (typeof record.project_key !== "string") return null;
+  const projectKey = normalizeProjectKey(record.project_key);
+
+  // repo_url is required: an explicit null clears, a missing field is invalid.
+  if (!projectKey || !("repo_url" in record)) return null;
+  const repoUrl = record.repo_url;
+
+  if (repoUrl === null) return { project_key: projectKey, repo_url: null };
+  if (typeof repoUrl !== "string" || !isCanonicalRepoUrl(repoUrl)) return null;
+
+  return { project_key: projectKey, repo_url: repoUrl };
+}
+
+/** Request-internal dedup after validation: the later entry wins per key. */
+export function dedupeProjectRepos(
+  entries: NormalizedProjectRepo[],
+): NormalizedProjectRepo[] {
+  const repoMap = new Map<string, NormalizedProjectRepo>();
+
+  for (const entry of entries) repoMap.set(entry.project_key, entry);
+
+  return Array.from(repoMap.values());
+}
