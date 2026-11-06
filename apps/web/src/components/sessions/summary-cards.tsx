@@ -7,9 +7,11 @@ import type { SessionsCopy } from "@/lib/copy/sessions";
 import type { SessionsPayload } from "@/lib/dashboard/api";
 
 import { ChartColumn, Clock, ListUl, Wallet } from "@gravity-ui/icons";
-import { Card, Skeleton, Typography } from "@heroui/react";
 
-import { FlowNumber } from "@/components/flow-number";
+import {
+  SummaryCards as SummaryCardRow,
+  SummaryCardsSkeleton as SummaryCardRowSkeleton,
+} from "@/components/summary-card";
 import { useFormat } from "@/lib/format/format";
 
 export function SummaryCards({
@@ -57,28 +59,11 @@ export function SummaryCards({
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      {cards.map((card) => (
-        <Card key={card.key} className="gap-1 p-4">
-          <Card.Header className="flex-row items-center justify-between gap-2">
-            <Card.Title className="text-muted text-xs font-normal">
-              {card.label}
-            </Card.Title>
-            <card.icon aria-hidden="true" className="text-accent/70 size-4" />
-          </Card.Header>
-          <Card.Content className="gap-1">
-            <Typography className="tabular-nums" type="h4" weight="semibold">
-              <FlowNumber text={card.value} />
-            </Typography>
-            {card.sub ? (
-              <Typography color="muted" type="body-xs">
-                {card.sub}
-              </Typography>
-            ) : null}
-          </Card.Content>
-        </Card>
-      ))}
-    </div>
+    <SummaryCardRow
+      cards={cards}
+      className="grid grid-cols-2 gap-3 md:grid-cols-4"
+      contentClassName="gap-1"
+    />
   );
 }
 
@@ -87,37 +72,38 @@ export function SummaryCards({
 // one grey block before the payload lands.
 export function SummaryCardsSkeleton({ copy }: { copy: SessionsCopy }) {
   const cards = [
-    { key: "sessions", label: copy.cards.sessions, icon: ListUl },
-    { key: "tokens", label: copy.cards.tokens, icon: ChartColumn },
-    { key: "cost", label: copy.cards.cost, icon: Wallet },
+    {
+      key: "sessions",
+      label: copy.cards.sessions,
+      icon: ListUl,
+      valueWidth: "w-24",
+    },
+    {
+      key: "tokens",
+      label: copy.cards.tokens,
+      icon: ChartColumn,
+      valueWidth: "w-24",
+    },
+    {
+      key: "cost",
+      label: copy.cards.cost,
+      icon: Wallet,
+      valueWidth: "w-24",
+    },
     {
       key: "duration",
       label: copy.cards.avgDuration,
       icon: Clock,
       sub: copy.cards.avgHint,
+      valueWidth: "w-24",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      {cards.map((card) => (
-        <Card key={card.key} className="gap-1 p-4">
-          <Card.Header className="flex-row items-center justify-between gap-2">
-            <Card.Title className="text-muted text-xs font-normal">
-              {card.label}
-            </Card.Title>
-            <card.icon aria-hidden="true" className="text-accent/70 size-4" />
-          </Card.Header>
-          <Card.Content className="gap-1">
-            <Skeleton className="h-7 w-24 rounded-full" />
-            {card.sub ? (
-              <Typography color="muted" type="body-xs">
-                {card.sub}
-              </Typography>
-            ) : null}
-          </Card.Content>
-        </Card>
-      ))}
-    </div>
+    <SummaryCardRowSkeleton
+      cards={cards}
+      className="grid grid-cols-2 gap-3 md:grid-cols-4"
+      contentClassName="gap-1"
+    />
   );
 }

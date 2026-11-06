@@ -8,9 +8,11 @@ import type { SyncRunsCopy } from "@/lib/copy/sync-runs";
 import type { SyncRunsPayload } from "@/lib/dashboard/api";
 
 import { Clock, ClockArrowRotateLeft } from "@gravity-ui/icons";
-import { Card, Skeleton, Typography, cn } from "@heroui/react";
 
-import { FlowNumber } from "@/components/flow-number";
+import {
+  SummaryCards as SummaryCardRow,
+  SummaryCardsSkeleton as SummaryCardRowSkeleton,
+} from "@/components/summary-card";
 import { formatMessage } from "@/lib/copy/message";
 import { useLocale } from "@/lib/copy/locale";
 import { useFormat } from "@/lib/format/format";
@@ -50,28 +52,11 @@ export function SummaryCards({
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {cards.map((card) => (
-        <Card key={card.key} className="gap-1 p-4">
-          <Card.Header className="flex-row items-center justify-between gap-2">
-            <Card.Title className="text-muted text-xs font-normal">
-              {card.label}
-            </Card.Title>
-            <card.icon aria-hidden="true" className="text-accent/70 size-4" />
-          </Card.Header>
-          <Card.Content className="gap-1">
-            <Typography className="tabular-nums" type="h4" weight="semibold">
-              <FlowNumber text={card.value} />
-            </Typography>
-            {card.sub ? (
-              <Typography color="muted" type="body-xs">
-                {card.sub}
-              </Typography>
-            ) : null}
-          </Card.Content>
-        </Card>
-      ))}
-    </div>
+    <SummaryCardRow
+      cards={cards}
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+      contentClassName="gap-1"
+    />
   );
 }
 
@@ -87,34 +72,23 @@ export function SummaryCardsSkeleton({ copy }: { copy: SyncRunsCopy }) {
       key: "today",
       label: copy.cards.todayRuns,
       icon: ClockArrowRotateLeft,
-      value: "w-20",
-      caption: "w-20",
+      valueWidth: "w-20",
+      captionWidth: "w-20",
     },
     {
       key: "last",
       label: copy.cards.lastRun,
       icon: Clock,
-      value: "w-40",
-      caption: "w-16",
+      valueWidth: "w-40",
+      captionWidth: "w-16",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {cards.map((card) => (
-        <Card key={card.key} className="gap-1 p-4">
-          <Card.Header className="flex-row items-center justify-between gap-2">
-            <Card.Title className="text-muted text-xs font-normal">
-              {card.label}
-            </Card.Title>
-            <card.icon aria-hidden="true" className="text-accent/70 size-4" />
-          </Card.Header>
-          <Card.Content className="gap-2">
-            <Skeleton className={cn("h-7 rounded-full", card.value)} />
-            <Skeleton className={cn("h-3 rounded-full", card.caption)} />
-          </Card.Content>
-        </Card>
-      ))}
-    </div>
+    <SummaryCardRowSkeleton
+      cards={cards}
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+      contentClassName="gap-2"
+    />
   );
 }

@@ -7,8 +7,8 @@ import type { WrappedCopy } from "@/lib/copy/wrapped";
 import type { DashboardPayload } from "@/lib/dashboard/api";
 
 import { Calendar, Comments, Hashtag, Wallet } from "@gravity-ui/icons";
-import { Card, Typography } from "@heroui/react";
 
+import { SummaryCards as SummaryCardRow } from "@/components/summary-card";
 import { useFormat } from "@/lib/format/format";
 
 export function StatCards({
@@ -47,22 +47,9 @@ export function StatCards({
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      {stats.map((card) => (
-        <Card key={card.key} className="gap-1 p-4">
-          <Card.Header className="flex-row items-center justify-between gap-2">
-            <Card.Title className="text-muted text-xs font-normal">
-              {card.label}
-            </Card.Title>
-            <card.icon aria-hidden="true" className="text-accent/70 size-4" />
-          </Card.Header>
-          <Card.Content>
-            <Typography className="tabular-nums" type="h4" weight="semibold">
-              {card.value}
-            </Typography>
-          </Card.Content>
-        </Card>
-      ))}
-    </div>
+    <SummaryCardRow
+      cards={stats}
+      className="grid grid-cols-2 gap-3 md:grid-cols-4"
+    />
   );
 }
