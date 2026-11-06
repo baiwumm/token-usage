@@ -245,14 +245,14 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 ## 10. 当前状态与剩余事项（2026-11-06 复核）
 
 **里程碑**：M0–M7 全部交付；生产实例 `token-usage.baiwumm.com` 自 2026-10-26 起承载
-两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.7`（2026-11-05
-发布）；`0.5.0` 已发版（2026-11-06，tag `cli-v0.5.0`，npm `dist-tags.latest = 0.5.0`）。两台采集机的身份与状态（设备名即契约 §2.2 的 `<主机名> #<machine_id 前 8 位>`，
+两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.1`（2026-11-06
+发布，tag `cli-v0.5.1`）；`0.5.0` / `0.5.1` 均已发版（2026-11-06）。两台采集机的身份与状态（设备名即契约 §2.2 的 `<主机名> #<machine_id 前 8 位>`，
 对照表见 `docs/cli-release.md` 开头「机器称呼约定」与 `docs/launch-runbook.md` 的采集机清单）：
 
 | 机器 | 云端当前名 | 默认名（稳定标识） | CLI 版本 | 状态 |
 |---|---|---|---|---|
-| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | **0.5.0**（2026-11-06 升级） | `doctor` 16 项全 OK（7 天计价覆盖 100%）；`sync --drain` 上传 36 行 / 133,526,693 tokens、sessions 1/1；`reconcile --days 1` / `--days 7` 均 OK（7 / 122 桶逐键匹配、0 drift、退出码 0）；WorkBuddy 项目行 16 行（27.2% token 已归因）；`project.repos.state.json` 确认 16 条仓库；首采 6,053,545,539 tokens / 13 providers；计划任务已按修复后的 XML 重注册（登录触发带 `UserId`、补跑/重试齐全，`LastTaskResult=0`） |
-| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | **0.5.0**（2026-11-06 升级） | `doctor` 16 项全 OK（7 天计价覆盖 99.9%）；`sync --drain` 上传 54 行 / 242,022,064 tokens；`reconcile --days 1` / `--days 7` 均 OK（48 / 261 桶逐键匹配、0 drift、退出码 0）；WorkBuddy 项目行已写入（29 行项目行 + 27 余量行，49.9% token 已归因）；`project.repos.state.json` 确认 15 条仓库；首采 3,338,516,793 tokens / 13 providers；计划任务以 XML 增强定义注册（提升权限 shell，无 degraded） |
+| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | **0.5.1**（2026-11-06 升级） | `doctor` **17 项全 OK**（新增 `schedule.registered` = enhanced；7 天计价覆盖 100%）；`init` 无 degraded；`sync --drain` 上传 2 行 / 9,694,213 tokens、sessions 1/1；`reconcile --days 1` / `--days 7` 均 OK（11 / 123 桶逐键匹配、0 drift、退出码 0）；计划任务补跑/重试/无限时长齐全、登录触发带 `UserId`、`LastTaskResult=0`。0.5.0 验收数据（WorkBuddy 16 行项目桶 / 27.2%、16 条仓库、首采 6,053,545,539 tokens / 13 providers）见 `docs/cli-release.md` §九 |
+| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | **0.5.0**（2026-11-06 升级） | `doctor` 16 项全 OK（7 天计价覆盖 99.9%）；`sync --drain` 上传 54 行 / 242,022,064 tokens；`reconcile --days 1` / `--days 7` 均 OK（48 / 261 桶逐键匹配、0 drift、退出码 0）；WorkBuddy 项目行已写入（29 行项目行 + 27 余量行，49.9% token 已归因）；`project.repos.state.json` 确认 15 条仓库；首采 3,338,516,793 tokens / 13 providers；计划任务以 XML 增强定义注册（提升权限 shell，无 degraded）。**待升级 0.5.1**（获得调度器修复与 `doctor` 自检，见 `docs/cli-release.md` §十） |
 
 两台 `device_id` 与服务端核对记录见 `docs/cli-release.md` 开头「机器称呼约定」与
 `docs/launch-runbook.md` 的采集机清单表；CLI 自报身份（`status` / `doctor` 输出设备行）
@@ -266,7 +266,8 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 0.4.4 落契约 v2 桶级 `project_key`、DeepSeek 余额/状态卡与计价覆盖自检，0.4.5 修
 队列去重丢拆分项目行、上传确认、VBS 编码与首同步统计，0.4.6 修 Cursor 准入 / Qoder credits
 与限额快照、加 `status --limits`，0.4.7 让每条命令自报设备身份并补全采集结果摘要
-（清单见 `docs/cli-release.md` §五–§八）。
+（清单见 `docs/cli-release.md` §五–§八）；0.5.1 修 Windows 计划任务的登录触发并新增 `doctor`
+计划任务自检（§十）。
 「同小时键多行递增值」观测已用源库核对证伪（属累计重入队，见
 `docs/cli-release.md` §四 0.4.3 条）。
 
@@ -278,8 +279,9 @@ pass 回填，总量与对账基线不变）；CLI 补齐契约 v3 的仓库地�
 gitee.com，按 `project.repos.state.json` 的已确认状态差量上报、`null` 清除本设备值，旧服务端
 视为未支持并留待重试）。挂账 5–7 项据此关闭（见下）。
 0.5.0 验收同时暴露 Windows 计划任务的 XML 缺陷（`<LogonTrigger>` 缺 `<UserId>` → 非提升权限
-注册被拒 → 静默降级成纯每小时）：修复已在 main（先补当前用户，再退「无登录触发」的完整定义），
-未发版，待 0.5.1 窗口带上；两台采集机的记录见 `docs/cli-release.md` §九。
+注册被拒 → 静默降级成纯每小时）：**0.5.1 已修复并发版（2026-11-06）**——登录触发写入当前用户，
+失败时先退「无登录触发」的完整定义；同批新增 `doctor` 的 `schedule.registered` 自检（16 → 17 项），
+让此后的静默降级能被直接看见。两台采集机的记录见 `docs/cli-release.md` §九–§十。
 
 **最近一批交付（2026-10-31 ~ 11-01）**：Trae CN 本地库、桶级 / 会话级 credits、
 `credits_ingested` 遥测、模型大小写归一、wrapped canonical 来源、成就条进度与详情弹窗、

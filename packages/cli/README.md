@@ -38,7 +38,7 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 | `tokenusage reconcile` | 只读对账：本地 `queue.jsonl` 的 last-wins 基线 vs 云端该设备的桶明细，按 `(hour_start, source, model)` 逐键比对，有漂移退出码 1 |
 | `tokenusage pause` / `resume` | 暂停/恢复自动采集：定时任务、hook、`--watch` 全部静默停手，手动 `sync` 不受影响 |
 | `tokenusage status` | 本地状态：Base URL、令牌、设备身份、采集状态、队列积压、最近解析/上传时间 |
-| `tokenusage doctor` | 体检（运行时 / 网络 / 各工具配置），critical 时退出码非 0 |
+| `tokenusage doctor` | 体检（运行时 / 网络 / 各工具配置 / 计划任务是否降级），critical 时退出码非 0 |
 | `tokenusage diagnostics` | 诊断信息导出（家目录路径脱敏为 `~`） |
 | `tokenusage sessions` | 本地导出会话分析（JSON/CSV，元数据级） |
 | `tokenusage uninstall [--purge]` | 移除 hook、计划任务与运行时副本；`--purge` 连数据目录一起删（保留机器身份） |

@@ -781,7 +781,7 @@ run `42198295142` 成功（1m34s，2026-11-06T09:52:23Z 触发）；GitHub Relea
 - [x] 公司机 WorkBuddy 归因：本地队列 92 行 WorkBuddy/Buddy AI 行中 29 行为项目行（余量行 27），**247,234,081 / 494,997,604 tokens = 49.9%** 已归因（余量为模型不齐的小时，按设计保留在残差）
 - [x] 家机 `DESKTOP-MHFON1J #48ea790e` 升级到 0.5.0 并按同口径验收（2026-11-06，见下表）
 - [ ] web 先部署新 seed，确认历史费用变化符合预期
-- [ ] 0.5.1 修掉调度器 XML 缺陷（见下「家机验收记录 · 调度器缺陷」），待发版窗口
+- [x] 0.5.1 修掉调度器 XML 缺陷（见下「家机验收记录 · 调度器缺陷」与 §十）
 
 公司机验收记录（2026-11-06，`PC-20260408RIKF #68e47b34`）：
 
@@ -808,7 +808,7 @@ run `42198295142` 成功（1m34s，2026-11-06T09:52:23Z 触发）；GitHub Relea
 | 服务端核对 | 设备 `6a074a51-693b-48e3-9f65-0728f9f2ee5c`（`Home · C Future City`）`last_hour 2026-11-06T12:00Z`、`last_used_at 2026-11-06T12:23:41Z`、964 桶 / 8,484,961,906 tokens；账号 all_time 23,457,312,129 tokens |
 | 计划任务 | 手动 `schtasks /run /tn TokenUsageSync` → `LastTaskResult=0`，`sync.log` 记录 `parsed 30138 files, +1 buckets, uploaded 1, queue drained` |
 
-**家机验收记录 · 调度器缺陷（0.5.0，待 0.5.1 修）**：`init` 首次注册 XML 时输出
+**家机验收记录 · 调度器缺陷（0.5.0，已由 0.5.1 修复）**：`init` 首次注册 XML 时输出
 `TokenUsageSync: hourly, hidden window (degraded: xml_rejected — 错误: 拒绝访问。; no catch-up/retry settings)`。
 排查结论：`buildWindowsTaskXml` 的 `<LogonTrigger>` 没带 `<UserId>`，`schtasks` 把它解析成「任意用户」，
 非提升权限的 `/Create /XML` 直接 `Access is denied`，于是整份定义被丢弃、退回纯 `-SC HOURLY`（丢掉
@@ -816,7 +816,7 @@ run `42198295142` 成功（1m34s，2026-11-06T09:52:23Z 触发）；GitHub Relea
 节点即可注册；补 `<UserId>DESKTOP-MHFON1J\i</UserId>` 后同样可注册（PowerShell
 `Register-ScheduledTask -AtLogOn` 亦可，说明不是策略禁止登录触发）。
 
-修复（未发版，代码在 main）：`buildWindowsTaskXml({ userId, logonTrigger })` 现把当前用户写进
+修复（0.5.1 已发版，见 §十）：`buildWindowsTaskXml({ userId, logonTrigger })` 现把当前用户写进
 `LogonTrigger`；注册失败时先重试「无登录触发」的完整定义（保留补跑/重试/无限时长，摘要标注
 `degraded: logon_trigger_rejected — …; catch-up/retry kept, no logon trigger`），再不行才退回纯每小时。
 本机已用修复后的生成器重注册 `\TokenUsageSync`：`StartWhenAvailable=True`、`RestartCount=3`、
@@ -824,3 +824,37 @@ run `42198295142` 成功（1m34s，2026-11-06T09:52:23Z 触发）；GitHub Relea
 手动触发 `LastTaskResult=0`。`pnpm verify` 全绿（CLI 270 个用例）。
 
 砍单线：WorkBuddy 那条若测试或对账不干净，砍到 0.5.1，仓库上报照发。
+
+## 十、0.5.1 发版（2026-11-06，已发布）
+
+npm `tokenusage-cli@0.5.1`（`dist-tags.latest = 0.5.1`）；tag `cli-v0.5.1`；Release workflow
+run `42224011411` 成功；GitHub Release
+`https://github.com/baiwumm/token-usage/releases/tag/cli-v0.5.1` 已建，正文取 CHANGELOG。
+零契约变更，服务端无需同步升级。
+
+| 批次 | 内容 | 影响面 |
+|---|---|---|
+| `fix(cli)` 调度器 | `<LogonTrigger>` 写入当前用户 + 三层注册 | 仅 Windows 计划任务注册；0.5.0 在非提升权限安装下会静默退回纯每小时 |
+| `feat(cli)` doctor | 新增 `schedule.registered` 自检 | 检查项 16 → 17；读取已注册定义（Windows `/Query /XML`、launchd plist、systemd timer） |
+| `chore(cli)` 发版 | 版本号 + CHANGELOG | — |
+
+发版前检查：
+
+- [x] `pnpm verify` 全绿（CLI 274 个用例：新增 4 个计划任务自检用例）
+- [x] tag `cli-v0.5.1` 与 `packages/cli/package.json` 一致、落在 `origin/main`
+- [x] release workflow 全绿（npm Trusted Publishing + provenance，GitHub Release 正文取 CHANGELOG）
+
+家机验收记录（2026-11-06，`DESKTOP-MHFON1J #48ea790e`，nvm + `registry.npmjs.org`）：
+
+| 项 | 结果 |
+|---|---|
+| 安装 | `npm i -g tokenusage-cli@0.5.1`（0.5.0 → 0.5.1）；`init --yes --no-integrations --no-open` 刷新运行时副本（`runtime.copy` v0.5.1） |
+| 调度摘要 | `TokenUsageSync: hourly, hidden window (pause/resume toggles it)` —— **无 degraded**，首次注册即拿到完整定义 |
+| `doctor` | **17 项全 OK / 0 warn / 0 fail**；新增 `schedule.registered` = `enhanced definition (catch-up, logon, retry)`；7 天计价覆盖 100% |
+| 计划任务 | `StartWhenAvailable=True`、`RestartCount=3`、`ExecutionTimeLimit=PT0S`、`MultipleInstances=IgnoreNew`、登录触发 `UserId=DESKTOP-MHFON1J\i`；手动触发 `LastTaskResult=0` |
+| `sync --drain` | 解析 30,126 文件、新入队 1 桶、上传 **2 行 / 9,694,213 tokens / 0 跳过**、sessions 1/1，耗时 11s |
+| 对账 | `reconcile --days 1` OK（11 桶逐键匹配）、`--days 7` OK（123 桶、0 drift、退出码 0） |
+
+待办：公司机 `PC-20260408RIKF #68e47b34` 仍为 0.5.0。它是提升权限 shell 注册的（未触发降级），
+但需升级到 0.5.1 才能获得 `doctor` 自检与后续修复；升级后按同口径复核 `doctor`（17 项）与
+`reconcile --days 7`。macOS/Linux 调度真机验证仍缺硬件。

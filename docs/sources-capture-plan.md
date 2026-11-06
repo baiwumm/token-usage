@@ -32,13 +32,16 @@
 credits 是**独立维度**：历史会话保持 0（`ended_at` 严格 last-wins 不重写老快照），永不并入
 token / 成本 / 成就口径。展示文案走 `lib/copy` typed 字典，数字格式走统一 format provider。
 
-## 4. 唯一未决项
+## 4. 未决项
 
-- [ ] **A10 — Cursor 厂商真实成本是否接线**：`parseCursorCsv` 解析了厂商 Cost 列，但
-  `normalizeCursorUsage` 不产出成本、`parseCursorApiIncremental` 不写 `total_cost_usd`，
-  因此 Cursor 成本实际与其他来源一样是「token × 定价」估算。2026-11-05 仅校正了
-  `docs/sources-capture-audit.md` §3 的 reported-first 表述（实现未动）。
-  **是否接线真实成本需操作者单独拍板**——涉及队列/云端口径与历史重算。
+无。A10 已于 2026-11-06 关闭。
+
+- [x] **A10 — Cursor 厂商真实成本是否接线** → **关闭（2026-11-06）**：近 30 天 Cursor 用量为 0
+  （历史累计约 340 万 tokens），接线要改成本算法并重算历史，恢复使用后再立项。机制现状：
+  `parseCursorCsv` 解析厂商 Cost 列，但 `normalizeCursorUsage` 不产出成本、
+  `parseCursorApiIncremental` 不写 `total_cost_usd`，因此 Cursor 成本与其他来源一样按
+  「token × 定价」估算（`docs/sources-capture-audit.md` §3 已于 2026-11-05 校正 reported-first
+  表述，实现未动）。
 
 ## 5. 历史锚点
 
@@ -48,3 +51,4 @@ token / 成本 / 成就口径。展示文案走 `lib/copy` typed 字典，数字
 | 2026-10-31 | P2 增量上 main：`8d81282`（Sessions credits）、`bd124cc`（遥测）、`b19e57b`（模型归一） |
 | 2026-11-01 | CLI 0.3.0 发布（tag `cli-v0.3.0` / `56ff02c`），全局包与运行时副本均升级，Trae CN 进入持续采集 |
 | 2026-11-05 | 上游对齐批次完成（A8 决定不采纳、A9 已接线限额面板）；A10 留待决策 |
+| 2026-11-06 | A10 关闭（近 30 天 Cursor 用量为 0，恢复使用后再立项）；CLI 0.5.1 发布（Windows 计划任务 XML 修复 + `doctor` 计划任务自检） |
