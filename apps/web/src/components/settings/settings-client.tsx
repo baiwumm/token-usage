@@ -50,15 +50,57 @@ import {
   type AccountDeviceRow,
 } from "@/lib/dashboard/api";
 
+const SETTINGS_SECTIONS = ["account", "appearance", "devices"] as const;
+
+type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+function isSettingsSection(value: string): value is SettingsSection {
+  return (SETTINGS_SECTIONS as readonly string[]).includes(value);
+}
+
 export function SettingsClient() {
   const [locale] = useLocale();
   const copy = SETTINGS_COPY[locale];
 
-  // Tab state is component-local; the ?section= URL param was dropped —
-  // nothing deep-links to a non-default section anymore.
-  const [section, setSection] = useState<"account" | "appearance" | "devices">(
-    "account",
-  );
+  // Deep links per docs/requirements.md:42 (/settings?section=...). The tab
+  // stays in component state, but reads the URL on mount and mirrors changes
+  // back with replaceState so a refresh / shared link keeps the partition.
+  const [section, setSection] = useState<SettingsSection>("account");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("section");
+
+    if (!raw) return;
+    if (isSettingsSection(raw)) {
+      setSection(raw);
+    } else {
+      // Invalid value: fall back to account and scrub it from the address bar.
+      params.delete("section");
+      const search = params.toString();
+
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${search ? `?${search}` : ""}`,
+      );
+    }
+  }, []);
+
+  const selectSection = useCallback((next: SettingsSection) => {
+    setSection(next);
+    const params = new URLSearchParams(window.location.search);
+
+    if (next === "account") params.delete("section");
+    else params.set("section", next);
+    const search = params.toString();
+
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${search ? `?${search}` : ""}`,
+    );
+  }, []);
 
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [devices, setDevices] = useState<AccountDeviceRow[]>([]);
@@ -250,7 +292,11 @@ export function SettingsClient() {
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-8">
       <Tabs
         selectedKey={section}
-        onSelectionChange={(key) => setSection(String(key) as typeof section)}
+        onSelectionChange={(key) => {
+          const next = String(key);
+
+          if (isSettingsSection(next)) selectSection(next);
+        }}
       >
         <Tabs.ListContainer>
           <Tabs.List aria-label={copy.pageTitle}>
