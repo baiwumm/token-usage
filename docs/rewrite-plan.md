@@ -63,7 +63,7 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 - Vercel 函数预算：`account-[series]` 一个动态路由覆盖 8 个 series（2026-10-25 追加 `sessions`，2026-10-27 追加 `sync-runs`）。**2026-11-05 复核**：仓库实际有 21 个 route handler（`apps/web/src/app` 下 `route.ts` 计数）；此前记载的 Hobby 12 函数上限在当前 Vercel 文档中已不再列出，因此**不再以 12 为硬约束**——新增端点优先并入 catch-all（`/api/functions/[...slug]`）或 `/api/app/*`。P1.4 曾核对控制台并线上验证 `/api/app/achievements` 正常部署（见 `docs/achievements-plan.md`）。
 - 数据访问（2026-10-24 修订，操作者指令）：route.ts 经 **@supabase/supabase-js**（secret key 客户端）访问 PostgREST；封装层保持异常式错误语义（唯一约束 → 409，其余 → 500），与 CLI 契约 §1.3 对齐。
 
-## 3. 新表结构（M1 定稿成 migration；`token_sessions` 于 M5.6 追加，`token_sync_runs` 于 0.2.0 追加，`token_achievement_seen` 于 M7 P3 追加，credits 列于 2026-10-31 追加）
+## 3. 新表结构（M1 定稿成 migration；`token_sessions` 于 M5.6 追加，`token_sync_runs` 于 0.2.0 追加，`token_achievement_seen` 于 M7 P3 追加，credits 列于 2026-10-31 追加，`token_project_repos` / `token_project_profiles` 于 2026-11-06 追加）
 
 所有表 `enable row level security`，且对 `anon, authenticated` **无任何 policy**（全拒）；`service_role` 全量授权。迁移文件放在 `supabase/migrations/`，幂等（`if not exists`），部署者可 `supabase db push` 一键建库。
 
@@ -79,6 +79,8 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 | `token_sync_runs` | 采集端每轮 sync 运行记录（§2.11/§2.12，0.2.0，含空跑） | `id uuid pk`, `user_id → auth.users`, `device_id → token_devices`, `run_id`（check 1–128）, `started_at`, `ended_at`, `duration_ms`（服务端派生，≥0）, `trigger`（check scheduled/manual/watch/notify）, `result`（check ok/partial/error）, `error_code`（可空 ≤64）, `empty`（服务端派生 bool）, `parsed_files`/`buckets_uploaded`/`tokens_ingested`/`sessions_uploaded`/`sessions_skipped`（非负 check）, `credits_ingested numeric`（2026-10-31：可选遥测，非负，不参与对账）, `queue_bytes`（可空 ≥0）, `cli_version`, `os`（可空）, `created_at`, `updated_at`；唯一 `(user_id, device_id, run_id)`（幂等键，重放 duplicate:true、首写胜出）；check `ended_at >= started_at`；索引 `(user_id, started_at desc)`；RLS 零 policy |
 | `token_achievement_seen` | 成就已读水位（M7 P3，跨设备「新」标记与解锁 toast） | `user_id uuid pk → auth.users on delete cascade`, `seen_through date`（check `>= 2000-01-01`，只前进）, `created_at`, `updated_at`；每用户单行；RLS 零 policy，仅 `service_role`。**只存已读日，不存成就快照**——成就仍由现有表读时计算 |
 | `token_public_badges` | 公开徽章令牌（`/api/badge`、公开页 `/u/<token>`） | 2026-11-01 建表、2026-11-05 加分区字段；详见 `docs/badge.md` |
+| `token_project_repos` | 项目仓库地址的**设备级**检测结果（契约 v3，2026-11-06；唯一写入方是 ingest 的 `projects`，`docs/cli-contract.md` §2.4） | 主键 `(user_id, device_id, project_key)`；`user_id → auth.users`、`device_id → token_devices`（均 on delete cascade）；`project_key` check 1–120；`repo_url` 可空（null = 该设备已检测不到），check 仅允许 `https://github.com/` / `https://gitee.com/` 开头且 ≤200（兜底，精确的 owner/repo 规范形态由 ingest 校验）；`created_at`、`updated_at`；每台设备只覆盖自己的行，读取侧取未吊销设备中 `updated_at` 最新的非空值；RLS 零 policy。迁移 `20261106000000_token_project_repos_profiles.sql` |
+| `token_project_profiles` | 项目资料（仪表盘手动设置；唯一写入方是 `/api/app/project-profiles`，ingest 永不写） | 主键 `(user_id, project_key)`；`display_name`（可空，1–60）、`repo_url`（可空，https、≤500、无空白与控制字符）、`repo_hidden bool not null default false`（隐藏检测到的仓库）、`logo_url`（规则同 `repo_url`）、`logo_object`（可空、≤300，必须以 `<user_id>/projects/` 开头，对象存于公开 `avatars` 桶）；`created_at`、`updated_at`；RLS 零 policy。与上表同一迁移 |
 
 与旧结构的映射（迁移用）：`tokentracker_* → token_*` 一一对应，`device_machine` 折叠进 `token_devices.machine_cluster_id`，其余列语义不变——**upsert 键与 last-wins 语义逐字保留**。
 
