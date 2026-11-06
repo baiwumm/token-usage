@@ -105,6 +105,43 @@ export function dashboardUserCacheKey(token: string): string {
   return `t${hash.toString(36)}`;
 }
 
+const ARRAY_PAYLOADS = ["daily", "monthly", "breakdown"] as const;
+const OBJECT_PAYLOADS = [
+  "summary",
+  "dashboard",
+  "heatmap",
+  "achievements",
+] as const;
+
+/** Runtime shape check — a type assertion alone lets a corrupted entry
+ *  hydrate seven broken payloads and white-screen the dashboard. */
+function isStoredEntry(value: unknown): value is StoredEntry {
+  if (value == null || typeof value !== "object") return false;
+  const entry = value as Partial<StoredEntry>;
+
+  if (
+    typeof entry.version !== "string" ||
+    typeof entry.savedAt !== "number" ||
+    !Number.isFinite(entry.savedAt)
+  ) {
+    return false;
+  }
+  const payloads = entry.payloads;
+
+  if (payloads == null || typeof payloads !== "object") return false;
+  const record = payloads as unknown as Record<string, unknown>;
+
+  return (
+    ARRAY_PAYLOADS.every((key) => Array.isArray(record[key])) &&
+    OBJECT_PAYLOADS.every(
+      (key) =>
+        record[key] != null &&
+        typeof record[key] === "object" &&
+        !Array.isArray(record[key]),
+    )
+  );
+}
+
 function readStore(store: Storage | null): CacheStore {
   if (store == null) return {};
 
@@ -112,8 +149,22 @@ function readStore(store: Storage | null): CacheStore {
     const raw = store.getItem(STORAGE_KEY);
 
     if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
 
-    return JSON.parse(raw) as CacheStore;
+    if (parsed == null || typeof parsed !== "object") return {};
+    const clean: CacheStore = {};
+
+    for (const [userKey, entries] of Object.entries(parsed)) {
+      if (entries == null || typeof entries !== "object") continue;
+      const valid: Record<string, StoredEntry> = {};
+
+      for (const [filterKey, entry] of Object.entries(entries)) {
+        if (isStoredEntry(entry)) valid[filterKey] = entry;
+      }
+      if (Object.keys(valid).length > 0) clean[userKey] = valid;
+    }
+
+    return clean;
   } catch {
     return {};
   }
@@ -154,12 +205,14 @@ export function readDashboardCache(
   const memoryHit = userMap(userKey).get(filterKey);
 
   if (memoryHit) {
-    return memoryHit.version === version ? memoryHit.payloads : null;
+    return isStoredEntry(memoryHit) && memoryHit.version === version
+      ? memoryHit.payloads
+      : null;
   }
 
   const persisted = readStore(store)[userKey]?.[filterKey];
 
-  if (!persisted) return null;
+  if (!isStoredEntry(persisted)) return null;
 
   userMap(userKey).set(filterKey, persisted);
 
