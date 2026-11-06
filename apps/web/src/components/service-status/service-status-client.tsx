@@ -7,7 +7,7 @@
 
 import { ArrowsRotateRight } from "@gravity-ui/icons";
 import { Button, Spinner, Typography } from "@heroui/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ChecksTable } from "./checks-table";
 import { FactsCard } from "./facts-card";
@@ -38,14 +38,23 @@ export function ServiceStatusClient() {
   const [results, setResults] = useState<CheckResult[]>(initialResults);
   const [projectUrl, setProjectUrl] = useState<string | null>(null);
   const [dashboardUrl, setDashboardUrl] = useState<string | null>(null);
+  // A re-run (or an unmount while probes are still in flight) must not let an
+  // older round overwrite the newest rows or clear its pending state. Each run
+  // owns an id; the mount effect flips a cancelled flag on cleanup.
+  const runIdRef = useRef(0);
+  const cancelledRef = useRef(false);
 
   const runChecks = useCallback(async () => {
+    const runId = ++runIdRef.current;
+    const isCurrent = () => runIdRef.current === runId && !cancelledRef.current;
+
     setRunning(true);
     setProjectUrl(null);
     setDashboardUrl(null);
     setResults(initialResults());
 
     const settle = (name: StatusCheckName, patch: Partial<CheckResult>) => {
+      if (!isCurrent()) return;
       setResults((previous) =>
         previous.map((row) => (row.name === name ? { ...row, ...patch } : row)),
       );
@@ -81,8 +90,10 @@ export function ServiceStatusClient() {
     await probe("public-config", async () => {
       const payload = await fetchPublicConfig();
 
-      setProjectUrl(payload.supabase_url ?? null);
-      setDashboardUrl(payload.dashboard_url ?? null);
+      if (isCurrent()) {
+        setProjectUrl(payload.supabase_url ?? null);
+        setDashboardUrl(payload.dashboard_url ?? null);
+      }
 
       return undefined;
     });
@@ -100,7 +111,7 @@ export function ServiceStatusClient() {
         status: "fail",
         detail: { kind: "no-session" },
       });
-      setRunning(false);
+      if (isCurrent()) setRunning(false);
 
       return;
     }
@@ -130,11 +141,16 @@ export function ServiceStatusClient() {
       return { kind: "devices", value: payload.devices?.length ?? 0 };
     });
 
-    setRunning(false);
+    if (isCurrent()) setRunning(false);
   }, []);
 
   useEffect(() => {
+    cancelledRef.current = false;
     void runChecks();
+
+    return () => {
+      cancelledRef.current = true;
+    };
   }, [runChecks]);
 
   const sessionState =
