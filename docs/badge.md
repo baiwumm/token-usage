@@ -243,7 +243,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   §0 第 4 条）。
 - 热力图日桶：**与仪表盘同款**——近一年 52 周（`lib/public-page/data.ts` 的 `buildHeatmap`
   按所有者时区取 52 周日桶，Mon-start），走 `HeatmapPayload` 链路交给
-  `components/dashboard/heatmap-card.tsx` 渲染；页面不提供任何时间范围控件（热力图解释
+  `components/heatmap-card.tsx` 渲染；页面不提供任何时间范围控件（热力图解释
   分布，不改变总量）。`lib/public-page/heatmap.ts` 的编年分段（`splitYears`）、分位数分档
   （`quantileStops` / `levelFor`）**不再参与渲染**，但该模块仍供全历史派生事实（最长连续
   天数、单日峰值）使用，10 年 / 3650 天上限也仍作用于全历史日桶（`capDayPoints`）。
@@ -415,7 +415,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 ### §6.4 热力图
 
-- **与仪表盘同款**：`u-heatmap.tsx` 直接渲染 `components/dashboard/heatmap-card.tsx` 的
+- **与仪表盘同款**：`u-heatmap.tsx` 直接渲染 `components/heatmap-card.tsx` 的
   `HeatmapCard`，传 `bare`（去掉卡片外壳与底色）与 `hideFilter`（无平台 / 来源筛选），
   复用 `DashboardCopy`；月份 / 周几标尺、共享 portal tooltip（`HeatmapTooltip`，含按来源
   构成）、时区脚注与图例全部沿用仪表盘实现，不再有公开页自有的纯 CSS grid。
@@ -431,7 +431,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 - **全部已解锁**：`u-achievements.tsx` 列出全部 `tier >= 1` 的成就（目录顺序，不再取前 6 枚），
   标题右侧给出「共 N 枚」计数；未解锁条目不展示。
 - **复用共享详情弹窗**：`u-achievement-dialog.tsx` 复用
-  `components/achievements/achievement-dialog.tsx` 的 `AchievementDialog`——与 `/achievements`
+  `components/achievement-dialog.tsx` 的 `AchievementDialog`——与 `/achievements`
   同一个弹窗，展示当前值与单位、当前段位与达成日期、下一段位阈值与进度条、五段段位历史
   与五段阈值时间线（每段阈值与达成日）；只因不传分享回调而隐藏分享入口（原「独立轻量
   弹窗」描述作废）。

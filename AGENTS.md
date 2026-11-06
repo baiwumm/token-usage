@@ -17,7 +17,17 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 `<页名>-skeleton.tsx` 为骨架；页面内卡片用 `<内容>-card.tsx`，栅格/浮层包装用同前缀
 `<内容>-section.tsx`，侧栏用 `<内容>-panel.tsx`，表格 `-table.tsx`，弹窗 `-dialog.tsx` /
 `-dialogs.tsx`，纯计算 `-helpers.ts` / `-filters.ts`，钩子 `use-*.ts`。单个组件拆成多文件时
-放进同名目录并以 `index.tsx` 收口（如 `charts/`）；单文件组件直接放在所属目录，不建页面级桶文件。
+放进同名目录并以 `index.tsx` 收口（如 `charts/`）；单文件组件直接放在所属目录，不建页面级桶文件。**特批例外**：`docs/ui-spec.md` 明确列出的文件名为特批例外（如「公开页」节逐字列出的 `u/` 文件名 `u-body.tsx` / `u-hero.tsx` 等），虽不合上述后缀集合，仍以该清单为准。
+
+## 命名规范补充（规范空白澄清）
+
+上文「组件文件命名」的后缀集合约束的是**页面级组件文件**；下列三类文件不在其覆盖范围内，命名按职责自由，**不得把「规范空白」误判为违规**：
+
+- **`components/` 根级跨页共享件**：被多个页面复用的组件（如 `flow-number.tsx` / `data-table-card.tsx` / `panel-overlay.tsx` / `table-pagination.tsx` / `device-filter-select.tsx` 等）一律放 `components/` 根，文件名按功能/内容命名，不冠页名、不套 `<页名>-*` 后缀。归属规则：跨页复用归根目录，单页专用才归 `components/<路由名>/`。
+- **拆分目录内部文件**：单个组件拆成多文件时放进同名目录（见上文），**目录内文件名按职责自由**，不强加页面级后缀（如 `app-shell/` 的 `brand.tsx` / `sidebar.tsx` / `top-bar.tsx` / `nav-items.tsx` / `use-local-hour.ts`，`share-card/` 的 `broadsheet.ts` / `receipt.ts` / `neon.ts` / `vinyl.ts` / `helpers.ts` / `types.ts` / `hook.ts`）；组件目录用 `index.tsx` 收口对外导出。
+- **页面目录内的纯逻辑 `.ts`**：页面组件目录里的纯计算/规则模块（如 `dashboard/aggregate.ts`、`projects/identity.ts`，及各页 `*-helpers.ts` / `*-filters.ts` / `share-input.ts` 等）不是组件文件，后缀集合不适用；按职责命名、归属所在页面目录即可。
+
+补充：**纯 TS 拆分目录可用 `index.ts` 收口**（与 `index.tsx` 仅差是否含 JSX）——`share-card/index.ts` 为现状；`charts.tsx` / `mini-charts.tsx` 等根级单文件组件直接放根目录，不建页面级桶文件（沿用上文）。
 
 ## 优先级链（冲突裁决）
 

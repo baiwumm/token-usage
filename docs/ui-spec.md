@@ -11,6 +11,18 @@
   danger / danger-soft）与主题 CSS 变量（`bg-background`、`text-foreground`、`bg-surface`）；
   组件代码零裸色值，品牌色定制走 HeroUI 主题变量。
 - 深浅色：next-themes 的 class 策略（`.dark`），样式写语义 token，暗色映射由主题承担。
+- 裸色值豁免清单（2026-11-07 操作者裁定，增补、不覆盖上文历史裁定）：下列固定视觉资产属于
+  「组件代码零裸色值」的**合规例外**——它们是 Canvas 2D / SVG / 物理渲染的固定资产色板，
+  不随 `.dark` 主题切换，故保留字面色值，但一律收口到单点常量文件、不散落在绘制逻辑里：
+  (1) Canvas 2D 分享卡引擎（`components/share-card/` 绘制文件）与
+  `components/share-card/palette.ts` 的 PAPER / INK / INK_SOFT / VERMILLION 及各风格
+  HEATMAP_PALETTE；(2) `components/achievement-tiers.ts` 的段位金属色板（TIER_METALS /
+  TIER_RAMPS / LOCKED_*，对齐上游 TokenTracker 五档段位）；(3) 3D 成就硬币
+  （`achievement-coin.tsx` / `achievement-medallion.tsx` / `achievement-art.tsx`）的 rgba
+  高光、描边与插画色（SVG gradient stops / inline background 无法响应主题 class）；
+  (4) `components/source-icon.tsx` 的品牌回退色块（各来源品牌色、无 SVG 资源时的兜底）。
+  **DOM 组件（HeroUI / Tailwind 渲染的常规界面）仍一律使用语义 token 与
+  `var(--color-chart-N)` 等主题变量**，不得引用上述字面色值；新增例外须在本清单登记。
 
 ## 组件规则（编码级）
 
@@ -38,6 +50,12 @@
   仪表盘明细页本地排序），组件不自己取数。`<md` 的卡片列表走 `renderMobileRow`。
   刷新浮层只覆盖表格区（含移动端卡片列表），卡头标题/副标题与页脚分页保持可见
   （2026-10-28 操作者裁定）。
+- **适用范围与刷新遮罩**：上条「只覆盖表格区、卡头/页脚保持可见」**只约束 `DataTableCard`
+  列表卡**（`/sessions` / `/sync-runs` / 设置设备分区 / `/wrapped` 模型表等调用方）；仪表盘各
+  卡片改用 `components/panel-overlay.tsx` 的 `PanelOverlay` **覆盖整卡**（含卡头），且**刷新遮罩
+  必须 `pointer-events-none`**（`aria-hidden`、不拦截指针），刷新期间不阻塞卡内交互；`/wrapped`
+  切年份的「旧数据护栏」（半透明 + 不可交互 + 加载提示）是有意阻塞交互的独立状态，不属常规
+  刷新遮罩，按「年度回顾」节执行。
 - 下拉框选项异步加载时，加载态放在触发器里：`Select.Indicator` 内渲染 `Spinner`
   （`<Select.Indicator><Spinner size="sm" /></Select.Indicator>`），加载完回落默认箭头；
   不另加触发器外的 Spinner。选项随页面数据一起到达的筛选下拉，只在首载（选项尚空）时
@@ -124,13 +142,18 @@
    居中徽章（80px，`md` 起 96px）+ 名称（单行截断）+ 段位渐变标签（已解锁；未解锁无
    徽章）；窄屏三列、`sm` 起五列一行（2026-10-30 操作者裁定：尺寸加大、间距收紧、每行
    5 个）。格子**可点击**，打开与 `/achievements` 一致的详情弹窗（复用
-   `components/achievements/achievement-detail.tsx` 的 `AchievementDetail`：
+   `components/achievement-detail.tsx` 的 `AchievementDetail`：
    详情 + 分享一体，2026-10-31 操作者裁定，取代 2026-10-30 的只读裁定，瓦片不再画
    进度条）。「查看全部」入口保留。全部条目当前值为 0（空账号）时整条不渲染；
    数据失败走 Card 内 `SectionError` + 重试，加载中用同构的墙格骨架占位。该条与全局解锁
-   watcher 共用 `fetchAchievementsShared` 的在途请求（同一时区参数下只算一次；仪表盘选了
-   自定义时区时两者口径不同，各取一次）。
-3. **活跃热力图**（独占一行，紧跟总 Tokens 头卡，`components/dashboard/heatmap-card.tsx`）：
+   watcher 共用 `fetchAchievementsShared`（`lib/achievements/api.ts`）：同一时区参数下
+   **in-flight 去重**（并发在途请求合并）+ 对**已结算 payload 加 15 s 短 TTL**
+   （`SHARED_TTL_MS`）——watcher 在挂载约 1.2 s 后才发请求，此时仪表盘请求通常已结算，
+   单靠 in-flight 去重必然重复计算；`markAchievementsSeen` 写入已读水位后调用
+   `invalidateAchievementsShared()` 立即失效缓存。**TTL 取短（15 s）是为了不延迟解锁 toast
+   与已读水位的推进**（缓存过久会让新解锁 / 已读状态滞后）；仪表盘选了自定义时区时两者
+   口径不同，各取一次（cache key 含 `tz` / `offsetMinutes`）。
+3. **活跃热力图**（独占一行，紧跟总 Tokens 头卡，`components/heatmap-card.tsx`）：
    近 52 周 Mon-start 满宽网格（窄屏裁周、宽屏撑满格子，`ResizeObserver` 自适应）；
    月份标尺在上、周几单字标尺（一~日 / M~S）在左；右上「全部平台」多选筛选
    （`Dropdown.ItemIndicator` 勾选态，全部/清空，触发按钮显示已选状态），按来源过滤后
@@ -201,7 +224,9 @@
    事实条）、**唱片**（方形黑胶封面：热力图色环沟纹、纸标、曲目=模型榜）。预览即导出 PNG 本身
    （所见即所得）；卡片数据由 `dashboard/share-input.ts` 从当前 payload 投影，文案统一走
    `lib/copy/share-card.ts`。特刊的大数与模型榜固定使用完整千分位数字（`formatNumber`，
-   跟随分组设置），与仪表盘的紧凑显示偏好解耦；其余风格沿用偏好格式。
+   跟随分组设置），与仪表盘的紧凑显示偏好解耦；其余风格沿用偏好格式。**关闭态不得重绘 Canvas**：
+   `ShareCardDialog` 关闭/退出时保留最后一帧图像以支撑退出动画（不触发新的绘制），避免关闭瞬间
+   重绘造成闪黑帧，退出动画结束后再释放。
    **成就分享卡**（2026-10-30 P3，`components/share-card/achievement.ts`）不属于上述四种风格：
    它是成就详情弹窗的独立分享入口，固定 **1080×1350** 深色卡（段位光晕 + 徽章 + 段位标签 +
    当前值 + 达成日），复用同一套 Canvas helpers（`roundRectPath` / `drawTracked` /
@@ -221,6 +246,11 @@
   `aria-label` 兜底，见「公开页」节。
 - `<lg`：KPI 两列、筛选条换行、图表高度约 220px；`Modal` 使用全屏尺寸；表格横向滚动
   只发生在 Card 内。
+- **全局 `prefers-reduced-motion` 兜底**：用户开启「减少动态效果」时，所有装饰性动效必须
+  可降级——`animate-spin` 的刷新/加载图标、`transition` 过渡、`FlowNumber` 数字滚动、分享卡
+  旧帧淡出/新帧回弹、3D 硬币入场与怠速摆动等，一律用 `@media (prefers-reduced-motion: reduce)`
+  或组件内判断关闭 / 改为静态呈现；用户驱动的非装饰交互（如水平拖拽翻面、纯点击）不受影响。
+  本条覆盖全站各页，不只仪表盘。
 
 ### Sessions（`/sessions`，B）
 
@@ -344,12 +374,19 @@
 ### 年度回顾（`/wrapped`）
 
 - 页头：年份下拉只列**有数据的年份**（全历史月度桶去重、倒序；`aria-label` 为「选择
-  年份」），默认当年，当年还没有数据时自动跳到最近有数据的一年；切换年份保留旧内容，
-  加载中 `Select.Indicator` 渲染为 `Spinner`（触发箭头位置）；右上角是共享 `ShareCardButton`
-  （与仪表盘同一按钮与 Modal，2026-10-30 操作者裁定：取代原先的页内分享卡面板）。
+  年份」），默认当年，当年还没有数据时自动跳到最近有数据的一年；**切年份（折中方案）**：
+  保留上一年的内容不空白，但整页卡片（四张统计卡 / 成就卡 / 月度趋势 / 来源用量 / 模型表）
+  叠加半透明遮罩、置为不可交互（`aria-busy`，防止对旧年份数字误操作）并给**明确的加载提示**
+  （`Select.Indicator` 渲染 `Spinner`），仅首载无内容时才画骨架；分享卡输入用 `yearReady`
+  （`payloadYear === year`）门控，新年份 payload 未就绪前不投影、按钮禁用。**硬约束：任何情况下
+  不得用旧年份数据生成新年份分享卡，也不得把旧数字挂在新年份标题下且无加载提示。**
+  右上角是共享 `ShareCardButton`（与仪表盘同一按钮与 Modal，2026-10-30 操作者裁定：
+  取代原先的页内分享卡面板）。
 - 分享卡数据由 `wrapped/share-input.ts` 从年度 payload 投影，热力图条来自随页拉取的
   `account-heatmap`（52 周、窗口=所选年份，拉取失败静默降级，不阻塞页面）；「最常用来源」
-  用 `sourceDisplayLabel`；分享卡输入在当年无数据（`hasData` 为假）时为 `null`，按钮禁用。
+  用 `sourceDisplayLabel`；分享卡输入用 `yearReady` 门控：切年份在途（新年份 payload 未就绪）
+  或当年无数据（`hasData` 为假）时均为 `null`、按钮禁用，**任何情况下不得用旧年份数据生成
+  新年份分享卡**（见页头折中方案）。
 - 四张统计卡：全年 Tokens / 成本 / 会话 / 活跃天数，右上角 `text-accent/70` 图标
   （`Hashtag` / `Wallet` / `Comments` / `Calendar`）。顶部只保留这四张（2026-10-30
   操作者裁定：加上成就计数后五卡过挤）。
@@ -367,12 +404,14 @@
 - 来源用量：顶部一条按 `seriesColor` 的堆叠占比条；每行 `SourceIcon` 品牌 Logo +
   `sourceDisplayLabel` 显示名 + `Tokens · 占比 · 成本`，下方同色细占比条。
 - 模型用量：`DataTableCard` 一次展示全部（不分页、不排序），列：模型（`SourceIcon` 厂商 Logo + 模型
-  名）、Tokens、成本、占比（`Meter` + 百分比）；切换年份保留旧行并罩刷新浮层，这一年没有
-  模型明细时给「无模型明细」空态。
+  名）、Tokens、成本、占比（`Meter` + 百分比）；切换年份保留上一年的行，随整页叠加半透明
+  遮罩 + 加载提示并置为不可交互（页头折中方案，仅首载画骨架），不单独罩 `DataTableCard`
+  刷新浮层；这一年没有模型明细时给「无模型明细」空态。
 - 首载骨架：没有旧内容时整页画骨架（`components/wrapped/wrapped-skeleton.tsx`），按加载后的
   卡片栈逐块对齐——四张统计卡（保留卡壳与图标位）、成就卡（标题 + 六枚徽章行）、月度趋势、
   来源用量、模型表；灰条高度按真实排版取（`h4` 数字位 `h-7`、大数位 `h-8`），出数不跳高。
-  页头随页面渲染，不画骨架。
+  页头随页面渲染，不画骨架。骨架**仅用于首载无内容**；切年份在途按页头折中方案保留上一年
+  内容（半透明 + 不可交互 + 加载提示），不画骨架、不清空。
 
 ### 成就（`/achievements`，M7；版式与徽章资产见 P4）
 
@@ -494,7 +533,10 @@
 
 ### 设置 · 账户设置（`/settings`）
 
-设置页用 `Tabs` / 分段导航：账户 / 偏好 / 设备（tab 状态为组件内 state，不写 URL）；
+设置页用 `Tabs` / 分段导航：账户 / 偏好 / 设备（**Tab 状态读写 `?section=`**：用
+`history.replaceState` 回写，非法或缺失值回落 `account`）；分区取值遵循
+`docs/requirements.md` 的 `appearance|account|devices` 真源（账户 = `account`、
+偏好 = `appearance`、设备 = `devices`）；
 各分区用 `Card` 复合结构。账户分区自上而下为个人信息卡（名称 + 只读邮箱）、头像卡
 （更换走 `react-easy-crop` 裁剪弹窗：缩放滑杆 + ±90° 旋转，canvas 合成 256×256 WebP
 后上传，更换/删除按钮并列；弹窗是与项目 Logo 共用的 `components/image-crop-dialog.tsx`，
@@ -571,6 +613,13 @@
   或 Esc 会让明文永久丢失。
 - 复制统一 `navigator.clipboard.writeText`，成功 `toast.success`，失败普通 `toast` 提示手动选择。
 
+**深链筛选与回跳**：首帧从 `?section=` 读取并**筛选**取值，只接受 `appearance` / `account` /
+`devices`，缺失或非法值一律回落 `account` 并用 `replaceState` 回写规范 URL（与 `popstate` 同步，
+Tab 切换不新增 history 记录）。**密码重置邮件回跳**：登录页「忘记密码」的
+`resetPasswordForEmail` 回跳 `/auth/callback?next=/settings`，最终落在 `/settings`（不带 `?section=`）；
+按上述缺省回落 `account`，用户直接在账户分区的密码卡设新密码——该回跳不得被地址栏残留的
+`?section=` 截到别的分区，也不得丢失原路径与查询参数（呼应路由守卫约定）。
+
 ### 公开页（`/u/<token>`，徽章点击落地）
 
 > **2026-11-05 二轮～六轮裁定（`docs/badge.md` §0）覆盖本节冲突描述**：头像、
@@ -598,13 +647,13 @@
 - **规范以 `docs/badge.md` §6 为准**（页面唯一规范，数据口径见 §4.7；§6 中与 §0 的
   2026-11-05 裁定冲突的条目以 §0 为准）；本篇不重复展开版式与动效细则，避免两篇各说一套。
 - UI 层面差异（相对仪表盘 / 成就页）：
-  - **热力图**：复用 `components/dashboard/heatmap-card.tsx` 的 `HeatmapCard bare hideFilter`
+  - **热力图**：复用 `components/heatmap-card.tsx` 的 `HeatmapCard bare hideFilter`
     ——近一年 52 周、Mon-start 周格、月份 / 周几标尺、共享 portal tooltip（含来源明细）、
     时区脚注与图例均与仪表盘同款；差异是**无平台来源筛选、无点击下钻、无卡片底色**，数字走
     `HeatmapCard` 默认的访客偏好格式。
   - **成就墙**：列出**全部已解锁成就**（`tier >= 1`，按目录顺序，3 / 5 / 6 列栅格，徽章
     放大），复用 `achievement-medallion.tsx` / `achievement-tiers.ts` 与既有 PNG；点击打开
-    **共享的 `AchievementDialog`**（`apps/web/src/components/achievements/achievement-dialog.tsx`，
+    **共享的 `AchievementDialog`**（`apps/web/src/components/achievement-dialog.tsx`，
     经 `components/u/u-achievement-dialog.tsx` 转接），与 `/achievements` 是同一个弹窗
     （含当前值、阈值与五档历程）；公开页不传分享回调，故弹窗内隐藏「分享成就」入口。
   - **数字**：动态数值走 `components/flow-number.tsx`（`FlowNumber`），公开页指标传
@@ -613,6 +662,60 @@
 - 文件：`src/components/u/u-body.tsx` 编排，`u-hero.tsx` / `u-metrics.tsx` /
   `u-breakdown-section.tsx` / `u-heatmap.tsx` / `u-achievements.tsx` /
   `u-achievement-dialog.tsx` / `u-public-number.tsx`（按需）
+
+### 采集记录（`/sync-runs`）
+
+**沿用 Sessions 模式**：受登录保护、`useSessionBootstrap` 取会话、URL 筛选（`replaceState` 回写 +
+`popstate` 同步，筛选变更只重取数据、不整页导航）、`DataTableCard` 列表（≥md `Table` / <md
+`renderMobileRow` 卡片列表）、首载骨架保留卡壳与图标、汇总卡数值走 `FlowNumber`、筛选无结果的
+「清除筛选」空态、刷新失败保留旧行并卡顶危险条 + 重试、401 跳登录并回跳原路径与查询参数、
+仅聚合遥测（计数器 / 枚举 / 版本，不含路径或标题）、`lib/copy/sync-runs.ts`（zh / en）。数据源
+`account-sync-runs`（`docs/cli-contract.md` §2.12），一行一轮 sync（含空轮，兼作采集器心跳）。
+
+差异清单（相对 Sessions）：
+
+- **trigger / result 筛选**：筛选条在时间范围（`DateRangePicker` + 今天 / 7D / 30D / 90D 预设；
+  预设不写 URL、自定义 `from` / `to` 写并回显，窗口按浏览器本地时区换算 ISO `[from, to)`）
+  与设备（`DeviceFilterSelect`，复用）之外，另有 **trigger**（scheduled / manual / watch / notify）
+  与 **result**（ok / partial / error）两个 `Select`；`device_id` / `trigger` / `result` / `offset` /
+  `page_size` 写 URL，默认近 30 天、20/页（可选 10/20/50/100）；任一非分页筛选变化把 `offset`
+  归零，结果集缩到当前页以下时回跳到最后一页，「清除筛选」回到默认。无来源 / 项目筛选、
+  无 CSV 导出、无详情弹窗。
+- **汇总卡**：仅两张（今日运行数 / 最近一次运行），取当天窗口；当天无运行则回溯近 7 天最近
+  一轮探针，今日空轮给提示，最近运行时间显示绝对 + 相对时间。首载保留真实标题与图标、只有
+  数字/文本位骨架（同 Sessions），但**不是** Sessions 的四张（会话数 / 总 Token / 成本 / 平均时长）。
+- **刷新 Tooltip**：筛选条最右侧为与 Sessions 同款的刷新图标按钮（`ArrowsRotateRight`，刷新中
+  `animate-spin`，`Tooltip` 显示上次更新时间、未加载时显示「尚未加载数据」）；刷新同时重取
+  今日汇总、设备 facet 与列表。
+- **列表列**：开始时间 / 设备 / trigger `Chip` / result（`RunResultCell`，error 带 `error_code`）/
+  耗时 / 上报量（`RunVolumeCell`：解析文件数、上报桶数，空轮标「空」`Chip`）；按开始时间倒序、
+  不做列排序、服务端分页、页脚 `TablePagination`。
+
+### 配对（`/device`）
+
+**沿用 Sessions 模式**：受登录保护（未登录跳 `/login?next=…` 并保留配对链接 `?user_code=`，
+登录成功回跳原目标；见路由守卫约定）、`useSessionBootstrap` 取会话、HeroUI 复合结构与语义
+组件（`Card.Header/Title/Description/Content`、`InputOTP`、`Label`）、`lib/copy/device.ts`
+（zh / en）、三态与 375px 无横向滚动、错误态可重试、文案不硬编码。批准走冻结的
+`device-flow-grant` 端点（`docs/cli-contract.md` §1.1 / §2.3），带浏览器会话 JWT；`user_code`
+契约字母表不含 `0/1/I/L/O`（`^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$`），`useSearchParams`
+置于 `Suspense` 边界内。
+
+差异清单（相对 Sessions）：
+
+- **`user_code` 五态流程**（`Phase = input | confirm | approving | success | error`）：① `input`——
+  无合法 `?user_code=` 时手填 `InputOTP`（8 槽、4+4 分组，自动大写并过滤非法字符、格式化
+  `XXXX-XXXX`）；② `confirm`——URL 带合法码或手填通过后展示大号等宽 `user_code`，点「批准」
+  才发请求；③ `approving`——`Spinner` + 说明、禁用重复提交；④ `success`——成功卡；
+  ⑤ `error`——404 码不存在/过期、400 码无效、其余通用错误，带「重试」（保留当前码）与
+  「重新输入」（复位到 ①）。**无列表、无筛选、无 URL 分页、无汇总卡、无刷新按钮**；
+  `user_code` 只从 `?user_code=` 读取、不回写 URL。
+- **顶栏主操作复位语义**：顶栏固定「配对设备」主操作（`Plus`，`variant="primary"`）始终
+  `router.push("/device")`（不带 `user_code`），语义是**新建一次配对**；当页面已带 `?user_code=`
+  处于 confirm / approving / error 态时，点它必须清除 `user_code`、丢弃当前码与错误、复位回
+  `input` 手填态，不得沿用旧码继续批准。其余顶栏控件（GitHub / 语言 / 主题色 / 明暗）行为不变。
+- 页面为 `max-w-xl` 居中单列审批流（非数据面）：不套 `DataTableCard` / 汇总卡 /
+  `DeviceFilterSelect` / CSV 导出；`min-h` 居中、无页面级横向滚动。
 
 ## 数字、货币与时间格式
 
