@@ -228,6 +228,24 @@ function formatTaskStartBoundary(now = new Date()) {
 }
 
 /**
+ * The user a logon trigger fires for. `schtasks` resolves a `<LogonTrigger>`
+ * without `<UserId>` to "any user" and then refuses the definition with
+ * "Access is denied" unless the caller is elevated — which turned the whole
+ * definition into a plain hourly task on a normal install (2026-11-06,
+ * DESKTOP-MHFON1J). Naming the current user keeps the catch-up/retry
+ * definition registrable without admin.
+ */
+function windowsUserId({ env = process.env } = {}) {
+  if (env.USERDOMAIN && env.USERNAME) return `${env.USERDOMAIN}\\${env.USERNAME}`;
+  try {
+    const name = os.userInfo().username;
+    return name ? `${os.hostname()}\\${name}` : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
  * Task definition registered with `schtasks /Create /XML`. Compared to the
  * plain `-SC HOURLY` registration this adds:
  *   StartWhenAvailable  — a missed hour (machine asleep) runs as soon as it can
@@ -237,7 +255,7 @@ function formatTaskStartBoundary(now = new Date()) {
  * MultipleInstancesPolicy=IgnoreNew keeps a second pass from racing the first
  * (the CLI also holds sync.lock; this is the outer guard).
  */
-function buildWindowsTaskXml({ vbsPath, startBoundary = formatTaskStartBoundary() }) {
+function buildWindowsTaskXml({ vbsPath, startBoundary = formatTaskStartBoundary(), userId, logonTrigger = true }) {
   // Element order mirrors what `schtasks /Query /XML` exports, so the
   // definition passes the scheduler's validation on every Windows build.
   return [
@@ -260,9 +278,14 @@ function buildWindowsTaskXml({ vbsPath, startBoundary = formatTaskStartBoundary(
     "        <DaysInterval>1</DaysInterval>",
     "      </ScheduleByDay>",
     "    </CalendarTrigger>",
-    "    <LogonTrigger>",
-    "      <Enabled>true</Enabled>",
-    "    </LogonTrigger>",
+    ...(logonTrigger
+      ? [
+          "    <LogonTrigger>",
+          ...(userId ? [`      <UserId>${xmlEscape(userId)}</UserId>`] : []),
+          "      <Enabled>true</Enabled>",
+          "    </LogonTrigger>",
+        ]
+      : []),
     "  </Triggers>",
     "  <Principals>",
     '    <Principal id="Author">',
@@ -484,35 +507,54 @@ function registerAutoSyncSchedule({
   return { registered: false, platform: kind, label, reason: "unsupported_platform" };
 }
 
-function registerWindowsScheduledTask({ binDir, cliJs = cliEntryPath(), nodeExe = process.execPath, fallbackCliJs, now = new Date() }) {
+function registerWindowsScheduledTask({ binDir, cliJs = cliEntryPath(), nodeExe = process.execPath, fallbackCliJs, now = new Date(), userId = windowsUserId() }) {
   if (!isWindows()) return { registered: false, reason: "not_windows" };
   try {
     const vbsPath = writeHiddenRunner({ binDir, nodeExe, cliJs, fallbackCliJs });
     const xmlPath = taskXmlPathFor(binDir);
-    const xml = buildWindowsTaskXml({ vbsPath, startBoundary: formatTaskStartBoundary(now) });
+    const startBoundary = formatTaskStartBoundary(now);
     // schtasks only accepts a Unicode (UTF-16) definition file.
-    fs.writeFileSync(xmlPath, `\uFEFF${xml}`, { encoding: "utf16le", mode: 0o600 });
-    try {
+    const createFromXml = (options) => {
+      const xml = buildWindowsTaskXml({ vbsPath, startBoundary, ...options });
+      fs.writeFileSync(xmlPath, `\uFEFF${xml}`, { encoding: "utf16le", mode: 0o600 });
       run("schtasks", ["/Create", "/F", "/TN", TASK_NAME, "/XML", xmlPath]);
+    };
+    try {
+      createFromXml({ userId });
       return { registered: true, vbsPath, xmlPath };
-    } catch (xmlError) {
-      // Locked-down policies and older builds can reject a custom definition;
-      // fall back to the plain hourly trigger (loses catch-up/retry but still
-      // collects), and say so instead of reporting a clean install.
-      run("schtasks", [
-        "/Create", "/F",
-        "/SC", "HOURLY", "/MO", "1",
-        "/TN", TASK_NAME,
-        "/TR", `wscript.exe "${vbsPath}"`,
-      ]);
-      return {
-        registered: true,
-        degraded: true,
-        reason: "xml_rejected",
-        detail: errorText(xmlError),
-        vbsPath,
-        xmlPath,
-      };
+    } catch (logonError) {
+      // A policy or older build can still refuse the logon trigger outright.
+      // Retry with the hourly definition alone: catch-up and retry survive,
+      // only the logon pass is gone — better than the plain hourly task.
+      try {
+        createFromXml({ userId, logonTrigger: false });
+        return {
+          registered: true,
+          degraded: true,
+          reason: "logon_trigger_rejected",
+          detail: errorText(logonError),
+          vbsPath,
+          xmlPath,
+        };
+      } catch (xmlError) {
+        // Locked-down policies and older builds can reject a custom definition;
+        // fall back to the plain hourly trigger (loses catch-up/retry but still
+        // collects), and say so instead of reporting a clean install.
+        run("schtasks", [
+          "/Create", "/F",
+          "/SC", "HOURLY", "/MO", "1",
+          "/TN", TASK_NAME,
+          "/TR", `wscript.exe "${vbsPath}"`,
+        ]);
+        return {
+          registered: true,
+          degraded: true,
+          reason: "xml_rejected",
+          detail: errorText(xmlError),
+          vbsPath,
+          xmlPath,
+        };
+      }
     }
   } catch (error) {
     return { registered: false, reason: errorText(error) };
@@ -724,13 +766,21 @@ function scheduleDetailLine(value, max = 100) {
   return clipLine(firstLine(value), max);
 }
 
+// What each degraded registration actually lost, so the summary names the
+// real cost instead of one blanket "no catch-up/retry".
+const DEGRADED_NOTES = {
+  xml_rejected: "no catch-up/retry settings",
+  logon_trigger_rejected: "catch-up/retry kept, no logon trigger",
+};
+
 function formatScheduleRegistration(outcome) {
   if (!outcome) return "not registered";
   if (outcome.registered) {
     const when = "hourly, hidden window";
     if (outcome.degraded) {
       const why = scheduleDetailLine(outcome.detail);
-      return `${outcome.label}: ${when} (degraded: ${outcome.reason}${why ? ` — ${why}` : ""}; no catch-up/retry settings)`;
+      const note = DEGRADED_NOTES[outcome.reason] || "reduced scheduling settings";
+      return `${outcome.label}: ${when} (degraded: ${outcome.reason}${why ? ` — ${why}` : ""}; ${note})`;
     }
     return `${outcome.label}: ${when} (pause/resume toggles it)`;
   }
@@ -786,6 +836,7 @@ module.exports = {
   buildSystemdService,
   buildSystemdTimer,
   formatTaskStartBoundary,
+  windowsUserId,
   registerAutoSyncSchedule,
   registerWindowsScheduledTask,
   registerLaunchAgent,

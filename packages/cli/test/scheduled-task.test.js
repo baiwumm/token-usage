@@ -37,6 +37,7 @@ const {
   decodeStream,
   errorText,
   writeHiddenRunner,
+  windowsUserId,
 } = require("../src/lib/scheduled-task");
 
 test("platform routing covers the three supported families", () => {
@@ -61,10 +62,16 @@ test("the Windows definition carries catch-up, logon trigger and retry settings"
   const xml = buildWindowsTaskXml({
     vbsPath: "C:\\Users\\me\\.tokenusage\\bin\\run-sync-hidden.vbs",
     startBoundary: "2026-11-01T09:00:00",
+    userId: "DESKTOP-ME\\me",
   });
   assert.match(xml, /<Interval>PT1H<\/Interval>/, "hourly repetition");
   assert.match(xml, /<StartWhenAvailable>true<\/StartWhenAvailable>/, "a missed hour must catch up");
   assert.match(xml, /<LogonTrigger>/, "a reboot resumes collection without waiting an hour");
+  assert.match(
+    xml,
+    /<LogonTrigger>\s*<UserId>DESKTOP-ME\\me<\/UserId>/,
+    "a logon trigger without UserId means 'any user' and schtasks refuses it without elevation",
+  );
   assert.match(xml, /<RestartOnFailure>/, "a failed pass is retried");
   assert.match(xml, /<Interval>PT5M<\/Interval>/);
   assert.match(xml, /<Count>3<\/Count>/);
@@ -73,6 +80,29 @@ test("the Windows definition carries catch-up, logon trigger and retry settings"
   assert.match(xml, /<Command>wscript\.exe<\/Command>/, "the GUI-subsystem runner hides the window");
   assert.ok(xml.includes('"C:\\Users\\me\\.tokenusage\\bin\\run-sync-hidden.vbs"'));
   assert.ok(!xml.includes("src\\cli.js"));
+
+  // The retry tier: no logon pass, but catch-up/retry/unlimited runtime stay.
+  const retry = buildWindowsTaskXml({
+    vbsPath: "C:\\Users\\me\\.tokenusage\\bin\\run-sync-hidden.vbs",
+    startBoundary: "2026-11-01T09:00:00",
+    userId: "DESKTOP-ME\\me",
+    logonTrigger: false,
+  });
+  assert.ok(!retry.includes("<LogonTrigger>"));
+  assert.match(retry, /<StartWhenAvailable>true<\/StartWhenAvailable>/);
+  assert.match(retry, /<RestartOnFailure>/);
+  assert.match(retry, /<ExecutionTimeLimit>PT0S<\/ExecutionTimeLimit>/);
+});
+
+test("the logon trigger names the current user so schtasks can register it unelevated", () => {
+  assert.equal(
+    windowsUserId({ env: { USERDOMAIN: "DESKTOP-ME", USERNAME: "me" } }),
+    "DESKTOP-ME\\me",
+  );
+  // A shell without USERDOMAIN/USERNAME still yields a usable name.
+  const fallback = windowsUserId({ env: {} });
+  if (fallback) assert.match(fallback, /^.+\\.+$/);
+  assert.equal(typeof fallback, "string");
 });
 
 test("the hidden runner is UTF-16LE with a BOM so non-ASCII paths survive wscript", () => {
@@ -244,6 +274,17 @@ test("registration copy distinguishes success, degraded and unsupported", () => 
     }),
     /degraded: xml_rejected — ERROR: Access is denied\./,
     "the rejection reason must be visible, not just the category",
+  );
+  assert.match(
+    formatScheduleRegistration({
+      registered: true,
+      label: TASK_NAME,
+      degraded: true,
+      reason: "logon_trigger_rejected",
+      detail: "ERROR: Access is denied.\r\n",
+    }),
+    /degraded: logon_trigger_rejected — ERROR: Access is denied\.; catch-up\/retry kept, no logon trigger/,
+    "the retry tier must say what it kept, not that catch-up is gone",
   );
   const clipped = formatScheduleRegistration({
     registered: true,
