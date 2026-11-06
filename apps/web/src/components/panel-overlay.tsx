@@ -17,7 +17,10 @@ export function PanelOverlay({
     <div
       aria-hidden="true"
       className={cn(
-        "bg-surface/60 absolute inset-0 z-10 flex items-center justify-center backdrop-blur-[2px]",
+        // Pure visual layer: it must never swallow clicks on the card's
+        // controls while a refresh is in flight (aria-hidden only hides it
+        // from the a11y tree, it does not block pointer events).
+        "bg-surface/60 pointer-events-none absolute inset-0 z-10 flex items-center justify-center backdrop-blur-[2px]",
         className,
       )}
     >
