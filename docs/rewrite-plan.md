@@ -246,7 +246,7 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 
 **里程碑**：M0–M7 全部交付；生产实例 `token-usage.baiwumm.com` 自 2026-10-26 起承载
 两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.4.7`（2026-11-05
-发布）。两台采集机的身份与状态（设备名即契约 §2.2 的 `<主机名> #<machine_id 前 8 位>`，
+发布）；`0.5.0` 改动已完成、待发版（2026-11-06）。两台采集机的身份与状态（设备名即契约 §2.2 的 `<主机名> #<machine_id 前 8 位>`，
 对照表见 `docs/cli-release.md` 开头「机器称呼约定」与 `docs/launch-runbook.md` 的采集机清单）：
 
 | 机器 | 云端当前名 | 默认名（稳定标识） | CLI 版本 | 状态 |
@@ -269,6 +269,14 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 （清单见 `docs/cli-release.md` §五–§八）。
 「同小时键多行递增值」观测已用源库核对证伪（属累计重入队，见
 `docs/cli-release.md` §四 0.4.3 条）。
+
+**2026-11-06 批次（0.5.0，待发版）**：定价数据从 LiteLLM 上游重建，两份
+`seed-snapshot.json`（web + CLI）同步刷新到 2026-11-06（2284 → 3930 个模型：新增 1996 /
+删除 350 / 调价 264），历史费用按读取时价目重算（操作者已接受）；WorkBuddy 项目 pass 带上
+小时桶同一模型并加 `projectAttributionVersion: 2` 状态迁移（只重扫项目游标，历史由项目
+pass 回填，总量与对账基线不变）；CLI 补齐契约 v3 的仓库地址上报（只报 github.com /
+gitee.com，按 `project.repos.state.json` 的已确认状态差量上报、`null` 清除本设备值，旧服务端
+视为未支持并留待重试）。挂账 5–7 项据此关闭（见下）。
 
 **最近一批交付（2026-10-31 ~ 11-01）**：Trae CN 本地库、桶级 / 会话级 credits、
 `credits_ingested` 遥测、模型大小写归一、wrapped canonical 来源、成就条进度与详情弹窗、
@@ -403,12 +411,12 @@ web 修账户快照全主键分页（>100 万行显式 500，不静默截断）�
    未设数字阈值，以「队列体积或读取延迟有明显体感」为立项触发。
 4. **align-unknown 落地**：dry-run 结论见 `docs/archive/upstream-2026-11-03.md`；
    落地会改历史 unknown 桶归属，需再次确认后按两步走第二步执行。
-5. **curated 价目 exact 未达 220**（现 191，差 29）：候选 `u2-flash`、`step-5-preview`。
-   是否续做或就此收口，待操作者拍板。
-6. **项目名隐私开关默认值**（孤儿决策项，2026-11-05 归档时发现）：项目名现按工作目录
-   basename **明文**上报并原样展示，无脱敏开关。默认值（明文 vs 默认脱敏）待拍板——
-   涉及 CLI 上报口径与历史桶的可比性，改动须走契约变更流程。
-7. **Cursor 厂商真实成本是否接线**（A10，孤儿决策项）：`parseCursorCsv` 解析了厂商 Cost 列，
-   但 `normalizeCursorUsage` 不产出成本、`parseCursorApiIncremental` 不写 `total_cost_usd`，
-   Cursor 成本实际仍按「token × 定价」估算。是否接线待拍板——涉及队列/云端口径与历史重算，
-   详见 `docs/sources-capture-plan.md` §4。
+5. ~~**curated 价目 exact 未达 220**~~ → **已关闭（2026-11-06）**：exact 仍为 191，
+   `u2-flash`、`step-5-preview` 均已在表内；220 是人为目标，以后按 `doctor` 报出的未定价
+   模型按需补。
+6. ~~**项目名隐私开关默认值**~~ → **已拍板（2026-11-06）**：保持工作目录 basename
+   **明文**上报，仓库地址上报**默认开启**；仪表盘可按项目隐藏仓库。改变项目名的上报口径
+   仍需走契约变更流程。
+7. ~~**Cursor 厂商真实成本是否接线**（A10）~~ → **已关闭（2026-11-06）**：近 30 天 Cursor
+   用量为 0（历史累计约 340 万），接线要改成本算法并重算历史；恢复使用后再立项。机制背景
+   见 `docs/sources-capture-plan.md` §4。

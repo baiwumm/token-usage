@@ -755,3 +755,26 @@ tokenusage status --json     # .device.name / .device.device_id
 tokenusage doctor            # 新增 runtime.device_identity 检查
 ```
 
+
+## 九、0.5.0 发版（2026-11-06，待发布）
+
+三批改动，服务端需**先于 CLI** 部署（契约 v3 的 `projects` 字段与 `token_project_repos` 表
+已在 main 上，`/api/app/project-profiles` 亦已上线）。
+
+| 批次 | 内容 | 影响面 |
+|---|---|---|
+| `chore(pricing)` | 两份 `seed-snapshot.json` 从 LiteLLM 重建 | 2026-05-26 → 2026-11-06，2284 → 3930 个模型（新增 1996 / 删除 350 / 调价 264）；费用读取时现算，历史费用全部重算（操作者 2026-11-06 接受） |
+| `fix(cli)` WorkBuddy | 项目 pass 带模型 + `projectAttributionVersion: 2` 状态迁移 | 项目桶可参与同键拆行；首次同步只重扫 WorkBuddy 项目游标，总量/对账基线不变，可独立 revert |
+| `feat(cli)` 仓库上报 | `projects` 增量上报（`project.repos.state.json`） | 只报 github.com / gitee.com；`null` 清除本设备值；旧服务端视为未支持并重试 |
+
+发版前检查：
+
+- [x] `pnpm verify` 全绿（含新增的 WorkBuddy 迁移与仓库上报用例，CLI 269 个用例）
+- [x] 两份 seed 与 curated 的 CLI/web parity 测试通过（`pricing-parity`）
+- [ ] 两台采集机 `doctor`：记录 unknown 模型 Top N（价格刷新以它为准）
+- [ ] 公司机升级后 `sync --drain`：确认生成 `project.repos.state.json`，`/projects` 出现仓库链接
+- [ ] 两台机 `reconcile --days 7` 均 OK（0 drift）；总量与升级前一致
+- [ ] 公司机 `/projects` 近 7 天：WorkBuddy 从「未归因」变成项目行，未归因合计相应下降
+- [ ] web 先部署新 seed，确认历史费用变化符合预期
+
+砍单线：WorkBuddy 那条若测试或对账不干净，砍到 0.5.1，仓库上报照发。
