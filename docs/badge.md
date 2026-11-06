@@ -171,8 +171,9 @@ alter table public.token_public_badges
 ### §4.2 repo 徽章（scope=repo）
 
 - 源表 `token_sessions`（`user_id` + `project_key` eq；索引 `token_sessions_user_project_idx`）
-- tokens 直接汇总；cost 由 `lib/pricing` 匹配单价计算（同仪表盘明细口径；
-  Sessions DeepSeek 计价口径拍板前继承现状）
+- tokens 直接汇总；cost 由 `lib/pricing` 匹配单价计算（同仪表盘 Sessions 视图口径：
+  每模型行不带计价时间上下文，恒按**峰值价**，DeepSeek 峰谷 / 周末半价不生效——
+  `docs/cli-contract.md` §2.7 计价口径注记 2026-10-27 方案 b）
 - 三项口径缺口（拍板 3 知情确认，写入 UI 提示文案）：
   1. `cursor` / `trae-cn` 为账户级来源，不进 `token_sessions` → 仓库徽章天然不含；
   2. `project_key` 为空的历史会话不计入（旧 CLI 回放可能缺失）；
@@ -611,9 +612,9 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 | 阶段 | 内容 | 产出文件 | 状态 |
 |---|---|---|---|
 | P8 文档先行 | §1 / §3.5 / §4.7 / §6 / §7 / §9 与 ui-spec 公开页节定稿 | `docs/badge.md`；`docs/ui-spec.md` | **已完成（仅文档）** |
-| P9 数据层 | 迁移两列、`PublicPageData` 加载器、共享日桶 helper、配置端点字段、Settings 双开关、单测 / 契约断言 | `supabase/migrations/20261105000000_token_public_badges_sections.sql`；`src/lib/public-page/*`；`src/lib/badge/data.ts`；`src/lib/achievements/payload.ts`；`src/app/api/app/badge/route.ts`；`src/components/settings/badge-card.tsx` | **已完成（待验收）** |
-| P10 页面 | Hero / 指标带 / 结构区 / 热力图（后改为复用 `HeatmapCard`）/ 成就墙 / 页脚与文案字典 | `src/app/u/[token]/page.tsx`；`src/components/u/*`；`src/lib/copy/public-page.ts` | **已完成（待验收）** |
-| P11 动效与验收 | NumberFlow 接入、CSS 动效、页面级隐私断言、定向与全量测试 | `src/styles/globals.css`；`src/components/u/u-public-number.tsx`；`tests/unit/u-page-privacy.test.ts` | **已完成（待浏览器人工验收）** |
+| P9 数据层 | 迁移两列、`PublicPageData` 加载器、共享日桶 helper、配置端点字段、Settings 双开关、单测 / 契约断言 | `supabase/migrations/20261105000000_token_public_badges_sections.sql`；`src/lib/public-page/*`；`src/lib/badge/data.ts`；`src/lib/achievements/payload.ts`；`src/app/api/app/badge/route.ts`；`src/components/settings/badge-card.tsx` | **已完成（2026-11-06 操作者验收通过）** |
+| P10 页面 | Hero / 指标带 / 结构区 / 热力图（后改为复用 `HeatmapCard`）/ 成就墙 / 页脚与文案字典 | `src/app/u/[token]/page.tsx`；`src/components/u/*`；`src/lib/copy/public-page.ts` | **已完成（2026-11-06 操作者验收通过）** |
+| P11 动效与验收 | NumberFlow 接入、CSS 动效、页面级隐私断言、定向与全量测试 | `src/styles/globals.css`；`src/components/u/u-public-number.tsx`；`tests/unit/u-page-privacy.test.ts` | **已完成（2026-11-06 操作者验收通过）** |
 
 - P8 只改两份 markdown：未改代码、未跑构建 / 测试、未创建迁移、未执行任何 git 写操作。
 - P9 已复核迁移序号（`20261105000000` 未占用）。**部署顺序**：迁移必须先于代码上线，
@@ -629,16 +630,16 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   且包含新列。新增列向后兼容，旧代码不查询这两列，不会破坏尚未部署的线上版本。
 - P9 定向验证：`tsc --noEmit --incremental false` 通过；`public-page-data` 单测与
   `badge` / `badge-settings` 契约测试 3 文件 28 例通过；改动文件 eslint 0 error。
-  全量 `pnpm verify` 仍待操作者确认无并行任务后统一跑一次。
+  全量 `pnpm verify` 已于 2026-11-06 统一跑绿（web + CLI 全部用例通过）。
 - §9 的页面级隐私断言已由 `tests/unit/u-page-privacy.test.ts` 落地（服务端渲染
   `UBody`，验证头像 / 口径行 / 热力图 / 成就墙常在、两列各 5 行等高对齐、全部已解锁徽章
   列出，HTML 无 30 天 / 仓库 / 令牌痕迹，页脚声明与实际公开口径一致）。
 - P10 / P11 定向验证：`tsc --noEmit --incremental false` 通过；`vitest run` 全量
   576 例断言通过。⚠ 其中一个既有套件 `tests/contract/legacy-alias-removed.test.ts`
   的 `afterAll` 清理 `.next-alias-test` 被本机安全删除机制拦截（trash 失败），
-  8 个用例本身全部通过，与本次改动无关；需在可清理临时构建目录的环境里复跑。
-- 浏览器人工验收仍待操作者：375px、深浅主题、`prefers-reduced-motion`、no-JS 终值、
-  `noindex`、公开页热力图与成就展示、迁移应用后的线上页面。
+  8 个用例本身全部通过，与本次改动无关；换可清理临时构建目录的环境时顺手复跑即可。
+- 浏览器人工验收已由操作者完成（2026-11-06）：375px、深浅主题、`prefers-reduced-motion`、
+  no-JS 终值、`noindex`、公开页热力图与成就展示、迁移应用后的线上页面均确认通过。
 - 每阶段开工前复查工作区状态与目标文件 mtime。
 
 ---

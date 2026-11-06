@@ -33,10 +33,13 @@
 ## 部署顺序
 
 1. **建库**：Supabase SQL Editor 按文件名顺序执行 `supabase/migrations/` 下的**全部**迁移
-   （当前 13 个）。漏跑会直接导致 ingest 整批失败：
+   （当前 14 个）。漏跑会直接导致 ingest 整批失败：
    - `20261031000000` / `20261031000001` / `20261031000003`——credits 列；
    - `20261101000000` / `20261105000000`——公开徽章表；
    - `20261103000000`——契约 v2 桶级 `project_key`（**新版 CLI 必需**，upsert 键的一部分）。
+   非阻断的两条：`20261106000000`——契约 v3 项目仓库表（ingest 的 `projects` 写入是
+   best-effort，漏跑不挡上传，但 Projects 页的仓库链接与项目 Profiles 不可用）；
+   `20261104000000`——纯注释迁移，可跳过。
 2. **配环境变量**：`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`（浏览器可见）
    与 server-only 的 `SUPABASE_SECRET_KEY` 等，Production 与 Preview 各配一份。
 3. **部署 web**：本仓库导入 Vercel，绑定域名；main 出 Production，push 出 Preview。

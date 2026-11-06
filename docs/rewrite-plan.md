@@ -289,6 +289,13 @@ Next.js 16.4.3 安全升级（`pnpm audit --prod` 清零）、Sessions CSV 导�
 10,000 行 / 4 MiB 双上限）。来源接入的结论索引见 `docs/sources-capture-plan.md`，
 机制细节见 `docs/sources-capture-audit.md`。
 
+**2026-11-06 收口批**：公开徽章 / 公开页 P9–P11 **操作者验收通过**（375px、深浅主题、
+reduced-motion、no-JS、noindex、线上迁移页面，见 `docs/badge.md` §10）；repo 徽章成本
+对齐 §2.7 计价口径注记——每模型行恒按峰值计，`lib/badge/data.ts` 不再把 `ended_at`
+当 `hour_start` 传入（此前 DeepSeek 北京周末半价会错误生效），`docs/badge.md` §4.2
+措辞同步；`docs/launch-runbook.md` 迁移计数修正为 14 并标注非阻断迁移。远期 backlog
+维持记录在档（本节末尾 4 条 + keyset 分页）。
+
 **测试与部署**：`pnpm verify` 全绿且零告警（lint 0 error / 0 warning：有意的服务端日志与 error
 boundary 逐行 `eslint-disable-next-line no-console` 标注，2026-11-06 清零；web 与 CLI 的
 测试文件数/用例数随功能增长，**不写死在此文档**——以 `pnpm verify` 当次输出为准）。
