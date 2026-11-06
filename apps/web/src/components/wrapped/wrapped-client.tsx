@@ -14,7 +14,7 @@
 import type { TrendPoint } from "@/components/charts";
 import type { AchievementsPayload } from "@/lib/achievements/types";
 
-import { Button, Card, Typography } from "@heroui/react";
+import { Button, Card, Spinner, Typography, cn } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AchievementsCard } from "./achievements-card";
@@ -45,8 +45,10 @@ import {
   type MonthlyPoint,
 } from "@/lib/dashboard/api";
 import { useLocale } from "@/lib/copy/locale";
+import { formatMessage } from "@/lib/copy/message";
 import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { WRAPPED_COPY } from "@/lib/copy/wrapped";
+import { StaleDataBanner } from "@/components/stale-data-banner";
 
 type LoadStatus = "loading" | "ready" | "error";
 
@@ -97,6 +99,13 @@ export function WrappedClient() {
   // Run id: switching years starts a new load while the old one may still be
   // in flight; a superseded response must never overwrite the newer year.
   const loadSeq = useRef(0);
+  // All-history monthly buckets and achievements do not depend on the
+  // selected year. fetchMonthly / fetchAchievements used to be re-sent on
+  // every year switch; keep one copy per page visit (retry clears it).
+  const allTimeRef = useRef<{
+    monthly: MonthlyPoint[];
+    achievements: AchievementsPayload | null;
+  } | null>(null);
   // Whether any payload has landed — a failed refresh keeps the previous
   // year's content on screen; only an empty slot falls to the error state.
   const hasPayload = useRef(false);
@@ -124,6 +133,7 @@ export function WrappedClient() {
             : `${year}-12-31`;
         // A heatmap failure must not sink the whole review — the share panel
         // degrades to the heatmap-less variants instead.
+        const needsAllTime = allTimeRef.current == null;
         const [nextPayload, nextHistory, nextHeatmap, nextAchievements] =
           await Promise.all([
             fetchDashboard(token, {
@@ -136,36 +146,45 @@ export function WrappedClient() {
             }),
             // All-history months: drives both the year selector (months come
             // back only when they carry rows) and the selected year's series.
-            fetchMonthly(token, {
-              fromDay: ALL_RANGE_START,
-              toDay: dayKeyInTz(new Date(), timezone),
-            }),
+            // Year-independent, so only the first load (or a retry) fetches it.
+            needsAllTime
+              ? fetchMonthly(token, {
+                  fromDay: ALL_RANGE_START,
+                  toDay: dayKeyInTz(new Date(), timezone),
+                })
+              : Promise.resolve(null),
             fetchHeatmap(token, {
               weeks: 52,
               toDay: heatmapToDay,
               tz: timezone,
             }).catch(() => null),
             // Optional card: a failure here only hides the achievement count.
-            fetchAchievements({ tz: timezone }).catch(() => null),
+            needsAllTime
+              ? fetchAchievements({ tz: timezone }).catch(() => null)
+              : Promise.resolve(null),
           ]);
+
+        if (needsAllTime && nextHistory) {
+          allTimeRef.current = {
+            monthly: nextHistory.data,
+            achievements: nextAchievements,
+          };
+        }
+        const history = nextHistory?.data ?? allTimeRef.current?.monthly ?? [];
 
         if (loadSeq.current !== seq) return;
         setPayload(nextPayload);
         setHeatmap(nextHeatmap);
-        setAchievements(nextAchievements);
+        if (needsAllTime) setAchievements(nextAchievements);
         setHistoryYears(
           Array.from(
-            new Set(
-              nextHistory.data.map((point) => Number(point.month.slice(0, 4))),
-            ),
+            new Set(history.map((point) => Number(point.month.slice(0, 4)))),
           )
             .filter((value) => Number.isFinite(value))
             .sort((a, b) => b - a),
         );
         setMonthly(
-          nextHistory.data.filter((point) =>
-            point.month.startsWith(`${year}-`),
-          ),
+          history.filter((point) => point.month.startsWith(`${year}-`)),
         );
         setPayloadYear(year);
         hasPayload.current = true;
@@ -205,23 +224,27 @@ export function WrappedClient() {
     setYear(historyYears[0]);
   }, [historyYears, year]);
 
-  // Only ever expose state that belongs to the selected year: a year switch
-  // keeps the old payload in memory for instant retry, but rendering it under
-  // the new heading would show the previous year's totals.
+  // Share-card input stays gated on yearReady: never mint a card for the new
+  // year out of the previous year's numbers. The visible content keeps the
+  // last payload mounted while a year switch is in flight (no whole-page
+  // skeleton flash); a banner + dimming make the stale state explicit and
+  // non-interactive (docs/ui-spec.md 年度回顾).
   const yearReady = payloadYear === year;
   const yearPayload = yearReady ? payload : null;
   const yearHeatmap = yearReady ? heatmap : null;
-  const totals = yearPayload?.totals;
+  const visiblePayload = payload;
+  const switchingYear = payload != null && !yearReady && refreshing;
+  const totals = visiblePayload?.totals;
   const hasData = (totals?.total_tokens ?? 0) > 0;
-  const models = yearPayload?.models ?? [];
-  const sources = yearPayload?.sources ?? [];
+  const models = visiblePayload?.models ?? [];
+  const sources = visiblePayload?.sources ?? [];
 
   // Month buckets are UTC-fixed (docs/cli-contract.md §2.7) while the totals
   // above ride the browser tz; only rows near a year boundary can differ.
   const trendData = useMemo<TrendPoint[]>(() => {
-    const byMonth = new Map(
-      (yearReady ? monthly : []).map((point) => [point.month, point]),
-    );
+    // Keep the previous year's buckets painted while the switch is loading;
+    // they are replaced atomically once the new response lands.
+    const byMonth = new Map(monthly.map((point) => [point.month, point]));
 
     return monthsOfYear(year, timezone).map((month) => {
       const point = byMonth.get(month);
@@ -241,7 +264,7 @@ export function WrappedClient() {
         output: point?.output_tokens ?? 0,
       };
     });
-  }, [formatMonth, monthly, timezone, year, yearReady]);
+  }, [formatMonth, monthly, timezone, year]);
 
   const totalTokens = totals?.total_tokens ?? 0;
 
@@ -272,11 +295,15 @@ export function WrappedClient() {
   );
 
   const retry = () => {
-    if (accessToken) void loadAll(accessToken);
+    if (!accessToken) return;
+    // A manual retry is allowed to refresh the year-independent all-time
+    // buckets too; ordinary year switches reuse the cached copy.
+    allTimeRef.current = null;
+    void loadAll(accessToken);
   };
-  // Loading the selected year: never paint the old year's numbers while the
-  // new request is in flight.
-  const showSkeleton = status === "loading" || (!yearReady && !loadError);
+  // Skeleton is for the first load only. Once a payload exists, a year switch
+  // keeps it on screen (dimmed + banner) instead of blanking the whole page.
+  const showSkeleton = status === "loading" && !payload;
   // No usable payload for this year → the full error card. With a payload for
   // the selected year, a failed refresh instead keeps the content and shows
   // the banner below, so the page never blanks on a transient error.
@@ -299,6 +326,15 @@ export function WrappedClient() {
 
       {showSkeleton && !showErrorCard ? <WrappedSkeleton /> : null}
 
+      {switchingYear ? (
+        <Card className="flex-row items-center gap-3 p-4">
+          <Spinner size="sm" />
+          <Typography type="body-sm">
+            {formatMessage(copy.switchingYear, locale, { year })}
+          </Typography>
+        </Card>
+      ) : null}
+
       {showErrorCard ? (
         <Card className="flex-col gap-3 p-6">
           <Typography className="text-danger" type="body-sm">
@@ -312,15 +348,11 @@ export function WrappedClient() {
       ) : null}
 
       {yearReady && loadError ? (
-        <Card className="flex-row flex-wrap items-center justify-between gap-3 p-4">
-          <Typography className="text-danger" type="body-sm">
-            {copy.loadError}
-            {` (${loadError})`}
-          </Typography>
-          <Button size="sm" variant="outline" onPress={retry}>
-            {copy.retry}
-          </Button>
-        </Card>
+        <StaleDataBanner
+          message={`${copy.loadError} (${loadError})`}
+          retry={retry}
+          retryLabel={copy.retry}
+        />
       ) : null}
 
       {yearReady && !hasData ? (
@@ -332,8 +364,13 @@ export function WrappedClient() {
         </Card>
       ) : null}
 
-      {yearReady && hasData && totals ? (
-        <>
+      {visiblePayload && hasData && totals ? (
+        <div
+          className={cn(
+            "relative flex w-full flex-col gap-6",
+            switchingYear && "pointer-events-none opacity-60",
+          )}
+        >
           <StatCards copy={copy} totals={totals} />
 
           <AchievementsCard
@@ -358,7 +395,7 @@ export function WrappedClient() {
             refreshing={refreshing}
             totalTokens={totalTokens}
           />
-        </>
+        </div>
       ) : null}
     </main>
   );
