@@ -3933,6 +3933,35 @@ async function cmdSync(argv, context = {}) {
       }
     }
 
+    // Detected project repositories (docs/cli-contract.md §2.4 `projects`,
+    // contract v3). Best-effort like sessions: repo metadata never fails a run.
+    // A backend that predates v3 answers the projects-only request with 400 or
+    // 404/405; those entries simply stay pending until the server is upgraded.
+    if (canUpload() && runtime.deviceToken && runtime.baseUrl &&
+        (!isBackgroundLightweightSync || opts.publishAccount)) {
+      try {
+        const repoResult = await uploadProjectRepos({
+          baseUrl: runtime.baseUrl,
+          anonKey: runtime.anonKey,
+          deviceToken: runtime.deviceToken,
+          projects: cursors?.projectHourly?.projects || {},
+          statePath: path.join(trackerDir, "project.repos.state.json"),
+          canUpload,
+        });
+        if (repoResult.uploaded > 0 && opts.auto) {
+          autoLog(`Project repos: ${repoResult.uploaded} updated`);
+        }
+      } catch (repoError) {
+        // Auxiliary metadata: log, leave the confirmed state untouched so the
+        // next sync retries, and keep the run's outcome unchanged.
+        autoLog(`Project repo upload error: ${repoError?.message || repoError}`, {
+          phase: "project-repos",
+          error: String(repoError?.message || repoError),
+          status: Number.isInteger(repoError?.status) ? repoError.status : null,
+        });
+      }
+    }
+
     const afterState = (await readJson(queueStatePath)) || { offset: 0 };
     const queueSize = await safeStatSize(queuePath);
     // Only the main queue is uploaded by drainQueueToCloud. project.queue.jsonl
@@ -4714,6 +4743,7 @@ const AUTO_RETRY_MAX_DELAY_MS = 2 * 60 * 60 * 1000;
 const INGEST_SLUG = "token-usage-ingest";
 const { buildSessionAnalytics } = require("../lib/session-analytics");
 const { uploadSessions } = require("../lib/session-upload");
+const { uploadProjectRepos } = require("../lib/project-repos");
 const MAX_INGEST_BUCKETS = 500;
 
 async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, queueStatePath, maxBatches = 5, batchSize = 200, maxDurationMs = UPLOAD_BUDGET_MS, canUpload = () => true }) {
