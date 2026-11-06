@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentPropsWithRef } from "react";
+import type { DOMAttributes, ReactElement } from "react";
 
 import {
   Calendar,
@@ -12,7 +12,7 @@ import {
   Medal,
   Tachometer,
 } from "@gravity-ui/icons";
-import { Button, Chip, Tooltip, Typography, cn } from "@heroui/react";
+import { Chip, Focusable, Tooltip, Typography, cn } from "@heroui/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -79,29 +79,41 @@ export function NavItems({
         );
 
         // Collapsed rail: the native title is replaced by a HeroUI Tooltip.
-        // A bare <a> does not consume React Aria's focusable context, so the
-        // trigger is a HeroUI Button rendered back into a Next.js Link (keeps
-        // client-side navigation and the link semantics). Button's render props
-        // are typed against <button>, but React Aria's focusable props and ref
-        // target the real DOM node, which is the <a> rendered by Link.
+        // The tooltip root feeds hover/focus through React Aria's
+        // FocusableContext, which a bare <a> never consumes, so the link is
+        // wrapped in <Focusable> — it renders no DOM of its own and merges the
+        // focusable props + ref into its child, keeping the Next.js Link
+        // (client-side navigation, link semantics, native <a>). HeroUI's
+        // Button/Trigger `render` escape hatch would trip React Aria's
+        // "Expected <button>/<div>, got <a>" element check instead. The focus
+        // ring replicates the Button variant the pill used to carry.
         if (collapsed) {
           return (
             <Tooltip key={item.href} delay={0}>
-              <Button
-                aria-current={active ? "page" : undefined}
-                aria-label={label}
-                className={itemClassName}
-                render={(props) => (
-                  <Link
-                    {...(props as unknown as ComponentPropsWithRef<"a">)}
-                    href={item.href}
-                    onClick={onNavigate}
-                  />
-                )}
-                variant="ghost"
-              >
-                {icon}
-              </Button>
+              <Focusable>
+                {/* Focusable's children prop only types intrinsic elements,
+                    but cloneElement just needs a child that forwards its ref —
+                    Next.js Link does, hence the cast. */}
+                {
+                  (
+                    <Link
+                      aria-current={active ? "page" : undefined}
+                      aria-label={label}
+                      className={cn(
+                        itemClassName,
+                        "focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline",
+                      )}
+                      href={item.href}
+                      onClick={onNavigate}
+                    >
+                      {icon}
+                    </Link>
+                  ) as unknown as ReactElement<
+                    DOMAttributes<HTMLElement>,
+                    string
+                  >
+                }
+              </Focusable>
               <Tooltip.Content showArrow placement="right">
                 <Tooltip.Arrow />
                 <Typography type="body-xs">{label}</Typography>

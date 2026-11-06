@@ -13,7 +13,14 @@ import type { AchievementProgress } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
 
 import { ArrowRightFromSquare } from "@gravity-ui/icons";
-import { Button, Modal, Tooltip, Typography, cn } from "@heroui/react";
+import {
+  Button,
+  Focusable,
+  Modal,
+  Tooltip,
+  Typography,
+  cn,
+} from "@heroui/react";
 
 import { AchievementCoin } from "./achievement-coin";
 import { TierBadge } from "./achievement-tier-badge";
@@ -220,23 +227,30 @@ export function AchievementDialog({
 
                         return (
                           <Tooltip key={tier.key} delay={0}>
-                            <Tooltip.Trigger<"span">
-                              className="inline-flex! h-2 w-8 overflow-hidden rounded-full"
-                              render={(props) => <span {...props} />}
-                              style={
-                                reached
-                                  ? {
-                                      background: tierGradient(tier.tier),
-                                      boxShadow:
-                                        "inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 0 0 1px rgba(10, 15, 12, 0.05)",
-                                    }
-                                  : undefined
-                              }
-                            >
-                              {reached ? null : (
-                                <span className="bg-default h-full w-full rounded-full" />
-                              )}
-                            </Tooltip.Trigger>
+                            <Focusable>
+                              {/* Focusable bridges the tooltip's
+                                  FocusableContext onto the span; Trigger's
+                                  `render` would warn "Expected <div>, got
+                                  <span>". role="button" keeps the interactive
+                                  role the Trigger slot used to add. */}
+                              <span
+                                className="inline-flex h-2 w-8 overflow-hidden rounded-full focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline"
+                                role="button"
+                                style={
+                                  reached
+                                    ? {
+                                        background: tierGradient(tier.tier),
+                                        boxShadow:
+                                          "inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 0 0 1px rgba(10, 15, 12, 0.05)",
+                                      }
+                                    : undefined
+                                }
+                              >
+                                {reached ? null : (
+                                  <span className="bg-default h-full w-full rounded-full" />
+                                )}
+                              </span>
+                            </Focusable>
                             <Tooltip.Content showArrow placement="bottom">
                               <Tooltip.Arrow />
                               <Typography type="body-xs">
@@ -284,15 +298,17 @@ export function AchievementDialog({
                           )}
                         >
                           <Tooltip delay={0}>
-                            <Tooltip.Trigger<"span">
-                              className="shrink-0"
-                              render={(props) => <span {...props} />}
-                            >
-                              <TierBadge
-                                label={achievementCopy(locale, tier.copyKey)}
-                                tier={reached ? tier.tier : 0}
-                              />
-                            </Tooltip.Trigger>
+                            <Focusable>
+                              <span
+                                className="shrink-0 focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline"
+                                role="button"
+                              >
+                                <TierBadge
+                                  label={achievementCopy(locale, tier.copyKey)}
+                                  tier={reached ? tier.tier : 0}
+                                />
+                              </span>
+                            </Focusable>
                             <Tooltip.Content showArrow placement="bottom">
                               <Tooltip.Arrow />
                               <Typography type="body-xs">

@@ -114,14 +114,17 @@ describe("/u/<token> rendered markup (docs/badge.md §6)", () => {
     // Compact scope line: "All-time data · Updated …" instead of the long
     // "All time · 2025/… → … · Updated …". The date range now lives in a
     // HeroUI Tooltip (client-only portal), so SSR markup has just the
-    // Tooltip.Trigger element — no native title attribute.
+    // trigger span — no native title attribute.
     expect(html).toContain("All-time data");
     expect(html).toContain("Updated");
     expect(html).not.toContain("All time ·");
-    // Tooltip.Trigger is mandatory: react-aria passes hover/focus props via
-    // FocusableContext, which a raw DOM child never consumes.
-    expect(html).toContain('data-slot="tooltip-trigger"');
-    expect(html).toContain('role="button" tabindex="0">All-time data</span>');
+    // <Focusable> is mandatory: react-aria passes hover/focus props via
+    // FocusableContext onto the cloned child span, so the SSR markup is a
+    // focusable role="button". Attribute order follows the prop merge, so
+    // assert the pieces separately.
+    expect(html).toContain('role="button"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain(">All-time data</span>");
     expect(html).not.toContain('title="01/01/2025');
     expect(html).toContain("Activity heatmap");
     expect(html).toContain("Achievements");

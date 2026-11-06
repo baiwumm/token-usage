@@ -17,10 +17,14 @@
 // It resets to the front whenever the dialog closes or another achievement
 // opens (replaying the entrance, like the upstream remount).
 //
-// 2026-11-05: the coin is rendered through `Tooltip.Trigger` (still a native
-// <button> via `render`) so it consumes react-aria's FocusableContext — a raw
-// DOM child of the Tooltip root never receives hover/focus and stays shut.
-// `inline-flex!` beats the unlayered `.tooltip__trigger { display:inline-block }`.
+// 2026-11-05: the coin is wrapped in react-aria's <Focusable> so the native
+// <button> consumes the Tooltip root's FocusableContext — a raw DOM child of
+// the tooltip never receives hover/focus and stays shut. (Previously the
+// button went through Tooltip.Trigger's `render`, which warns "Expected <div>,
+// got <button>" — Focusable clones the child instead and adds no DOM of its
+// own, so there is no element-type check to trip.) `inline-flex!` was sized to
+// beat the unlayered `.tooltip__trigger { display:inline-block }`; keep it so
+// the layout stays identical.
 
 import type { AchievementProgress } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
@@ -33,7 +37,7 @@ import {
   useTransform,
   type AnimationPlaybackControls,
 } from "motion/react";
-import { Tooltip, Typography } from "@heroui/react";
+import { Focusable, Tooltip, Typography } from "@heroui/react";
 import { useEffect, useRef, useState } from "react";
 
 import { AchievementMedallion } from "./achievement-medallion";
@@ -272,207 +276,214 @@ export function AchievementCoin({
 
   return (
     <Tooltip delay={0}>
-      <Tooltip.Trigger<"button">
-        aria-label={flipLabel}
-        aria-pressed={flipped}
-        className="focus-visible:outline-accent inline-flex! cursor-grab select-none items-center justify-center rounded-full outline-none focus-visible:outline-2 focus-visible:outline-offset-2 active:cursor-grabbing [&_img]:[-webkit-user-drag:none]"
-        render={(props) => <button {...props} />}
-        style={{ perspective: 900, touchAction: "pan-y" }}
-        type="button"
-        onClick={onClick}
-        onDragStart={(event) => event.preventDefault()}
-        onKeyDown={onKeyDown}
-        onPointerCancel={onPointerEnd}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerEnd}
-      >
-        <span
-          className="relative block w-44"
-          style={{ transform: "rotateX(-8deg)", transformStyle: "preserve-3d" }}
+      <Focusable>
+        <button
+          aria-label={flipLabel}
+          aria-pressed={flipped}
+          className="focus-visible:outline-accent inline-flex! cursor-grab select-none items-center justify-center rounded-full outline-none focus-visible:outline-2 focus-visible:outline-offset-2 active:cursor-grabbing [&_img]:[-webkit-user-drag:none]"
+          style={{ perspective: 900, touchAction: "pan-y" }}
+          type="button"
+          onClick={onClick}
+          onDragStart={(event) => event.preventDefault()}
+          onKeyDown={onKeyDown}
+          onPointerCancel={onPointerEnd}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerEnd}
         >
-          <motion.div
-            className="relative"
+          <span
+            className="relative block w-44"
             style={{
-              rotateY: rotY,
+              transform: "rotateX(-8deg)",
               transformStyle: "preserve-3d",
-              width: 176,
-              height: 176,
             }}
           >
-            {/* Coin edge: stacked rings between the two face planes. */}
-            {[-3, -1.5, 0, 1.5, 3].map((z) => (
-              <span
-                key={z}
-                aria-hidden="true"
-                className="absolute inset-0 rounded-full"
-                style={{
-                  transform: `translateZ(${z}px)`,
-                  background: metal.deep,
-                }}
-              />
-            ))}
+            <motion.div
+              className="relative"
+              style={{
+                rotateY: rotY,
+                transformStyle: "preserve-3d",
+                width: 176,
+                height: 176,
+              }}
+            >
+              {/* Coin edge: stacked rings between the two face planes. */}
+              {[-3, -1.5, 0, 1.5, 3].map((z) => (
+                <span
+                  key={z}
+                  aria-hidden="true"
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    transform: `translateZ(${z}px)`,
+                    background: metal.deep,
+                  }}
+                />
+              ))}
 
-            {/* Front face: the medallion artwork with studio lighting. The
+              {/* Front face: the medallion artwork with studio lighting. The
                 face is transparent to hit-testing so every press lands on the
                 button itself — pressing the bitmap artwork must never start a
                 native image drag (that hijack is why centre presses used to
                 dead-end the drag). Faces self-round their layers instead of
                 relying on overflow clipping, which is unreliable inside a
                 preserve-3d subtree. */}
-            <div
-              className="pointer-events-none absolute inset-0 rounded-full"
-              style={{
-                ...faceStyle,
-                transform: `translateZ(${COIN_THICKNESS / 2}px)`,
-              }}
-            >
-              <AchievementMedallion
-                art={entry?.art}
-                className="w-full"
-                icon={entry?.icon ?? "tokens"}
-                id={progress.id}
-                tier={progress.tier}
-              />
               <div
-                aria-hidden="true"
                 className="pointer-events-none absolute inset-0 rounded-full"
                 style={{
-                  background:
-                    "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.45), rgba(255,255,255,0) 42%), linear-gradient(172deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,0.08) 100%)",
-                  boxShadow:
-                    "inset 0 3px 7px rgba(255,255,255,0.5), inset 0 -3px 8px rgba(0,0,0,0.15)",
+                  ...faceStyle,
+                  transform: `translateZ(${COIN_THICKNESS / 2}px)`,
                 }}
-              />
-              <motion.div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 rounded-full"
-                style={{
-                  x: sheenX,
-                  background:
-                    "linear-gradient(105deg, transparent 34%, rgba(255,255,255,0.5) 50%, transparent 66%)",
-                }}
-              />
-              <motion.div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 rounded-full"
-                style={{
-                  opacity: faceShade,
-                  background: "rgba(8, 12, 10, 0.9)",
-                }}
-              />
-            </div>
+              >
+                <AchievementMedallion
+                  art={entry?.art}
+                  className="w-full"
+                  icon={entry?.icon ?? "tokens"}
+                  id={progress.id}
+                  tier={progress.tier}
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.45), rgba(255,255,255,0) 42%), linear-gradient(172deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,0.08) 100%)",
+                    boxShadow:
+                      "inset 0 3px 7px rgba(255,255,255,0.5), inset 0 -3px 8px rgba(0,0,0,0.15)",
+                  }}
+                />
+                <motion.div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{
+                    x: sheenX,
+                    background:
+                      "linear-gradient(105deg, transparent 34%, rgba(255,255,255,0.5) 50%, transparent 66%)",
+                  }}
+                />
+                <motion.div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{
+                    opacity: faceShade,
+                    background: "rgba(8, 12, 10, 0.9)",
+                  }}
+                />
+              </div>
 
-            {/* Back face: the tier metal disc — machined texture, mirrored
+              {/* Back face: the tier metal disc — machined texture, mirrored
                 studio light, engraved tier name + day (or the next threshold
                 while locked). */}
-            <div
-              className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-full px-6 text-center"
-              style={{
-                ...faceStyle,
-                transform: `rotateY(180deg) translateZ(${COIN_THICKNESS / 2}px)`,
-                background: `radial-gradient(circle at 32% 26%, ${metal.light}, ${metal.mid} 58%, ${metal.deep})`,
-                boxShadow: `inset 0 0 0 5px ${metal.mid}, inset 0 0 0 6.5px rgba(255,255,255,0.22), inset 0 3px 7px rgba(255,255,255,0.4), inset 0 -4px 12px rgba(0,0,0,0.22)`,
-              }}
-            >
-              {/* Radial machining lines, like a lathe-finished coin reverse. */}
               <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 rounded-full"
+                className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-full px-6 text-center"
                 style={{
-                  background:
-                    "repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 4px)",
+                  ...faceStyle,
+                  transform: `rotateY(180deg) translateZ(${COIN_THICKNESS / 2}px)`,
+                  background: `radial-gradient(circle at 32% 26%, ${metal.light}, ${metal.mid} 58%, ${metal.deep})`,
+                  boxShadow: `inset 0 0 0 5px ${metal.mid}, inset 0 0 0 6.5px rgba(255,255,255,0.22), inset 0 3px 7px rgba(255,255,255,0.4), inset 0 -4px 12px rgba(0,0,0,0.22)`,
                 }}
-              />
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 rounded-full"
-                style={{
-                  background:
-                    "radial-gradient(circle at 70% 20%, rgba(255,255,255,0.4), rgba(255,255,255,0) 44%), linear-gradient(188deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,0.10) 100%)",
-                }}
-              />
-              <span className="relative flex flex-col items-center gap-1.5 text-center">
-                {currentTier ? (
-                  <>
-                    <Typography
-                      className="text-lg font-semibold"
-                      style={{ color: ramp.ink }}
-                    >
-                      {achievementCopy(locale, currentTier.copyKey)}
-                    </Typography>
-                    {day ? (
+              >
+                {/* Radial machining lines, like a lathe-finished coin reverse. */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{
+                    background:
+                      "repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 4px)",
+                  }}
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 70% 20%, rgba(255,255,255,0.4), rgba(255,255,255,0) 44%), linear-gradient(188deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,0.10) 100%)",
+                  }}
+                />
+                <span className="relative flex flex-col items-center gap-1.5 text-center">
+                  {currentTier ? (
+                    <>
                       <Typography
-                        className="tabular-nums whitespace-nowrap"
-                        style={{ color: ramp.ink, opacity: 0.8 }}
-                        type="body-xs"
+                        className="text-lg font-semibold"
+                        style={{ color: ramp.ink }}
                       >
-                        {formatMessage(
-                          achievementCopy(
+                        {achievementCopy(locale, currentTier.copyKey)}
+                      </Typography>
+                      {day ? (
+                        <Typography
+                          className="tabular-nums whitespace-nowrap"
+                          style={{ color: ramp.ink, opacity: 0.8 }}
+                          type="body-xs"
+                        >
+                          {formatMessage(
+                            achievementCopy(
+                              locale,
+                              "achievements.ui.dialogAchieved",
+                            ),
                             locale,
-                            "achievements.ui.dialogAchieved",
-                          ),
-                          locale,
-                          {
-                            date: formatDate(day, {
-                              dateStyle: "medium",
-                              timeZone: "UTC",
-                            }),
-                          },
-                        )}
-                      </Typography>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <Typography
-                      className="text-lg font-semibold"
-                      style={{ color: ramp.ink }}
-                    >
-                      {achievementCopy(locale, "achievements.ui.cardLocked")}
-                    </Typography>
-                    {nextThreshold != null ? (
+                            {
+                              date: formatDate(day, {
+                                dateStyle: "medium",
+                                timeZone: "UTC",
+                              }),
+                            },
+                          )}
+                        </Typography>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
                       <Typography
-                        className="tabular-nums"
-                        style={{ color: ramp.ink, opacity: 0.8 }}
-                        type="body-xs"
+                        className="text-lg font-semibold"
+                        style={{ color: ramp.ink }}
                       >
-                        {achievementCopy(locale, "achievements.ui.dialogNext")}
-                        {" · "}
-                        {format(progress.unit, nextThreshold)}
+                        {achievementCopy(locale, "achievements.ui.cardLocked")}
                       </Typography>
-                    ) : null}
-                  </>
-                )}
-              </span>
-              {/* Travelling sheen (opposite direction: fixed room light). */}
-              <motion.div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 rounded-full"
-                style={{
-                  x: sheenXBack,
-                  background:
-                    "linear-gradient(105deg, transparent 34%, rgba(255,255,255,0.45) 50%, transparent 66%)",
-                }}
-              />
-              <motion.div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 rounded-full"
-                style={{
-                  opacity: faceShade,
-                  background: "rgba(8, 12, 10, 0.9)",
-                }}
-              />
-            </div>
-          </motion.div>
-          {/* Ground shadow anchors the coin in space. */}
-          <span
-            aria-hidden="true"
-            className="absolute left-1/2 h-3 w-3/5 -translate-x-1/2 rounded-[100%] bg-black/20 blur-md dark:bg-black/45"
-            style={{ bottom: -20 }}
-          />
-        </span>
-      </Tooltip.Trigger>
+                      {nextThreshold != null ? (
+                        <Typography
+                          className="tabular-nums"
+                          style={{ color: ramp.ink, opacity: 0.8 }}
+                          type="body-xs"
+                        >
+                          {achievementCopy(
+                            locale,
+                            "achievements.ui.dialogNext",
+                          )}
+                          {" · "}
+                          {format(progress.unit, nextThreshold)}
+                        </Typography>
+                      ) : null}
+                    </>
+                  )}
+                </span>
+                {/* Travelling sheen (opposite direction: fixed room light). */}
+                <motion.div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{
+                    x: sheenXBack,
+                    background:
+                      "linear-gradient(105deg, transparent 34%, rgba(255,255,255,0.45) 50%, transparent 66%)",
+                  }}
+                />
+                <motion.div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{
+                    opacity: faceShade,
+                    background: "rgba(8, 12, 10, 0.9)",
+                  }}
+                />
+              </div>
+            </motion.div>
+            {/* Ground shadow anchors the coin in space. */}
+            <span
+              aria-hidden="true"
+              className="absolute left-1/2 h-3 w-3/5 -translate-x-1/2 rounded-[100%] bg-black/20 blur-md dark:bg-black/45"
+              style={{ bottom: -20 }}
+            />
+          </span>
+        </button>
+      </Focusable>
       <Tooltip.Content showArrow placement="bottom">
         <Tooltip.Arrow />
         <Typography type="body-xs">{flipLabel}</Typography>

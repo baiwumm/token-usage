@@ -8,7 +8,13 @@ import type { Locale } from "@/lib/copy/locale-config";
 import type { PublicPageCopy } from "@/lib/copy/public-page";
 import type { PublicPageData } from "@/lib/public-page/types";
 
-import { Avatar, Description, Tooltip, Typography } from "@heroui/react";
+import {
+  Avatar,
+  Description,
+  Focusable,
+  Tooltip,
+  Typography,
+} from "@heroui/react";
 
 import { formatPublicPeriodRange, formatPublicUpdatedAt } from "./u-format";
 import { PublicNumber } from "./u-public-number";
@@ -39,9 +45,10 @@ export function UHero({
   const name = account.displayName.trim() || copy.fallbackTitle;
   const initial = name.slice(0, 1).toUpperCase();
 
-  // Tooltip.Trigger is required: the root is react-aria's TooltipTrigger and
-  // passes hover/focus through FocusableContext, which a raw DOM child never
-  // consumes. render it as <span> to stay valid inside Description.
+  // <Focusable> is required: the tooltip root passes hover/focus through
+  // FocusableContext, which a raw DOM child never consumes; Focusable clones
+  // its child (no DOM of its own) so the trigger stays a <span> — valid inside
+  // Description — with the interactive role the Trigger slot used to add.
   return (
     <header className="u-reveal flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
@@ -63,12 +70,14 @@ export function UHero({
               cannot sit inside Description's inline <span>. */}
           {periodRange ? (
             <Tooltip delay={0}>
-              <Tooltip.Trigger<"span">
-                className="text-foreground font-medium outline-none focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2"
-                render={(props) => <span {...props} />}
-              >
-                {copy.allTime}
-              </Tooltip.Trigger>
+              <Focusable>
+                <span
+                  className="text-foreground font-medium outline-none focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2"
+                  role="button"
+                >
+                  {copy.allTime}
+                </span>
+              </Focusable>
               <Tooltip.Content showArrow placement="bottom">
                 <Tooltip.Arrow />
                 {periodRange}
