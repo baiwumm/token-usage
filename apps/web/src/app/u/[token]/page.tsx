@@ -18,8 +18,11 @@ export const dynamic = "force-dynamic";
 type PageProps = { params: Promise<{ token: string }> };
 
 // generateMetadata and the page share one owner lookup per request.
+// App Router dynamic params are already URL-decoded; decoding again turns a
+// malformed segment (e.g. /u/%25ZZ -> "%ZZ") into an uncaught URIError and a
+// 500 instead of the intended 404. Pass the segment through untouched.
 const publicOwner = cache(async (token: string) => {
-  const owner = await findBadgeOwner(decodeURIComponent(token));
+  const owner = await findBadgeOwner(token);
 
   return owner?.enabled ? owner : null;
 });

@@ -20,7 +20,7 @@ vi.mock("@/lib/format/format", () => ({
     formatPercent: (ratio: number) => `${Math.round(ratio * 100)}%`,
   }),
 }));
-vi.mock("@/components/achievements/achievement-dialog", () => ({
+vi.mock("@/components/achievement-dialog", () => ({
   AchievementDialog: () => null,
 }));
 
