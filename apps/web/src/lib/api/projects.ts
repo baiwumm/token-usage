@@ -307,12 +307,14 @@ export async function projectsPayloadForUser(
     to,
     days,
     total: 0,
+    attributed_projects: 0,
     limit,
     offset,
     totals: {
       attributed_tokens: 0,
       unattributed_tokens: 0,
       unattributed_sessions: 0,
+      attributed_cost_usd: "0.000000",
       total_cost_usd: "0.000000",
       credits: 0,
     },
@@ -404,18 +406,26 @@ export async function projectsPayloadForUser(
   // The unattributed group always sinks to the bottom, regardless of sort.
   const ordered = unattributed ? [...attributed, unattributed] : attributed;
   const page = ordered.slice(offset, offset + limit).map(toWire);
+  // Attributed-only pair for the summary card: tokens and cost share one
+  // denominator there, while totals.total_cost_usd stays the whole window.
+  const attributedCostUsd = attributed.reduce(
+    (sum, group) => sum + group.costUsd,
+    0,
+  );
 
   return jsonResponse(200, {
     from,
     to,
     days,
     total: ordered.length,
+    attributed_projects: attributed.length,
     limit,
     offset,
     totals: {
       attributed_tokens: attributedTokens,
       unattributed_tokens: unattributed?.totalTokens ?? 0,
       unattributed_sessions: unattributed?.sessionCount ?? 0,
+      attributed_cost_usd: attributedCostUsd.toFixed(6),
       ...projectTotalsOf(groups.values()),
     },
     filtered_zero_usage_projects: filteredZeroUsage,

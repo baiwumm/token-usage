@@ -772,7 +772,11 @@ export interface ProjectsPayload {
   from: string;
   to: string;
   days: number;
+  /** Row count including the pinned unattributed group. */
   total: number;
+  /** Real project rows only — the unattributed group is not a project, so the
+   *  summary and list-header counts use this instead of `total`. */
+  attributed_projects: number;
   limit: number;
   offset: number;
   caliber: ProjectsCaliber;
@@ -780,6 +784,9 @@ export interface ProjectsPayload {
     attributed_tokens: number;
     unattributed_tokens: number;
     unattributed_sessions: number;
+    /** Attributed-only cost: pairs with attributed_tokens on the summary card. */
+    attributed_cost_usd: string;
+    /** Whole-window cost, unattributed included. */
     total_cost_usd: string;
     credits: number;
   };

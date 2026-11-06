@@ -20,10 +20,9 @@ import { ProjectCardTile, ProjectRow, type ProjectView } from "./projects-row";
 import { sliceProjects } from "./projects-filters";
 
 import { formatMessage } from "@/lib/copy/message";
+import { README_URL } from "@/lib/links";
 import { useFormat } from "@/lib/format/format";
 import { SectionError } from "@/components/section-states";
-
-const QUICK_START_URL = "https://github.com/baiwumm/token-usage#readme";
 
 export interface ProjectsBodyProps {
   copy: ProjectsCopy;
@@ -35,6 +34,8 @@ export interface ProjectsBodyProps {
   refreshing: boolean;
   view: ProjectView;
   sortLabel: string;
+  /** Caliber-aware "Sessions" label: session rows vs hourly bucket entries. */
+  sessionsLabel: string;
   limit: ProjectLimit;
   effects: ProjectEffectState;
   styles: Readonly<Record<string, string>>;
@@ -62,8 +63,8 @@ function Summary({
 
   const cells: Array<[string, string]> = [
     [copy.summary.tokens, formatTokens(payload.totals.attributed_tokens)],
-    [copy.summary.cost, formatCost(Number(payload.totals.total_cost_usd))],
-    [copy.summary.projects, formatNumber(payload.projects.length)],
+    [copy.summary.cost, formatCost(Number(payload.totals.attributed_cost_usd))],
+    [copy.summary.projects, formatNumber(payload.attributed_projects)],
     [
       copy.summary.unattributed,
       formatTokens(payload.totals.unattributed_tokens),
@@ -387,7 +388,7 @@ function EmptyState({
           size="sm"
           variant="secondary"
           onPress={() =>
-            window.open(QUICK_START_URL, "_blank", "noopener,noreferrer")
+            window.open(README_URL, "_blank", "noopener,noreferrer")
           }
         >
           {copy.states.emptyDocs}
@@ -407,6 +408,7 @@ export function ProjectsBody(props: ProjectsBodyProps) {
     refreshing,
     view,
     sortLabel,
+    sessionsLabel,
     limit,
     effects,
     styles,
@@ -418,15 +420,20 @@ export function ProjectsBody(props: ProjectsBodyProps) {
   } = props;
   const allProjects = payload?.projects ?? [];
   const projects = sliceProjects(allProjects, limit);
+  // Counts exclude the pinned unattributed group: it carries usage the
+  // collector could not attribute, so it is not a project. The row itself
+  // still renders, and its tokens stay in the separate summary cell.
+  const projectTotal = payload?.attributed_projects ?? 0;
+  const shownCount = projects.filter(
+    (project) => project.project_key != null,
+  ).length;
   // The meter is "relative to the top project (not a share)": the denominator
   // is the largest attributed project in the visible list. Unattributed is
   // excluded because hourly buckets often make it the largest row by far,
   // which would squash every project bar to near zero.
   const maxTokens = projects.reduce(
     (max, project) =>
-      project.project_key != null
-        ? Math.max(max, project.total_tokens)
-        : max,
+      project.project_key != null ? Math.max(max, project.total_tokens) : max,
     0,
   );
   // Same denominator as the detail modal's "share of total": every token in
@@ -471,11 +478,11 @@ export function ProjectsBody(props: ProjectsBodyProps) {
             <Typography color="muted" type="body-xs">
               {limit === "all"
                 ? formatMessage(copy.list.count, locale, {
-                    count: String(allProjects.length),
+                    count: String(projectTotal),
                   })
                 : formatMessage(copy.list.showing, locale, {
-                    count: String(projects.length),
-                    total: String(allProjects.length),
+                    count: String(shownCount),
+                    total: String(projectTotal),
                   })}{" "}
               · {formatMessage(copy.list.sortedBy, locale, { sort: sortLabel })}{" "}
               · {copy.list.relativeBar}
@@ -535,6 +542,7 @@ export function ProjectsBody(props: ProjectsBodyProps) {
                   effects,
                   index,
                   locale,
+                  sessionsLabel,
                   maxTokens,
                   profile: project.project_key
                     ? profiles.get(project.project_key)

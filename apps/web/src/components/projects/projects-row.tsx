@@ -35,6 +35,8 @@ interface RowProps {
   profile?: ProjectProfile;
   copy: ProjectsCopy;
   locale: "zh" | "en";
+  /** "Sessions" for the session caliber, "session entries" for hourly. */
+  sessionsLabel: string;
   maxTokens: number;
   /** Share of the whole window (attributed + unattributed), same denominator
    *  the detail modal uses for "share of total". */
@@ -178,6 +180,7 @@ export const ProjectRow = memo(function ProjectRow({
   profile,
   copy,
   locale,
+  sessionsLabel,
   maxTokens,
   windowShare,
   selected,
@@ -257,7 +260,7 @@ export const ProjectRow = memo(function ProjectRow({
             {copy.list.cost} {formatCost(Number(project.total_cost_usd))}
           </span>
           <span className="tabular-nums">
-            {copy.list.sessions} {formatNumber(project.session_count)}
+            {sessionsLabel} {formatNumber(project.session_count)}
           </span>
           {project.last_active ? (
             <span className="hidden tabular-nums sm:inline">
@@ -275,6 +278,7 @@ export const ProjectCardTile = memo(function ProjectCardTile({
   profile,
   copy,
   locale,
+  sessionsLabel,
   maxTokens,
   windowShare,
   selected,
@@ -346,7 +350,7 @@ export const ProjectCardTile = memo(function ProjectCardTile({
         <span className="text-muted flex flex-col gap-1 text-xs">
           <span className="tabular-nums">
             {copy.list.cost} {formatCost(Number(project.total_cost_usd))} ·{" "}
-            {copy.list.sessions} {formatNumber(project.session_count)}
+            {sessionsLabel} {formatNumber(project.session_count)}
           </span>
           {project.last_active ? (
             <span className="tabular-nums">

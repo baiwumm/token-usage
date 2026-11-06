@@ -2,6 +2,10 @@
   "name": "token-usage",
   "private": true,
   "packageManager": "pnpm@12.11.2",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/baiwumm/token-usage.git"
+  },
   "scripts": {
     "dev": "pnpm --filter @token-usage/web dev",
     "build": "pnpm --filter @token-usage/web build",

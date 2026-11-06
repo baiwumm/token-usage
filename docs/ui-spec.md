@@ -277,22 +277,30 @@
 - 筛选条：数量（全部 / 前 3 / 5 / 10）、排序（按 Token / 按费用）、展示形态（列表 / 卡片）
   + 刷新按钮。**无时间范围、无设备、无来源筛选**——时间恒为「全部」（服务端夹到 3 年上限）。
   `sort` 与 `limit` 写 URL（`history.replaceState`），默认 `sort=tokens`、`limit=all`。
-- 摘要卡四格：总 Token（已归因）/ 总费用 / 项目数 / 未归因 Token；副标题「全部时间 · {from} – {to}」。
+- 摘要卡四格：总 Token（已归因）/ 总费用（同一口径，只算已归因）/ 项目数（取 `attributed_projects`，
+  不含未归因）/ 未归因 Token；副标题「全部时间 · {from} – {to}」。
 - 列表**不是表格**：行与卡片是同一套信息层级——项目 Logo（无 Logo 时为首字母方块）+ 项目名
   （有仓库时名字旁带一枚**不可点击**的仓库标记：GitHub / Gitee 各自图标，其他主机为通用链接图标）、
   来源品牌图标（最多 5 个，多余显示 `+N`）、占窗口百分比、Token 数与相对最高项的量条、底部 meta
   （费用 / 会话数 / 最近活跃）。排序由服务端做（降序，同值按 key 字典序），前端只做 Top-N 切片。
 - 「未归因」组：服务端恒单独拆出并沉底（即使为 0），行内是 warning `Chip` + 说明文案。
   **Top-N 切片会把它切掉**（它在数组末尾），只有 `limit=all` 或列表较短时可见；摘要卡的
-  「未归因」Token 数不受影响。
-- 详情弹窗：点击行/卡片打开，头部有上一个/下一个（范围是当前可见列表），以及项目资料的两个动作：
+  「未归因」Token 数不受影响，摘要卡的项目数与列表头的「共 N 个项目」也不计它。
+- 详情弹窗：点击行/卡片打开，头部标题在左，右侧依次是项目资料的两个动作与上一个/下一个，
+  关闭按钮由 HeroUI 绝对定位在弹窗右上角（`Modal.CloseTrigger`），头部右侧留 `pe-11` 给它让位、不压住操作按钮：
   「在 GitHub / Gitee 打开」（其他主机为「打开仓库」；新标签页，`noopener,noreferrer`；有仓库时才出现）
-  与「编辑」（窄屏只留图标）；「未归因」与审阅演示数据不显示这两个动作。左栏是 Logo + 项目名
+  与「编辑」（窄屏只留图标），再是上一个/下一个（范围是当前可见列表）；「未归因」与审阅演示数据
+  不显示两个资料动作。正文无上内边距（去掉 `Modal.Body` 的 3px 内边距与 8px 上边距）；
+  `lg` 及以上左栏固定（切换项目时随右栏一起重挂载、滚动复位）、右栏用 `ScrollShadow` 独立滚动，
+  `<lg` 整段正文一起滚动。左栏是 Logo + 项目名
   （设了显示名时下方注明「目录名 {basename}」）、区间、`口径：{caliber}` 与 6 个指标（Token 总量 /
   占比 / 费用 / 会话数 / 活跃天数 / 日均活跃日）+ 三条脚注（费用按刊例价、积分是独立维度、仅用量
-  元数据）；右栏三段——「完整字段」、「每日活跃」柱状图（点柱固定当天）+ Token 构成条（input /
-  cached / cacheCreation / output / reasoning）、「按来源」逐来源明细。
-- 口径说明条：卡内固定文案，随口径切两段（`scopeNote.sessions` / `scopeNote.hourly`）。
+  元数据）；右栏三段——「其他字段」（日峰值 / 最近活跃 / 积分，只列左栏没有的，不重复 Token、
+  费用、会话数）、「每日活跃」柱状图（点柱固定当天；标题右侧的日期 `Select` 是同一动作的键盘/
+  触屏入口）+ Token 构成条（input / cached / cacheCreation / output / reasoning）、「按来源」
+  逐来源明细。
+- 口径说明：`Disclosure` 折叠卡（默认收起，标题 `scopeNoteTitle`），展开后是随口径切两段的固定
+  文案（`scopeNote.sessions` / `scopeNote.hourly`）。
 - 状态：加载走骨架（摘要 + 6 行/6 卡，镜像真实结构）；无旧数据时 `SectionError` 重试，
   有旧数据时顶部红条「刷新失败，当前显示的是上次成功加载的数据」；空态两分（无数据 /
   仅剩零用量被过滤），给「配对设备」与「刷新」；刷新中盖半透明层 + `Spinner`。
@@ -317,9 +325,11 @@
 - 演示审阅面板 `projects-review-panel.tsx` 仅在 `?review=1` 时渲染（默认演示数据 + 页顶
   「演示数据 · 非真实用量」标记），仓库内无链接指向它；动效候选目录在 `projects-effects.ts`。
 - API：`/api/app/projects` 与 `/api/app/projects-hourly` 顶层同形
-  （`from/to/days/total/limit/offset/caliber/totals{...}/filtered_zero_usage_projects/projects[]`），
-  差异只在 `caliber` 与 `projects[].session_count` 的含义（sessions = 会话行数；
-  hourly = 各桶 conversations 求和，故 hourly 口径列头写「会话条目」）；详情走
+  （`from/to/days/total/attributed_projects/limit/offset/caliber/totals{...}/filtered_zero_usage_projects/projects[]`）：
+  `total` 含未归因组，`attributed_projects` 只数真实项目；`totals.attributed_cost_usd` 与
+  `attributed_tokens` 同口径，`total_cost_usd` 为整窗口费用。差异只在 `caliber` 与
+  `projects[].session_count` 的含义（sessions = 会话行数；hourly = 各桶 conversations 求和，故
+  hourly 口径下列表行、列头与详情统一写「会话条目」）；详情走
   `/api/app/projects-detail`。项目资料走独立的 `/api/app/project-profiles`（cookie 会话鉴权，
   service-role 读写；与窗口和口径无关，页面加载与刷新时各拉一次，保存后就地更新）：
   `GET` → `{ upload_enabled, profiles[] }`（每项含 `display_name`、生效 `repo_url` 与

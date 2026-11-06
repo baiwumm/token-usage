@@ -429,6 +429,10 @@ export function ProjectsClient() {
   }, []);
 
   const sortLabel = filters.sort === "cost" ? copy.sortCost : copy.sortTokens;
+  // Hourly buckets count conversations, not sessions: the row/card meta has to
+  // say the same thing the column header and the detail dialog do.
+  const sessionsLabel =
+    caliber === "hourly" ? copy.list.sessionsHourly : copy.list.sessions;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 md:px-8">
@@ -551,7 +555,7 @@ export function ProjectsClient() {
         </Chip>
       ) : null}
 
-      <ScopeNote text={copy.scopeNote[caliber]} />
+      <ScopeNote text={copy.scopeNote[caliber]} title={copy.scopeNoteTitle} />
 
       {review ? (
         <ProjectsReviewPanel
@@ -594,6 +598,7 @@ export function ProjectsClient() {
         refreshing={activeRefreshing}
         replayNonce={replayNonce}
         selectedKey={activeKey}
+        sessionsLabel={sessionsLabel}
         simulatedState={simulatedState}
         sortLabel={sortLabel}
         status={activeStatus}

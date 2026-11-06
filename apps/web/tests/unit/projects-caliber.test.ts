@@ -51,7 +51,7 @@ describe("projects copy per caliber", () => {
   it("labels the hourly session count as non-deduplicated bucket entries", () => {
     expect(PROJECTS_COPY.zh.list.sessions).toBe("会话数");
     expect(PROJECTS_COPY.zh.list.sessionsHourly).toBe("会话条目");
-    expect(PROJECTS_COPY.zh.list.hintHourly).toContain("并非去重");
+    expect(PROJECTS_COPY.zh.scopeNote.hourly).toContain("并非去重");
     expect(PROJECTS_COPY.en.list.sessionsHourly).toBe("Session entries");
   });
 });

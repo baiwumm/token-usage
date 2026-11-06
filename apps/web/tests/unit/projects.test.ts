@@ -311,6 +311,7 @@ describe("projectsPayloadForUser — grouping", () => {
       attributed_tokens: 350,
       unattributed_tokens: 100,
       unattributed_sessions: 2,
+      attributed_cost_usd: "0.000000",
       total_cost_usd: "0.000000",
       credits: 0,
     });
@@ -342,12 +343,14 @@ describe("projectsPayloadForUser — grouping", () => {
       to: "2026-10-25",
       days: 7,
       total: 0,
+      attributed_projects: 0,
       limit: 200,
       offset: 0,
       totals: {
         attributed_tokens: 0,
         unattributed_tokens: 0,
         unattributed_sessions: 0,
+        attributed_cost_usd: "0.000000",
         total_cost_usd: "0.000000",
         credits: 0,
       },
@@ -391,6 +394,7 @@ describe("projectsPayloadForUser — zero-usage rows", () => {
       attributed_tokens: 350,
       unattributed_tokens: 100,
       unattributed_sessions: 2,
+      attributed_cost_usd: "0.000000",
       total_cost_usd: "0.000000",
       credits: 0,
     });

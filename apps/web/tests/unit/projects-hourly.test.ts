@@ -212,6 +212,7 @@ describe("projectsHourlyPayloadForUser — grouping and double-count guard", () 
       attributed_tokens: 150,
       unattributed_tokens: 200,
       unattributed_sessions: 1,
+      attributed_cost_usd: "0.000000",
       total_cost_usd: "0.000000",
       credits: 0,
     });
@@ -301,12 +302,14 @@ describe("projectsHourlyPayloadForUser — grouping and double-count guard", () 
       to: "2026-10-25",
       days: 7,
       total: 0,
+      attributed_projects: 0,
       limit: 200,
       offset: 0,
       totals: {
         attributed_tokens: 0,
         unattributed_tokens: 0,
         unattributed_sessions: 0,
+        attributed_cost_usd: "0.000000",
         total_cost_usd: "0.000000",
         credits: 0,
       },

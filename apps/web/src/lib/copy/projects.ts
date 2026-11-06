@@ -26,10 +26,10 @@ export interface ProjectsCopy {
   lastUpdated: string;
   lastUpdatedNone: string;
   scopeNote: Record<"sessions" | "hourly", string>;
+  /** Disclosure trigger for the (collapsed) scope note. */
+  scopeNoteTitle: string;
   list: {
     title: string;
-    hint: string;
-    hintHourly: string;
     project: string;
     tokens: string;
     cost: string;
@@ -49,7 +49,6 @@ export interface ProjectsCopy {
     sourcesMore: string;
     filteredNote: string;
     openDetail: string;
-    estimated: string;
     shareOfWindow: string;
     limitLabel: string;
     limitAll: string;
@@ -68,7 +67,6 @@ export interface ProjectsCopy {
   };
   detail: {
     title: string;
-    badge: string;
     close: string;
     previous: string;
     next: string;
@@ -76,11 +74,8 @@ export interface ProjectsCopy {
     share: string;
     shareHint: string;
     cost: string;
-    conversations: string;
     activeDays: string;
     avgPerActiveDay: string;
-    dayPeak: string;
-    lastActive: string;
     credits: string;
     fields: string;
     daily: string;
@@ -95,6 +90,8 @@ export interface ProjectsCopy {
     sourceConversations: string;
     daySelected: string;
     dayClear: string;
+    dayAll: string;
+    daySelect: string;
     pinHint: string;
     empty: string;
     loadError: string;
@@ -198,6 +195,7 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
     sortLabel: "排序",
     sortTokens: "按 Token",
     sortCost: "按费用",
+    scopeNoteTitle: "口径说明",
     refresh: "刷新",
     lastUpdated: "上次更新 {time}",
     lastUpdatedNone: "尚未加载数据",
@@ -205,13 +203,10 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
       sessions:
         "本页数据来自会话元数据（session sidecar），覆盖 Claude Code / Codex / Grok / OpenCode / ZCode / Kimi 等来源（本机实测约占 77% token）；MiniMax Code、Trae、DeepSeek Harness、WorkBuddy 等暂不在其中；Cursor / Trae CN 为账户级来源，永不出现在本页。费用为刊例价（list price）估算，订阅制来源可能与实际账单有偏差。零用量项目（只有会话壳、没有 token/费用/积分的项目，如工具自建的临时目录）不列出行，它们本就为 0，不影响合计。另有 credits-only 来源（如 qoder-cn）只贡献积分，不贡献 token 与费用，因此它们的会话可见、积分非零，但 token/费用为 0 属正常。",
       hourly:
-        "本页数据来自用量桶（token_usage_hourly），按小时把 token 归到项目名；同一小时无法归因的部分单列为「未归因」，不与项目重复计入，各行合计仍等于仪表盘总量。费用为按刊例价（list price）实时估算，与仪表盘使用同一套定价引擎；订阅制来源可能与实际账单有偏差。项目归因依赖采集器上报项目名，未上报的用量会落在「未归因」。零用量项目（token、费用、积分都为 0 的项目行）不列出行，它们本就为 0，不影响合计。另有 credits-only 来源（如 qoder-cn）只贡献积分，不贡献 token 与费用，因此它们的会话条目可见、积分非零，但 token/费用为 0 属正常。",
+        "本页数据来自用量桶（token_usage_hourly），按小时把 token 归到项目名；「会话条目」是按小时桶累加的会话计数，并非去重后的会话数量；同一小时无法归因的部分单列为「未归因」，不与项目重复计入，各行合计仍等于仪表盘总量。费用为按刊例价（list price）实时估算，与仪表盘使用同一套定价引擎；订阅制来源可能与实际账单有偏差。项目归因依赖采集器上报项目名，未上报的用量会落在「未归因」。零用量项目（token、费用、积分都为 0 的项目行）不列出行，它们本就为 0，不影响合计。另有 credits-only 来源（如 qoder-cn）只贡献积分，不贡献 token 与费用，因此它们的会话条目可见、积分非零，但 token/费用为 0 属正常。",
     },
     list: {
       title: "项目",
-      hint: "按项目名（目录 basename）聚合会话；同名项目跨设备天然合并。",
-      hintHourly:
-        "按项目名（目录 basename）聚合用量桶；「会话条目」是按小时桶累加的会话计数，并非去重后的会话数量。",
       project: "项目",
       tokens: "Token",
       cost: "费用",
@@ -228,12 +223,11 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
       viewList: "列表",
       viewCards: "卡片",
       count: "共 {count} 个项目",
-      sortedBy: "按{sort}降序",
+      sortedBy: "{sort} 降序",
       relativeBar: "相对最高项（非占比）",
       sourcesMore: "+{count}",
       filteredNote: "另有 {count} 个零用量项目未列出",
       openDetail: "查看 {project} 详情",
-      estimated: "估算",
       shareOfWindow: "占窗口 {percent}",
       limitLabel: "数量",
       limitAll: "全部项目",
@@ -252,7 +246,6 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
     },
     detail: {
       title: "项目详情",
-      badge: "项目",
       close: "关闭项目详情",
       previous: "上一个项目",
       next: "下一个项目",
@@ -260,13 +253,10 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
       share: "占总量比例",
       shareHint: "分母为同窗口全部项目（含未归因）的 Token 合计",
       cost: "费用（估算）",
-      conversations: "会话数",
       activeDays: "活跃天数",
       avgPerActiveDay: "日均（活跃日）",
-      dayPeak: "日峰值",
-      lastActive: "最近活跃",
       credits: "积分",
-      fields: "完整字段",
+      fields: "其他字段",
       daily: "每日活跃",
       sources: "按来源",
       composition: "TOKEN 构成",
@@ -279,6 +269,8 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
       sourceConversations: "{count} 次对话",
       daySelected: "已选 {date}",
       dayClear: "清除日期",
+      dayAll: "全部日期",
+      daySelect: "选择日期",
       pinHint: "点击柱子可固定当天明细",
       empty: "所选时间范围内该项目没有用量",
       loadError: "项目详情加载失败。",
@@ -435,6 +427,7 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
     sortLabel: "Sort",
     sortTokens: "By tokens",
     sortCost: "By cost",
+    scopeNoteTitle: "What this page counts",
     refresh: "Refresh",
     lastUpdated: "Updated {time}",
     lastUpdatedNone: "No data loaded yet",
@@ -442,13 +435,10 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
       sessions:
         "This page is built from session metadata (session sidecar), covering sources such as Claude Code / Codex / Grok / OpenCode / ZCode / Kimi (about 77% of tokens in local measurement); MiniMax Code, Trae, DeepSeek Harness, WorkBuddy and others are not covered yet; Cursor / Trae CN are account-level sources and never appear here. Costs are list-price estimates and may differ from actual billing for subscription-based sources. Zero-usage projects (session shells with no tokens, cost or credits, such as scratch directories created by tools) are not listed; they already carry 0, so the totals are unaffected. Credits-only sources (such as qoder-cn) contribute credits but no tokens or cost, so their sessions and credits stay visible while 0 tokens and $0 cost is expected.",
       hourly:
-        "This page is built from hourly usage buckets (token_usage_hourly), attributing tokens to project names per hour; the part that cannot be attributed within an hour is listed separately as Unattributed, never double-counted, and every row still sums to the dashboard total. Costs are list-price estimates computed live with the same pricing engine the dashboard uses, and may differ from actual billing for subscription-based sources. Project attribution depends on the collector reporting a project name; usage that does not carry one lands in Unattributed. Zero-usage project rows (0 tokens, cost and credits) are not listed; they already carry 0, so the totals are unaffected. Credits-only sources (such as qoder-cn) contribute credits but no tokens or cost, so their rows and credits stay visible while 0 tokens and $0 cost is expected.",
+        'This page is built from hourly usage buckets (token_usage_hourly), attributing tokens to project names per hour; "Session entries" sums per-hour bucket conversation counts, not distinct sessions; the part that cannot be attributed within an hour is listed separately as Unattributed, never double-counted, and every row still sums to the dashboard total. Costs are list-price estimates computed live with the same pricing engine the dashboard uses, and may differ from actual billing for subscription-based sources. Project attribution depends on the collector reporting a project name; usage that does not carry one lands in Unattributed. Zero-usage project rows (0 tokens, cost and credits) are not listed; they already carry 0, so the totals are unaffected. Credits-only sources (such as qoder-cn) contribute credits but no tokens or cost, so their rows and credits stay visible while 0 tokens and $0 cost is expected.',
     },
     list: {
       title: "Projects",
-      hint: "Sessions grouped by project basename; same-named projects merge across devices.",
-      hintHourly:
-        'Hourly usage buckets grouped by project basename; "Session entries" sums per-hour bucket conversation counts, not distinct sessions.',
       project: "Project",
       tokens: "Tokens",
       cost: "Cost",
@@ -465,12 +455,11 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
       viewList: "List",
       viewCards: "Cards",
       count: "{count} projects",
-      sortedBy: "Descending by {sort}",
+      sortedBy: "{sort} (descending)",
       relativeBar: "Relative to the top project (not a share)",
       sourcesMore: "+{count}",
       filteredNote: "{count} zero-usage projects are hidden",
       openDetail: "Open {project} details",
-      estimated: "est.",
       shareOfWindow: "{percent} of window",
       limitLabel: "Show",
       limitAll: "All projects",
@@ -489,7 +478,6 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
     },
     detail: {
       title: "Project details",
-      badge: "Project",
       close: "Close project details",
       previous: "Previous project",
       next: "Next project",
@@ -498,13 +486,10 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
       shareHint:
         "Denominator: all projects in the same window, unattributed included",
       cost: "Cost (estimated)",
-      conversations: "Conversations",
       activeDays: "Active days",
       avgPerActiveDay: "Daily avg (active days)",
-      dayPeak: "Peak day",
-      lastActive: "Last active",
       credits: "Credits",
-      fields: "Full fields",
+      fields: "Other fields",
       daily: "Daily activity",
       sources: "By source",
       composition: "Token composition",
@@ -517,6 +502,8 @@ export const PROJECTS_COPY: Record<"zh" | "en", ProjectsCopy> = {
       sourceConversations: "{count} conv.",
       daySelected: "Selected {date}",
       dayClear: "Clear date",
+      dayAll: "All days",
+      daySelect: "Pick a day",
       pinHint: "Click a bar to pin that day",
       empty: "No usage for this project in the selected window",
       loadError: "Failed to load project details.",

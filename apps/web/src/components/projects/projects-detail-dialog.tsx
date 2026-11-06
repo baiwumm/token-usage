@@ -38,7 +38,11 @@ import {
 import {
   Button,
   Chip,
+  ListBox,
   Modal,
+  Popover,
+  ScrollShadow,
+  Select,
   Skeleton,
   Tooltip,
   Typography,
@@ -130,7 +134,7 @@ function StatCell({
             <Button
               isIconOnly
               aria-label={hint}
-              className="text-muted hover:text-foreground size-4 min-h-4 min-w-4 shrink-0 cursor-help rounded-full"
+              className="text-muted hover:text-foreground size-4 min-h-4 min-w-4 shrink-0 rounded-full"
               size="sm"
               variant="tertiary"
             >
@@ -648,6 +652,13 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
   const dayPoint = selectedDay
     ? (detail?.daily.find((day) => day.date === selectedDay) ?? null)
     : null;
+  // Days the picker can jump to: every day with usage, plus the pinned day
+  // even when it is a zero bar (clicking an empty bar pins it too).
+  const dayOptions = detail
+    ? detail.daily.filter(
+        (day) => day.total_tokens > 0 || day.date === selectedDay,
+      )
+    : [];
 
   return (
     <Modal.Backdrop
@@ -664,8 +675,8 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
             effects.dialogEntrance && styles.dialogEntrance,
           )}
         >
-          <Modal.Header className="border-border/60 flex-row items-center gap-2 border-b px-4 py-3">
-            <Modal.CloseTrigger />
+          <Modal.CloseTrigger aria-label={copy.detail.close} />
+          <Modal.Header className="border-border/60 flex-row items-center gap-2 border-b ps-4 pe-11 py-3">
             <Modal.Heading className="text-base">
               {copy.detail.title}
             </Modal.Heading>
@@ -719,18 +730,12 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
             </div>
           </Modal.Header>
 
-          <Modal.Body className="p-0">
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
-              <div className="border-border/60 bg-default/40 flex flex-col gap-5 border-b p-5 lg:border-b-0 lg:border-e lg:p-6">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    aria-hidden="true"
-                    className="bg-accent size-1.5 rounded-full"
-                  />
-                  <Typography color="muted" type="body-xs">
-                    {copy.detail.badge}
-                  </Typography>
-                </div>
+          <Modal.Body className="m-0! flex flex-col overflow-hidden! p-0!">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+              <div
+                key={fadeNonce}
+                className="border-border/60 bg-default/40 flex shrink-0 flex-col gap-4 border-b p-5 lg:min-h-0 lg:w-70 lg:overflow-y-auto lg:border-b-0 lg:border-e lg:p-6"
+              >
                 <div className="flex flex-col gap-1">
                   <div className="flex min-w-0 items-center gap-3">
                     <ProjectLogo
@@ -776,7 +781,7 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
                     })}
                   </Typography>
                 </div>
-                <div className="border-border/60 grid grid-cols-2 gap-x-5 gap-y-5 border-t pt-5">
+                <div className="border-border/60 grid grid-cols-2 gap-x-5 gap-y-4 border-t pt-4">
                   <StatCell
                     effects={effects}
                     label={copy.detail.total}
@@ -832,12 +837,13 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
                 </div>
               </div>
 
-              <div
+              <ScrollShadow
                 key={fadeNonce}
                 className={cn(
-                  "flex min-w-0 flex-col",
+                  "flex min-w-0 flex-col lg:min-h-0 lg:flex-1",
                   effects.detailCrossfade && styles.detailFade,
                 )}
+                size={24}
               >
                 {failed ? (
                   <div className="flex flex-col items-start gap-2 p-6">
@@ -870,17 +876,6 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
                         {copy.detail.fields}
                       </Typography>
                       <div className="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
-                        <FieldCell label={copy.list.project} value={name} />
-                        <FieldCell
-                          label={copy.list.tokens}
-                          value={formatTokens(tokens)}
-                        />
-                        <FieldCell
-                          label={copy.list.cost}
-                          value={formatCost(
-                            Number(detail.totals.total_cost_usd),
-                          )}
-                        />
                         <FieldCell
                           label={copy.list.dayPeak}
                           value={
@@ -888,10 +883,6 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
                               ? `${formatTokens(project.day_peak.total_tokens)} · ${formatDate(project.day_peak.date, { dateStyle: "medium", timeZone: "UTC" })}`
                               : "—"
                           }
-                        />
-                        <FieldCell
-                          label={sessionsLabel}
-                          value={formatNumber(detail.totals.conversation_count)}
                         />
                         <FieldCell
                           label={copy.list.lastActive}
@@ -922,13 +913,59 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
                             })}
                           </Typography>
                         ) : null}
-                        <Typography
-                          className="ms-auto"
-                          color="muted"
-                          type="body-xs"
-                        >
-                          {copy.detail.pinHint}
-                        </Typography>
+                        <div className="ms-auto flex items-center gap-2">
+                          <Typography
+                            className="hidden sm:inline"
+                            color="muted"
+                            type="body-xs"
+                          >
+                            {copy.detail.pinHint}
+                          </Typography>
+                          {/* Keyboard/touch equivalent of clicking a bar: the
+                              chart itself is role="img" and unreachable. */}
+                          <Select
+                            aria-label={copy.detail.daySelect}
+                            className="w-32"
+                            value={selectedDay ?? "__all"}
+                            variant="secondary"
+                            onChange={(key) => {
+                              const next = key == null ? "__all" : String(key);
+
+                              onSelectDay(next === "__all" ? null : next);
+                            }}
+                          >
+                            <Select.Trigger>
+                              <Select.Value>
+                                {({ selectedText }) => (
+                                  <span className="truncate">
+                                    {selectedText}
+                                  </span>
+                                )}
+                              </Select.Value>
+                              <Select.Indicator />
+                            </Select.Trigger>
+                            <Select.Popover>
+                              <Popover.Arrow />
+                              <ListBox>
+                                <ListBox.Item
+                                  id="__all"
+                                  textValue={copy.detail.dayAll}
+                                >
+                                  {copy.detail.dayAll}
+                                </ListBox.Item>
+                                {dayOptions.map((day) => (
+                                  <ListBox.Item
+                                    key={day.date}
+                                    id={day.date}
+                                    textValue={day.date}
+                                  >
+                                    {day.date}
+                                  </ListBox.Item>
+                                ))}
+                              </ListBox>
+                            </Select.Popover>
+                          </Select>
+                        </div>
                       </div>
                       {selectedDay ? (
                         <div className="flex flex-wrap items-center gap-2">
@@ -989,7 +1026,7 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
                     {copy.detail.empty}
                   </div>
                 )}
-              </div>
+              </ScrollShadow>
             </div>
           </Modal.Body>
         </Modal.Dialog>

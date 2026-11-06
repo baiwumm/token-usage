@@ -21,9 +21,8 @@ import {
   DataTableCard,
   type DataTableColumn,
 } from "@/components/data-table-card";
+import { README_URL } from "@/lib/links";
 import { useFormat } from "@/lib/format/format";
-
-const UPGRADE_URL = "https://github.com/baiwumm/token-usage#readme";
 
 function rowKey(run: SyncRunItem): string {
   return `${run.device_id}|${run.run_id}`;
@@ -183,7 +182,7 @@ export function SyncRunsTable({
           size="sm"
           variant="secondary"
           onPress={() =>
-            window.open(UPGRADE_URL, "_blank", "noopener,noreferrer")
+            window.open(README_URL, "_blank", "noopener,noreferrer")
           }
         >
           {copy.states.emptyUpgrade}

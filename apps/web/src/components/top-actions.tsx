@@ -30,6 +30,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { NAV_COPY } from "@/lib/copy/nav";
 import { useLocalePreference, type LocalePreference } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
+import { REPO_URL } from "@/lib/links";
 import { THEME_COLOR_PALETTES, useThemeColor } from "@/lib/ui/theme-color";
 
 // Lucide "languages" glyph (ISC license, operator pick) — the gravity-ui set
@@ -98,8 +99,6 @@ function ControlTooltip({
   );
 }
 
-const GITHUB_URL = "https://github.com/baiwumm/token-usage";
-
 /**
  * GitHub icon button. A RAC Link cannot host a tooltip (it does not consume
  * TooltipTrigger's focusable context), so this is a Button that opens the repo
@@ -113,7 +112,7 @@ function GitHubLink() {
         aria-label="GitHub"
         size="sm"
         variant="tertiary"
-        onPress={() => window.open(GITHUB_URL, "_blank", "noopener,noreferrer")}
+        onPress={() => window.open(REPO_URL, "_blank", "noopener,noreferrer")}
       >
         <LogoGithub className="size-4" />
       </Button>

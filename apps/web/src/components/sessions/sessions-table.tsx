@@ -22,10 +22,9 @@ import {
   type DataTableColumn,
 } from "@/components/data-table-card";
 import { SourceIcon } from "@/components/source-icon";
+import { README_URL } from "@/lib/links";
 import { sourceDisplayLabel } from "@/lib/sources";
 import { useFormat } from "@/lib/format/format";
-
-const UPGRADE_URL = "https://github.com/baiwumm/token-usage#readme";
 
 function rowKey(session: SessionItem): string {
   return `${session.device_id}|${session.source}|${session.session_id}`;
@@ -246,7 +245,7 @@ export function SessionsTable({
           size="sm"
           variant="secondary"
           onPress={() =>
-            window.open(UPGRADE_URL, "_blank", "noopener,noreferrer")
+            window.open(README_URL, "_blank", "noopener,noreferrer")
           }
         >
           {copy.states.emptyDocs}

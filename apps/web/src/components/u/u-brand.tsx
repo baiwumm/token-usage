@@ -11,8 +11,7 @@ import { Button, Typography } from "@heroui/react";
 import Link from "next/link";
 
 import { NAV_COPY } from "@/lib/copy/nav";
-
-const GITHUB_URL = "https://github.com/baiwumm/token-usage";
+import { REPO_URL } from "@/lib/links";
 
 export function UBrand({ locale }: { locale: Locale }) {
   return (
@@ -59,7 +58,7 @@ export function UBrand({ locale }: { locale: Locale }) {
         aria-label="GitHub"
         size="sm"
         variant="outline"
-        onPress={() => window.open(GITHUB_URL, "_blank", "noopener,noreferrer")}
+        onPress={() => window.open(REPO_URL, "_blank", "noopener,noreferrer")}
       >
         <LogoGithub className="size-4" />
         <Typography type="body-xs">GitHub</Typography>
