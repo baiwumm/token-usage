@@ -756,7 +756,11 @@ tokenusage doctor            # 新增 runtime.device_identity 检查
 ```
 
 
-## 九、0.5.0 发版（2026-11-06，待发布）
+## 九、0.5.0 发版（2026-11-06，已发布）
+
+npm `tokenusage-cli@0.5.0`（`dist-tags.latest = 0.5.0`）；tag `cli-v0.5.0`；Release workflow
+run `42198295142` 成功（1m34s，2026-11-06T09:52:23Z 触发）；GitHub Release
+`https://github.com/baiwumm/token-usage/releases/tag/cli-v0.5.0` 已建，正文取 CHANGELOG。
 
 三批改动，服务端需**先于 CLI** 部署（契约 v3 的 `projects` 字段与 `token_project_repos` 表
 已在 main 上，`/api/app/project-profiles` 亦已上线）。
@@ -771,10 +775,21 @@ tokenusage doctor            # 新增 runtime.device_identity 检查
 
 - [x] `pnpm verify` 全绿（含新增的 WorkBuddy 迁移与仓库上报用例，CLI 269 个用例）
 - [x] 两份 seed 与 curated 的 CLI/web parity 测试通过（`pricing-parity`）
-- [ ] 两台采集机 `doctor`：记录 unknown 模型 Top N（价格刷新以它为准）
-- [ ] 公司机升级后 `sync --drain`：确认生成 `project.repos.state.json`，`/projects` 出现仓库链接
-- [ ] 两台机 `reconcile --days 7` 均 OK（0 drift）；总量与升级前一致
-- [ ] 公司机 `/projects` 近 7 天：WorkBuddy 从「未归因」变成项目行，未归因合计相应下降
+- [x] 公司机 `doctor`：16 项全 OK；7 天计价覆盖 99.9%（144/163 桶），头号未定价 `Ling-3.2-flash`（dsh，101,642 tokens）
+- [x] 公司机升级后 `sync --drain`：生成 `project.repos.state.json`（15 个项目已确认上报）
+- [x] 公司机 `reconcile --days 1` / `--days 7` 均 OK（48 / 261 桶逐键匹配、0 drift）
+- [x] 公司机 WorkBuddy 归因：本地队列 92 行 WorkBuddy/Buddy AI 行中 29 行为项目行（余量行 27），**247,234,081 / 494,997,604 tokens = 49.9%** 已归因（余量为模型不齐的小时，按设计保留在残差）
+- [ ] 家机 `DESKTOP-MHFON1J #48ea790e` 升级到 0.5.0 并按同口径验收
 - [ ] web 先部署新 seed，确认历史费用变化符合预期
+
+公司机验收记录（2026-11-06，`PC-20260408RIKF #68e47b34`）：
+
+| 项 | 结果 |
+|---|---|
+| 安装 | `npm i -g tokenusage-cli@0.5.0`；`init --yes --no-integrations --no-open` 刷新运行时副本（`runtime.copy` v0.5.0） |
+| 首采 | 3,338,516,793 tokens / 13 providers |
+| `sync --drain` | 解析 3,832 文件、新入队 0 桶、上传 **54 行 / 242,022,064 tokens / 0 跳过**、sessions 1/1，耗时 14s |
+| 状态迁移 | `cursors.json` 的 `workbuddy` / `workbuddy-ai` 均 `projectAttributionVersion: 2`；26 个 WorkBuddy 项目桶全部带 model |
+| 仓库上报 | `project.repos.state.json` 15 条已确认（github.com；自建 GitLab remote 被白名单过滤，不上报） |
 
 砍单线：WorkBuddy 那条若测试或对账不干净，砍到 0.5.1，仓库上报照发。
