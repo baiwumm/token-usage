@@ -15,6 +15,7 @@ import {
   Tooltip,
 } from "recharts";
 
+import { seriesColor } from "@/lib/charts/theme";
 import { useFormat } from "@/lib/format/format";
 
 /** Tiny trend line for summary cards (no axes). Uses CSS currentColor. */
@@ -44,25 +45,9 @@ export function Sparkline({
   );
 }
 
-/**
- * Categorical palette for distribution charts (fixed order). Charts read the
- * accent-tinted chart tokens from globals.css so the palette follows the
- * theme (and the operator's accent picker) instead of hardcoded hexes.
- */
-export const SERIES_COLORS = [
-  "var(--color-chart-1)",
-  "var(--color-chart-3)",
-  "var(--color-chart-2)",
-  "var(--color-chart-4)",
-  "var(--color-chart-5)",
-  "var(--color-chart-6)",
-  "var(--color-chart-7)",
-  "var(--color-chart-8)",
-] as const;
-
-export function seriesColor(index: number): string {
-  return SERIES_COLORS[index % SERIES_COLORS.length];
-}
+// Categorical palette now lives in lib/charts/theme.ts; re-exported here so
+// existing consumers keep importing `seriesColor` from mini-charts.
+export { seriesColor };
 
 export function DonutChart({
   entries,

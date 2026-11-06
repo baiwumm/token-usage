@@ -57,18 +57,9 @@ import { FlowNumber } from "@/components/flow-number";
 import { SourceIcon } from "@/components/source-icon";
 import { canonicalSource, sourceDisplayLabel } from "@/lib/sources";
 import { formatMessage } from "@/lib/copy/message";
+import { AXIS_STYLE, seriesColor } from "@/lib/charts/theme";
 import { useFormat } from "@/lib/format/format";
 import { repoHostOf } from "@/lib/projects/profile";
-
-const CHART_COLORS = [
-  "var(--color-chart-1)",
-  "var(--color-chart-2)",
-  "var(--color-chart-3)",
-  "var(--color-chart-4)",
-  "var(--color-chart-5)",
-] as const;
-
-const AXIS_STYLE = { fontSize: 11, fill: "currentColor", opacity: 0.55 };
 
 export interface ProjectDetailDialogProps {
   project: ProjectItem | null;
@@ -206,7 +197,7 @@ function Composition({
               style={{
                 width: `${(value / total) * 100}%`,
                 minWidth: 2,
-                backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                backgroundColor: seriesColor(index),
               }}
             />
           ) : null,
@@ -219,7 +210,7 @@ function Composition({
               aria-hidden="true"
               className="size-1.5 rounded-full"
               style={{
-                backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                backgroundColor: seriesColor(index),
               }}
             />
             <Typography color="muted" type="body-xs">
@@ -312,7 +303,7 @@ function DailyBars({
           />
           <Bar
             dataKey="total_tokens"
-            fill={CHART_COLORS[0]}
+            fill={seriesColor(0)}
             isAnimationActive={effects.chartBars}
             radius={[3, 3, 0, 0]}
           >
@@ -430,7 +421,7 @@ function SourceRows({
                   className="block h-full rounded-full"
                   style={{
                     width: `${Math.min(100, Math.max(share * 100, row.total_tokens > 0 ? 1 : 0))}%`,
-                    backgroundColor: CHART_COLORS[0],
+                    backgroundColor: seriesColor(0),
                   }}
                 />
               </span>
