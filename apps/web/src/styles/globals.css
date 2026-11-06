@@ -173,4 +173,18 @@
 	.u-medallion {
 		animation: none;
 	}
+
+	/* Global fallback (docs/ui-spec.md 状态与可访问性): decorative spins,
+	   hover lifts and layout transitions are sprinkled across dozens of
+	   components. One rule here keeps the whole app free of decorative motion
+	   instead of relying on every file to remember a motion-reduce variant.
+	   Overlay state transitions still land on their final values instantly. */
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
 }
