@@ -400,8 +400,12 @@ function buildSystemdTimer({ intervalSeconds = SCHEDULE_INTERVAL_SECONDS } = {})
   ].join("\n");
 }
 
+function runCapture(command, args) {
+  return execFileSync(command, args, { stdio: "pipe", windowsHide: true });
+}
+
 function run(command, args) {
-  execFileSync(command, args, { stdio: "pipe", windowsHide: true });
+  runCapture(command, args);
 }
 
 // `stdio: "pipe"` keeps the child's own output on `error.stderr` / `stdout`,
@@ -630,6 +634,88 @@ function scheduleState({ home = os.homedir(), platform = process.platform } = {}
 }
 
 /**
+ * What the *registered* schedule actually does. `init` prints the summary once,
+ * but a downgraded definition only shows up later as a missed catch-up after
+ * sleep — 0.5.0 silently fell back to the plain hourly task on every
+ * non-elevated Windows install, and `doctor` had no way to say so. Read the
+ * live definition (not the on-disk copy, which a later `init` may have
+ * rewritten) and report the reduced feature set.
+ */
+function inspectAutoSyncSchedule({
+  home = os.homedir(),
+  platform = process.platform,
+  exec = runCapture,
+  exists = fs.existsSync,
+  readFile = (file) => fs.readFileSync(file, "utf8"),
+} = {}) {
+  const kind = schedulePlatform(platform);
+  const label = scheduleLabel(platform);
+  if (kind === "windows") {
+    let xml;
+    try {
+      xml = decodeStream(exec("schtasks", ["/Query", "/TN", TASK_NAME, "/XML"]));
+    } catch (error) {
+      return { platform: kind, label, state: "missing", detail: errorText(error) };
+    }
+    const features = {
+      catchUp: /<StartWhenAvailable>\s*true\s*</i.test(xml),
+      logon: /<LogonTrigger>/.test(xml),
+      retry: /<RestartOnFailure>/.test(xml),
+      unlimited: /<ExecutionTimeLimit>\s*PT0S\s*</i.test(xml),
+    };
+    const missing = [];
+    if (!features.catchUp) missing.push("catch-up");
+    if (!features.logon) missing.push("logon trigger");
+    if (!features.retry) missing.push("retry");
+    if (!features.unlimited) missing.push("unlimited runtime");
+    return {
+      platform: kind,
+      label,
+      state: "registered",
+      enhanced: missing.length === 0,
+      missing,
+      detail: missing.length
+        ? `reduced definition (no ${missing.join(", ")})`
+        : "enhanced definition (catch-up, logon, retry)",
+    };
+  }
+  if (kind === "macos") {
+    const plistPath = launchAgentPath(home);
+    if (!exists(plistPath)) return { platform: kind, label, state: "missing", path: plistPath };
+    return {
+      platform: kind,
+      label,
+      state: "registered",
+      enhanced: true,
+      missing: [],
+      path: plistPath,
+      detail: "launchd agent installed",
+    };
+  }
+  if (kind === "linux") {
+    const timerPath = systemdTimerPath(home);
+    if (!exists(timerPath)) return { platform: kind, label, state: "missing", path: timerPath };
+    let timer = "";
+    try {
+      timer = readFile(timerPath);
+    } catch {
+      /* unreadable is reported below as the reduced state */
+    }
+    const persistent = /Persistent\s*=\s*true/i.test(timer);
+    return {
+      platform: kind,
+      label,
+      state: "registered",
+      enhanced: persistent,
+      missing: persistent ? [] : ["persistent timer"],
+      path: timerPath,
+      detail: persistent ? "user timer (Persistent=true)" : "user timer (no Persistent=true)",
+    };
+  }
+  return { platform: kind, label, state: "unsupported" };
+}
+
+/**
  * Best-effort enable/disable of the registered schedule (pause/resume).
  * "Not registered" is an expected, non-fatal state: the pause flag still
  * guards every auto flavor.
@@ -842,6 +928,7 @@ module.exports = {
   registerLaunchAgent,
   registerSystemdTimer,
   scheduleState,
+  inspectAutoSyncSchedule,
   scheduleLabel,
   setAutoSyncEnabled,
   deleteAutoSyncSchedule,

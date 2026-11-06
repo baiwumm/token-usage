@@ -11,6 +11,7 @@ async function buildDoctorReport({
   fetch = globalThis.fetch,
   now = () => new Date(),
   deviceIdentity = null,
+  schedule = null,
   paths = {},
 } = {}) {
   const checks = [];
@@ -28,6 +29,9 @@ async function buildDoctorReport({
   }
   if (paths.cliPath) {
     checks.push(await checkCliEntrypoint(paths.cliPath));
+  }
+  if (schedule) {
+    checks.push(buildScheduleCheck(schedule));
   }
 
   checks.push(await checkNetwork({ baseUrl: runtime?.baseUrl || null, fetch }));
@@ -159,6 +163,57 @@ function buildDeviceIdentityChecks(deviceIdentity) {
   });
 
   return checks;
+}
+
+// 0.5.0 registered the plain hourly task on every non-elevated Windows
+// install and only mentioned it once, in the `init` summary. A later `doctor`
+// has to name the loss (no catch-up after sleep, no logon pass, no retry) or
+// the only symptom is silently missing hours.
+function buildScheduleCheck(schedule = {}) {
+  const label = schedule.label || "Scheduled sync";
+  const meta = {
+    platform: schedule.platform || null,
+    label: schedule.label || null,
+    state: schedule.state || null,
+    enhanced: schedule.enhanced ?? null,
+  };
+  if (schedule.state === "unsupported") {
+    return {
+      id: "schedule.registered",
+      status: "ok",
+      critical: false,
+      detail: `${label}: unsupported platform (the pause flag covers manual runs)`,
+      meta,
+    };
+  }
+  if (schedule.state === "missing") {
+    const why = schedule.detail ? ` — ${schedule.detail}` : "";
+    return {
+      id: "schedule.registered",
+      status: "warn",
+      critical: false,
+      detail: `${label} not registered${why}; run \`tokenusage init\` for hourly collection`,
+      meta,
+    };
+  }
+  if (schedule.enhanced) {
+    return {
+      id: "schedule.registered",
+      status: "ok",
+      critical: false,
+      detail: `${label}: ${schedule.detail || "registered"}`,
+      meta,
+    };
+  }
+  return {
+    id: "schedule.registered",
+    status: "warn",
+    critical: false,
+    detail:
+      `${label} is ${schedule.detail || "a reduced definition"}; ` +
+      "re-run `tokenusage init` to restore catch-up/retry (0.5.1 and later register the full definition)",
+    meta: { ...meta, missing: schedule.missing || [] },
+  };
 }
 
 async function checkTrackerDir(trackerDir) {

@@ -8,6 +8,7 @@ const { resolveRuntimeConfig } = require("../lib/runtime-config");
 const { resolveDeviceTokenPresence } = require("../lib/cloud-device-token");
 const { resolveLocalDeviceIdentity } = require("../lib/device-identity");
 const { buildDoctorReport } = require("../lib/doctor");
+const { inspectAutoSyncSchedule } = require("../lib/scheduled-task");
 
 async function cmdDoctor(argv = []) {
   const opts = parseArgs(argv);
@@ -39,12 +40,26 @@ async function cmdDoctor(argv = []) {
   const diagnostics = await collectTrackerDiagnostics({ home });
   const cliPath = process.argv[1] ? path.resolve(process.argv[1]) : null;
   const deviceIdentity = resolveLocalDeviceIdentity({ config, home });
+  // Never let a scheduler probe failure take the whole report down: a broken
+  // schedule is exactly the state doctor should be able to describe.
+  let schedule = null;
+  try {
+    schedule = inspectAutoSyncSchedule({ home });
+  } catch (error) {
+    schedule = {
+      platform: process.platform,
+      label: "Scheduled sync",
+      state: "missing",
+      detail: String(error?.message || error),
+    };
+  }
 
   const report = await buildDoctorReport({
     runtime,
     diagnostics,
     fetch: globalThis.fetch,
     deviceIdentity,
+    schedule,
     paths: {
       trackerDir,
       configPath,

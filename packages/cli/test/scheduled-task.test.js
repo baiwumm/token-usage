@@ -38,6 +38,7 @@ const {
   errorText,
   writeHiddenRunner,
   windowsUserId,
+  inspectAutoSyncSchedule,
 } = require("../src/lib/scheduled-task");
 
 test("platform routing covers the three supported families", () => {
@@ -318,4 +319,109 @@ test("toggle and delete copy always mention the pause flag as the fallback", () 
 
   assert.equal(formatScheduleDelete({ deleted: true, label: "TokenUsageSync" }), "- Scheduled sync deleted: TokenUsageSync");
   assert.equal(formatScheduleDelete({ deleted: false, reason: "schedule_missing" }), "- Scheduled sync: none");
+});
+
+test("schedule inspection separates the enhanced definition from the reduced hourly one", () => {
+  const xml = buildWindowsTaskXml({
+    vbsPath: "C:\\Users\\me\\.tokenusage\\bin\\run-sync-hidden.vbs",
+    startBoundary: "2026-11-01T09:00:00",
+    userId: "DESKTOP-ME\\me",
+  });
+  const enhanced = inspectAutoSyncSchedule({ platform: "win32", exec: () => Buffer.from(xml) });
+  assert.equal(enhanced.state, "registered");
+  assert.equal(enhanced.enhanced, true);
+  assert.deepEqual(enhanced.missing, []);
+  assert.match(enhanced.detail, /catch-up, logon, retry/);
+
+  // What 0.5.0 left behind on a non-elevated install: a plain hourly task.
+  const reduced =
+    "<Task><Triggers><CalendarTrigger /></Triggers>" +
+    "<Settings><ExecutionTimeLimit>PT72H</ExecutionTimeLimit></Settings></Task>";
+  const info = inspectAutoSyncSchedule({ platform: "win32", exec: () => Buffer.from(reduced) });
+  assert.equal(info.state, "registered");
+  assert.equal(info.enhanced, false);
+  assert.deepEqual(info.missing, ["catch-up", "logon trigger", "retry", "unlimited runtime"]);
+  assert.match(info.detail, /reduced definition/);
+});
+
+test("schedule inspection reports a missing task with the scheduler's own reason", () => {
+  const info = inspectAutoSyncSchedule({
+    platform: "win32",
+    exec: () => {
+      const error = new Error("Command failed: schtasks");
+      error.stderr = Buffer.from("ERROR: The system cannot find the file specified.\r\n");
+      throw error;
+    },
+  });
+  assert.equal(info.state, "missing");
+  assert.match(info.detail, /cannot find the file/);
+});
+
+test("schedule inspection checks the POSIX artifacts it can actually read", () => {
+  const mac = inspectAutoSyncSchedule({ platform: "darwin", home: "/home/me", exists: () => true });
+  assert.equal(mac.state, "registered");
+  assert.equal(mac.enhanced, true);
+  assert.equal(
+    inspectAutoSyncSchedule({ platform: "darwin", home: "/home/me", exists: () => false }).state,
+    "missing",
+  );
+
+  const linux = inspectAutoSyncSchedule({
+    platform: "linux",
+    home: "/home/me",
+    exists: () => true,
+    readFile: () => "[Timer]\nPersistent=true\n",
+  });
+  assert.equal(linux.enhanced, true);
+
+  const plainTimer = inspectAutoSyncSchedule({
+    platform: "linux",
+    home: "/home/me",
+    exists: () => true,
+    readFile: () => "[Timer]\nOnUnitInactiveSec=60min\n",
+  });
+  assert.equal(plainTimer.enhanced, false);
+  assert.deepEqual(plainTimer.missing, ["persistent timer"]);
+
+  assert.equal(inspectAutoSyncSchedule({ platform: "freebsd" }).state, "unsupported");
+});
+
+test("doctor turns a reduced schedule into a warning that names the loss", async () => {
+  const { buildDoctorReport } = require("../src/lib/doctor");
+  const report = await buildDoctorReport({
+    runtime: {},
+    fetch: null,
+    schedule: {
+      platform: "windows",
+      label: TASK_NAME,
+      state: "registered",
+      enhanced: false,
+      missing: ["catch-up", "retry"],
+      detail: "reduced definition (no catch-up, retry)",
+    },
+  });
+  const check = report.checks.find((c) => c.id === "schedule.registered");
+  assert.equal(check.status, "warn");
+  assert.match(check.detail, /re-run `tokenusage init`/);
+  assert.deepEqual(check.meta.missing, ["catch-up", "retry"]);
+
+  const healthy = await buildDoctorReport({
+    runtime: {},
+    fetch: null,
+    schedule: {
+      platform: "windows",
+      label: TASK_NAME,
+      state: "registered",
+      enhanced: true,
+      detail: "enhanced definition (catch-up, logon, retry)",
+    },
+  });
+  assert.equal(healthy.checks.find((c) => c.id === "schedule.registered").status, "ok");
+
+  const missing = await buildDoctorReport({
+    runtime: {},
+    fetch: null,
+    schedule: { platform: "windows", label: TASK_NAME, state: "missing", detail: "not found" },
+  });
+  assert.equal(missing.checks.find((c) => c.id === "schedule.registered").status, "warn");
 });
