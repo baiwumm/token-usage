@@ -418,8 +418,15 @@ export function ProjectsBody(props: ProjectsBodyProps) {
   } = props;
   const allProjects = payload?.projects ?? [];
   const projects = sliceProjects(allProjects, limit);
+  // The meter is "relative to the top project (not a share)": the denominator
+  // is the largest attributed project in the visible list. Unattributed is
+  // excluded because hourly buckets often make it the largest row by far,
+  // which would squash every project bar to near zero.
   const maxTokens = projects.reduce(
-    (max, project) => Math.max(max, project.total_tokens),
+    (max, project) =>
+      project.project_key != null
+        ? Math.max(max, project.total_tokens)
+        : max,
     0,
   );
   // Same denominator as the detail modal's "share of total": every token in

@@ -284,13 +284,13 @@ export function ProjectProfileDialog({
                     ) : null}
                   </div>
                   <Switch isSelected={repoHidden} onChange={setRepoHidden}>
-                    <Switch.Control>
-                      <Switch.Thumb />
-                    </Switch.Control>
                     <Switch.Content>
+                      <Switch.Control>
+                        <Switch.Thumb />
+                      </Switch.Control>
                       <Label>{text.repoHidden}</Label>
-                      <Description>{text.repoHiddenHint}</Description>
                     </Switch.Content>
+                    <Description>{text.repoHiddenHint}</Description>
                   </Switch>
                 </div>
 
