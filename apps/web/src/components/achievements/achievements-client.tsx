@@ -9,26 +9,24 @@
 // The watermark is advanced after the grid renders — writing it earlier would
 // clear the badges of the visit that is currently on screen.
 
-import { ArrowsRotateRight } from "@gravity-ui/icons";
-import { Button, Skeleton, Tooltip, Typography, toast } from "@heroui/react";
+import { Skeleton, toast } from "@heroui/react";
 import { useCallback, useEffect, useMemo } from "react";
 
 import { AchievementsBody } from "./achievements-body";
 import { AchievementsSkeleton } from "./achievements-skeleton";
 import { useAchievements } from "./use-achievements";
 
+import { RefreshButton } from "@/components/refresh-button";
 import { markAchievementsSeen } from "@/lib/achievements/api";
 import { maxAchievedDay, unlocksSince } from "@/lib/achievements/highlights";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { useLocale } from "@/lib/copy/locale";
-import { formatMessage } from "@/lib/copy/message";
 import { browserTimezone, dayKeyInTz } from "@/lib/dashboard/ranges";
-import { useFormat } from "@/lib/format/format";
 import { SectionError } from "@/components/section-states";
+import { StaleDataBanner } from "@/components/stale-data-banner";
 
 export function AchievementsClient() {
   const [locale] = useLocale();
-  const { formatDateTime } = useFormat();
   const { state, error, refreshing, lastUpdatedAt, refresh } =
     useAchievements();
 
@@ -96,34 +94,21 @@ export function AchievementsClient() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-8">
       <header className="flex flex-wrap items-center justify-end gap-3">
-        <Tooltip delay={0}>
-          <Button
-            isIconOnly
-            aria-busy={refreshing}
-            aria-label={achievementCopy(locale, "achievements.ui.refresh")}
-            isDisabled={refreshing}
-            size="sm"
-            variant="tertiary"
-            onPress={retry}
-          >
-            <ArrowsRotateRight
-              aria-hidden="true"
-              className={refreshing ? "size-4 animate-spin" : "size-4"}
-            />
-          </Button>
-          <Tooltip.Content showArrow placement="bottom">
-            <Tooltip.Arrow />
-            <Typography type="body-xs">
-              {lastUpdatedAt == null
-                ? achievementCopy(locale, "achievements.ui.lastUpdatedNone")
-                : formatMessage(
-                    achievementCopy(locale, "achievements.ui.lastUpdated"),
-                    locale,
-                    { time: formatDateTime(new Date(lastUpdatedAt)) },
-                  )}
-            </Typography>
-          </Tooltip.Content>
-        </Tooltip>
+        <RefreshButton
+          lastUpdatedAt={lastUpdatedAt}
+          lastUpdatedNone={achievementCopy(
+            locale,
+            "achievements.ui.lastUpdatedNone",
+          )}
+          lastUpdatedTemplate={achievementCopy(
+            locale,
+            "achievements.ui.lastUpdated",
+          )}
+          locale={locale}
+          refreshLabel={achievementCopy(locale, "achievements.ui.refresh")}
+          refreshing={refreshing}
+          onPress={retry}
+        />
       </header>
 
       {state.status === "loading" && !payload ? <AchievementsSkeleton /> : null}
@@ -136,17 +121,18 @@ export function AchievementsClient() {
         />
       ) : null}
 
-      {payload ? (
-        <AchievementsBody locale={locale} newIds={newIds} payload={payload} />
-      ) : null}
-
-      {/* A failed refresh keeps the grid: the stale note sits under it. */}
+      {/* A failed refresh keeps the grid: flag the stale data above it, not
+          below, so the wall is never read as freshly loaded. */}
       {state.status === "error" && payload ? (
-        <SectionError
+        <StaleDataBanner
           message={achievementCopy(locale, "achievements.ui.loadError")}
           retry={retry}
           retryLabel={achievementCopy(locale, "achievements.ui.retry")}
         />
+      ) : null}
+
+      {payload ? (
+        <AchievementsBody locale={locale} newIds={newIds} payload={payload} />
       ) : null}
 
       {state.status === "ready" && !payload ? (

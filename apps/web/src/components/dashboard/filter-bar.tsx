@@ -12,33 +12,20 @@ import type { DashboardDevice } from "@/lib/dashboard/api";
 import type { DashboardRange } from "@/lib/dashboard/ranges";
 import type { Filters } from "./filters";
 
-import { ArrowsRotateRight } from "@gravity-ui/icons";
-import {
-  Button,
-  DateField,
-  DateRangePicker,
-  ListBox,
-  Popover,
-  RangeCalendar,
-  Select,
-  Tooltip,
-  Typography,
-} from "@heroui/react";
+import { Button, ListBox, Popover, Select, Typography } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
+import { DateRangeFilter } from "@/components/date-range-filter";
 import { DeviceFilterSelect } from "@/components/device-filter-select";
-import { RangePresetButtons } from "@/components/range-preset-buttons";
+import { RefreshButton } from "@/components/refresh-button";
 import { ShareCardButton } from "@/components/share-card-button";
-import { formatMessage } from "@/lib/copy/message";
 import {
-  ALL_RANGE_START,
   browserTimezone,
   RANGE_PRESETS,
   TIMEZONE_OPTIONS,
   type RangeKey,
 } from "@/lib/dashboard/ranges";
-import { useFormat } from "@/lib/format/format";
 
 export function DashboardFilterBar({
   activeDevices,
@@ -70,9 +57,6 @@ export function DashboardFilterBar({
   onApply: (patch: Partial<Filters>) => void;
   onRefresh: () => void;
 }) {
-  const { formatDateTime } = useFormat();
-  const [rangePickerOpen, setRangePickerOpen] = useState(false);
-
   // Range picker state: rangeForSelection resolves the URL day keys — valid
   // custom pairs pass through, presets resolve to their relative window
   // ending today — so the picker always shows a well-formed window.
@@ -87,83 +71,19 @@ export function DashboardFilterBar({
         <Typography color="muted" type="body-xs">
           {copy.rangeLabel}
         </Typography>
-        <DateRangePicker
-          aria-label={copy.rangeLabel}
-          className="w-64"
-          isOpen={rangePickerOpen}
+        <DateRangeFilter
+          ariaLabel={copy.rangeLabel}
+          labels={copy.ranges}
+          locale={locale}
           maxValue={rangePickerMax}
-          minValue={parseDate(ALL_RANGE_START)}
+          presets={RANGE_PRESETS}
+          selectedPreset={filters.range}
           value={rangePickerValue}
-          onChange={(value) => {
-            if (!value || value.end.compare(rangePickerMax) > 0) return;
-
-            onApply({
-              range: "custom",
-              from: value.start.toString(),
-              to: value.end.toString(),
-            });
-          }}
-          onOpenChange={setRangePickerOpen}
-        >
-          <DateField.Group fullWidth>
-            <DateField.Input slot="start">
-              {(segment) => <DateField.Segment segment={segment} />}
-            </DateField.Input>
-            <DateRangePicker.RangeSeparator />
-            <DateField.Input slot="end">
-              {(segment) => <DateField.Segment segment={segment} />}
-            </DateField.Input>
-            <DateField.Suffix>
-              <DateRangePicker.Trigger>
-                <DateRangePicker.TriggerIndicator />
-              </DateRangePicker.Trigger>
-            </DateField.Suffix>
-          </DateField.Group>
-          <DateRangePicker.Popover>
-            <RangePresetButtons
-              ariaLabel={copy.rangeLabel}
-              labels={copy.ranges}
-              presets={RANGE_PRESETS}
-              selected={filters.range}
-              onSelect={(preset) => {
-                onApply({
-                  range: preset as RangeKey,
-                  from: "",
-                  to: "",
-                });
-                setRangePickerOpen(false);
-              }}
-            />
-            <RangeCalendar
-              aria-label={copy.rangeLabel}
-              maxValue={rangePickerMax}
-            >
-              <RangeCalendar.Header>
-                <RangeCalendar.YearPickerTrigger>
-                  <RangeCalendar.YearPickerTriggerHeading />
-                  <RangeCalendar.YearPickerTriggerIndicator />
-                </RangeCalendar.YearPickerTrigger>
-                <RangeCalendar.NavButton slot="previous" />
-                <RangeCalendar.NavButton slot="next" />
-              </RangeCalendar.Header>
-              <RangeCalendar.Grid>
-                <RangeCalendar.GridHeader>
-                  {(day) => (
-                    <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>
-                  )}
-                </RangeCalendar.GridHeader>
-                <RangeCalendar.GridBody>
-                  {(date) => <RangeCalendar.Cell date={date} />}
-                </RangeCalendar.GridBody>
-              </RangeCalendar.Grid>
-              <RangeCalendar.YearPickerGrid>
-                <RangeCalendar.YearPickerGridBody>
-                  {({ year }) => <RangeCalendar.YearPickerCell year={year} />}
-                </RangeCalendar.YearPickerGridBody>
-              </RangeCalendar.YearPickerGrid>
-            </RangeCalendar>
-          </DateRangePicker.Popover>
-        </DateRangePicker>
+          onChange={({ from, to }) => onApply({ range: "custom", from, to })}
+          onPresetSelect={(preset) =>
+            onApply({ range: preset as RangeKey, from: "", to: "" })
+          }
+        />
       </label>
 
       <label className="flex flex-col gap-1">
@@ -234,30 +154,15 @@ export function DashboardFilterBar({
 
       <div className="ml-auto flex items-center gap-1.5">
         <ShareCardButton input={shareInput} />
-        <Tooltip delay={0}>
-          <Button
-            isIconOnly
-            aria-label={copy.refresh}
-            size="sm"
-            variant="tertiary"
-            onPress={onRefresh}
-          >
-            <ArrowsRotateRight
-              aria-hidden="true"
-              className={refreshing ? "size-4 animate-spin" : "size-4"}
-            />
-          </Button>
-          <Tooltip.Content showArrow placement="bottom">
-            <Tooltip.Arrow />
-            <Typography type="body-xs">
-              {lastUpdatedAt == null
-                ? copy.lastUpdatedNone
-                : formatMessage(copy.lastUpdated, locale, {
-                    time: formatDateTime(new Date(lastUpdatedAt)),
-                  })}
-            </Typography>
-          </Tooltip.Content>
-        </Tooltip>
+        <RefreshButton
+          lastUpdatedAt={lastUpdatedAt}
+          lastUpdatedNone={copy.lastUpdatedNone}
+          lastUpdatedTemplate={copy.lastUpdated}
+          locale={locale}
+          refreshLabel={copy.refresh}
+          refreshing={refreshing}
+          onPress={onRefresh}
+        />
       </div>
     </div>
   );
