@@ -29,7 +29,7 @@ import {
   type SetStateAction,
 } from "react";
 
-import { CostAnalysisModal } from "./cost-modal";
+import { CostAnalysisModal } from "./cost-dialog";
 import { DashboardBody } from "./dashboard-body";
 import { DashboardFilterBar } from "./filter-bar";
 import { buildDetailRows } from "./detail-rows";
@@ -166,6 +166,11 @@ export function DashboardClient() {
   // old one may still be in flight; late responses of a superseded run must
   // never overwrite the newer run's state.
   const loadSeq = useRef(0);
+  // Seq of the manual (non-silent) run currently in flight, 0 when none.
+  // A scheduled/visibility refresh must not supersede it: the data-version
+  // gate's cache-hit branch would hydrate stale payloads and discard the
+  // manual run's seven responses, defeating the forced refresh.
+  const manualSeq = useRef(0);
   // Start time of the latest run — the visibility-refresh cooldown baseline.
   const lastAttemptAt = useRef(0);
   // Consumed by the hourly fetch: auto refreshes skip its panel overlay.
@@ -180,9 +185,20 @@ export function DashboardClient() {
       // Silent runs (timer / visibility) update in place without the blur.
       const silent = options?.silent === true;
 
+      // Skip (without touching loadSeq) while a manual refresh is in flight.
+      if (silent && manualSeq.current !== 0) return;
+
       if (!silent) setRefreshing(true);
       lastAttemptAt.current = Date.now();
       const seq = ++loadSeq.current;
+
+      if (!silent) manualSeq.current = seq;
+
+      // Clear only this run's marker; a newer manual run has already
+      // overwritten it with its own seq.
+      const clearManual = () => {
+        if (!silent && manualSeq.current === seq) manualSeq.current = 0;
+      };
 
       // Data-version gate (2026-11-01 operator plan): one cheap version read
       // replaces the seven heavy fetches whenever no non-empty sync run has
@@ -201,7 +217,11 @@ export function DashboardClient() {
       );
       const beforeVersion = await fetchDataVersion().catch(() => null);
 
-      if (loadSeq.current !== seq) return;
+      if (loadSeq.current !== seq) {
+        clearManual();
+
+        return;
+      }
 
       if (!options?.force && beforeVersion != null) {
         const cached = readDashboardCache(userKey, filterKey, beforeVersion);
@@ -216,6 +236,7 @@ export function DashboardClient() {
           setAchievementState({ status: "ready", data: cached.achievements });
           setRefreshing(false);
           setLastUpdatedAt(Date.now());
+          clearManual();
 
           return;
         }
@@ -229,7 +250,7 @@ export function DashboardClient() {
       const finishOne = () => {
         if (loadSeq.current !== seq) return;
         if (--pending > 0) return;
-        // Always clear: a silent run may supersede an interrupted manual one.
+        clearManual();
         setRefreshing(false);
         if (succeeded > 0) setLastUpdatedAt(Date.now());
         // A fully successful load is cacheable — but only when the change
@@ -640,6 +661,7 @@ export function DashboardClient() {
         formatTokens,
         heatmap,
         locale,
+        peak,
         profile,
         range,
         summary: summary ?? null,
@@ -655,6 +677,7 @@ export function DashboardClient() {
       formatTokens,
       heatmap,
       locale,
+      peak,
       profile,
       range,
       summary,
@@ -740,7 +763,6 @@ export function DashboardClient() {
         daily={daily}
         open={costOpen}
         sources={breakdown}
-        totalCostUsd={Number(summary?.totals.total_cost_usd ?? 0)}
         onOpenChange={setCostOpen}
       />
     </main>

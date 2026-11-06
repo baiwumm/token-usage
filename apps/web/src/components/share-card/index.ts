@@ -15,7 +15,7 @@ import { SHARE_CARD_COPY } from "@/lib/copy/share-card";
 
 export type { ShareCardData, ShareCardVariant } from "./types";
 
-export { buildShareHook } from "./hook";
+export { buildShareHook } from "./share-hook-helpers";
 
 interface ShareVariantDef {
   id: ShareCardVariant;

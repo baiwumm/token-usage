@@ -11,13 +11,13 @@
 //
 // The page is split by concern: filters.ts owns the URL contract,
 // filter-bar.tsx the controls, summary-cards.tsx the totals row,
-// sessions-table.tsx the list, detail-modal.tsx the drill-down.
+// sessions-table.tsx the list, detail-dialog.tsx the drill-down.
 
 import { toast } from "@heroui/react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { SessionDetailModal } from "./detail-modal";
+import { SessionDetailModal } from "./detail-dialog";
 import { SessionsFilterBar } from "./filter-bar";
 import {
   mergeSessionFilters,
@@ -115,6 +115,10 @@ export function SessionsClient() {
       } catch (error) {
         if (requestId.current !== id) return;
         if (isUnauthorized(error)) {
+          // The login redirect returns early, so the refresh overlay must be
+          // cleared here too — otherwise the Spinner stays on top of the old
+          // page while the navigation settles (mirrors wrapped-client).
+          setRefreshing(false);
           redirectToLogin();
 
           return;

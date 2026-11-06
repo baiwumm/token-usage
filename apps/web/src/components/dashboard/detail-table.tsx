@@ -20,7 +20,7 @@ import {
 import { parseDate } from "@internationalized/date";
 import { memo, useMemo, useState } from "react";
 
-import { ModelListModal } from "./model-list-modal";
+import { ModelListModal } from "./model-list-dialog";
 
 import {
   DataTableCard,

@@ -25,14 +25,12 @@ export function CostAnalysisModal({
   onOpenChange,
   sources,
   daily,
-  totalCostUsd,
   copy,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sources: ModelBreakdownSource[];
   daily: SeriesPoint[];
-  totalCostUsd: number;
   copy: DashboardCopy;
 }) {
   const { formatTokens, formatCost } = useFormat();
@@ -48,6 +46,14 @@ export function CostAnalysisModal({
     [sources],
   );
 
+  // Both tabs and the headline total come from the same breakdown rows.
+  // Reading the headline from account-summary mixed two different read-time
+  // pricing paths (summary vs toFixed(6) breakdown) and could disagree with
+  // the sum of the rows below it.
+  const totalCostUsd = models.reduce(
+    (sum, entry) => sum + entry.totals.total_cost_usd,
+    0,
+  );
   const totalTokens = models.reduce(
     (sum, entry) => sum + entry.totals.total_tokens,
     0,

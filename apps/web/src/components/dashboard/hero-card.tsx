@@ -18,7 +18,7 @@ import { Button, Card, Tooltip, Typography, cn } from "@heroui/react";
 import { useMemo, useState } from "react";
 
 import { canonicalSourceRows, mergeModelsAcrossSources } from "./aggregate";
-import { ModelListModal } from "./model-list-modal";
+import { ModelListModal } from "./model-list-dialog";
 
 import { seriesColor } from "@/components/mini-charts";
 import { SourceIcon } from "@/components/source-icon";
@@ -144,6 +144,7 @@ export function TotalTokensHero({
                 {formatDate(`${peakDay.day}T12:00:00Z`, {
                   month: "short",
                   day: "numeric",
+                  timeZone: "UTC",
                 })}
               </span>
             </span>
@@ -190,8 +191,17 @@ export function TotalTokensHero({
           </Typography>
         )}
         <Typography color="muted" type="body-xs">
-          {formatDate(`${fromDay}T12:00:00Z`, { dateStyle: "medium" })} —{" "}
-          {formatDate(`${toDay}T12:00:00Z`, { dateStyle: "medium" })}
+          {/* Day keys are logical dates already bucketed in the selected tz;
+              render them in UTC so an east-of-UTC browser never shows +1 day. */}
+          {formatDate(`${fromDay}T12:00:00Z`, {
+            dateStyle: "medium",
+            timeZone: "UTC",
+          })}{" "}
+          —{" "}
+          {formatDate(`${toDay}T12:00:00Z`, {
+            dateStyle: "medium",
+            timeZone: "UTC",
+          })}
         </Typography>
 
         {sources.length > 0 ? (

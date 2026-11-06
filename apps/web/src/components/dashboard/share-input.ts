@@ -7,6 +7,7 @@ import type {
   AccountSummary,
   HeatmapPayload,
   ModelBreakdownSource,
+  SeriesPoint,
 } from "@/lib/dashboard/api";
 import type { DashboardRange } from "@/lib/dashboard/ranges";
 import type { useFormat } from "@/lib/format/format";
@@ -24,6 +25,7 @@ export function buildShareInput({
   formatTokens,
   heatmap,
   locale,
+  peak,
   profile,
   range,
   summary,
@@ -38,6 +40,8 @@ export function buildShareInput({
   formatTokens: Formatters["formatTokens"];
   heatmap: HeatmapPayload | null;
   locale: "zh" | "en";
+  /** Single-day peak of the daily series (already computed for the hero card). */
+  peak: SeriesPoint | null;
   profile: Profile | null;
   range: DashboardRange;
   summary: AccountSummary | null;
@@ -61,7 +65,7 @@ export function buildShareInput({
 
   return {
     handle: profile?.displayName || profile?.email || "Token Usage",
-    periodLabel: `${formatDate(`${range.fromDay}T12:00:00Z`, { dateStyle: "medium" })} — ${formatDate(`${range.toDay}T12:00:00Z`, { dateStyle: "medium" })}`,
+    periodLabel: `${formatDate(`${range.fromDay}T12:00:00Z`, { dateStyle: "medium", timeZone: "UTC" })} — ${formatDate(`${range.toDay}T12:00:00Z`, { dateStyle: "medium", timeZone: "UTC" })}`,
     hook: buildShareHook({
       activeDays: summary.days,
       locale,
@@ -81,7 +85,10 @@ export function buildShareInput({
       summary.totals.conversation_count > 0
         ? formatNumber(summary.totals.conversation_count)
         : null,
-    peakDay: null,
+    peakDay:
+      peak?.day && peak.total_tokens > 0
+        ? { label: peak.day, tokens: formatTokens(peak.total_tokens) }
+        : null,
     sources: sortedSources.map((source) => ({
       name: source.source,
       tokens: formatTokens(source.totals.total_tokens),
