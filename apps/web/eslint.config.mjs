@@ -34,8 +34,12 @@ export default defineConfig([globalIgnores([
     "**/.DS_Store",
     "**/node_modules",
     "**/coverage",
-    "**/.next",
-    "**/build",
+        "**/.next",
+        // Throwaway Next builds created by contract tests (legacy-alias-removed)
+        // are not source; ignore them so lint stays green when a cleanup is
+        // interrupted by the host's file-deletion guard.
+        "**/.next-*",
+        "**/build",
     "!**/.commitlintrc.cjs",
     "!**/.lintstagedrc.cjs",
     "!**/jest.config.js",
