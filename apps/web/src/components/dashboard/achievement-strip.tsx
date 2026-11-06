@@ -11,8 +11,8 @@ import type { Locale } from "@/lib/copy/locale-config";
 
 import { Typography } from "@heroui/react";
 
-import { AchievementMedallion } from "@/components/achievements/achievement-medallion";
-import { TierBadge } from "@/components/achievements/achievement-tier-badge";
+import { AchievementMedallion } from "@/components/achievement-medallion";
+import { TierBadge } from "@/components/achievement-tier-badge";
 import { achievementById, TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
 
@@ -36,7 +36,7 @@ function AchievementTile({
   return (
     <button
       aria-label={name}
-      className="flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl p-1 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2"
+      className="flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl p-1 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none"
       type="button"
       onClick={() => onOpen(progress.id)}
     >

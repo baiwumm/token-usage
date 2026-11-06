@@ -10,7 +10,7 @@ import type { Locale } from "@/lib/copy/locale-config";
 
 import { Typography } from "@heroui/react";
 
-import { tierGradient } from "./achievement-tiers";
+import { tierGradient } from "@/components/achievement-tiers";
 
 import { TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";

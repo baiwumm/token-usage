@@ -10,8 +10,8 @@ import type { Locale } from "@/lib/copy/locale-config";
 
 import { useCallback, useState } from "react";
 
-import { AchievementDialog } from "./achievement-dialog";
-import { AchievementShareDialog } from "./achievement-share-dialog";
+import { AchievementDialog } from "@/components/achievement-dialog";
+import { AchievementShareDialog } from "@/components/achievements/achievement-share-dialog";
 
 export function AchievementDetail({
   progress,

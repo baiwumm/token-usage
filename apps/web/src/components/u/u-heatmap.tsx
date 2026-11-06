@@ -10,7 +10,7 @@ import type { Locale } from "@/lib/copy/locale-config";
 import type { PublicPageCopy } from "@/lib/copy/public-page";
 import type { HeatmapPayload } from "@/lib/dashboard/api";
 
-import { HeatmapCard } from "@/components/dashboard/heatmap-card";
+import { HeatmapCard } from "@/components/heatmap-card";
 import { DASHBOARD_COPY } from "@/lib/copy/dashboard";
 
 export function UHeatmap({

@@ -18,7 +18,7 @@ import { SignOutDialog } from "./sign-out-dialog";
 import { TopBar } from "./top-bar";
 import { useLocalHour } from "./use-local-hour";
 
-import { AchievementUnlockWatcher } from "@/components/achievements/achievement-unlock-watcher";
+import { AchievementUnlockWatcher } from "@/components/achievement-unlock-watcher";
 import { authBrowserClient } from "@/lib/auth/browser";
 import { useProfile } from "@/lib/auth/profile";
 import { NAV_COPY } from "@/lib/copy/nav";

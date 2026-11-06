@@ -11,7 +11,7 @@ import { Button, Card } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
-import { AchievementDetail } from "./achievement-detail";
+import { AchievementDetail } from "@/components/achievement-detail";
 import { AchievementsSection } from "./achievements-section";
 import { AchievementsSummary } from "./achievements-summary";
 

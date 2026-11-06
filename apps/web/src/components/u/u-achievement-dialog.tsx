@@ -7,7 +7,7 @@
 import type { AchievementProgress } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
 
-import { AchievementDialog } from "@/components/achievements/achievement-dialog";
+import { AchievementDialog } from "@/components/achievement-dialog";
 
 export function UAchievementDialog({
   progress,

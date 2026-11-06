@@ -10,12 +10,23 @@ import type { Locale } from "@/lib/copy/locale-config";
 import type { LoadStatus } from "@/lib/loadable";
 
 import { Button, Card } from "@heroui/react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { AchievementStrip } from "./achievement-strip";
 
-import { AchievementDetail } from "@/components/achievements/achievement-detail";
+// The detail pulls in the 3D coin (motion/react + ~500 lines) and the
+// achievement share-card canvas. The dashboard strip is only five tiles, so
+// keep that whole subtree out of the first-load chunk until a tile is opened.
+const AchievementDetail = dynamic(
+  () =>
+    import("@/components/achievement-detail").then(
+      (mod) => mod.AchievementDetail,
+    ),
+  { ssr: false, loading: () => null },
+);
+
 import { PanelOverlay } from "@/components/panel-overlay";
 import { SectionError, SectionSkeleton } from "@/components/section-states";
 import { nearestUnlocks, recentUnlocks } from "@/lib/achievements/highlights";
@@ -44,6 +55,9 @@ export function AchievementStripSection({
     AchievementsPayload["achievements"][number] | null
   >(null);
   const [open, setOpen] = useState(false);
+  // Mounted after the first open so the dialog keeps its exit animation;
+  // before that the detail chunk is never requested.
+  const [detailLoaded, setDetailLoaded] = useState(false);
   const recent = useMemo(
     () => (payload ? recentUnlocks(payload.achievements, GROUP_LIMIT) : []),
     [payload],
@@ -90,6 +104,7 @@ export function AchievementStripSection({
 
               if (!entry) return;
               setSelected(entry);
+              setDetailLoaded(true);
               setOpen(true);
             }}
           />
@@ -103,13 +118,15 @@ export function AchievementStripSection({
           />
         )}
       </Card.Content>
-      <AchievementDetail
-        handle={profile?.displayName || profile?.email || "Token Usage"}
-        locale={locale}
-        open={open}
-        progress={selected}
-        onOpenChange={setOpen}
-      />
+      {detailLoaded ? (
+        <AchievementDetail
+          handle={profile?.displayName || profile?.email || "Token Usage"}
+          locale={locale}
+          open={open}
+          progress={selected}
+          onOpenChange={setOpen}
+        />
+      ) : null}
     </Card>
   );
 }

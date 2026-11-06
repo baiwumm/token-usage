@@ -9,7 +9,7 @@
 
 import { cn } from "@heroui/react";
 
-import { tierGradient, tierRamp } from "./achievement-tiers";
+import { tierGradient, tierRamp } from "@/components/achievement-tiers";
 
 export function TierBadge({
   tier,

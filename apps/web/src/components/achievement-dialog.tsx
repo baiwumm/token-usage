@@ -22,10 +22,10 @@ import {
   cn,
 } from "@heroui/react";
 
-import { AchievementCoin } from "./achievement-coin";
-import { TierBadge } from "./achievement-tier-badge";
-import { achievementHue, tierGradient } from "./achievement-tiers";
-import { useAchievementFormat } from "./use-achievements-format";
+import { AchievementCoin } from "@/components/achievements/achievement-coin";
+import { TierBadge } from "@/components/achievement-tier-badge";
+import { achievementHue, tierGradient } from "@/components/achievement-tiers";
+import { useAchievementFormat } from "@/components/achievements/use-achievements-format";
 
 import {
   achievementById,

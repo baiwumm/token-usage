@@ -21,8 +21,8 @@ import { Lock } from "@gravity-ui/icons";
 import { cn } from "@heroui/react";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { AchievementArt } from "./achievement-art";
-import { achievementHue, tierRingStops } from "./achievement-tiers";
+import { AchievementArt } from "@/components/achievements/achievement-art";
+import { achievementHue, tierRingStops } from "@/components/achievement-tiers";
 
 import { type AchievementIcon } from "@/lib/achievements/catalog";
 import { artworkScale } from "@/lib/achievements/art-fit";

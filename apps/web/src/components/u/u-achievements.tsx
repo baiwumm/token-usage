@@ -13,8 +13,8 @@ import { useState } from "react";
 
 import { UAchievementDialog } from "./u-achievement-dialog";
 
-import { AchievementMedallion } from "@/components/achievements/achievement-medallion";
-import { TierBadge } from "@/components/achievements/achievement-tier-badge";
+import { AchievementMedallion } from "@/components/achievement-medallion";
+import { TierBadge } from "@/components/achievement-tier-badge";
 import { achievementById, TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { formatMessage } from "@/lib/copy/message";

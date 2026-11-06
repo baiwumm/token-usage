@@ -29,16 +29,17 @@ const webRoot = path.resolve(__dirname, "../..");
 const FILES = [
   "src/components/u/u-hero.tsx",
   "src/components/achievements/achievement-coin.tsx",
-  "src/components/achievements/achievement-dialog.tsx",
-  "src/components/achievements/achievements-client.tsx",
+  "src/components/achievement-dialog.tsx",
   "src/components/app-shell/nav-items.tsx",
-  "src/components/dashboard/filter-bar.tsx",
+  // The five page-level refresh tooltips now live in one shared component
+  // (2026-11-07 dedupe); guard the shared trigger instead of each caller.
+  "src/components/refresh-button.tsx",
 ];
 
 const FOCUSABLE_FILES = [
   "src/components/u/u-hero.tsx",
   "src/components/achievements/achievement-coin.tsx",
-  "src/components/achievements/achievement-dialog.tsx",
+  "src/components/achievement-dialog.tsx",
   "src/components/app-shell/nav-items.tsx",
 ];
 
@@ -81,6 +82,57 @@ describe("HeroUI Tooltip triggers (docs/badge.md §0)", () => {
 
       expect(source).toContain("<Focusable>");
       expect(source).not.toMatch(/render=\{\(props\) => </);
+    },
+  );
+});
+
+// The root-tag guard above cannot see children supplied through a wrapper's
+// `{children}` slot: `<Tooltip>{children} …</Tooltip>` has an expression as
+// its first child, not a JSX tag. `ControlTooltip` (top bar) and
+// `ActionTooltip` (settings device table) forward their caller-supplied child
+// straight into Tooltip, so check the *call sites* instead — the child must
+// be a react-aria component (capitalised), never a bare DOM tag.
+//
+// Limitation: source-level only (the tooltip is a client portal), and a
+// capitalised name is a proxy for "consumes FocusableContext", not proof. In
+// these two files the children are react-aria Button / Dropdown / Popover,
+// which browser QA confirmed do open the tooltip. A future child that is a
+// custom wrapper would need a real render assertion to verify the context.
+const WRAPPED_TOOLTIP_FILES = [
+  "src/components/top-actions.tsx",
+  "src/components/settings/devices-table.tsx",
+];
+
+const TOOLTIP_WRAPPERS = /<(?:ControlTooltip|ActionTooltip)(?=[\s>])[^>]*>/g;
+
+describe("Tooltip wrapper children (docs/badge.md §0)", () => {
+  it.each(WRAPPED_TOOLTIP_FILES)(
+    "%s passes context-aware children to its Tooltip wrapper",
+    (file) => {
+      const source = readFileSync(path.join(webRoot, file), "utf8");
+
+      // Make sure the wrapper really forwards {children} into <Tooltip>, so
+      // the call-site assertion below is checking the right pattern.
+      expect(source).toMatch(/<Tooltip(?=[\s>])[^>]*>\s*\{children\}/);
+
+      const usages = [...source.matchAll(TOOLTIP_WRAPPERS)].filter(
+        ([tag]) => !tag.endsWith("/>"),
+      );
+
+      expect(usages.length).toBeGreaterThan(0);
+
+      for (const usage of usages) {
+        const tail = source
+          .slice((usage.index ?? 0) + usage[0].length)
+          .trimStart();
+        const trigger = /^<([A-Za-z][\w.]*)/.exec(tail)?.[1] ?? "expression";
+
+        expect(
+          /^[A-Z]/.test(trigger),
+          `${file}: ${usage[0].trim()} first child is <${trigger}>`,
+        ).toBe(true);
+        expect(DOM_TRIGGERS.test(tail)).toBe(false);
+      }
     },
   );
 });

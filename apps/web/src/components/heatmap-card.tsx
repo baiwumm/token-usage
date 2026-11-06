@@ -13,8 +13,8 @@ import { CircleInfo } from "@gravity-ui/icons";
 import { Card, Typography, cn } from "@heroui/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { canonicalTokenTotals } from "./aggregate";
-import { HeatmapFilter } from "./heatmap-filter";
+import { canonicalTokenTotals } from "@/components/dashboard/aggregate";
+import { HeatmapFilter } from "@/components/dashboard/heatmap-filter";
 import {
   alignWeeks,
   buildMonthMarkers,
@@ -26,9 +26,9 @@ import {
   TOOLTIP_HIDE_DELAY_MS,
   type GridCell,
   type TooltipAnchor,
-} from "./heatmap-geometry";
-import { HeatmapTooltip } from "./heatmap-tooltip";
-import { useResponsiveWeeks } from "./use-responsive-weeks";
+} from "@/components/dashboard/heatmap-geometry";
+import { HeatmapTooltip } from "@/components/dashboard/heatmap-tooltip";
+import { useResponsiveWeeks } from "@/components/dashboard/use-responsive-weeks";
 
 import { formatMessage } from "@/lib/copy/message";
 import { tzLabel } from "@/lib/dashboard/ranges";

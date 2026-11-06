@@ -30,7 +30,7 @@ import {
 import { cn } from "@heroui/react";
 import { useId, type ComponentType, type SVGProps } from "react";
 
-import { achievementHue, tierRingStops } from "./achievement-tiers";
+import { achievementHue, tierRingStops } from "@/components/achievement-tiers";
 
 import { type AchievementIcon } from "@/lib/achievements/catalog";
 

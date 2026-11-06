@@ -24,7 +24,7 @@ import {
 import {
   TIER_METALS,
   TIER_RAMPS,
-} from "@/components/achievements/achievement-tiers";
+} from "@/components/achievement-tiers";
 import { artworkScale } from "@/lib/achievements/art-fit";
 import { SHARE_CARD_COPY } from "@/lib/copy/share-card";
 

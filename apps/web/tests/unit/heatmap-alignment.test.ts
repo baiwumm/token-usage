@@ -16,7 +16,7 @@ vi.mock("@/lib/format/format", () => ({
   }),
 }));
 
-import { HeatmapCard } from "@/components/dashboard/heatmap-card";
+import { HeatmapCard } from "@/components/heatmap-card";
 import type { HeatmapPayload } from "@/lib/dashboard/api";
 import { DASHBOARD_COPY } from "@/lib/copy/dashboard";
 
