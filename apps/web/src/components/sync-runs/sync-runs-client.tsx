@@ -153,6 +153,10 @@ export function SyncRunsClient() {
       } catch (error) {
         if (requestId.current !== id) return;
         if (isUnauthorized(error)) {
+          // The login redirect returns early, so the refresh overlay must be
+          // cleared here too — otherwise the Spinner stays on top of the old
+          // page while the navigation settles (mirrors wrapped-client).
+          setRefreshing(false);
           redirectToLogin();
 
           return;
