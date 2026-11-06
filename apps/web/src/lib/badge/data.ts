@@ -169,12 +169,16 @@ function visibleSessions(sessions: RestRow[], devices: RestRow[]): RestRow[] {
 
 // §4.2: repo cost is priced per model entry through the shared engine — the
 // same treatment as the dashboard's session detail. Sessions carry no stored
-// cost column; DeepSeek off-peak keys off ended_at.
+// cost column, and per the contract's pricing note (docs/cli-contract.md §2.7,
+// 2026-10-27 decision b) the per-model entries carry no pricing-time context:
+// DeepSeek always prices at peak here, exactly as the Sessions view shows. An
+// unparseable hour_start makes isDeepSeekOffPeak return false, so omitting the
+// key (not passing ended_at, which used to halve Beijing weekends) keeps the
+// two surfaces identical.
 function sessionCostUsd(session: Record<string, unknown>): number {
   const entries = Array.isArray(session.models) ? session.models : [];
 
   if (entries.length === 0) return 0;
-  const hourStart = String(session.ended_at ?? "");
   let sum = 0;
 
   for (const entry of entries) {
@@ -183,7 +187,6 @@ function sessionCostUsd(session: Record<string, unknown>): number {
     sum += computeRowCost({
       source: session.source,
       model: model.model,
-      hour_start: hourStart,
       input_tokens: model.input_tokens,
       cached_input_tokens: model.cached_input_tokens,
       cache_creation_input_tokens: model.cache_creation_input_tokens,
