@@ -13,7 +13,6 @@ import {
   seededRandom,
   truncateToWidth,
 } from "./helpers";
-
 import {
   RECEIPT_PAPER as PAPER,
   RECEIPT_INK as INK,

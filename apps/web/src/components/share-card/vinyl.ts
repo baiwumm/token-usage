@@ -13,7 +13,6 @@ import {
   letters,
   truncateToWidth,
 } from "./helpers";
-
 import {
   VINYL_HEATMAP_PALETTE as HEATMAP_PALETTE,
   INK,

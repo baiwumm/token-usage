@@ -29,7 +29,6 @@ import {
 } from "@/components/dashboard/heatmap-geometry";
 import { HeatmapTooltip } from "@/components/dashboard/heatmap-tooltip";
 import { useResponsiveWeeks } from "@/components/dashboard/use-responsive-weeks";
-
 import { formatMessage } from "@/lib/copy/message";
 import { tzLabel } from "@/lib/dashboard/ranges";
 import { useFormat } from "@/lib/format/format";

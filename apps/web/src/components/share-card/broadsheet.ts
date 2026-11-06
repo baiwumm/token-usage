@@ -18,7 +18,6 @@ import {
   letters,
   truncateToWidth,
 } from "./helpers";
-
 import {
   BROADSHEET_HEATMAP_PALETTE as HEATMAP_PALETTE,
   INK,

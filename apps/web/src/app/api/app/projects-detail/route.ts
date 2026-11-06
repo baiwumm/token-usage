@@ -12,5 +12,8 @@ export async function GET(request: NextRequest) {
 
   if ("response" in session) return session.response;
 
-  return projectsDetailPayloadForUser(session.userId, request.nextUrl.searchParams);
+  return projectsDetailPayloadForUser(
+    session.userId,
+    request.nextUrl.searchParams,
+  );
 }

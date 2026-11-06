@@ -6,8 +6,9 @@
 // intentionally does NOT cover /api/app/* (an extra Auth round-trip per
 // internal request), so the gate stays at the route layer.
 
-import { createServerClient } from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
+
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -23,8 +24,7 @@ function jsonError(status: number, error: string): NextResponse {
 // The full user object is returned so routes that need session metadata (e.g.
 // the badge display-name snapshot) can derive it without a second getUser().
 export type AppSession =
-  | { userId: string; user: User }
-  | { response: NextResponse };
+  { userId: string; user: User } | { response: NextResponse };
 
 export async function requireAppSession(): Promise<AppSession> {
   const config = authConfig();

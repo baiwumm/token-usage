@@ -5,7 +5,6 @@ import type { HeatmapPayload } from "@/lib/dashboard/api";
 import { Card } from "@heroui/react";
 
 import { HeatmapCard } from "@/components/heatmap-card";
-
 import { PanelOverlay } from "@/components/panel-overlay";
 import { SectionError, SectionSkeleton } from "@/components/section-states";
 

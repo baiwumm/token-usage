@@ -19,7 +19,11 @@ import {
 } from "recharts";
 import { type ReactNode, useId } from "react";
 
-import { AXIS_STYLE, TOOLTIP_BOX_CLASS, compositionColor } from "@/lib/charts/theme";
+import {
+  AXIS_STYLE,
+  TOOLTIP_BOX_CLASS,
+  compositionColor,
+} from "@/lib/charts/theme";
 import { useFormat } from "@/lib/format/format";
 
 export interface TrendPoint {

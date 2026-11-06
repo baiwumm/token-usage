@@ -54,7 +54,9 @@ async function authenticate(): Promise<Session> {
   if ("response" in session) return session;
 
   // §3.1: the display name is a session snapshot — never the email.
-  const metadata = (session.user.user_metadata ?? {}) as { display_name?: unknown };
+  const metadata = (session.user.user_metadata ?? {}) as {
+    display_name?: unknown;
+  };
   const displayName =
     typeof metadata.display_name === "string"
       ? metadata.display_name.trim().slice(0, MAX_DISPLAY_NAME)

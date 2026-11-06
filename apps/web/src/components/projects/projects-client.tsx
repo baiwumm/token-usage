@@ -72,6 +72,7 @@ const ProjectsReviewPanel = dynamic(
     import("./projects-review-panel").then((mod) => mod.ProjectsReviewPanel),
   { ssr: false, loading: () => null },
 );
+
 type DemoModule = typeof import("./projects-showcase");
 
 const PROJECTS_LIMIT = 200;
@@ -279,11 +280,7 @@ export function ProjectsClient() {
         : state.data,
     [caliber, demo, demoMode, range.fromDay, range.toDay, state.data],
   );
-  const activeStatus = demoMode
-    ? demo
-      ? "ready"
-      : "loading"
-    : state.status;
+  const activeStatus = demoMode ? (demo ? "ready" : "loading") : state.status;
   const activeRefreshing = demoMode ? false : refreshing;
   const projects = useMemo(
     () => activePayload?.projects ?? [],
@@ -320,19 +317,20 @@ export function ProjectsClient() {
       setDetail({ status: "loading", data: null });
 
       try {
-        const payload = demoMode && demo
-          ? demo.demoDetailPayload(
-              key === UNATTRIBUTED ? null : key,
-              range.fromDay,
-              range.toDay,
-              caliber,
-            )
-          : await fetchProjectDetail({
-              projectKey: key === UNATTRIBUTED ? null : key,
-              fromDay: range.fromDay,
-              toDay: range.toDay,
-              tz: timezone,
-            });
+        const payload =
+          demoMode && demo
+            ? demo.demoDetailPayload(
+                key === UNATTRIBUTED ? null : key,
+                range.fromDay,
+                range.toDay,
+                caliber,
+              )
+            : await fetchProjectDetail({
+                projectKey: key === UNATTRIBUTED ? null : key,
+                fromDay: range.fromDay,
+                toDay: range.toDay,
+                tz: timezone,
+              });
 
         if (detailRequestId.current !== id) return;
         detailCache.current.set(cacheKey, payload);

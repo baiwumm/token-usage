@@ -5,7 +5,6 @@ import { cookies, headers } from "next/headers";
 import "@/styles/globals.css";
 
 import { Providers } from "@/components/providers";
-
 import { LocaleProvider } from "@/lib/copy/locale";
 import {
   LOCALE_COOKIE,

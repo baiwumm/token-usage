@@ -13,7 +13,6 @@ import type { Locale } from "@/lib/copy/locale-config";
 
 import { AchievementMedallion } from "@/components/achievement-medallion";
 import { TierBadge } from "@/components/achievement-tier-badge";
-
 import {
   achievementById,
   progressRatioForNext,

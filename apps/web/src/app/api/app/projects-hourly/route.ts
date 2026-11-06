@@ -13,5 +13,8 @@ export async function GET(request: NextRequest) {
 
   if ("response" in session) return session.response;
 
-  return projectsHourlyPayloadForUser(session.userId, request.nextUrl.searchParams);
+  return projectsHourlyPayloadForUser(
+    session.userId,
+    request.nextUrl.searchParams,
+  );
 }

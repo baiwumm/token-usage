@@ -26,7 +26,6 @@ import { AchievementCoin } from "@/components/achievements/achievement-coin";
 import { TierBadge } from "@/components/achievement-tier-badge";
 import { achievementHue, tierGradient } from "@/components/achievement-tiers";
 import { useAchievementFormat } from "@/components/achievements/use-achievements-format";
-
 import {
   achievementById,
   progressRatioForNext,

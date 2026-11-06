@@ -40,10 +40,10 @@ import {
 import { Focusable, Tooltip, Typography } from "@heroui/react";
 import { useEffect, useRef, useState } from "react";
 
-import { AchievementMedallion } from "@/components/achievement-medallion";
-import { tierMetal, tierRamp } from "@/components/achievement-tiers";
 import { useAchievementFormat } from "./use-achievements-format";
 
+import { AchievementMedallion } from "@/components/achievement-medallion";
+import { tierMetal, tierRamp } from "@/components/achievement-tiers";
 import { achievementById, TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { formatMessage } from "@/lib/copy/message";

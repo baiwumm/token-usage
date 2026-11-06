@@ -23,7 +23,6 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { AchievementArt } from "@/components/achievements/achievement-art";
 import { achievementHue, tierRingStops } from "@/components/achievement-tiers";
-
 import { type AchievementIcon } from "@/lib/achievements/catalog";
 import { artworkScale } from "@/lib/achievements/art-fit";
 
