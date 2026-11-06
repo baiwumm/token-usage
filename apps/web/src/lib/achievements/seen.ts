@@ -30,6 +30,7 @@ export async function loadAchievementSeen(
   try {
     return await readSeen(userId);
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.warn(
       `achievement seen marker unavailable: ${
         error instanceof Error ? error.message : String(error)

@@ -214,6 +214,7 @@ export async function POST(request: Request) {
         { returning: false },
       );
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error(
         "ingest: last_used_at update failed",
         (error as Error)?.message || error,

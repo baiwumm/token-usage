@@ -82,6 +82,7 @@ export async function POST(request: Request) {
       }
     }
 
+    // eslint-disable-next-line no-console
     console.error("device-flow-authorize: could not allocate code", lastError);
 
     return jsonResponse(503, { error: "Could not allocate a device code" });

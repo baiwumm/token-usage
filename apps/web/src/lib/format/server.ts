@@ -10,6 +10,7 @@ export function resolveFxSnapshot(
   const parsed = parseFxSnapshot(raw);
 
   if (raw?.trim() && !parsed) {
+    // eslint-disable-next-line no-console
     console.warn(
       "TOKEN_USAGE_FX_RATES is not valid JSON with a rates object; using the built-in FX snapshot.",
     );

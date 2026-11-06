@@ -80,6 +80,7 @@ export async function GET(request: Request) {
   } catch (error) {
     // §2.2: unexpected failures answer a generic envelope; details stay in
     // the server log.
+    // eslint-disable-next-line no-console
     console.error(error);
 
     return jsonError(500, "Internal Server Error");

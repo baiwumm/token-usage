@@ -190,7 +190,15 @@ export function DashboardClient() {
       // (covers the reconcile/replay blind spot); every gate failure fails
       // open into the normal fetches.
       const userKey = dashboardUserCacheKey(token);
-      const filterKey = dashboardFilterCacheKey(filters, timezone);
+      const filterKey = dashboardFilterCacheKey(
+        {
+          range: filters.range,
+          from: filters.from,
+          to: filters.to,
+          deviceId: filters.deviceId,
+        },
+        timezone,
+      );
       const beforeVersion = await fetchDataVersion().catch(() => null);
 
       if (loadSeq.current !== seq) return;

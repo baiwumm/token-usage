@@ -131,6 +131,7 @@ async function readJson(request: NextRequest): Promise<unknown> {
 
 // Storage failures answer one generic envelope; details stay server-side.
 function logError(error: unknown): void {
+  // eslint-disable-next-line no-console
   console.error(error);
 }
 

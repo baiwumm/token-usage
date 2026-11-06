@@ -84,6 +84,7 @@ export function errorResponse(error: unknown): Response {
     Number(candidate?.statusCode) || Number(candidate?.status) || 500;
 
   if (status >= 500) {
+    // eslint-disable-next-line no-console
     console.error(error);
   }
   const message = error instanceof Error ? error.message : undefined;

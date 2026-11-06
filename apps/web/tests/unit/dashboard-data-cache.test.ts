@@ -79,7 +79,7 @@ describe("dashboardFilterCacheKey", () => {
   it("covers range, custom window, timezone and device", () => {
     expect(
       dashboardFilterCacheKey(
-        { range: "custom", from: "2026-10-01", to: "2026-10-31", tz: "", deviceId: "d1" },
+        { range: "custom", from: "2026-10-01", to: "2026-10-31", deviceId: "d1" },
         "UTC",
       ),
     ).toBe("custom|2026-10-01|2026-10-31|UTC|d1");

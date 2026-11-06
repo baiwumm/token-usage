@@ -58,9 +58,13 @@ function safeSessionStorage(): Storage | null {
   }
 }
 
-/** Cache key for one filter set; any part changing means a different cache. */
+/**
+ * Cache key for one filter set; any part changing means a different cache.
+ * Takes only the fields it reads (the resolved timezone comes separately), so
+ * loadAll's hook dependencies can list exactly these.
+ */
 export function dashboardFilterCacheKey(
-  filters: Filters,
+  filters: Pick<Filters, "range" | "from" | "to" | "deviceId">,
   timezone: string,
 ): string {
   return [
