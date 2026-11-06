@@ -14,6 +14,7 @@ import { useState } from "react";
 import { UAchievementDialog } from "./u-achievement-dialog";
 
 import { AchievementMedallion } from "@/components/achievements/achievement-medallion";
+import { TierBadge } from "@/components/achievements/achievement-tier-badge";
 import { achievementById, TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { formatMessage } from "@/lib/copy/message";
@@ -91,9 +92,7 @@ export function UAchievements({
                 >
                   {name}
                 </Typography>
-                <Description className="text-muted text-xs">
-                  {tierLabel}
-                </Description>
+                <TierBadge label={tierLabel} tier={item.tier} />
               </Button>
             );
           })}

@@ -435,7 +435,8 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   与五段阈值时间线（每段阈值与达成日）；只因不传分享回调而隐藏分享入口（原「独立轻量
   弹窗」描述作废）。
 - 徽章资产复用 `achievement-medallion.tsx` / `achievement-tiers.ts` 与既有 PNG；徽章放大到
-  `size-20 md:size-24`，外层用 HeroUI `Button variant="ghost"`。
+  `size-20 md:size-24`，外层用 HeroUI `Button variant="ghost"`；格内段位用共享的
+  `achievement-tier-badge.tsx` 金属渐变标签（同 `/achievements` 墙格，2026-11-06 起替换纯文本）。
 - 无解锁条目时渲染空态文案；公开页始终计算并投影，无开关（§3.5）。
 
 ### §6.6 数字动画（2026-11-05 操作者指定 NumberFlow）
