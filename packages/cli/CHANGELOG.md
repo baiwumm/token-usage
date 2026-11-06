@@ -6,6 +6,22 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.5.1
+
+2026-11-06。修复 Windows 计划任务在非提升权限安装下的静默降级 + `doctor` 新增计划任务自检。
+零契约变更，服务端无需同步升级。
+
+- **修复 Windows 计划任务注册**：`<LogonTrigger>` 缺少 `<UserId>` 时 `schtasks` 按「任意用户」解析，
+  非提升权限的 `/Create /XML` 直接返回 `Access is denied`，整份定义被丢弃、退回纯 `-SC HOURLY`
+  ——丢掉 `StartWhenAvailable` 睡眠后补跑、登录补采、失败重试与无限运行时长。现在登录触发写入
+  当前用户；注册失败时先重试「无登录触发」的完整定义（保留补跑/重试/无限时长），再不行才退回
+  纯每小时，摘要按原因区分 `logon_trigger_rejected` 与 `xml_rejected`。
+- **`doctor` 新增 `schedule.registered` 自检**：读取已注册的计划任务（Windows 用
+  `schtasks /Query /XML`，macOS/Linux 检查 launchd plist / systemd timer），发现降级定义或未注册
+  直接告警并提示重跑 `tokenusage init`；检查项从 16 项增至 17 项。
+- **升级提示**：0.5.0 在 Windows 上装过的机器升级后重跑一次 `tokenusage init --yes`，让计划任务
+  换成带当前用户的完整定义，再用 `doctor` 确认。
+
 ## 0.5.0
 
 2026-11-06。定价数据刷新 + WorkBuddy 项目归属 + 仓库地址上报（契约 v3）。服务端需先部署项目仓库
