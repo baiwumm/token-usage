@@ -34,6 +34,7 @@ import { loadAccountUsage, loadSessionRows } from "./account-data";
 import { jsonResponse } from "./http";
 import { addDays, dayStartIso, groupKeyOf, resolveWindow } from "./projects";
 
+import { canonicalSource } from "@/lib/sources";
 import {
   numberOr0,
   parseTzContext,
@@ -157,7 +158,35 @@ export function fillDaily(
 export function mergeSources(
   bySource: Map<string, SourceBucket>,
 ): SourceWire[] {
-  const list: SourceWire[] = Array.from(bySource.values()).map((bucket) => ({
+  // Alias ids (pi / pi-stepfun / pi-zai-coding-cn) are one vendor and must
+  // render as one row (docs/ui-spec.md 来源图标). Group them by canonical id
+  // and union their active days — summing days_active would count a day twice
+  // when two aliases were active on it.
+  const merged = new Map<string, SourceBucket>();
+
+  for (const bucket of bySource.values()) {
+    const id = canonicalSource(bucket.source);
+    const agg = merged.get(id);
+
+    if (!agg) {
+      merged.set(id, {
+        source: id,
+        total_tokens: bucket.total_tokens,
+        conversation_count: bucket.conversation_count,
+        total_cost_usd: bucket.total_cost_usd,
+        dayTokens: new Map(bucket.dayTokens),
+      });
+      continue;
+    }
+    agg.total_tokens += bucket.total_tokens;
+    agg.conversation_count += bucket.conversation_count;
+    agg.total_cost_usd += bucket.total_cost_usd;
+    for (const [day, tokens] of bucket.dayTokens) {
+      agg.dayTokens.set(day, (agg.dayTokens.get(day) ?? 0) + tokens);
+    }
+  }
+
+  const list: SourceWire[] = Array.from(merged.values()).map((bucket) => ({
     source: bucket.source,
     total_tokens: bucket.total_tokens,
     conversation_count: bucket.conversation_count,

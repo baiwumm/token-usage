@@ -25,6 +25,7 @@ import { RepoHostIcon } from "./repo-host-icon";
 import { formatMessage } from "@/lib/copy/message";
 import { useFormat } from "@/lib/format/format";
 import { repoHostOf } from "@/lib/projects/profile";
+import { canonicalSource } from "@/lib/sources";
 import { SourceIcon } from "@/components/source-icon";
 
 export type ProjectView = "list" | "cards";
@@ -74,8 +75,18 @@ function Identity({
   const key = project.project_key;
   const name = key ? resolveProjectDisplayName(key, profile) : null;
   const host = profile?.repo_url ? repoHostOf(profile.repo_url) : null;
-  const visible = sources.slice(0, SOURCE_ICON_LIMIT);
-  const overflow = sources.length - visible.length;
+  // The strip is a brand list, not a raw source list: alias ids of one vendor
+  // (pi / pi-stepfun / pi-zai-coding-cn) must render once, and the "+N"
+  // overflow counts the folded list.
+  const canonicalSources = sources.reduce<string[]>((ids, source) => {
+    const id = canonicalSource(source);
+
+    if (!ids.includes(id)) ids.push(id);
+
+    return ids;
+  }, []);
+  const visible = canonicalSources.slice(0, SOURCE_ICON_LIMIT);
+  const overflow = canonicalSources.length - visible.length;
 
   return (
     <div className="flex min-w-0 items-center gap-3">

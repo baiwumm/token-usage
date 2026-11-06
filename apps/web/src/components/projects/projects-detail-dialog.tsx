@@ -55,7 +55,7 @@ import { RepoHostIcon } from "./repo-host-icon";
 
 import { FlowNumber } from "@/components/flow-number";
 import { SourceIcon } from "@/components/source-icon";
-import { sourceDisplayLabel } from "@/lib/sources";
+import { canonicalSource, sourceDisplayLabel } from "@/lib/sources";
 import { formatMessage } from "@/lib/copy/message";
 import { useFormat } from "@/lib/format/format";
 import { repoHostOf } from "@/lib/projects/profile";
@@ -349,9 +349,22 @@ function SourceRows({
   const denominator = dayPoint
     ? dayPoint.total_tokens
     : detail.totals.total_tokens;
+  // A day's payload is keyed by raw collector id, and aliases (pi /
+  // pi-stepfun) are one vendor: fold them so the source list never shows two
+  // "Pi" rows.
+  const daySources = new Map<string, number>();
+
+  if (dayPoint) {
+    for (const [source, value] of Object.entries(dayPoint.sources)) {
+      if (value <= 0) continue;
+      const id = canonicalSource(source);
+
+      daySources.set(id, (daySources.get(id) ?? 0) + value);
+    }
+  }
+
   const rows = dayPoint
-    ? Object.entries(dayPoint.sources)
-        .filter(([, value]) => value > 0)
+    ? [...daySources.entries()]
         .map(([source, value]) => ({
           source,
           total_tokens: value,
@@ -675,14 +688,19 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
             effects.dialogEntrance && styles.dialogEntrance,
           )}
         >
-          <Modal.CloseTrigger aria-label={copy.detail.close} />
-          <Modal.Header className="border-border/60 flex-row items-center gap-2 border-b ps-4 pe-11 py-3">
+          {/* Matches the 32px tertiary icon buttons in the header row. */}
+          <Modal.CloseTrigger
+            aria-label={copy.detail.close}
+            className="end-4 top-3! size-9! rounded-3xl! p-0! md:size-8!"
+          />
+          <Modal.Header className="border-border/60 flex-row items-center gap-2 border-b ps-4 pe-14 py-3">
             <Modal.Heading className="text-base">
               {copy.detail.title}
             </Modal.Heading>
             <div className="ms-auto flex items-center gap-1">
               {repoUrl && repoHost ? (
                 <Button
+                  isIconOnly
                   aria-label={copy.profile.openRepo[repoHost]}
                   size="sm"
                   variant="tertiary"
@@ -691,20 +709,17 @@ export function ProjectDetailDialog(props: ProjectDetailDialogProps) {
                   }
                 >
                   <RepoHostIcon className="size-4" host={repoHost} />
-                  <span className="hidden sm:inline">
-                    {copy.profile.openRepo[repoHost]}
-                  </span>
                 </Button>
               ) : null}
               {projectKey && onEdit ? (
                 <Button
-                  aria-label={copy.profile.title}
+                  isIconOnly
+                  aria-label={copy.profile.edit}
                   size="sm"
                   variant="tertiary"
                   onPress={onEdit}
                 >
                   <Pencil aria-hidden="true" className="size-4" />
-                  <span className="hidden sm:inline">{copy.profile.edit}</span>
                 </Button>
               ) : null}
               <Button

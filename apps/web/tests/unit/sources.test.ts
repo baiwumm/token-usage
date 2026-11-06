@@ -51,6 +51,10 @@ describe("modelLogoFile", () => {
     );
   });
 
+  it("resolves the Ant Ling family to the Bailing mark", () => {
+    expect(modelLogoFile("Ling-3.2-flash")).toBe("/brand-logos/bailing.png");
+  });
+
   it("resolves vendor-less SKUs through the route that serves them", () => {
     expect(modelLogoFile("big-pickle")).toBe("/brand-logos/opencode.svg");
     expect(modelLogoFile("union-alpha")).toBe("/brand-logos/opencode.svg");

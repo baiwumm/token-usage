@@ -155,7 +155,7 @@
    来源/模型图标走 `components/source-icon.tsx`：`public/brand-logos/`（品牌商标，
    来源与许可登记在根 `THIRD_PARTY_NOTICES.md`）优先，source 全称映射 + 模型名
    前缀映射（deepseek/kimi/k3/gemini/grok/mimo/gpt/composer/claude/step/minimax/
-   hy/nemotron/cline-free/opencode 隐身别名等），仍无映射时回落到该行的来源标
+   hy/nemotron/ling（百灵 bailing.png）/cline-free/opencode 隐身别名等），仍无映射时回落到该行的来源标
    （模型行传 `source` 属性；两者都无才退确定性色块）；新增品牌 = 放 logo 文件 +
    在 `SOURCE_LOGOS` / `MODEL_PREFIX_LOGOS` 登记。暗色变体：深色主题下
    看不清的深色标（如黑底 ChatGPT 形状的 codex 新标），放同扩展名的
@@ -287,10 +287,11 @@
   **Top-N 切片会把它切掉**（它在数组末尾），只有 `limit=all` 或列表较短时可见；摘要卡的
   「未归因」Token 数不受影响，摘要卡的项目数与列表头的「共 N 个项目」也不计它。
 - 详情弹窗：点击行/卡片打开，头部标题在左，右侧依次是项目资料的两个动作与上一个/下一个，
-  关闭按钮由 HeroUI 绝对定位在弹窗右上角（`Modal.CloseTrigger`），头部右侧留 `pe-11` 给它让位、不压住操作按钮：
+  关闭按钮由 HeroUI 绝对定位在弹窗右上角（`Modal.CloseTrigger`，尺寸与圆角对齐 `size="sm"` 图标按钮：
+  `size-9! md:size-8!`、`rounded-3xl!`、`top-3!`），头部右侧留 `pe-14` 给它让位、不压住操作按钮：
   「在 GitHub / Gitee 打开」（其他主机为「打开仓库」；新标签页，`noopener,noreferrer`；有仓库时才出现）
-  与「编辑」（窄屏只留图标），再是上一个/下一个（范围是当前可见列表）；「未归因」与审阅演示数据
-  不显示两个资料动作。正文无上内边距（去掉 `Modal.Body` 的 3px 内边距与 8px 上边距）；
+  与「编辑」，两者都是纯图标（文案只留在 `aria-label`），再是上一个/下一个（范围是当前可见列表）；
+  「未归因」与审阅演示数据不显示两个资料动作。正文无上内边距（去掉 `Modal.Body` 的 3px 内边距与 8px 上边距）；
   `lg` 及以上左栏固定（切换项目时随右栏一起重挂载、滚动复位）、右栏用 `ScrollShadow` 独立滚动，
   `<lg` 整段正文一起滚动。左栏是 Logo + 项目名
   （设了显示名时下方注明「目录名 {basename}」）、区间、`口径：{caliber}` 与 6 个指标（Token 总量 /

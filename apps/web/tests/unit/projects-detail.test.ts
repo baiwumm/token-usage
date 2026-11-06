@@ -493,6 +493,9 @@ describe("projectsDetailPayloadForUser — sessions caliber", () => {
     });
     expect(body.daily[3].sources).toEqual({ codex: 300 });
 
+    // The per-window source list uses canonical display ids (raw
+    // `claude-code` folds into `claude`); the per-day map keeps raw ids and
+    // the dialog folds them for display.
     expect(body.sources).toEqual([
       {
         source: "codex",
@@ -502,7 +505,7 @@ describe("projectsDetailPayloadForUser — sessions caliber", () => {
         total_cost_usd: "0.000000",
       },
       {
-        source: "claude-code",
+        source: "claude",
         total_tokens: 200,
         conversation_count: 1,
         days_active: 1,
@@ -630,9 +633,9 @@ describe("projectsDetailPayloadForUser — __unattributed group", () => {
       .toBe(40);
     expect(body.daily.find((day) => day.date === "2026-10-23")?.total_tokens)
       .toBe(60);
-    // Sources sorted by tokens desc: claude-code 60 > codex 40.
+    // Sources sorted by tokens desc, canonical ids: claude 60 > codex 40.
     expect(body.sources.map((s) => s.source)).toEqual([
-      "claude-code",
+      "claude",
       "codex",
     ]);
   });
@@ -848,6 +851,46 @@ describe("pure builders — fillDaily / mergeSources", () => {
     expect(capped).toHaveLength(60);
     expect(capped.at(-1)?.date).toBe("2026-12-31");
     expect(capped.every((day) => day.total_tokens === 0)).toBe(true);
+  });
+
+  it("mergeSources folds alias sources into one canonical row", () => {
+    const bySource = new Map<string, SourceBucket>([
+      [
+        "pi",
+        {
+          source: "pi",
+          total_tokens: 300,
+          conversation_count: 4,
+          total_cost_usd: 0.5,
+          dayTokens: new Map([
+            ["2026-10-20", 100],
+            ["2026-10-21", 200],
+          ]),
+        },
+      ],
+      [
+        "pi-stepfun",
+        {
+          source: "pi-stepfun",
+          total_tokens: 700,
+          conversation_count: 6,
+          total_cost_usd: 1,
+          // Same day as the alias above: the active-day count is a union, not
+          // a sum, so this still counts as two days overall.
+          dayTokens: new Map([["2026-10-21", 700]]),
+        },
+      ],
+    ]);
+
+    expect(mergeSources(bySource)).toEqual([
+      {
+        source: "pi",
+        total_tokens: 1000,
+        conversation_count: 10,
+        days_active: 2,
+        total_cost_usd: "1.500000",
+      },
+    ]);
   });
 
   it("mergeSources sorts desc, ties by source and computes days_active", () => {

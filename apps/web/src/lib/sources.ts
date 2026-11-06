@@ -153,6 +153,8 @@ const MODEL_PREFIX_LOGOS: Array<[prefix: string, file: string]> = [
   ["minimax", "minimax.svg"],
   ["hy", "hunyuan.svg"], // Tencent Hunyuan: hy3, hy4-preview.
   ["nemotron", "nvidia.svg"],
+  // Ant Ling (百灵) family: Ling-3.2-flash and siblings.
+  ["ling-", "bailing.png"],
   // Cline's own gateway routes carry the "cline-free/" prefix.
   ["cline-free/", "cline.png"],
   // OpenCode Zen stealth SKUs have no vendor of their own.
