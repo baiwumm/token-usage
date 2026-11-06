@@ -23,6 +23,7 @@ import { formatMessage } from "@/lib/copy/message";
 import { README_URL } from "@/lib/links";
 import { useFormat } from "@/lib/format/format";
 import { SectionError } from "@/components/section-states";
+import { StaleDataBanner } from "@/components/stale-data-banner";
 
 export interface ProjectsBodyProps {
   copy: ProjectsCopy;
@@ -492,17 +493,12 @@ export function ProjectsBody(props: ProjectsBodyProps) {
 
         <Card.Content className="relative flex flex-col gap-2">
           {stale ? (
-            <div
-              className={cn(
-                "bg-danger-soft text-danger flex flex-wrap items-center justify-between gap-2 rounded-2xl px-3 py-2",
-                effects.stateMotion && styles.errorSlide,
-              )}
-            >
-              <Typography type="body-xs">{copy.states.stale}</Typography>
-              <Button size="sm" variant="outline" onPress={onRetry}>
-                {copy.states.retry}
-              </Button>
-            </div>
+            <StaleDataBanner
+              className={cn(effects.stateMotion && styles.errorSlide)}
+              message={copy.states.stale}
+              retry={onRetry}
+              retryLabel={copy.states.retry}
+            />
           ) : null}
 
           {isError ? (

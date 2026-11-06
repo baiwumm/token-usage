@@ -12,16 +12,10 @@ import type { ReactNode } from "react";
 import type { Locale } from "@/lib/copy/locale-config";
 import type { LoadStatus } from "@/lib/loadable";
 
-import {
-  Button,
-  Card,
-  Skeleton,
-  Spinner,
-  Table,
-  Typography,
-} from "@heroui/react";
+import { Card, Skeleton, Spinner, Table, Typography } from "@heroui/react";
 
 import { SectionError } from "@/components/section-states";
+import { StaleDataBanner } from "@/components/stale-data-banner";
 import {
   TablePagination,
   type TablePaginationLabels,
@@ -142,14 +136,11 @@ export function DataTableCard<T>({
         {showEmpty ? empty : null}
 
         {staleError ? (
-          <div className="bg-danger-soft flex flex-wrap items-center justify-between gap-2 rounded-2xl px-3 py-2">
-            <Typography className="text-danger" type="body-sm">
-              {staleError.message}
-            </Typography>
-            <Button size="sm" variant="outline" onPress={staleError.onRetry}>
-              {staleError.retryLabel}
-            </Button>
-          </div>
+          <StaleDataBanner
+            message={staleError.message}
+            retry={staleError.onRetry}
+            retryLabel={staleError.retryLabel}
+          />
         ) : null}
 
         {showBody ? (
