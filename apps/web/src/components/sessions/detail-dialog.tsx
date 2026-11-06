@@ -6,11 +6,13 @@
 
 import type { SessionItem } from "@/lib/dashboard/api";
 import type { SessionsCopy } from "@/lib/copy/sessions";
+import type { BreakdownTableRow } from "@/components/dashboard/breakdown-table";
 
-import { Chip, Modal, Table, Typography } from "@heroui/react";
+import { Chip, Modal, Typography } from "@heroui/react";
 
 import { sortedModels } from "./model-chips";
 
+import { BreakdownTable } from "@/components/dashboard/breakdown-table";
 import { SourceIcon } from "@/components/source-icon";
 import { sourceDisplayLabel } from "@/lib/sources";
 import { useFormat } from "@/lib/format/format";
@@ -26,14 +28,23 @@ export function SessionDetailModal({
 }) {
   const {
     formatTokens,
-    formatCost,
     formatCredits,
     formatDuration,
     formatDateTime,
     formatRelativeTime,
-    formatPercent,
   } = useFormat();
   const models = session ? sortedModels(session.models) : [];
+  // Model rows share the dashboard breakdown shell (docs/ui-spec.md 仪表盘
+  // §5 / Sessions 详情): the cost column width therefore follows the shared
+  // w-24 instead of the old hand-rolled w-28. Credits never appear here —
+  // SessionModel carries no credits — so the credits column stays hidden.
+  const modelRows: BreakdownTableRow[] = models.map((model) => ({
+    id: model.model,
+    label: model.model,
+    tokens: model.total_tokens,
+    share: model.share,
+    cost: Number(model.total_cost_usd),
+  }));
   const tokenRows = session
     ? [
         [copy.detail.input, session.input_tokens],
@@ -164,64 +175,39 @@ export function SessionDetailModal({
                   <Typography type="body-sm" weight="semibold">
                     {copy.detail.modelsTitle}
                   </Typography>
-                  {models.length === 0 ? (
+                  {modelRows.length === 0 ? (
                     <Typography color="muted" type="body-sm">
                       —
                     </Typography>
                   ) : (
-                    <Table>
-                      <Table.ScrollContainer>
-                        <Table.Content
-                          aria-label={copy.detail.modelsTitle}
-                          className="w-full min-w-[26rem] table-fixed"
+                    <BreakdownTable
+                      ariaLabel={copy.detail.modelsTitle}
+                      labels={{
+                        name: copy.detail.modelName,
+                        tokens: copy.detail.modelTokens,
+                        share: copy.detail.modelShare,
+                        cost: copy.detail.modelCost,
+                        // Hidden (no row carries credits); still sourced from
+                        // the typed copy rather than a hardcoded string.
+                        credits: copy.detail.credits,
+                      }}
+                      renderLabel={(row) => (
+                        <span
+                          className="flex min-w-0 items-center gap-1.5"
+                          title={row.label}
                         >
-                          <Table.Header>
-                            <Table.Column isRowHeader id="model">
-                              {copy.detail.modelName}
-                            </Table.Column>
-                            <Table.Column className="w-36 text-end" id="tokens">
-                              {copy.detail.modelTokens}
-                            </Table.Column>
-                            <Table.Column className="w-16 text-end" id="share">
-                              {copy.detail.modelShare}
-                            </Table.Column>
-                            <Table.Column className="w-28 text-end" id="cost">
-                              {copy.detail.modelCost}
-                            </Table.Column>
-                          </Table.Header>
-                          <Table.Body>
-                            {models.map((model) => (
-                              <Table.Row key={model.model} id={model.model}>
-                                <Table.Cell>
-                                  <span
-                                    className="flex min-w-0 items-center gap-1.5"
-                                    title={model.model}
-                                  >
-                                    <SourceIcon
-                                      label={model.model}
-                                      size={14}
-                                      source={session.source}
-                                    />
-                                    <span className="truncate font-medium">
-                                      {model.model}
-                                    </span>
-                                  </span>
-                                </Table.Cell>
-                                <Table.Cell className="whitespace-nowrap text-end tabular-nums">
-                                  {formatTokens(model.total_tokens)}
-                                </Table.Cell>
-                                <Table.Cell className="text-muted whitespace-nowrap text-end tabular-nums">
-                                  {formatPercent(model.share)}
-                                </Table.Cell>
-                                <Table.Cell className="whitespace-nowrap text-end tabular-nums">
-                                  {formatCost(Number(model.total_cost_usd))}
-                                </Table.Cell>
-                              </Table.Row>
-                            ))}
-                          </Table.Body>
-                        </Table.Content>
-                      </Table.ScrollContainer>
-                    </Table>
+                          <SourceIcon
+                            label={row.label}
+                            size={14}
+                            source={session.source}
+                          />
+                          <span className="truncate font-medium">
+                            {row.label}
+                          </span>
+                        </span>
+                      )}
+                      rows={modelRows}
+                    />
                   )}
                 </div>
 
