@@ -52,14 +52,25 @@ export function useResponsiveWeeks(maxWeeks: number) {
 
     if (!element || maxWeeks <= 0) return;
 
+    // One measurement per animation frame (the sidebar collapse transition
+    // fires the observer continuously), and bail out when the values did not
+    // actually change so the 364 heatmap cells are not re-rendered for every
+    // intermediate width.
+    let frame = 0;
     const update = () => {
-      const { weeks, cellSize } = fitHeatmapWidth(
-        element.clientWidth,
-        maxWeeks,
-      );
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const { weeks, cellSize: nextCellSize } = fitHeatmapWidth(
+          element.clientWidth,
+          maxWeeks,
+        );
 
-      setVisibleWeeks(weeks);
-      setCellSize(cellSize);
+        setVisibleWeeks((previous) => (previous === weeks ? previous : weeks));
+        setCellSize((previous) =>
+          previous === nextCellSize ? previous : nextCellSize,
+        );
+      });
     };
 
     update();
@@ -71,6 +82,7 @@ export function useResponsiveWeeks(maxWeeks: number) {
     observer.observe(element);
 
     return () => {
+      if (frame) cancelAnimationFrame(frame);
       observer.disconnect();
     };
   }, [maxWeeks]);
