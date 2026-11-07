@@ -19,6 +19,7 @@ import { TopBar } from "./top-bar";
 import { useLocalHour } from "./use-local-hour";
 
 import { AchievementUnlockWatcher } from "@/components/achievement-unlock-watcher";
+import { BackToTop } from "@/components/back-to-top";
 import { authBrowserClient } from "@/lib/auth/browser";
 import { useProfile } from "@/lib/auth/profile";
 import { NAV_COPY } from "@/lib/copy/nav";
@@ -129,6 +130,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <AchievementUnlockWatcher />
+
+      <BackToTop label={copy.backToTop} />
 
       <MobileDrawer
         copy={copy}

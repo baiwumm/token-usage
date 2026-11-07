@@ -870,6 +870,16 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
     明暗切换 / 配对设备在移动端顶栏照常显示、与桌面一致（2026-10-28 修订 2026-10-26
     裁定：明暗切换常驻顶栏，抽屉不再提供）。抽屉面板底色取页面底色 `bg-background`，
     使选中导航项 `bg-surface` 胶囊与桌面侧边栏一样可见。
+  - 内页右下角固定「回到顶部」浮钮（`components/back-to-top.tsx`，2026-11-08 新增）：
+    圆形图标按钮（`ArrowUp`，`fixed right-6 bottom-6 z-20`），**实底浮起式**而非玻璃拟态
+    ——`bg-surface + border-border + shadow-md` 与页面背景明确分层（2026-11-08 操作者
+    裁定，弃用与顶栏同款的 `bg-background/80 + backdrop-blur`，浅色页上会融进背景）；
+    滚动超过 320px 出现（窗口 scroll 监听 + rAF 节流，每帧至多一次状态读取）；点击平滑
+    回顶（`scrollTo behavior: smooth`，`prefers-reduced-motion` 下直接跳顶）；出现 / 隐藏
+    为 200ms 的上移 + 淡入淡出 + `visibility`，悬停轻微上浮、阴影加深，按下微缩，
+    `motion-reduce:transition-none` 全部关闭；隐藏态 `invisible` 不可聚焦不进无障碍树；
+    **不带 Tooltip**，箭头图形即语义，名称走 `aria-label`（`NAV_COPY.backToTop`）。
+    浮钮在顶栏同层（z-20），Modal / Drawer 等覆盖层照常压在其上。
   - 语言偏好写 `token-usage.locale` cookie（`system | zh | en`，缺省 `system`）；根布局
     据此解析并设置 `<html lang>` 与首帧字典，切换即时生效、刷新不闪烁。
 - 页面容器宽度三档（2026-11-08 固化为明文）：`AppShell` 只提供壳，内容宽度由各页

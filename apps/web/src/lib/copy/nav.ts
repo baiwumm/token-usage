@@ -35,6 +35,7 @@ export interface NavCopy {
   greetingMorning: string;
   greetingAfternoon: string;
   greetingEvening: string;
+  backToTop: string;
 }
 
 export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
@@ -72,6 +73,7 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     greetingMorning: "早上好",
     greetingAfternoon: "下午好",
     greetingEvening: "晚上好",
+    backToTop: "回到顶部",
   },
   en: {
     dashboard: "Dashboard",
@@ -108,6 +110,7 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     greetingMorning: "Good morning",
     greetingAfternoon: "Good afternoon",
     greetingEvening: "Good evening",
+    backToTop: "Back to top",
   },
 };
 
