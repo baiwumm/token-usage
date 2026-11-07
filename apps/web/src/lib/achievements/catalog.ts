@@ -50,11 +50,13 @@ export type MetricId =
   | "best_day_tokens"
   | "best_day_cache_hit_rate"
   | "longest_session_duration"
+  | "top_session_tokens"
   | "best_day_model_count"
   | "longest_streak"
   | "active_days"
   | "weekend_days"
   | "night_owl_days"
+  | "early_bird_days"
   | "distinct_models"
   | "distinct_sources"
   | "distinct_projects"
@@ -88,11 +90,13 @@ export const ACHIEVEMENT_ICONS = [
   "sparkle",
   "flask",
   "timer",
+  "book",
   "layers",
   "flame",
   "route",
   "weekend",
   "moon",
+  "sun",
   "globe",
   "tools",
   "compass",
@@ -241,6 +245,21 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     thresholds: [7_200_000, 21_600_000, 86_400_000, 259_200_000, 1_209_600_000],
   },
   {
+    id: "biggest_session",
+    category: "peak",
+    metric: "top_session_tokens",
+    kind: "historical_max",
+    unit: "tokens",
+    icon: "book",
+    art: "/achievements/biggest_session.png",
+    copyKey: "achievements.biggest_session.name",
+    descriptionKey: "achievements.biggest_session.description",
+    coverageKey: ACHIEVEMENT_COVERAGE.sessions,
+    // 2026-11-08 calibration: max 379.79M, 36 sessions ≥100M, 0 ≥500M —
+    // diamond within reach of a heavy year, king needs ~1.3x the current best.
+    thresholds: [1_000_000, 10_000_000, 50_000_000, 100_000_000, 500_000_000],
+  },
+  {
     id: "model_symphony",
     category: "peak",
     metric: "best_day_model_count",
@@ -298,6 +317,20 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     art: "/achievements/night_owl.png",
     copyKey: "achievements.night_owl.name",
     descriptionKey: "achievements.night_owl.description",
+    thresholds: [3, 10, 30, 60, 120],
+  },
+  {
+    id: "early_bird",
+    category: "rhythm",
+    metric: "early_bird_days",
+    kind: "distinct_count",
+    unit: "days",
+    icon: "sun",
+    art: "/achievements/early_bird.png",
+    copyKey: "achievements.early_bird.name",
+    descriptionKey: "achievements.early_bird.description",
+    // Mirrors night_owl's ladder; 2026-11-08 calibration put the early-morning
+    // day count (47) right beside the night count (42) on this account.
     thresholds: [3, 10, 30, 60, 120],
   },
   {

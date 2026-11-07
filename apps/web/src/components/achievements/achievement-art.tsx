@@ -11,6 +11,7 @@
 import {
   Archive,
   ArrowsRotateRight,
+  BookOpen,
   Calendar,
   Clock,
   Compass,
@@ -25,6 +26,7 @@ import {
   Route,
   Sparkles,
   Star,
+  Sun,
   Tachometer,
 } from "@gravity-ui/icons";
 import { cn } from "@heroui/react";
@@ -44,11 +46,13 @@ const GLYPHS: Record<
   sparkle: Star,
   flask: Sparkles,
   timer: Clock,
+  book: BookOpen,
   layers: Layers,
   flame: Flame,
   route: Route,
   weekend: Calendar,
   moon: Moon,
+  sun: Sun,
   globe: Globe,
   tools: Tachometer,
   compass: Compass,

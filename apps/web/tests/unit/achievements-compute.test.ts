@@ -294,6 +294,20 @@ describe("computeAchievements — rhythm", () => {
     expect(progress(payload, "night_owl").value).toBe(2);
     expect(progress(payload, "night_owl").achieved_at.bronze).toBeNull();
   });
+
+  it("splits night and early-morning buckets at the 6am local boundary", () => {
+    const hourly = [
+      row({ hour_start: "2026-10-05T21:00:00.000Z" }), // local 10-06 05:00 — night
+      row({ hour_start: "2026-10-05T22:00:00.000Z" }), // local 10-06 06:00 — early
+      row({ hour_start: "2026-10-06T00:30:00.000Z" }), // local 10-06 08:30 — early, same day
+      row({ hour_start: "2026-10-06T01:00:00.000Z" }), // local 10-06 09:00 — neither
+    ];
+    const payload = compute({ hourly });
+
+    expect(progress(payload, "night_owl").value).toBe(1);
+    expect(progress(payload, "early_bird").value).toBe(1);
+    expect(progress(payload, "early_bird").achieved_at.bronze).toBeNull(); // bronze 3, a day short
+  });
 });
 
 describe("computeAchievements — distinct counts", () => {
@@ -404,6 +418,37 @@ describe("computeAchievements — sessions", () => {
     expect(progress(payload, "project_hopper").value).toBe(2);
     expect(progress(payload, "project_hopper").achieved_at.bronze).toBeNull();
     expect(progress(payload, "project_devotion").value).toBe(2_000_000);
+    // Sessions count toward the token peak whatever their project key is: the
+    // 2M first session already crosses bronze, the 9M one raises the maximum.
+    expect(progress(payload, "biggest_session").value).toBe(9_000_000);
+    expect(progress(payload, "biggest_session").achieved_at.bronze).toBe(
+      "2026-10-01",
+    );
+    expect(progress(payload, "biggest_session").achieved_at.silver).toBeNull();
+  });
+
+  it("keeps the largest session by tokens as a running maximum", () => {
+    const sessions = [
+      session({
+        session_id: "s1",
+        started_at: "2026-10-01T02:00:00.000Z",
+        ended_at: "2026-10-01T03:00:00.000Z",
+        total_tokens: 12_000_000,
+      }),
+      session({
+        session_id: "s2",
+        started_at: "2026-10-02T02:00:00.000Z",
+        ended_at: "2026-10-02T03:00:00.000Z",
+        total_tokens: 3_000_000,
+      }),
+    ];
+    const entry = progress(compute({ sessions }), "biggest_session");
+
+    expect(entry.value).toBe(12_000_000);
+    // Both the 1M and 10M thresholds were crossed by the first session, and
+    // the smaller later session moves neither the maximum nor the dates.
+    expect(entry.achieved_at.bronze).toBe("2026-10-01");
+    expect(entry.achieved_at.silver).toBe("2026-10-01");
   });
 
   it("leaves sessions-sourced achievements at zero without sessions", () => {
@@ -412,6 +457,7 @@ describe("computeAchievements — sessions", () => {
     });
 
     expect(progress(payload, "marathon_session").value).toBe(0);
+    expect(progress(payload, "biggest_session").value).toBe(0);
     expect(progress(payload, "project_hopper").value).toBe(0);
     expect(progress(payload, "project_devotion").value).toBe(0);
   });

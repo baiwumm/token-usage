@@ -91,26 +91,29 @@ export function AchievementsClient() {
     });
   }, [locale, refresh]);
 
+  // The refresh button lives inside the summary's tier headline (2026-11-08
+  // operator call, replacing the standalone top-right header row); the client
+  // keeps owning the refresh state, the body only receives a slot.
+  const refreshButton = (
+    <RefreshButton
+      lastUpdatedAt={lastUpdatedAt}
+      lastUpdatedNone={achievementCopy(
+        locale,
+        "achievements.ui.lastUpdatedNone",
+      )}
+      lastUpdatedTemplate={achievementCopy(
+        locale,
+        "achievements.ui.lastUpdated",
+      )}
+      locale={locale}
+      refreshLabel={achievementCopy(locale, "achievements.ui.refresh")}
+      refreshing={refreshing}
+      onPress={retry}
+    />
+  );
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-8">
-      <header className="flex flex-wrap items-center justify-end gap-3">
-        <RefreshButton
-          lastUpdatedAt={lastUpdatedAt}
-          lastUpdatedNone={achievementCopy(
-            locale,
-            "achievements.ui.lastUpdatedNone",
-          )}
-          lastUpdatedTemplate={achievementCopy(
-            locale,
-            "achievements.ui.lastUpdated",
-          )}
-          locale={locale}
-          refreshLabel={achievementCopy(locale, "achievements.ui.refresh")}
-          refreshing={refreshing}
-          onPress={retry}
-        />
-      </header>
-
       {state.status === "loading" && !payload ? <AchievementsSkeleton /> : null}
 
       {state.status === "error" && !payload ? (
@@ -132,7 +135,12 @@ export function AchievementsClient() {
       ) : null}
 
       {payload ? (
-        <AchievementsBody locale={locale} newIds={newIds} payload={payload} />
+        <AchievementsBody
+          locale={locale}
+          newIds={newIds}
+          payload={payload}
+          refreshSlot={refreshButton}
+        />
       ) : null}
 
       {state.status === "ready" && !payload ? (

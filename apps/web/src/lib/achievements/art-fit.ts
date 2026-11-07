@@ -19,8 +19,10 @@
  */
 export const ARTWORK_RADIUS: Record<string, number> = {
   big_day: 0.734,
+  biggest_session: 0.75,
   cache_alchemy: 0.758,
   cachekeeper: 0.731,
+  early_bird: 0.75,
   fleet: 0.76,
   marathon_session: 0.797,
   marathoner: 0.791,

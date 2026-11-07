@@ -42,6 +42,10 @@
       "subject": "a large ornate chronometer stopwatch with a winged foot sprinting around it, a comet trail of hour sand",
       "accent": "azure blue"
     },
+    "biggest_session": {
+      "subject": "an ornate open tome carved in bas-relief onto the coin face itself, pages fanned mid-turn, a glowing ribbon of script rising from the carved pages, a carved bookmark ribbon, every element engraved into the coin, no freestanding objects in front of or behind the coin",
+      "accent": "ivory white"
+    },
     "model_symphony": {
       "subject": "a grand piano with an open lid carved in relief, a violin and a trumpet flanking it, simple bold readable shapes",
       "accent": "purple"
@@ -61,6 +65,10 @@
     "night_owl": {
       "subject": "a sharp geometric low-poly owl head with intense glowing eyes, angular faceted carving",
       "accent": "cold indigo blue"
+    },
+    "early_bird": {
+      "subject": "a radiant rising sun half crested over gently engraved rolling hills, straight rays fanning upward, two small engraved birds in flight",
+      "accent": "dawn peach"
     },
     "polyglot": {
       "subject": "a carved robed figure holding up a fan of plain blank round medallions of different sizes, completely smooth blank surfaces with no writing and no symbols",

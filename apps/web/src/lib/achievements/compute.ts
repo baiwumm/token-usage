@@ -41,6 +41,8 @@ import { canonicalizeUsage } from "@/lib/account/usage";
 const DAY_MS = 86_400_000;
 /** Local hours counted as night: 00:00–05:59 (docs §2.2). */
 const NIGHT_HOURS = new Set([0, 1, 2, 3, 4, 5]);
+/** Local hours counted as early morning: 06:00–08:59 (the night_owl mirror). */
+const EARLY_HOURS = new Set([6, 7, 8]);
 /** Sync results that count as a successful run for `sync_diligence`. */
 const SYNC_SUCCESS_RESULTS = new Set(["ok", "partial"]);
 
@@ -69,6 +71,7 @@ type DayAgg = {
   models: Set<string>;
   sources: Set<string>;
   night: boolean;
+  early: boolean;
 };
 
 type SessionFact = {
@@ -137,6 +140,7 @@ function emptyDay(day: string): DayAgg {
     models: new Set(),
     sources: new Set(),
     night: false,
+    early: false,
   };
 }
 
@@ -274,6 +278,12 @@ function buildHistory(
       const parts = zonedParts(String(row.hour_start), tzContext);
 
       if (parts && NIGHT_HOURS.has(parts.hour)) agg.night = true;
+    }
+
+    if (!agg.early && total > 0) {
+      const parts = zonedParts(String(row.hour_start), tzContext);
+
+      if (parts && EARLY_HOURS.has(parts.hour)) agg.early = true;
     }
   }
 
@@ -422,6 +432,20 @@ function longestSession(facts: readonly SessionFact[]): Timeline {
   return { value: best, points };
 }
 
+// Same running-max shape as longestSession, over the tokens a session spent.
+function topSessionTokens(facts: readonly SessionFact[]): Timeline {
+  let best = 0;
+  const points: DayPoint[] = [];
+
+  for (const fact of facts) {
+    if (fact.tokens <= best) continue;
+    best = fact.tokens;
+    points.push({ day: fact.day, value: best });
+  }
+
+  return { value: best, points };
+}
+
 function distinctDevices(facts: readonly DeviceFact[]): Timeline {
   const seen = new Set<string>();
   const points: DayPoint[] = [];
@@ -481,6 +505,8 @@ function measure(achievement: Achievement, history: History): Timeline {
       );
     case "longest_session_duration":
       return longestSession(history.sessions);
+    case "top_session_tokens":
+      return topSessionTokens(history.sessions);
     case "best_day_model_count":
       return runningMax(days, (day) => day.models.size);
     case "longest_streak":
@@ -496,6 +522,8 @@ function measure(achievement: Achievement, history: History): Timeline {
       );
     case "night_owl_days":
       return cumulative(days, (day) => (day.night ? 1 : 0));
+    case "early_bird_days":
+      return cumulative(days, (day) => (day.early ? 1 : 0));
     case "distinct_models":
       return distinct(days, (day) => day.models);
     case "distinct_sources":

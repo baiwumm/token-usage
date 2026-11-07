@@ -9,7 +9,7 @@ import type { Locale } from "@/lib/copy/locale-config";
 
 import { Button, Card } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 
 import { AchievementsSection } from "./achievements-section";
 import { AchievementsSummary } from "./achievements-summary";
@@ -26,10 +26,13 @@ export function AchievementsBody({
   payload,
   locale,
   newIds,
+  refreshSlot,
 }: {
   payload: AchievementsPayload;
   locale: Locale;
   newIds: ReadonlySet<string>;
+  /** Rendered beside the summary's tier headline — the refresh button. */
+  refreshSlot?: ReactNode;
 }) {
   const router = useRouter();
   const { profile } = useProfile();
@@ -58,6 +61,7 @@ export function AchievementsBody({
       <AchievementsSummary
         achievements={payload.achievements}
         locale={locale}
+        refreshSlot={refreshSlot}
       />
 
       {hasUsage ? null : (

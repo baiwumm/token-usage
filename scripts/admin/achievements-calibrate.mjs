@@ -47,7 +47,10 @@ const PAGE_SIZE = 1000;
 const MAX_PAGES = 1000;
 const DAY_MS = 86_400_000;
 const NIGHT_HOURS = new Set([0, 1, 2, 3, 4, 5]);
+/** Local hours counted as early morning (06:00–08:59), the night_owl mirror. */
+const EARLY_HOURS = new Set([6, 7, 8]);
 const SYNC_SUCCESS_RESULTS = new Set(["ok", "partial"]);
+const SESSION_TOKEN_LADDER = [1_000_000, 10_000_000, 50_000_000, 100_000_000, 500_000_000];
 const TOKEN_KEYS = [
   "input_tokens",
   "cached_input_tokens",
@@ -326,6 +329,7 @@ function buildMetrics(dataset, zoned) {
         output: 0,
         models: new Set(),
         night: false,
+        early: false,
       };
       days.set(parts.day, agg);
     }
@@ -337,6 +341,7 @@ function buildMetrics(dataset, zoned) {
     agg.output += numberOr0(row.output_tokens);
     agg.models.add(model);
     if (!agg.night && total > 0 && NIGHT_HOURS.has(parts.hour)) agg.night = true;
+    if (!agg.early && total > 0 && EARLY_HOURS.has(parts.hour)) agg.early = true;
   }
 
   const dayList = Array.from(days.values()).sort((a, b) => a.day.localeCompare(b.day));
@@ -350,6 +355,7 @@ function buildMetrics(dataset, zoned) {
   let activeDays = 0;
   let weekendDays = 0;
   let nightDays = 0;
+  let earlyDays = 0;
 
   for (const day of dayList) {
     totalTokens += day.total;
@@ -370,6 +376,7 @@ function buildMetrics(dataset, zoned) {
       if (isWeekend(day.day)) weekendDays += 1;
     }
     if (day.night) nightDays += 1;
+    if (day.early) earlyDays += 1;
   }
 
   const sessions = [];
@@ -392,12 +399,16 @@ function buildMetrics(dataset, zoned) {
   sessions.sort((a, b) => a.at - b.at);
 
   let longestSessionMs = 0;
+  let topSessionTokens = 0;
   const sessionDurations = [];
+  const sessionTokens = [];
   const projects = new Set();
   const projectTokens = new Map();
   for (const fact of sessions) {
     longestSessionMs = Math.max(longestSessionMs, fact.durationMs);
+    topSessionTokens = Math.max(topSessionTokens, fact.tokens);
     sessionDurations.push(fact.durationMs);
+    sessionTokens.push(fact.tokens);
     if (!fact.project) continue;
     projects.add(fact.project);
     projectTokens.set(fact.project, (projectTokens.get(fact.project) || 0) + fact.tokens);
@@ -434,6 +445,7 @@ function buildMetrics(dataset, zoned) {
     today,
     activeDays,
     sessionDurations,
+    sessionTokens,
     dailyCacheRates: dailyCacheRates.sort((a, b) => b.rate - a.rate),
     values: {
       total_tokens: totalTokens,
@@ -449,10 +461,12 @@ function buildMetrics(dataset, zoned) {
       active_days: activeDays,
       weekend_days: weekendDays,
       night_owl_days: nightDays,
+      early_bird_days: earlyDays,
       distinct_models: models.size,
       distinct_sources: sources.size,
       distinct_projects: projects.size,
       top_project_tokens: topProjectTokens,
+      top_session_tokens: topSessionTokens,
       distinct_devices: deviceIds.size,
       sync_streak: longestStreak(syncDays),
     },
@@ -583,6 +597,12 @@ async function main() {
   console.log("");
   console.log("— distribution hints —");
   console.log(`session durations: ${ladder} (max ${(metrics.values.longest_session_duration / hour).toFixed(2)}h)`);
+  const tokenLadder = SESSION_TOKEN_LADDER.map(
+    (threshold) =>
+      `≥${threshold / 1_000_000}M ${metrics.sessionTokens.filter((tokens) => tokens >= threshold).length}`,
+  ).join(" · ");
+  console.log(`session tokens:   ${tokenLadder} (max ${formatValue("tokens", metrics.values.top_session_tokens)})`);
+  console.log(`early days (06–09): ${metrics.values.early_bird_days} · night days (00–06): ${metrics.values.night_owl_days}`);
   console.log(`daily cache rate (top 5 of ${metrics.dailyCacheRates.length} gated days):`);
   for (const entry of metrics.dailyCacheRates.slice(0, 5)) {
     console.log(`  ${entry.day}  ${(entry.rate * 100).toFixed(2)}%  on ${entry.total.toLocaleString("en-US")} tokens`);

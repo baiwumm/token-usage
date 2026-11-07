@@ -28,8 +28,8 @@ import {
 const THRESHOLD_COUNT = 5;
 
 describe("catalog shape", () => {
-  it("ships the planned 18 achievements with unique ids", () => {
-    expect(ACHIEVEMENTS).toHaveLength(18);
+  it("ships the planned 20 achievements with unique ids", () => {
+    expect(ACHIEVEMENTS).toHaveLength(20);
     expect(new Set(ACHIEVEMENTS.map((entry) => entry.id)).size).toBe(
       ACHIEVEMENTS.length,
     );
@@ -134,6 +134,7 @@ describe("copy and icons", () => {
     const covered = ACHIEVEMENTS.filter((entry) => Boolean(entry.coverageKey));
 
     expect(covered.map((entry) => entry.id).sort()).toEqual([
+      "biggest_session",
       "marathon_session",
       "project_devotion",
       "project_hopper",

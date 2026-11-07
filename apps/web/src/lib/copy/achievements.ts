@@ -24,6 +24,8 @@ export const ACHIEVEMENTS_COPY: Record<Locale, Record<string, string>> = {
     "achievements.marathon_session.name": "马拉松会话",
     "achievements.marathon_session.description":
       "一个会话从早开到晚。健康提示：记得起身。",
+    "achievements.biggest_session.name": "鸿篇巨制",
+    "achievements.biggest_session.description": "单个会话里投入的 token 总量。",
     "achievements.model_symphony.name": "模型交响",
     "achievements.model_symphony.description": "一天里换过多少种模型来合奏。",
     "achievements.streak.name": "火焰",
@@ -34,6 +36,9 @@ export const ACHIEVEMENTS_COPY: Record<Locale, Record<string, string>> = {
     "achievements.weekend_warrior.description": "周六周日也照常打开编辑器。",
     "achievements.night_owl.name": "夜猫子",
     "achievements.night_owl.description": "凌晨 0–6 点还在跑量的日子。早点睡。",
+    "achievements.early_bird.name": "晨型人",
+    "achievements.early_bird.description":
+      "清晨 6–9 点就开始跑量的日子。早餐记得吃。",
     "achievements.polyglot.name": "模型通",
     "achievements.polyglot.description": "用过多少种不同的模型。",
     "achievements.multitool.name": "多面手",
@@ -57,7 +62,11 @@ export const ACHIEVEMENTS_COPY: Record<Locale, Record<string, string>> = {
     "achievements.coverage.sync": "自采集记录（CLI 0.2.0）起统计。",
     "achievements.ui.subtitle": "五档进阶，全部在读取时计算。",
     "achievements.ui.summaryLabel": "已解锁成就",
-    "achievements.ui.summaryUnlocked": "已解锁 {unlocked}/{total}",
+    "achievements.ui.unlockedLabel": "已解锁",
+    "achievements.ui.unlockedCount": "{unlocked}/{total}",
+    "achievements.ui.tierProgressLabel": "段位进度",
+    "achievements.ui.tierProgress":
+      "段位进度 {tiers}/{totalTiers}，已解锁 {unlocked}/{total}",
     "achievements.ui.category.milestone": "里程碑",
     "achievements.ui.category.peak": "高峰",
     "achievements.ui.category.rhythm": "节奏",
@@ -116,6 +125,9 @@ export const ACHIEVEMENTS_COPY: Record<Locale, Record<string, string>> = {
     "achievements.marathon_session.name": "Marathon Session",
     "achievements.marathon_session.description":
       "A session that ran from morning into the night. Stand up once in a while.",
+    "achievements.biggest_session.name": "Biggest Session",
+    "achievements.biggest_session.description":
+      "The most tokens ever poured into a single session.",
     "achievements.model_symphony.name": "Model Symphony",
     "achievements.model_symphony.description":
       "How many models played on your busiest day.",
@@ -130,6 +142,9 @@ export const ACHIEVEMENTS_COPY: Record<Locale, Record<string, string>> = {
     "achievements.night_owl.name": "Night Owl",
     "achievements.night_owl.description":
       "Days with usage between midnight and 6am. Get some sleep.",
+    "achievements.early_bird.name": "Early Bird",
+    "achievements.early_bird.description":
+      "Days with usage between 6am and 9am. Breakfast helps.",
     "achievements.polyglot.name": "Polyglot",
     "achievements.polyglot.description":
       "Different models you have worked with.",
@@ -158,7 +173,11 @@ export const ACHIEVEMENTS_COPY: Record<Locale, Record<string, string>> = {
       "Counted from sync-run reporting (CLI 0.2.0) onwards.",
     "achievements.ui.subtitle": "Five tiers each, all computed on read.",
     "achievements.ui.summaryLabel": "Achievements unlocked",
-    "achievements.ui.summaryUnlocked": "{unlocked} of {total} unlocked",
+    "achievements.ui.unlockedLabel": "Unlocked",
+    "achievements.ui.unlockedCount": "{unlocked}/{total}",
+    "achievements.ui.tierProgressLabel": "Tier progress",
+    "achievements.ui.tierProgress":
+      "Tier progress {tiers} of {totalTiers}, {unlocked} of {total} unlocked",
     "achievements.ui.category.milestone": "Milestones",
     "achievements.ui.category.peak": "Peaks",
     "achievements.ui.category.rhythm": "Rhythm",

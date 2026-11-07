@@ -24,7 +24,7 @@ import { jsonResponse } from "@/lib/api/http";
 const HISTORY_START = "2000-01-01T00:00:00.000Z";
 const DAY_MS = 86_400_000;
 
-// Computing 18 achievements walks the whole account history plus two full
+// Computing the achievements walks the whole account history plus two full
 // tables. Several surfaces ask for it within seconds of each other (dashboard
 // strip, unlock watcher, /achievements, public page). A short per-user /
 // per-zone cache keeps one compute per burst. The seen watermark is never
