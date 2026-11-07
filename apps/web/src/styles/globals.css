@@ -20,7 +20,15 @@
 		U+2018-2019, U+201C-201D, U+2026, U+3000-303F, U+4E00-9FFF, U+FF00-FFEF;
 }
 
-@theme {
+/*
+ * `static` is load-bearing for the chart palette: lib/charts/theme.ts builds
+ * `var(--color-chart-N)` through a template literal, which the scanner cannot
+ * see — with a plain @theme, Tailwind prunes every chart token that has no
+ * literal utility/reference in the source (chart-4…8), leaving the light
+ * theme with invisible series while the author-written .dark block (plain CSS,
+ * never pruned) keeps all eight. static forces the whole block to be emitted.
+ */
+@theme static {
 	--font-sans: "Maple Mono CN", system-ui, Avenir, Helvetica, Arial, sans-serif;
 	--font-mono: "Maple Mono CN", ui-monospace, SFMono-Regular, Menlo, monospace;
 
