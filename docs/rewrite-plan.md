@@ -13,7 +13,7 @@ TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写�
 | 2 | 许可证 | MIT；署名集中在根 `LICENSE`（含 "Contains code derived from TokenTracker by xiufengsun (MIT)" 衍生声明）与根 `THIRD_PARTY_NOTICES.md`（第三方资产登记，CLI 包另有同名文件）。2026-10-28 修订：README 与 docs 不再重复罗列上游署名，只指向这两处 |
 | 3 | CLI 策略 | 2026-10-23 翻案：fork 上游 CLI（MIT）改造为 **`tokenusage-cli`**——解析器继承上游并跟进 cherry-pick；`sync` 手动为主，`--watch` / `install-task` 可选自动档；自有客户端后契约冻结语义转为「CLI 版本 ↔ 服务端版本配对演进」，旧路径别名降级为过渡品 |
 | 4 | 品牌 | 仓库 `token-usage`，UI 显示 **Token Usage** |
-| 5 | 认证 | `@supabase/ssr` cookie 会话；仅邮箱密码 + 邮件魔法链接；公开注册关闭、管理员建号制；`token_allowed_emails` 白名单表作为可选迁移供部署者启用自助注册 |
+| 5 | 认证 | `@supabase/ssr` cookie 会话；邮箱密码 + 邮件魔法链接 + GitHub/Google OAuth（2026-11-07 操作者拍板增补：OAuth 仅作已有账号的登录方式，automatic linking 按已验证邮箱合并，管理员建号制与公开注册关闭不变——注册闸门关闭后陌生人首次 OAuth 被 `signup_disabled` 拒绝，登录页对 `oauth_signup_disabled` / `oauth_access_denied` 给专属文案）；`token_allowed_emails` 白名单表作为可选迁移供部署者启用自助注册 |
 | 6 | 数据访问 | route.ts 内 `@supabase/supabase-js` 服务端客户端 + service-role |
 | 7 | RLS 姿态 | 应用表对 `anon`/`authenticated` **全拒**；浏览器零直连 Supabase；所有环境变量 server-only |
 | 8 | 表结构 | 保守规范化 + `token_` 前缀：保留桶语义（last-wins upsert 键），表名列名规范化 |

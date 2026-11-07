@@ -64,10 +64,37 @@ Dashboard → **Authentication → URL Configuration**：
 
 - **Site URL**：部署域名根（先按第 4 步的 Vercel 域名填，如 `https://token-usage-delta.vercel.app`，
   绑定自定义域名后改回来）
-- **Redirect URLs**：添加 `https://<部署域名>/auth/callback`（魔法链接会话交换的落点）
+- **Redirect URLs**：添加 `https://<部署域名>/**`（**通配条目**。精确条目如
+  `https://<部署域名>/auth/callback` 盖不住 `/auth/callback?next=…` 这类带查询串的
+  子路径，GoTrue 校验不过会回退 Site URL、把用户引到错误的域名——魔法链接与 OAuth
+  的会话交换都落在这个路径上）
+
+**注册闸门**：Dashboard → **Authentication → Sign In / Providers**，把
+**Allow new users to sign up 关闭**（Supabase 默认开启）。本站是管理员建号制，这个
+开关是唯一的注册通道闸门——关闭后陌生人用任何方式（含 OAuth 首次登录）都会被
+`signup_disabled` 拒绝、不产生任何用户；临时开启仅用于 OAuth linking 或启用自助
+注册白名单的场景。
 
 > 邮件：Supabase 内置 SMTP 有限速，仅够验证与小规模自用；邀请邮件与魔法链接都走这条
 > 通道，正式使用建议 Authentication → SMTP 配自定义 SMTP。
+
+**可选：GitHub / Google OAuth 快捷登录**。OAuth 只是给**已有账号**增加登录方式
+（automatic linking 按已验证邮箱合并进现有账号），不是注册通道——闸门关闭时陌生人
+的首次 OAuth 会被拒绝：
+
+1. **GitHub**：GitHub → Settings → Developer settings → OAuth Apps → New：
+   Homepage URL 填部署域名；**Authorization callback URL 填 Supabase 的
+   `https://<project-ref>.supabase.co/auth/v1/callback`**（仅此一条——站点域名不进
+   GitHub 配置，跳回站点那步由上面的 Redirect URLs 管）。Client ID / Secret 填入
+   Supabase → Authentication → Providers → GitHub。
+2. **Google**：Google Cloud → Google Auth Platform → 创建 OAuth 客户端（Web 应用）：
+   已获授权的 JavaScript 来源 = 部署域名 origin（本地联调再加
+   `http://localhost:3000`）；已获授权的重定向 URI = 同一条 Supabase 回调。
+   Client ID / Secret 填入 Supabase → Providers → Google。注意验证中心（consent
+   screen）处于 Testing 时只有测试用户能登录——自用就发布为生产，或把自己加进测试
+   用户。
+3. 两家 provider 的 **Allow users without an email** 与 **Skip nonce checks** 保持
+   关闭：登录身份按已验证邮箱 automatic linking 合并，无邮箱的账号无法关联。
 
 ## 4. 部署到 Vercel
 
