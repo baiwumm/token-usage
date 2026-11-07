@@ -68,6 +68,7 @@ export function DashboardBody({
   onDetailViewChange,
   onDeviceSelect,
   onHourlyDayChange,
+  onOpenSyncRuns,
   onRetry,
   onTrendDaySelect,
   onTrendModeChange,
@@ -114,6 +115,8 @@ export function DashboardBody({
   onDetailViewChange: (view: DetailView) => void;
   onDeviceSelect: (deviceId: string | null) => void;
   onHourlyDayChange: (day: string) => void;
+  /** Empty-state escape hatch: the runs list carries capture health. */
+  onOpenSyncRuns: () => void;
   onRetry: () => void;
   /** Trend point click: pins the hourly table to that day. */
   onTrendDaySelect: (day: string) => void;
@@ -223,6 +226,7 @@ export function DashboardBody({
             copy={copy}
             hasFilters={hasFilters}
             onClearFilters={onClearFilters}
+            onOpenSyncRuns={onOpenSyncRuns}
           />
         )
       ) : null}

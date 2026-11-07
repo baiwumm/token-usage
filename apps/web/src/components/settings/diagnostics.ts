@@ -1,8 +1,9 @@
-// Probe registry and shared types for /service-status. Kept out of the client
-// so the page module only owns state and composition.
+// Probe registry and shared types for the Settings 实例诊断 card. Kept out of
+// the component modules so the card only owns composition. Relocated from the
+// former /service-status page (2026-11-07 信息架构调整).
 
 import type { ComponentType, SVGProps } from "react";
-import type { StatusCheckName } from "@/lib/copy/service-status";
+import type { DiagnosticsCheckName } from "@/lib/copy/diagnostics";
 
 import { ChartLine, Display, Globe, ShieldCheck } from "@gravity-ui/icons";
 
@@ -17,21 +18,21 @@ export type CheckDetail =
   | { kind: "raw"; text: string };
 
 export interface CheckResult {
-  name: StatusCheckName;
+  name: DiagnosticsCheckName;
   target: string;
   status: CheckStatus;
   latencyMs: number | null;
   detail?: CheckDetail;
 }
 
-export const CHECK_NAMES: StatusCheckName[] = [
+export const CHECK_NAMES: DiagnosticsCheckName[] = [
   "public-config",
   "session",
   "dashboard",
   "account-devices",
 ];
 
-export const CHECK_TARGETS: Record<StatusCheckName, string> = {
+export const CHECK_TARGETS: Record<DiagnosticsCheckName, string> = {
   "public-config": "/api/functions/token-usage-public-config",
   session: "supabase.auth.getSession",
   dashboard: "/api/functions/token-usage-dashboard",
@@ -39,7 +40,7 @@ export const CHECK_TARGETS: Record<StatusCheckName, string> = {
 };
 
 export const CHECK_ICONS: Record<
-  StatusCheckName,
+  DiagnosticsCheckName,
   ComponentType<SVGProps<SVGSVGElement>>
 > = {
   "public-config": Globe,

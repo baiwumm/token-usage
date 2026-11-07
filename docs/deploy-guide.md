@@ -184,8 +184,8 @@ CLI 机制速查（完整说明见 `packages/cli/README.md`）：
 ## 7. 验证闭环
 
 回到 `<部署域名>/`：上报几分钟内仪表盘出现用量（汇总卡、日图、热力图、模型与设备分布）；
-`/settings` 可改名与吊销设备（吊销即时生效）；`/wrapped` 年度回顾；`/service-status`
-自查端点健康。
+`/settings` 可改名与吊销设备（吊销即时生效）；`/wrapped` 年度回顾；`/settings` 设备分区
+的「实例诊断」卡自查端点健康；`/sync-runs` 核对各设备采集心跳。
 
 **对账口径提示**：`token_usage_hourly.total_cost_usd` 是**哨兵列**——CLI 写入行恒为 0（只有
 grok/cline 的厂商上报成本可能为正），真实费用在读取时按 curated + LiteLLM 定价实时计算
@@ -201,4 +201,4 @@ grok/cline 的厂商上报成本可能为正），真实费用在读取时按 cu
 | 魔法链接点了跳回登录页报链接无效 | Redirect URLs 没含 `<部署域名>/auth/callback`，或 Site URL 域名不符 |
 | 登录后仪表盘无数据 | 采集端未配对或未 sync；先走第 6 步 |
 | 邀请/魔法链接邮件收不到 | 内置 SMTP 限速；稍后再试或配自定义 SMTP |
-| `service-status` 某项异常 | 对照 `/service-status` 的目标与延迟定位；首次请求 1–2s 属冷启动 |
+| 实例诊断某项异常 | 对照 `/settings` 设备分区「实例诊断」卡的目标与延迟定位；首次请求 1–2s 属冷启动；写入侧停摆看 `/sync-runs` 的设备采集状态 |

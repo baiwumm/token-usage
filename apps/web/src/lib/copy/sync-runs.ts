@@ -20,6 +20,19 @@ export interface SyncRunsCopy {
     lastRun: string;
     emptyValue: string;
   };
+  freshness: {
+    title: string;
+    hint: string;
+    ok: string;
+    lagging: string;
+    stalled: string;
+    failing: string;
+    none: string;
+    lastSuccess: string;
+    lastFailed: string;
+    errorCode: string;
+    noRuns: string;
+  };
   list: {
     title: string;
     hint: string;
@@ -78,6 +91,19 @@ export const SYNC_RUNS_COPY: Record<"zh" | "en", SyncRunsCopy> = {
       todayEmptyHint: "其中空跑 {count} 次",
       lastRun: "最近采集",
       emptyValue: "—",
+    },
+    freshness: {
+      title: "设备采集状态",
+      hint: "按各设备最近的采集运行评估链路健康；长时间关机的设备会显示滞后。",
+      ok: "正常",
+      lagging: "滞后",
+      stalled: "中断",
+      failing: "失败",
+      none: "无记录",
+      lastSuccess: "最后成功 {time}",
+      lastFailed: "最近一次运行失败",
+      errorCode: "错误码 {code}",
+      noRuns: "近 7 天没有运行记录",
     },
     list: {
       title: "采集记录",
@@ -145,6 +171,19 @@ export const SYNC_RUNS_COPY: Record<"zh" | "en", SyncRunsCopy> = {
       todayEmptyHint: "{count} empty",
       lastRun: "Last run",
       emptyValue: "—",
+    },
+    freshness: {
+      title: "Device freshness",
+      hint: "Per-device health from the latest sync runs; devices that stay powered off show as lagging.",
+      ok: "OK",
+      lagging: "Lagging",
+      stalled: "Stalled",
+      failing: "Failed",
+      none: "No runs",
+      lastSuccess: "Last success {time}",
+      lastFailed: "Latest run failed",
+      errorCode: "Error {code}",
+      noRuns: "No runs in the last 7 days",
     },
     list: {
       title: "Sync runs",

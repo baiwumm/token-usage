@@ -1,9 +1,10 @@
 "use client";
 
-// Probe results table at /service-status: one row per check with the target,
-// status chip and latency.
+// Probe results table inside the Settings 实例诊断 card: one row per check
+// with the target, status chip and latency. Relocated from the former
+// /service-status page (2026-11-07 信息架构调整).
 
-import type { StatusCopy } from "@/lib/copy/service-status";
+import type { DiagnosticsCopy } from "@/lib/copy/diagnostics";
 
 import { Chip, Table } from "@heroui/react";
 
@@ -12,18 +13,18 @@ import {
   latencyTone,
   type CheckDetail,
   type CheckResult,
-} from "./checks";
+} from "./diagnostics";
 
 import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
 import { useFormat } from "@/lib/format/format";
 
-export function ChecksTable({
+export function DiagnosticsTable({
   results,
   copy,
 }: {
   results: CheckResult[];
-  copy: StatusCopy;
+  copy: DiagnosticsCopy;
 }) {
   const [locale] = useLocale();
   const { formatNumber } = useFormat();
@@ -48,7 +49,7 @@ export function ChecksTable({
   return (
     <Table>
       <Table.ScrollContainer>
-        <Table.Content aria-label={copy.pageTitle}>
+        <Table.Content aria-label={copy.cardTitle}>
           <Table.Header>
             <Table.Column isRowHeader>{copy.columnCheck}</Table.Column>
             <Table.Column>{copy.columnTarget}</Table.Column>

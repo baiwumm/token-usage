@@ -27,7 +27,8 @@ const CONTRACT_API_PREFIX = "/api/functions/";
 
 // Protected pages per docs/requirements.md 范围表 (2026-10-24 二次修订):
 // the dashboard IS / — everything except /login, /auth/callback and the CLI
-// API requires login.
+// API requires login. /service-status was removed on 2026-11-07 (its self-
+// check moved into the Settings · 设备 实例诊断 card).
 const PROTECTED_PAGES = [
   "/",
   "/sessions",
@@ -36,7 +37,6 @@ const PROTECTED_PAGES = [
   "/settings",
   "/wrapped",
   "/achievements",
-  "/service-status",
   "/device",
 ];
 
@@ -131,7 +131,6 @@ export const config = {
     "/settings/:path*",
     "/wrapped/:path*",
     "/achievements/:path*",
-    "/service-status/:path*",
     "/device/:path*",
   ],
 };

@@ -119,6 +119,8 @@ export interface DashboardCopy {
     retry: string;
     emptyTitle: string;
     emptyBody: string;
+    emptyPipelineHint: string;
+    emptyPipelineCta: string;
     filterEmptyTitle: string;
     filterEmptyBody: string;
   };
@@ -261,6 +263,8 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       retry: "重试",
       emptyTitle: "该时间范围内没有用量数据",
       emptyBody: "在采集机上完成配对并 sync 后，数据会出现在这里。",
+      emptyPipelineHint: "采集链路是否正常，可在采集记录核对各设备的最近运行。",
+      emptyPipelineCta: "查看采集记录",
       filterEmptyTitle: "当前筛选没有结果",
       filterEmptyBody: "换一个时间范围或设备，或清除筛选。",
     },
@@ -404,6 +408,9 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       retry: "Retry",
       emptyTitle: "No usage in this range",
       emptyBody: "Pair a collector and sync — data will show up here.",
+      emptyPipelineHint:
+        "To verify the capture pipeline, check each device's latest runs under Sync runs.",
+      emptyPipelineCta: "Open sync runs",
       filterEmptyTitle: "No results for these filters",
       filterEmptyBody: "Try another range or device, or clear the filters.",
     },

@@ -20,7 +20,6 @@ export function titleForPath(pathname: string, copy: NavCopy): string {
   if (pathname.startsWith("/sync-runs")) return copy.syncRuns;
   if (pathname.startsWith("/wrapped")) return copy.wrapped;
   if (pathname.startsWith("/achievements")) return copy.achievements;
-  if (pathname.startsWith("/service-status")) return copy.status;
   if (pathname.startsWith("/settings")) return copy.settings;
   if (pathname.startsWith("/device")) return copy.device;
 

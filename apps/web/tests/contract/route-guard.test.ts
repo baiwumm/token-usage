@@ -105,13 +105,7 @@ describe("proxy config", () => {
 		const matcher = config.matcher;
 
 		expect(matcher).toContain("/");
-		for (const page of [
-			"/settings",
-			"/wrapped",
-			"/achievements",
-			"/service-status",
-			"/device",
-		]) {
+		for (const page of ["/settings", "/wrapped", "/achievements", "/device"]) {
 			expect(matcher).toContain(`${page}/:path*`);
 		}
 		expect(matcher).toContain("/api/functions/:path*");
@@ -139,7 +133,6 @@ describe("page guard redirects", () => {
 		"/settings",
 		"/wrapped",
 		"/achievements",
-		"/service-status",
 		"/device",
 	])("sends unauthenticated %s to /login carrying ?next=", async (path) => {
 		const target = redirectTarget(await proxy(guardRequest(path)));

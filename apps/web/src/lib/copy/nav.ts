@@ -9,7 +9,6 @@ export interface NavCopy {
   settings: string;
   wrapped: string;
   achievements: string;
-  status: string;
   device: string;
   newBadge: string;
   pairDevice: string;
@@ -47,7 +46,6 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     settings: "账户设置",
     wrapped: "年度回顾",
     achievements: "成就",
-    status: "服务状态",
     device: "设备配对",
     newBadge: "新",
     pairDevice: "配对设备",
@@ -83,7 +81,6 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     settings: "Account settings",
     wrapped: "Wrapped",
     achievements: "Achievements",
-    status: "Service status",
     device: "Device pairing",
     newBadge: "New",
     pairDevice: "Pair device",
@@ -123,6 +120,8 @@ export const NAV_ITEMS = [
   // stayed on permanently. Drop it rather than keep a stale marker.
   { href: "/wrapped", key: "wrapped" },
   { href: "/achievements", key: "achievements" },
-  { href: "/service-status", key: "status" },
+  // /service-status (nav key "status") was removed on 2026-11-07: the probes
+  // re-proved what reaching the page already proved. The instance self-check
+  // lives on as the 实例诊断 card in Settings · 设备.
   { href: "/settings", key: "settings" },
 ] as const;

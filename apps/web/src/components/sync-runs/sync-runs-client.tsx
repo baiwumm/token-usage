@@ -14,6 +14,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  DeviceFreshnessCard,
+  DeviceFreshnessCardSkeleton,
+} from "./device-freshness-card";
+import { buildDeviceFreshness } from "./device-freshness";
 import { SyncRunsFilterBar } from "./filter-bar";
 import {
   mergeSyncRunFilters,
@@ -33,6 +38,7 @@ import {
   DashboardApiError,
   fetchAccountDevices,
   fetchSyncRuns,
+  type SyncRunItem,
   type SyncRunsPayload,
 } from "@/lib/dashboard/api";
 import {
@@ -59,6 +65,13 @@ export function SyncRunsClient() {
   const [state, setState] = useState<Loadable<SyncRunsPayload>>(loadable);
   const [todayState, setTodayState] =
     useState<Loadable<SyncRunsPayload>>(loadable);
+  // Raw runs behind the freshness strip: a 7-day window regardless of the
+  // page filters (the strip is a status view, not a filtered one). Null until
+  // the first load lands or when the status-only fetch failed — the strip
+  // then stays hidden instead of failing the page.
+  const [freshnessRuns, setFreshnessRuns] = useState<SyncRunItem[] | null>(
+    null,
+  );
   const [lastRunAt, setLastRunAt] = useState<string | null>(null);
   const [knownDevices, setKnownDevices] = useState<Record<string, string>>({});
   const [accountDevices, setAccountDevices] = useState<
@@ -92,31 +105,40 @@ export function SyncRunsClient() {
       );
 
       try {
-        // The today block and the device facet ride along on every load —
-        // small payloads, and keeping them parallel keeps the code flat.
-        const [payload, todayPayload, devices] = await Promise.all([
-          fetchSyncRuns({
-            fromIso: range.fromIso,
-            toIso: range.toIso,
-            deviceId: filters.deviceId || null,
-            trigger: filters.trigger || null,
-            result: filters.result || null,
-            limit: filters.pageSize,
-            offset: filters.offset,
-          }),
-          fetchSyncRuns({
-            fromIso: todayRange.fromIso,
-            toIso: todayRange.toIso,
-          }),
-          fetchAccountDevices(token, {
-            from: range.fromDay,
-            to: range.toDay,
-          }),
-        ]);
+        // The today block, the device facet and the freshness window ride
+        // along on every load — small payloads, and keeping them parallel
+        // keeps the code flat. The freshness fetch is status-only: a failure
+        // degrades to a hidden strip instead of failing the page.
+        const [payload, todayPayload, devices, freshnessPayload] =
+          await Promise.all([
+            fetchSyncRuns({
+              fromIso: range.fromIso,
+              toIso: range.toIso,
+              deviceId: filters.deviceId || null,
+              trigger: filters.trigger || null,
+              result: filters.result || null,
+              limit: filters.pageSize,
+              offset: filters.offset,
+            }),
+            fetchSyncRuns({
+              fromIso: todayRange.fromIso,
+              toIso: todayRange.toIso,
+            }),
+            fetchAccountDevices(token, {
+              from: range.fromDay,
+              to: range.toDay,
+            }),
+            fetchSyncRuns({
+              fromIso: rangeForPreset("7d", timezone).fromIso,
+              toIso: todayRange.toIso,
+              limit: 200,
+            }).catch(() => null),
+          ]);
 
         if (requestId.current !== id) return;
         setState({ status: "ready", data: payload });
         setTodayState({ status: "ready", data: todayPayload });
+        setFreshnessRuns(freshnessPayload?.runs ?? null);
         setRefreshing(false);
         setLastUpdatedAt(Date.now());
         setAccountDevices(
@@ -259,6 +281,14 @@ export function SyncRunsClient() {
 
   const payload = state.data;
 
+  const freshnessRows = useMemo(
+    () =>
+      freshnessRuns
+        ? buildDeviceFreshness(freshnessRuns, accountDevices)
+        : null,
+    [freshnessRuns, accountDevices],
+  );
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 md:px-8">
       <SyncRunsFilterBar
@@ -279,7 +309,12 @@ export function SyncRunsClient() {
 
       <div className="flex flex-col gap-5">
         {state.status === "loading" && !payload ? (
-          <SummaryCardsSkeleton copy={copy} />
+          <>
+            {/* First load: the strip's skeleton rides below the summary
+                skeletons so the freshness card doesn't pop in afterwards. */}
+            <SummaryCardsSkeleton copy={copy} />
+            <DeviceFreshnessCardSkeleton copy={copy} />
+          </>
         ) : null}
 
         {todayState.data ? (
@@ -289,6 +324,8 @@ export function SyncRunsClient() {
             todayRuns={todayState.data}
           />
         ) : null}
+
+        <DeviceFreshnessCard copy={copy} rows={freshnessRows} />
 
         <SyncRunsTable
           copy={copy}

@@ -637,6 +637,10 @@ export function DashboardClient() {
     [router],
   );
 
+  // Empty-state escape hatch: the runs list carries the per-device capture
+  // health (the former standalone status page was folded away, 2026-11-07).
+  const openSyncRuns = useCallback(() => router.push("/sync-runs"), [router]);
+
   // Trend click pins the hourly table to the clicked day.
   const openHourlyForDay = useCallback((day: string) => {
     setHourlyDay(day);
@@ -752,6 +756,7 @@ export function DashboardClient() {
           applyFilters({ deviceId: deviceId ?? "" })
         }
         onHourlyDayChange={setHourlyDay}
+        onOpenSyncRuns={openSyncRuns}
         onRetry={retryAll}
         onTrendDaySelect={openHourlyForDay}
         onTrendModeChange={setTrendMode}

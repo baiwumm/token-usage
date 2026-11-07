@@ -1,6 +1,6 @@
 import type { DashboardCopy } from "@/lib/copy/dashboard";
 
-import { Button, Card } from "@heroui/react";
+import { Button, Card, Typography } from "@heroui/react";
 
 import { SectionError } from "@/components/section-states";
 
@@ -30,16 +30,20 @@ export function DashboardErrorCard({
 
 /**
  * Zero-data state: an empty window vs. a window narrowed to nothing by the
- * filters (the latter offers a way back to the default range).
+ * filters (the latter offers a way back to the default range). The bare empty
+ * window also points at /sync-runs — with the standalone status page gone
+ * (2026-11-07 信息架构调整), the runs list is where capture health lives.
  */
 export function DashboardEmptyCard({
   copy,
   hasFilters,
   onClearFilters,
+  onOpenSyncRuns,
 }: {
   copy: DashboardCopy;
   hasFilters: boolean;
   onClearFilters: () => void;
+  onOpenSyncRuns: () => void;
 }) {
   return (
     <Card className="p-10">
@@ -51,13 +55,28 @@ export function DashboardEmptyCard({
           {hasFilters ? copy.states.filterEmptyBody : copy.states.emptyBody}
         </Card.Description>
       </Card.Header>
-      {hasFilters ? (
-        <Card.Footer>
+      <Card.Footer
+        className={
+          hasFilters
+            ? undefined
+            : "flex flex-wrap items-center justify-between gap-3"
+        }
+      >
+        {hasFilters ? (
           <Button size="sm" variant="outline" onPress={onClearFilters}>
             {copy.clearFilters}
           </Button>
-        </Card.Footer>
-      ) : null}
+        ) : (
+          <>
+            <Typography color="muted" type="body-xs">
+              {copy.states.emptyPipelineHint}
+            </Typography>
+            <Button size="sm" variant="outline" onPress={onOpenSyncRuns}>
+              {copy.states.emptyPipelineCta}
+            </Button>
+          </>
+        )}
+      </Card.Footer>
     </Card>
   );
 }

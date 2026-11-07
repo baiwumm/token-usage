@@ -67,9 +67,9 @@ node scripts/admin/create-user.cjs --email user@example.com --password --passwor
 ## 3. 登录之后
 
 - 未登录访问受保护页一律跳登录页并携带原路径与查询参数（配对链接 `?user_code=` 不丢失），
-  登录后回跳原目标。受保护页共 9 个（`apps/web/src/proxy.ts` 的 `PROTECTED_PAGES`）：
+  登录后回跳原目标。受保护页共 8 个（`apps/web/src/proxy.ts` 的 `PROTECTED_PAGES`）：
   `/`（仪表盘）、`/sessions`、`/projects`、`/sync-runs`、`/settings`、`/wrapped`、
-  `/achievements`、`/service-status`、`/device`（配对页）。
+  `/achievements`、`/device`（配对页）（2026-11-07 移除 `/service-status`）。
   未登录可访问的例外只有 `/login`、`/auth/callback` 与公开页 `/u/<token>`。
 - 设备的接入与吊销在设置页（`/settings`）管理；CLI 配对流程见 `docs/cli-contract.md` §2.1–2.3。
 - 浏览器网络面板里除认证链路（`@supabase/ssr` 的会话 cookie / token 刷新，已裁决豁免）

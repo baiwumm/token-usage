@@ -13,7 +13,6 @@ export type PageSeoKey =
   | "sessions"
   | "projects"
   | "sync-runs"
-  | "service-status"
   | "device"
   | "achievements"
   | "wrapped";
@@ -93,10 +92,6 @@ export const PAGE_SEO_COPY: Record<Locale, Record<PageSeoKey, PageSeoCopy>> = {
       title: NAV_COPY.zh.syncRuns,
       description: "查看采集器每轮运行的记录：触发方式、结果、耗时与上报量。",
     },
-    "service-status": {
-      title: NAV_COPY.zh.status,
-      description: "检查 TokenUsage 仪表盘与 CLI 采集链路的服务状态。",
-    },
     device: {
       title: NAV_COPY.zh.device,
       description: "批准 CLI 设备配对请求，将本机采集器连接到 TokenUsage。",
@@ -140,11 +135,6 @@ export const PAGE_SEO_COPY: Record<Locale, Record<PageSeoKey, PageSeoCopy>> = {
       title: NAV_COPY.en.syncRuns,
       description:
         "Inspect per-sync collector runs: trigger, result, duration and ingested volume.",
-    },
-    "service-status": {
-      title: NAV_COPY.en.status,
-      description:
-        "Check the health of the TokenUsage dashboard and CLI ingestion endpoints.",
     },
     device: {
       title: NAV_COPY.en.device,

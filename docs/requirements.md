@@ -27,7 +27,6 @@
 | 设置 | `/settings` | 账户资料、改密、头像、外观偏好（主题/语言/货币/Token 显示/单位/分组）、徽章配置、设备列表与吊销；退出登录在应用壳用户菜单 |
 | wrapped | `/wrapped` | 年度回顾（功能对齐旧版，视觉简化） |
 | 成就 | `/achievements` | 18 条成就 × 5 档（铜/银/金/钻/王者），账号级、只升不降；分类栅格、进度与达成日期、五档详情时间线、年度回顾独立成就卡（当前已获得成就 + 段位）；读时计算；仅 `token_achievement_seen` 存账号级已读水位（跨设备「新」标记与解锁 toast） |
-| 服务状态 | `/service-status` | 端点健康自查页 |
 | 配对 | `/device` | 页面批准 CLI 配对码 |
 | 公开页 | `/u/<token>` | **公开**（无需登录）：徽章令牌的持有者可见的用量页，规范见 `docs/badge.md` |
 | CLI API | `/api/functions/token-usage-*` | CLI 面 9 端点 + Dashboard 面 10 端点（`docs/cli-contract.md` §2） |

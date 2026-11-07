@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AppearancePanel } from "./appearance-panel";
 import { DataRefreshCard } from "./data-refresh-card";
+import { DiagnosticsCard } from "./diagnostics-card";
 import { PreferencesFooter } from "./preferences-footer";
 import { AvatarCard } from "./avatar-card";
 import { BadgeCard } from "./badge-card";
@@ -343,17 +344,20 @@ export function SettingsClient() {
       ) : null}
 
       {section === "devices" ? (
-        <DevicesTable
-          copy={copy}
-          rows={devices}
-          status={status}
-          onRename={openRename}
-          onRestore={setRestoring}
-          onRetry={() => {
-            if (accessToken) void loadDevices(accessToken);
-          }}
-          onRevoke={openRevoke}
-        />
+        <div className="flex flex-col gap-4">
+          <DevicesTable
+            copy={copy}
+            rows={devices}
+            status={status}
+            onRename={openRename}
+            onRestore={setRestoring}
+            onRetry={() => {
+              if (accessToken) void loadDevices(accessToken);
+            }}
+            onRevoke={openRevoke}
+          />
+          <DiagnosticsCard accessToken={accessToken} />
+        </div>
       ) : null}
 
       <RenameDeviceDialog

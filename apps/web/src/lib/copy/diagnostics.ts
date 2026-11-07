@@ -1,12 +1,13 @@
-// Service-status page copy (端点健康自查页).
+// Instance-diagnostics card copy (Settings · 设备分区「实例诊断」卡). Relocated
+// from the former /service-status page (2026-11-07 信息架构调整).
 
-/** The probes this page runs, in display order. */
-export type StatusCheckName =
+/** The probes this card runs, in display order. */
+export type DiagnosticsCheckName =
   "public-config" | "session" | "dashboard" | "account-devices";
 
-export interface StatusCopy {
-  pageTitle: string;
-  pageSubtitle: string;
+export interface DiagnosticsCopy {
+  cardTitle: string;
+  cardHint: string;
   columnCheck: string;
   columnTarget: string;
   columnStatus: string;
@@ -21,7 +22,7 @@ export interface StatusCopy {
   sessionLabel: string;
   sessionOk: string;
   sessionMissing: string;
-  checks: Record<StatusCheckName, string>;
+  checks: Record<DiagnosticsCheckName, string>;
   detail: {
     tokens: string;
     devices: string;
@@ -29,10 +30,10 @@ export interface StatusCopy {
   latencyHint: string;
 }
 
-export const STATUS_COPY: Record<"zh" | "en", StatusCopy> = {
+export const DIAGNOSTICS_COPY: Record<"zh" | "en", DiagnosticsCopy> = {
   zh: {
-    pageTitle: "服务状态",
-    pageSubtitle: "自查本实例的契约端点与会话链路健康度。",
+    cardTitle: "实例诊断",
+    cardHint: "自查本实例的契约端点与会话链路健康度。",
     columnCheck: "检查项",
     columnTarget: "目标",
     columnStatus: "状态",
@@ -60,8 +61,8 @@ export const STATUS_COPY: Record<"zh" | "en", StatusCopy> = {
     latencyHint: "延迟超过 {ms} ms 通常是 Serverless 冷启动，可以再检查一次。",
   },
   en: {
-    pageTitle: "Service status",
-    pageSubtitle:
+    cardTitle: "Instance diagnostics",
+    cardHint:
       "Health self-check for this instance's contract endpoints and session.",
     columnCheck: "Check",
     columnTarget: "Target",
