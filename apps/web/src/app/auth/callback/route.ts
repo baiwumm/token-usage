@@ -34,6 +34,17 @@ export async function GET(request: Request) {
   const next = resolvePostLoginPath(url.searchParams.get("next"));
   const config = authConfig();
 
+  // Provider-side failures come back as ?error=… (e.g. signup_disabled with
+  // the registration gate closed, access_denied when the user cancels the
+  // consent screen). Forward them as stable `oauth_<code>` login-page codes
+  // so the form can show a specific message; the login form falls back to
+  // its generic copy for unknown ones.
+  const providerError = url.searchParams.get("error");
+
+  if (providerError) {
+    return loginRedirect(url.origin, `oauth_${providerError}`, next);
+  }
+
   if (!code || !config) {
     return loginRedirect(url.origin, "auth_code_missing", next);
   }

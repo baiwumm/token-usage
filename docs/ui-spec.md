@@ -667,7 +667,12 @@ md 起 `top-6 right-6`），移动端与品牌条同带。
 驱动点击按钮的 `isPending` Spinner（图标位换 Spinner）并 `isDisabled` 锁住其余全部
 登录控件（密码/魔法提交、忘记密码、另一枚 OAuth 按钮），handler 首行同步 guard
 `busy || oauthPending` 使双击为 no-op；即便重复发起也只是 Supabase 会话替换，不产生
-重复账号。provider 侧失败的回跳统一落 `/login?error=…` 由既有错误条渲染。按钮显隐
+重复账号。provider 侧失败的回跳统一落 `/login?error=…` 由既有错误条渲染。
+**错误码映射（2026-11-07）**：GoTrue 以 `?error=<code>` 弹回 `/auth/callback`，
+路由转发为稳定码 `oauth_<code>`；登录页对已知码给专属文案——`oauth_signup_disabled`
+（注册闸门关闭，"本站注册已关闭，仅限受邀账号登录"）与 `oauth_access_denied`
+（取消授权），其余（含本地 `auth_code_missing` / `auth_exchange_failed`）回落
+通用文案。按钮显隐
 的口子（按部署者已配置 provider 下发）留作后续增强，当前两枚恒显；部署者未配置
 provider 时点击会经 Supabase 回跳报错，不崩溃。
 

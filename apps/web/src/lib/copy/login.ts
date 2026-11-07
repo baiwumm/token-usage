@@ -28,6 +28,8 @@ export interface LoginCopy {
   errorInvalidCredentials: string;
   errorRateLimited: string;
   errorCallback: string;
+  errorSignupClosed: string;
+  errorAccessDenied: string;
   errorGeneric: string;
 }
 
@@ -63,6 +65,8 @@ export const LOGIN_COPY: Record<"zh" | "en", LoginCopy> = {
     errorInvalidCredentials: "邮箱或密码错误。",
     errorRateLimited: "尝试过于频繁，请稍后再试。",
     errorCallback: "登录链接无效或已过期，请重新登录。",
+    errorSignupClosed: "本站注册已关闭，仅限受邀账号登录。",
+    errorAccessDenied: "你取消了授权，未完成登录。",
     errorGeneric: "登录失败，请稍后再试。",
   },
   en: {
@@ -97,6 +101,9 @@ export const LOGIN_COPY: Record<"zh" | "en", LoginCopy> = {
     errorRateLimited: "Too many attempts — try again shortly.",
     errorCallback:
       "That sign-in link is invalid or expired. Please sign in again.",
+    errorSignupClosed:
+      "Sign-ups are closed on this instance; accounts are created by the admin.",
+    errorAccessDenied: "You cancelled the authorization — not signed in.",
     errorGeneric: "Sign-in failed. Please try again later.",
   },
 };

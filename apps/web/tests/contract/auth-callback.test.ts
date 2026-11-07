@@ -138,6 +138,27 @@ describe("GET /auth/callback", () => {
 		expect(target.searchParams.get("next")).toBe("/");
 	});
 
+	it("forwards provider errors as stable oauth_* login codes", async () => {
+		// GoTrue bounces OAuth failures (signup_disabled with the registration
+		// gate closed, access_denied on a cancelled consent screen) to this
+		// route with ?error=…; the login page keys its specific copy off the
+		// forwarded oauth_<code>.
+		for (const providerError of ["signup_disabled", "access_denied"]) {
+			const response = await callbackGet(
+				callbackRequest(
+					`?error=${providerError}&error_description=GoTrue%20says%20no`,
+					[],
+				),
+			);
+
+			expect(response.status).toBe(307);
+			const target = new URL(response.headers.get("location") || "");
+
+			expect(target.pathname).toBe("/login");
+			expect(target.searchParams.get("error")).toBe(`oauth_${providerError}`);
+		}
+	});
+
 	it("bounces an unknown code to /login", async () => {
 		const cookies = await startMagicLinkFlow(USER_EMAIL);
 		const response = await callbackGet(

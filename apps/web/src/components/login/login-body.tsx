@@ -28,7 +28,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { authBrowserClient } from "@/lib/auth/browser";
-import { LOGIN_COPY } from "@/lib/copy/login";
+import { LOGIN_COPY, type LoginCopy } from "@/lib/copy/login";
 import { useLocale, type Locale } from "@/lib/copy/locale";
 
 type Mode = "password" | "magic";
@@ -45,6 +45,20 @@ function mapAuthError(status: number, locale: Locale): string {
   }
 
   return copy.errorGeneric;
+}
+
+// /auth/callback forwards GoTrue provider errors as `oauth_<code>`; known
+// ones get specific copy, everything else (including the local
+// auth_code_missing / auth_exchange_failed) falls back to the generic line.
+function mapCallbackError(code: string, copy: LoginCopy): string {
+  if (code === "oauth_signup_disabled") {
+    return copy.errorSignupClosed;
+  }
+  if (code === "oauth_access_denied") {
+    return copy.errorAccessDenied;
+  }
+
+  return copy.errorCallback;
 }
 
 export interface LoginBodyProps {
@@ -69,7 +83,7 @@ export function LoginBody({ next, callbackError }: LoginBodyProps) {
     null,
   );
   const [error, setError] = useState<string | null>(
-    callbackError ? copy.errorCallback : null,
+    callbackError ? mapCallbackError(callbackError, copy) : null,
   );
   const [sentKind, setSentKind] = useState<SentKind>(null);
 
