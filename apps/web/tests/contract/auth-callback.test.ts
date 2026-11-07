@@ -125,7 +125,7 @@ describe("GET /auth/callback", () => {
 		);
 	});
 
-	it("bounces a missing code to /login", async () => {
+	it("bounces a missing code to a clean /login (default destination omits ?next=)", async () => {
 		const response = await callbackGet(
 			callbackRequest("", []),
 		);
@@ -135,7 +135,7 @@ describe("GET /auth/callback", () => {
 
 		expect(target.pathname).toBe("/login");
 		expect(target.searchParams.get("error")).toBe("auth_code_missing");
-		expect(target.searchParams.get("next")).toBe("/");
+		expect(target.searchParams.get("next")).toBeNull();
 	});
 
 	it("forwards provider errors as stable oauth_* login codes", async () => {

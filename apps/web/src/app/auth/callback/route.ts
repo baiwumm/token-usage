@@ -4,14 +4,19 @@
 // written when the flow started in the browser. On success the session
 // cookies are set on the redirect response and the user lands on ?next= (or
 // the default destination). Failures bounce back to /login with a stable
-// error code the login form renders.
+// error code the login form renders; the default destination omits the
+// redundant ?next= there (urlWithNext).
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
 import { authConfig } from "@/lib/auth/config";
 import { requestCookies } from "@/lib/auth/cookies";
-import { LOGIN_PATH, resolvePostLoginPath } from "@/lib/auth/next-path";
+import {
+  LOGIN_PATH,
+  resolvePostLoginPath,
+  urlWithNext,
+} from "@/lib/auth/next-path";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +25,9 @@ export function loginRedirect(
   errorCode: string,
   next: string,
 ): NextResponse {
-  const url = new URL(LOGIN_PATH, origin);
+  const url = new URL(urlWithNext(LOGIN_PATH, next), origin);
 
   url.searchParams.set("error", errorCode);
-  url.searchParams.set("next", next);
 
   return NextResponse.redirect(url);
 }

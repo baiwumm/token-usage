@@ -663,7 +663,8 @@ top/height 镜像品牌行的 `pt-8`+自然行高 与 `lg:py-10`+`h-9`，两侧�
 
 **OAuth 接入（2026-11-07，密钥配置完成后由占位替换为真实调用）**：GitHub / Google
 按钮分别走 `signInWithOAuth({ provider, options: { redirectTo } })`，`redirectTo`
-= 本站 `/auth/callback?next=<消毒后的目标>`（与魔法链接同一回调路由，PKCE 交换）。
+= 本站 `/auth/callback?next=<消毒后的目标>`（与魔法链接同一回调路由，PKCE 交换；
+目标为缺省落点 `/` 时省略冗余 `?next=`，与 `/login` 跳转同规则——`urlWithNext`）。
 **状态与防重复**（2026-11-07 操作者要求）：`oauthPending`（github / google / null）
 驱动点击按钮的 `isPending` Spinner（图标位换 Spinner）并 `isDisabled` 锁住其余全部
 登录控件（密码/魔法提交、忘记密码、另一枚 OAuth 按钮），handler 首行同步 guard

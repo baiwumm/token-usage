@@ -34,13 +34,19 @@ export function resolvePostLoginPath(raw: unknown): string {
 }
 
 /**
- * Builds the /login bounce URL for a post-login target. The default
- * destination omits ?next=: its absence already resolves back to "/" (see
- * resolvePostLoginPath), so a bare-domain bounce keeps a clean /login while
- * deep links still carry their path + query through the parameter.
+ * Appends ?next=<target> to a base path unless the target already is the
+ * default post-login destination — there the parameter is redundant (its
+ * absence resolves back to "/" on both /login and /auth/callback, see
+ * resolvePostLoginPath) and the clean URL reads better. Login bounces and
+ * the auth-callback builders share this one rule.
  */
-export function loginPathFor(target: string): string {
-  if (target === DEFAULT_POST_LOGIN_PATH) return LOGIN_PATH;
+export function urlWithNext(base: string, target: string): string {
+  if (target === DEFAULT_POST_LOGIN_PATH) return base;
 
-  return `${LOGIN_PATH}?next=${encodeURIComponent(target)}`;
+  return `${base}?next=${encodeURIComponent(target)}`;
+}
+
+/** /login bounce URL for a post-login target (bare-domain hits stay clean). */
+export function loginPathFor(target: string): string {
+  return urlWithNext(LOGIN_PATH, target);
 }

@@ -28,6 +28,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { authBrowserClient } from "@/lib/auth/browser";
+import { urlWithNext } from "@/lib/auth/next-path";
 import { LOGIN_COPY, type LoginCopy } from "@/lib/copy/login";
 import { useLocale, type Locale } from "@/lib/copy/locale";
 
@@ -131,7 +132,7 @@ export function LoginBody({ next, callbackError }: LoginBodyProps) {
     const { error: authError } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        emailRedirectTo: `${window.location.origin}${urlWithNext("/auth/callback", next)}`,
       },
     });
 
@@ -157,7 +158,7 @@ export function LoginBody({ next, callbackError }: LoginBodyProps) {
     const { error: authError } = await supabase.auth.resetPasswordForEmail(
       email,
       {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings")}`,
+        redirectTo: `${window.location.origin}${urlWithNext("/auth/callback", "/settings")}`,
       },
     );
 
@@ -190,7 +191,7 @@ export function LoginBody({ next, callbackError }: LoginBodyProps) {
     const { data, error: authError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: `${window.location.origin}${urlWithNext("/auth/callback", next)}`,
         skipBrowserRedirect: true,
       },
     });
