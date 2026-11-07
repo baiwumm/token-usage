@@ -543,9 +543,7 @@
 文案与上传函数由调用方传入）、预算卡（月度 USD 上限，`NumberField`：最小 0、最大
 1,000,000、步长 1、整数美元，保存写本机 `token-usage.budget`，0 关闭）、密码卡
 （设置/更新密码，≥8 位；
-魔法链接账号在此开启密码登录）。登录页为 HeroUI `Tabs`（密码登录 `Lock` / 魔法链接
-`Envelope`），密码 tab 提供「忘记密码」邮箱重置入口（resetPasswordForEmail，回跳设置页
-设新密码）。
+魔法链接账号在此开启密码登录）。登录页规范见下节「登录页（`/login`）」。
 偏好分区由「外观」与「数据刷新」两张 `Card` 组成；外观卡逐行 label + control +
 `Description`（语言/货币/日期下拉 `variant="secondary"`，货币选项为本地化名称 + 窄符号，如
 `人民币(￥)`）；分区内 `ToggleButtonGroup` 统一 `size="sm"`；`Select` 无 size 属性，
@@ -619,6 +617,62 @@ Tab 切换不新增 history 记录）。**密码重置邮件回跳**：登录页
 `resetPasswordForEmail` 回跳 `/auth/callback?next=/settings`，最终落在 `/settings`（不带 `?section=`）；
 按上述缺省回落 `account`，用户直接在账户分区的密码卡设新密码——该回跳不得被地址栏残留的
 `?section=` 截到别的分区，也不得丢失原路径与查询参数（呼应路由守卫约定）。
+
+### 登录页（`/login`）
+
+> 2026-11-07 重构（操作者拍板）：从「裸背景 + 居中小卡」升级为双栏品牌版式；
+> 全部 auth 逻辑冻结不变（密码 / 魔法链接 / 忘记密码、`?next=` 消毒、callback
+> 错误码、已发送态），本轮只动版式与品牌层。
+
+**定位**：公开页（不套 AppShell）、`noindex`、主题跟随系统（无明暗切换入口）、
+文案随语言（`lib/copy/login.ts`）。组件文件：`components/login/` 下
+`login-client.tsx`（编排：Suspense + `useSearchParams` + 全部 auth 状态与回调）、
+`login-body.tsx`（右栏表单主体）、`login-brand-panel.tsx`（品牌区 + 纹样 + 移动端
+品牌条）。
+
+**布局（桌面 ≥ lg）**：`min-h-svh` 双栏 grid——左栏约 45% 为品牌视觉区，右栏表单
+区垂直居中（HeroUI `Card` 卡片，内容 `max-w-md`，卡内 `p-6 sm:p-8`）。**< lg 单栏**：
+顶部品牌条（Logo + 词标）+ 表单卡。**右上角快捷区**（2026-11-07 二轮）：复用
+`components/top-actions.tsx` 的四枚顶栏图标按钮（GitHub 仓库 / 语言 / 主题色 /
+明暗模式；**不含**「配对设备」主按钮），绝对定位页右上角（`top-4 right-4`，
+md 起 `top-6 right-6`），移动端与品牌条同带。
+
+**品牌区（左栏）**，自上而下：
+
+- Lockup：`/logo.svg` / `/logo-dark.svg` 明暗双份 + 「Token Usage」词标 + uppercase
+  字距 tagline（同侧栏 `brand.tsx` 语言）；**静态展示不链接**（链 `/` 会触发
+  `/login → / → /login` 循环）。
+- 主标语 + 副标语（双语，操作者可改文案）。
+- 「近一年热力图」抽象纹样：53×7 种子伪随机矩阵（确定性种子，无 `Math.random`，
+  避免 hydration 漂移），单元格色 `var(--heatmap-1..4)` 内联（同仪表盘
+  `heatmap-geometry.ts` 用法），整体透明度压低；容器淡出遮罩。呼吸动效纯 CSS 且
+  `prefers-reduced-motion` 下关停。
+- 底部页脚一行 muted 小字（`text-[10px]`）：`Token Usage · token-usage.cc`。
+- 环境：`--accent` radial 光晕自左下极淡渗出（~10% 内混透明），全页 `pointer-events-none`，
+  明暗主题随 token 自适应。
+
+**表单区（右栏，HeroUI `Card` 复合结构，`p-6 sm:p-8`，2026-11-07 二轮由去卡片化
+改为卡片）**：`Card.Header`（`Card.Title` + `Card.Description`）→ `Card.Content`
+内 HeroUI `Tabs`（密码登录 `Lock` / 魔法链接 `Envelope`，沿用既有 Tabs 结构）→
+表单（`TextField` + `InputGroup variant="secondary"`，前缀图标：邮箱 `Envelope` /
+密码 `Lock`；密码 tab 提供「忘记密码」邮箱重置入口，resetPasswordForEmail 回跳
+设置页设新密码）→ **OAuth 区**：`Separator` 细线 + 「或使用以下方式」divider 文案
++ GitHub / Google 两枚 `Button variant="secondary"` **各占一行全宽**（内联 SVG
+图标，GitHub 用 `currentColor` 跟随主题）。
+
+**OAuth 接入（2026-11-07，密钥配置完成后由占位替换为真实调用）**：GitHub / Google
+按钮分别走 `signInWithOAuth({ provider, options: { redirectTo } })`，`redirectTo`
+= 本站 `/auth/callback?next=<消毒后的目标>`（与魔法链接同一回调路由，PKCE 交换）。
+**状态与防重复**（2026-11-07 操作者要求）：`oauthPending`（github / google / null）
+驱动点击按钮的 `isPending` Spinner（图标位换 Spinner）并 `isDisabled` 锁住其余全部
+登录控件（密码/魔法提交、忘记密码、另一枚 OAuth 按钮），handler 首行同步 guard
+`busy || oauthPending` 使双击为 no-op；即便重复发起也只是 Supabase 会话替换，不产生
+重复账号。provider 侧失败的回跳统一落 `/login?error=…` 由既有错误条渲染。按钮显隐
+的口子（按部署者已配置 provider 下发）留作后续增强，当前两枚恒显；部署者未配置
+provider 时点击会经 Supabase 回跳报错，不崩溃。
+
+**验收**：桌面与 375px 无页面级横向滚动；明暗双套成立；`prefers-reduced-motion`
+下无入场/呼吸动效；OAuth 按钮断言零网络请求；`pnpm verify` 全绿。
 
 ### 公开页（`/u/<token>`，徽章点击落地）
 

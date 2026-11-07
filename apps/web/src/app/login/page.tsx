@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { LoginForm } from "@/components/login/login-form";
+import { LoginClient } from "@/components/login/login-client";
 import { createPageMetadata, resolveRequestLocale } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -14,5 +14,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function LoginPage() {
-  return <LoginForm />;
+  return <LoginClient />;
 }

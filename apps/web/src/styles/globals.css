@@ -163,6 +163,39 @@
 	animation: u-rise 0.35s ease-out both;
 }
 
+/*
+ * Login page (/login) motion — docs/ui-spec.md 登录页. One-shot form
+ * entrance and the brand motif's slow breathe, both decorative; the global
+ * reduced-motion fallback above lands them instantly.
+ */
+@keyframes login-rise {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes login-breathe {
+	from {
+		opacity: 0.28;
+	}
+	to {
+		opacity: 0.42;
+	}
+}
+
+.login-enter {
+	animation: login-rise 0.4s ease-out both;
+}
+
+.login-breathe {
+	animation: login-breathe 7s ease-in-out infinite alternate;
+}
+
 /* Hover lift / focus ring live on the HeroUI Button itself now (Tailwind
    group-hover utilities + the component's own focus styles). Only the
    one-shot entrance animations need custom keyframes here. */

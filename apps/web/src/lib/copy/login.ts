@@ -1,8 +1,14 @@
 // Login page copy (email+password / magic link, callback error rendering).
 
 export interface LoginCopy {
+  brandTagline: string;
+  sloganMain: string;
+  sloganSub: string;
+  formTitle: string;
   pageTitle: string;
   pageSubtitle: string;
+  oauthDivider: string;
+  footerNote: string;
   passwordMode: string;
   magicMode: string;
   emailLabel: string;
@@ -27,8 +33,14 @@ export interface LoginCopy {
 
 export const LOGIN_COPY: Record<"zh" | "en", LoginCopy> = {
   zh: {
+    brandTagline: "自托管 AI 用量追踪",
+    sloganMain: "所有采集端的 AI 用量，一块仪表盘看完。",
+    sloganSub: "自托管 · 本地采集 · 数据在你手里",
+    formTitle: "登录到你的仪表盘",
     pageTitle: "登录",
     pageSubtitle: "使用管理员为你开通的账号登录 Token Usage。",
+    oauthDivider: "或使用以下方式",
+    footerNote: "Token Usage · token-usage.cc",
     passwordMode: "密码登录",
     magicMode: "魔法链接",
     emailLabel: "邮箱",
@@ -54,8 +66,14 @@ export const LOGIN_COPY: Record<"zh" | "en", LoginCopy> = {
     errorGeneric: "登录失败，请稍后再试。",
   },
   en: {
+    brandTagline: "Self-hosted AI token tracking",
+    sloganMain: "All your AI usage, one dashboard.",
+    sloganSub: "Self-hosted · Captured locally · Your data stays yours.",
+    formTitle: "Sign in to your dashboard",
     pageTitle: "Sign in",
     pageSubtitle: "Sign in to Token Usage with the account your admin created.",
+    oauthDivider: "Or continue with",
+    footerNote: "Token Usage · token-usage.cc",
     passwordMode: "Password",
     magicMode: "Magic link",
     emailLabel: "Email",

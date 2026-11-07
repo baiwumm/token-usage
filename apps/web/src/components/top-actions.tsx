@@ -105,7 +105,7 @@ function ControlTooltip({
  * TooltipTrigger's focusable context), so this is a Button that opens the repo
  * in a new tab instead.
  */
-function GitHubLink() {
+export function GitHubLink() {
   return (
     <ControlTooltip label="GitHub">
       <Button
