@@ -868,5 +868,13 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
     使选中导航项 `bg-surface` 胶囊与桌面侧边栏一样可见。
   - 语言偏好写 `token-usage.locale` cookie（`system | zh | en`，缺省 `system`）；根布局
     据此解析并设置 `<html lang>` 与首帧字典，切换即时生效、刷新不闪烁。
+- 页面容器宽度三档（2026-11-08 固化为明文）：`AppShell` 只提供壳，内容宽度由各页
+  `<main>` 自持，新页面按内容类型归档，不新增第四档——
+  - **数据面 `max-w-6xl`**（表格 / 多列栅格 / 图表，越宽越利扫描）：仪表盘 `/`、Sessions、
+    项目、采集记录、成就；
+  - **卡片·叙事面 `max-w-5xl`**（表单卡 / 故事卡，行长短，拉宽阅读性反降）：设置、
+    年度回顾、公开页 `/u/<token>`；
+  - **聚焦流**（单列居中）：登录表单 `max-w-md`、配对审批 `max-w-xl`。
+  壳与侧栏宽度恒定，切页时内容宽度按档位跳变属内容驱动的有意区分，不是待修的不一致。
 - 审查：UI 代码提交前用 web-design-guidelines Skill 对照最新 Web Interface Guidelines，
   输出 `file:line` 问题清单并修复。
