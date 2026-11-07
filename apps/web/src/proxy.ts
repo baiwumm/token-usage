@@ -11,14 +11,16 @@
 // 2. Page guard (M2): protected pages redirect unauthenticated browsers to
 //    /login, carrying the original path + query in ?next= (the pairing link's
 //    ?user_code= must survive the hop — docs/requirements.md 路由约定,
-//    2026-10-24 二次修订). The dashboard at / requires login; only /login,
-//    /auth/callback and the CLI API are public and outside the guard.
+//    2026-10-24 二次修订); a bare hit on the default destination / omits the
+//    redundant parameter (its absence resolves to the same path). The
+//    dashboard at / requires login; only /login, /auth/callback and the CLI
+//    API are public and outside the guard.
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { authConfig } from "@/lib/auth/config";
-import { LOGIN_PATH } from "@/lib/auth/next-path";
+import { loginPathFor } from "@/lib/auth/next-path";
 import { CORS_HEADERS } from "@/lib/api/http";
 
 const CONTRACT_API_PREFIX = "/api/functions/";
@@ -106,11 +108,12 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const login = request.nextUrl.clone();
-
-    login.pathname = LOGIN_PATH;
-    login.search = "";
-    login.searchParams.set("next", pathname + request.nextUrl.search);
+    // Bare-domain hits on the default destination bounce to a clean /login;
+    // deep links keep their path + query riding ?next= (loginPathFor).
+    const login = new URL(
+      loginPathFor(pathname + request.nextUrl.search),
+      request.nextUrl.origin,
+    );
 
     return NextResponse.redirect(login);
   }

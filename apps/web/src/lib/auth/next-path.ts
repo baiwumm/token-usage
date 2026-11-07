@@ -32,3 +32,15 @@ export function sanitizeNextPath(raw: unknown): string | null {
 export function resolvePostLoginPath(raw: unknown): string {
   return sanitizeNextPath(raw) ?? DEFAULT_POST_LOGIN_PATH;
 }
+
+/**
+ * Builds the /login bounce URL for a post-login target. The default
+ * destination omits ?next=: its absence already resolves back to "/" (see
+ * resolvePostLoginPath), so a bare-domain bounce keeps a clean /login while
+ * deep links still carry their path + query through the parameter.
+ */
+export function loginPathFor(target: string): string {
+  if (target === DEFAULT_POST_LOGIN_PATH) return LOGIN_PATH;
+
+  return `${LOGIN_PATH}?next=${encodeURIComponent(target)}`;
+}

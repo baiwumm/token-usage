@@ -3,7 +3,8 @@
 // The proxy contract gate must stay byte-identical to M1 (OPTIONS 204 / 405
 // envelope / GET+POST pass-through, session never consulted); the page guard
 // redirects unauthenticated browsers to /login carrying the original path +
-// query in ?next= (the pairing link's ?user_code= must survive).
+// query in ?next= (the pairing link's ?user_code= must survive), except the
+// bare-domain hit on / which omits the redundant parameter.
 
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest } from "next/server";
@@ -127,14 +128,20 @@ describe("public pages", () => {
 });
 
 describe("page guard redirects", () => {
+	it("sends unauthenticated / to a clean /login (bare-domain bounce omits ?next=)", async () => {
+		const target = redirectTarget(await proxy(guardRequest("/")));
+
+		expect(target.pathname).toBe("/login");
+		expect(target.search).toBe("");
+	});
+
 	it.each([
-		"/",
 		"/settings",
 		"/wrapped",
 		"/achievements",
 		"/service-status",
 		"/device",
-	])("sends unauthenticated %s to /login", async (path) => {
+	])("sends unauthenticated %s to /login carrying ?next=", async (path) => {
 		const target = redirectTarget(await proxy(guardRequest(path)));
 
 		expect(target.pathname).toBe("/login");

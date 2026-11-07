@@ -1,15 +1,16 @@
 "use client";
 
 // Shared auth bootstrap for the protected client pages: resolve the browser
-// session once, bounce to /login (carrying ?next=) when it is missing, and
-// hand the access token to the page. Data loading chains off the returned
-// token via an effect — the same pattern the dashboard uses.
+// session once, bounce to /login (deep links via ?next=, the default /
+// destination without it) when it is missing, and hand the access token to
+// the page. Data loading chains off the returned token via an effect — the
+// same pattern the dashboard uses.
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { authBrowserClient } from "./browser";
-import { LOGIN_PATH } from "./next-path";
+import { loginPathFor } from "./next-path";
 
 /**
  * @param target the page path restored after the login hop (e.g. "/sessions")
@@ -31,7 +32,7 @@ export function useSessionBootstrap(
   const [userId, setUserId] = useState<string | null>(null);
 
   const redirectToLogin = useCallback(() => {
-    router.replace(`${LOGIN_PATH}?next=${encodeURIComponent(target)}`);
+    router.replace(loginPathFor(target));
   }, [router, target]);
 
   useEffect(() => {
