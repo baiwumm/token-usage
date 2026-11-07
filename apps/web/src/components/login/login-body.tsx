@@ -34,6 +34,11 @@ import { useLocale, type Locale } from "@/lib/copy/locale";
 type Mode = "password" | "magic";
 type SentKind = null | "magic" | "reset";
 
+// Paint delay between the OAuth state landing and the browser leaving for
+// the provider: short enough to feel instant, long enough that the spinner
+// and the locked siblings are actually seen on fast connections.
+const OAUTH_REDIRECT_DELAY_MS = 150;
+
 function mapAuthError(status: number, locale: Locale): string {
   const copy = LOGIN_COPY[locale];
 
@@ -166,13 +171,15 @@ export function LoginBody({ next, callbackError }: LoginBodyProps) {
   }
 
   // OAuth sign-in (GitHub / Google): PKCE flow through the shared
-  // /auth/callback route — signInWithOAuth redirects the browser to the
-  // provider, the callback exchanges the code, ?next= survives the hop.
-  // oauthPending (not busy) drives the state here so only the clicked button
-  // spins; the guard makes a double click a no-op, and even a second real
-  // launch would just replace the session, never create a duplicate one.
-  // The promise only resolves without redirecting on a local config error;
-  // provider-side failures come back through the callback as ?error=.
+  // /auth/callback route — signInWithOAuth builds the authorize URL and we
+  // navigate manually after a short paint delay, because the auto-redirect
+  // (window.location.href inside the same microtask chain as the state
+  // update) wins the paint race on fast connections and the pending state
+  // never becomes visible. oauthPending (not busy) drives the state here so
+  // only the clicked button spins; the guard makes a double click a no-op,
+  // and even a second real launch would just replace the session, never
+  // create a duplicate one. ?next= survives the hop; provider-side failures
+  // come back through the callback as ?error=.
   async function submitOAuth(provider: "github" | "google") {
     const supabase = authBrowserClient();
 
@@ -180,17 +187,31 @@ export function LoginBody({ next, callbackError }: LoginBodyProps) {
     setOauthPending(provider);
     setError(null);
 
-    const { error: authError } = await supabase.auth.signInWithOAuth({
+    const { data, error: authError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        skipBrowserRedirect: true,
       },
     });
 
-    setOauthPending(null);
-    if (authError) {
-      setError(mapAuthError(authError.status ?? 0, locale));
+    if (authError || !data.url) {
+      setOauthPending(null);
+      if (authError) {
+        setError(mapAuthError(authError.status ?? 0, locale));
+      } else {
+        setError(copy.errorGeneric);
+      }
+
+      return;
     }
+
+    // One paint of the pending state before leaving; on slow networks the
+    // spinner simply stays until the provider page takes over.
+    await new Promise((resolve) =>
+      setTimeout(resolve, OAUTH_REDIRECT_DELAY_MS),
+    );
+    window.location.href = data.url;
   }
 
   const emailField = (

@@ -668,7 +668,11 @@ top/height 镜像品牌行的 `pt-8`+自然行高 与 `lg:py-10`+`h-9`，两侧�
 驱动点击按钮的 `isPending` Spinner（图标位换 Spinner）并 `isDisabled` 锁住其余全部
 登录控件（密码/魔法提交、忘记密码、另一枚 OAuth 按钮），handler 首行同步 guard
 `busy || oauthPending` 使双击为 no-op；即便重复发起也只是 Supabase 会话替换，不产生
-重复账号。provider 侧失败的回跳统一落 `/login?error=…` 由既有错误条渲染。
+重复账号。**跳转由 `skipBrowserRedirect: true` + 手动 `location.href` 完成**（2026-11-07
+操作者实测反馈"状态从不出现"）：自动跳转与状态更新同在一条微任务链，快网络下
+导航抢在绘制前完成、pending 态永不可见；改为拿到授权 URL 后先画 150ms 再离页，
+慢网络下 Spinner 则持续到 provider 页接管。provider 侧失败的回跳统一落
+`/login?error=…` 由既有错误条渲染。
 **错误码映射（2026-11-07）**：GoTrue 以 `?error=<code>` 弹回 `/auth/callback`，
 路由转发为稳定码 `oauth_<code>`；登录页对已知码给专属文案——`oauth_signup_disabled`
 （注册闸门关闭，"本站注册已关闭，仅限受邀账号登录"）与 `oauth_access_denied`
