@@ -10,7 +10,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { proxy, config } from "@/proxy";
+import { PROTECTED_PAGES, config, proxy } from "@/proxy";
 
 import { FakeSupabase } from "../helpers/fake-supabase";
 import { USER_EMAIL, USER_ID, initContractEnv, seedScenario } from "./helpers";
@@ -101,14 +101,21 @@ function redirectTarget(response: Response): URL {
 }
 
 describe("proxy config", () => {
-	it("guards every protected page in the matcher (dashboard IS /)", () => {
-		const matcher = config.matcher;
+	it("matcher is in exact parity with PROTECTED_PAGES (two-way)", () => {
+		// Next's proxy config analysis requires a static matcher literal, so
+		// parity with the guard list cannot be derived in code — this test is
+		// the drift guard: adding a page to PROTECTED_PAGES without extending
+		// the matcher (or vice versa) fails here.
+		const pagePatterns = config.matcher.filter(
+			(pattern) => pattern !== "/api/functions/:path*",
+		);
 
-		expect(matcher).toContain("/");
-		for (const page of ["/settings", "/wrapped", "/achievements", "/device"]) {
-			expect(matcher).toContain(`${page}/:path*`);
-		}
-		expect(matcher).toContain("/api/functions/:path*");
+		expect(pagePatterns).toEqual([
+			"/",
+			...PROTECTED_PAGES.filter((page) => page !== "/").map(
+				(page) => `${page}/:path*`,
+			),
+		]);
 	});
 });
 

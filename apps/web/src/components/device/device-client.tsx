@@ -112,7 +112,13 @@ function DeviceClientInner() {
     setErrorDetail(null);
 
     try {
-      await grantDeviceFlow(session.access_token, { userCode: code });
+      // A hung request must not pin the page on the approving spinner forever:
+      // 15 s is well past any healthy round-trip to the grant endpoint, and
+      // the timeout surfaces the retryable error state instead.
+      await grantDeviceFlow(session.access_token, {
+        userCode: code,
+        timeoutMs: 15_000,
+      });
       setPhase("success");
     } catch (error) {
       if (isUnauthorized(error)) {

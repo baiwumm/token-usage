@@ -20,13 +20,12 @@ export function BudgetCard() {
     (state) => state.setMonthlyBudgetUsd,
   );
   // Draft, not a direct store binding: typing stays local until save. The
-  // effect also re-syncs after hydration — the first client render replays the
-  // SSR snapshot (0), so an initializer alone leaves the field empty even
-  // though the saved budget is already in localStorage. NaN is react-aria's
-  // empty number-field value.
-  const [draft, setDraft] = useState(
-    monthlyBudgetUsd > 0 ? monthlyBudgetUsd : Number.NaN,
-  );
+  // initializer stays at the SSR default (empty): zustand persist rehydrates
+  // synchronously on the client, so seeding the draft from the store would
+  // diverge from the SSR snapshot and trip React's hydration warning. The
+  // effect below applies the persisted value right after mount (and re-syncs
+  // on later changes). NaN is react-aria's empty number-field value.
+  const [draft, setDraft] = useState(Number.NaN);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {

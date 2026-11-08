@@ -29,7 +29,12 @@ const CONTRACT_API_PREFIX = "/api/functions/";
 // the dashboard IS / — everything except /login, /auth/callback and the CLI
 // API requires login. /service-status was removed on 2026-11-07 (its self-
 // check moved into the Settings · 设备 实例诊断 card).
-const PROTECTED_PAGES = [
+//
+// Exported for the route-guard test, which asserts config.matcher and this
+// list stay in exact parity (the matcher below must remain a static literal —
+// Next's proxy config analysis rejects computed values, so parity is enforced
+// by the test, not by derivation).
+export const PROTECTED_PAGES = [
   "/",
   "/sessions",
   "/projects",

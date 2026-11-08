@@ -475,9 +475,27 @@ export function lookupPricing(
       const keyLower = key.toLowerCase();
 
       // Only accept if model is a superset of key (model contains key), to
-      // avoid e.g. "gpt-5" matching "gpt-5-pro" in the wrong direction.
-      if (lower.includes(keyLower) || (dotForm && dotForm.includes(keyLower))) {
+      // avoid e.g. "gpt-5" matching "gpt-5-pro" in the wrong direction. Same
+      // version-boundary rule as step 2's contained-exact: a model generation
+      // must not price as an earlier SKU whose id is a bare prefix of it
+      // ("gpt-5.6-cyber" must not inherit "gpt-5" rates just because the
+      // snapshot does not carry the new model yet) — a suffix starting with a
+      // digit or dot means the match continues into a different version.
+      const at = lower.indexOf(keyLower);
+
+      if (at >= 0) {
+        if (/^[.\d]/.test(lower.slice(at + keyLower.length))) continue;
+
         return { hit: true, source: "litellm:fuzzy", value: litellm[key] };
+      }
+      if (dotForm) {
+        const dotAt = dotForm.indexOf(keyLower);
+
+        if (dotAt >= 0) {
+          if (/^[.\d]/.test(dotForm.slice(dotAt + keyLower.length))) continue;
+
+          return { hit: true, source: "litellm:fuzzy", value: litellm[key] };
+        }
       }
     }
   }

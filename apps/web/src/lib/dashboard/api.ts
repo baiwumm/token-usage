@@ -243,7 +243,7 @@ async function callContract<T>(
   slug: string,
   query: string,
   token: string | null,
-  init?: { method: "POST"; body: unknown },
+  init?: { method: "POST"; body: unknown; timeoutMs?: number },
 ): Promise<T> {
   const response = await fetch(`/api/functions/token-usage-${slug}${query}`, {
     method: init?.method ?? "GET",
@@ -252,6 +252,7 @@ async function callContract<T>(
       ...(init ? { "Content-Type": "application/json" } : {}),
     },
     body: init ? JSON.stringify(init.body) : undefined,
+    ...(init?.timeoutMs ? { signal: AbortSignal.timeout(init.timeoutMs) } : {}),
   });
 
   if (response.status === 401) {
@@ -648,11 +649,12 @@ export function revokeDevice(
 
 export function grantDeviceFlow(
   token: string,
-  params: { userCode: string },
+  params: { userCode: string; timeoutMs?: number },
 ): Promise<unknown> {
   return callContract("device-flow-grant", "", token, {
     method: "POST",
     body: { user_code: params.userCode },
+    timeoutMs: params.timeoutMs,
   });
 }
 

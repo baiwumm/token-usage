@@ -581,6 +581,15 @@ export function loadBadgeAvatar(userId: string): Promise<string | null> {
 
   const value = fetchAvatarDataUri(userId);
 
+  // A failed load must not pin its (null) result for the whole TTL window —
+  // a user who just uploaded an avatar would otherwise wait out the cache
+  // before any badge picks the picture up. Same convention as the loaders
+  // above.
+  value.catch(() => {
+    const entry = avatarCache.get(userId);
+
+    if (entry?.value === value) avatarCache.delete(userId);
+  });
   avatarCache.set(userId, { expiresAt: now + AVATAR_TTL_MS, value });
 
   return value;

@@ -90,6 +90,9 @@ export function errorResponse(error: unknown): Response {
   const message = error instanceof Error ? error.message : undefined;
 
   return jsonResponse(status, {
-    error: status >= 500 ? "Internal server error" : message,
+    // A 4xx thrown without a message (rare non-Error rejection) still gets
+    // the contract's { error } envelope instead of a keyless JSON object.
+    error:
+      status >= 500 ? "Internal server error" : message || "Request failed",
   });
 }
