@@ -42,5 +42,8 @@ bun.lockb
 # box-agent runtime state (session scratch, not project source)
 .box-agent/
 
+# zcode session state (plans/artifacts scratch, not project source)
+.zcode/
+
 # achievement asset pipeline scratch output
 scripts/admin/achievement-assets/.work/
