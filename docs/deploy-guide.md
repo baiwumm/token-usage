@@ -133,10 +133,13 @@ Deploy 后得到部署域名（如 `https://token-usage-xxx.vercel.app`）。**�
 
 **方式 B：Vercel CLI / Git 集成**：把仓库导入 Vercel 项目，**Root Directory 设为
 `apps/web`**（monorepo 结构），framework 自动识别 Next.js，环境变量同上。依赖安装：
-Vercel 在 `apps/web` 下用 npm 安装（pnpm lockfile 在仓库根，嵌套 Root Directory 探测不到），
-`apps/web/.npmrc` 已带 `legacy-peer-deps=true`——repo 的 eslint@10 与 eslint-plugin-import@2
-的 peer 声明（最高 ^9）在 npm 严格模式下冲突，该开关恢复 npm 经典解析，与 pnpm（开发/CI）
-的实际行为一致，无需手工处理。
+Vercel 在嵌套 Root Directory 下探测不到仓库根的 pnpm lockfile，会回退 npm，而 npm 的
+严格 peer 检查与 repo 的 eslint@10 × eslint-plugin-import@2（peer 最高 ^9）组合硬冲突
+（ERESOLVE）。仓库已用 `apps/web/vercel.json` 把 Install Command 固定为
+`pnpm install --frozen-lockfile`（与开发/CI 同一 lockfile），并在 `apps/web/package.json`
+声明 `packageManager` 供 corepack 解析 pnpm 版本。**注意**：项目设置里的
+"Include files outside the root directory in the Build Step" 必须保持 **Enabled**——
+pnpm 的 workspace 根与 lockfile 都在仓库根，关掉它构建容器里没有这些文件。
 
 部署完成后自检：打开 `https://<部署域名>/api/functions/token-usage-public-config`，
 应返回包含 `supabase_url` 的 JSON。
