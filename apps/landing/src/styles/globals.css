@@ -1,0 +1,125 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Maple Mono CN — self-hosted subset font (same file as apps/web).
+ * Source: Maple Mono (OFL-1.1, https://github.com/subframe7536/maple-font v7.9).
+ * Subset: GB2312 common hanzi + ASCII + CJK punctuation; outside-range
+ * characters fall back to the system stack.
+ */
+@font-face {
+	font-family: "Maple Mono CN";
+	src: url("/fonts/maple-mono-cn-regular.woff2") format("woff2");
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	unicode-range: U+0020-007E, U+00B1, U+00B7, U+00D7, U+00F7, U+2014,
+		U+2018-2019, U+201C-201D, U+2026, U+3000-303F, U+4E00-9FFF, U+FF00-FFEF;
+}
+
+/*
+ * Landing is dark-only by design (2026-11-08 拍板): html carries class="dark"
+ * and there is no theme switcher. Font stacks live in @theme static; the
+ * chart palette is plain CSS in the .dark block below (never pruned).
+ */
+@theme static {
+	--font-sans: "Maple Mono CN", system-ui, Avenir, Helvetica, Arial, sans-serif;
+	--font-mono: "Maple Mono CN", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/*
+ * VERMILLION brand accent (2026-11-08 拍板): the Broadsheet share-card ink
+ * red (#c2402a → oklch(55.43% 0.17 32.08)) rides HeroUI's --accent. Every
+ * derived token (--accent-soft/-hover/-soft-foreground…) is a color-mix()
+ * of --accent inside @heroui/styles, and the heatmap stops derive from
+ * --accent too — one override retints the whole page coherently.
+ */
+.dark {
+	--accent: oklch(0.5543 0.17 32.08);
+
+	/* Chart palette (dark values from apps/web globals.css). */
+	--color-chart-1: #48a7ff;
+	--color-chart-2: #62cfa4;
+	--color-chart-3: #f4b64c;
+	--color-chart-4: #aa91f2;
+	--color-chart-5: #f07872;
+	--color-chart-6: #e776aa;
+	--color-chart-7: #45bdbd;
+	--color-chart-8: #a0a8b6;
+
+	/* Heatmap stops: brighter accent = more usage (dark derivation). */
+	--heatmap-0: var(--default);
+	--heatmap-1: oklch(from var(--accent) calc(l - 0.25) calc(c * 0.35) h);
+	--heatmap-2: oklch(from var(--accent) calc(l - 0.12) calc(c * 0.60) h);
+	--heatmap-3: oklch(from var(--accent) l calc(c * 0.80) h);
+	--heatmap-4: oklch(from var(--accent) calc(l + 0.15) c h);
+}
+
+/*
+ * Landing motion — one-shot entrances plus the brand motif's slow breathe,
+ * all decorative. Same recipe as apps/web (u-rise / login-breathe); renamed
+ * to landing-* so the two stylesheets can't shadow each other.
+ */
+@keyframes landing-rise {
+	from {
+		opacity: 0.35;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes landing-cell-in {
+	from {
+		opacity: 0.35;
+		transform: scale(0.72);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes landing-breathe {
+	from {
+		opacity: 0.28;
+	}
+	to {
+		opacity: 0.42;
+	}
+}
+
+.landing-reveal {
+	animation: landing-rise 0.45s ease-out both;
+}
+
+.landing-heat-cell {
+	animation: landing-cell-in 0.24s ease-out both;
+}
+
+.landing-breathe {
+	animation: landing-breathe 7s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.landing-reveal,
+	.landing-heat-cell,
+	.landing-breathe {
+		animation: none;
+	}
+
+	/* Global fallback (docs/ui-spec.md 状态与可访问性): one rule keeps the
+	   whole page free of decorative motion instead of relying on every file. */
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
