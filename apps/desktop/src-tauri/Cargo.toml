@@ -1,0 +1,23 @@
+[package]
+name = "token-usage-desktop"
+version = "0.1.0"
+description = "Token Usage desktop companion — tray monitor for tokenusage-cli"
+authors = ["baiwumm"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "token_usage_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+panic = "abort"
+strip = true

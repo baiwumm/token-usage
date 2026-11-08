@@ -54,7 +54,8 @@ Supabase Postgres（token_* 新表，RLS 全拒客户端角色）
 
 要点：
 
-- **仓库布局**：pnpm workspace —— `apps/web`（本图除采集机外的全部）与 `packages/cli`（采集器 npm 包 `tokenusage-cli`）；`apps/desktop`（桌面端托盘）**尚未创建**，为 backlog。
+- **仓库布局**：pnpm workspace —— `apps/web`（本图除采集机外的全部）与 `packages/cli`（采集器 npm 包 `tokenusage-cli`）；`apps/desktop`（桌面端托盘伴生工具）
+**2026-11-08 立项**，定位、架构边界与里程碑见 `docs/desktop-plan.md`。
 - **CLI 契约层与内部接口分离**：`/api/functions/token-usage-*` 逐字冻结（`docs/cli-contract.md`），仪表盘自己的数据需求走 `/api/app/*` 新路径，二者不得互相污染——内部接口改动永不触碰契约层。旧 `tokentracker-*` 路径别名曾由 `next.config.mjs` rewrites 承载，**已于 2026-11-03 退役**（契约 §1.5；旧 CLI 请求得到 GET 404 / 写动词 405，是有声失败而非静默丢数据）。
 - **自部署实例天然隔离**：CLI 与某个实例一一配对（base URL + 该实例签发的设备令牌），
   `sync` 只上传到配对实例；实例的 route.ts 用它自己环境里的 service-role 写入它自己的
@@ -171,6 +172,14 @@ prettier / typescript 组同版本；不引 `next-themes`（暗色写死）、�
 （动效全 CSS）、不引 `recharts`（趋势为手绘 SVG 静态重绘）。lockfile 根级统一
 管理，`minimumReleaseAgeExclude` 已覆盖全部所需版本 pin，无需新增排除项。
 
+2026-11-08 增量（M-desktop，操作者随技术栈拍板批准）：`apps/desktop` 运行时为 web 依赖
+子集（`react` / `react-dom` / `@heroui/react` / `@heroui/styles` / `@gravity-ui/icons` /
+`clsx`）+ 新增 `@tauri-apps/api`；devDeps 新增名仅 `vite` / `@vitejs/plugin-react` /
+`@tauri-apps/cli`，其余 eslint / tailwind / prettier / typescript / vitest 组与 web 同版本
+（Tailwind 走 `@tailwindcss/postcss`）；`next` / `next-themes` / `recharts` / `motion` /
+`zustand` 等 web 独有名不进桌面。Rust crate（`tauri` 2 + `tauri-build`）走 cargo、不进
+pnpm lockfile，依赖树披露随发版文档（`docs/desktop-plan.md` §6）。
+
 ## 5. 里程碑（契约层先行）
 
 | 里程碑 | 内容 | 验收线 |
@@ -186,8 +195,9 @@ prettier / typescript 组同版本；不引 `next-themes`（暗色写死）、�
 | **M-CLI 采集端**（真机迁移完成 2026-10-26：两台采集机切换、13.67B 历史重放、总量 20.94B 对账达标；sessions 真实数据对账一致 2026-10-26——zcode/opencode 行的 total 含 reasoning 而 output 不含，违反契约恒等式被映射器整行丢弃，修复为映射时按 `total = identity + reasoning` 精确形状折算进 output（fix(cli) 2026-10-26），公司机 448/448 会话全对上；npm 已发布 0.1.0（2026-10-27）并持续至 0.3.0（2026-11-01，新增 Trae CN 本地库、Qoder credits、Qoder 会话清单）；包名定为 tokenusage-cli） | fork 上游 CLI（MIT）改造为 `tokenusage-cli`（pnpm workspace 子包，二进制命令 `tokenusage`）：改名、指向新契约路径、`sync` 手动为主、`--watch` / `install-task` 可选自动档、剥离用不到的部分、`sessions` 元数据采集（session_id / source / 时间 / 项目 basename / token / 模型；不采集 prompt、正文、绝对路径、标题、resume command）、npm 发布（已完成：0.1.0 2026-10-27 首发，2026-11-01 至 0.3.0）；采集机迁移（装新 CLI → 配对 → 撤旧任务）。命名复查：tokenusage.org 为同类 Rust 工具（crates.io `tokenusage`），最终包名定为 `tokenusage-cli`（见 §1#19） | 任一台采集机 `npm i -g tokenusage-cli` 完成配对 + `tokenusage sync`，数值与该机 queue.jsonl 对账一致；`sessions` 与该机本地会话分析对账一致且无敏感字段；端到端契约测试全绿。**交付补充（2026-10-25）**：`packages/cli` skeleton + 契约重指向（delta.vercel.app / publishable key / `~/.tokenusage` 数据目录与旧 CLI 共存）+ sessions 增量上报（水位去重、恒等式自检、隐私白名单）+ payload golden 测试 14 项；serve/wrapped 本地面板剥除；`--watch` 常驻增量；npm 发布与真机对账已完成（见 `docs/cli-release.md`、`docs/launch-runbook.md` 新 CLI 迁移段） |
 | **M6 数据迁移与切换**（**已完成**：G1 2026-10-26 切换，G2/G3 2026-10-29 退役删除） | 迁移演练（见 §6）→ 生产切换 → 退役 | 见 §7 闸门清单逐项打勾 |
 | **M7 成就系统**（已完成 2026-10-30：P0/P1/P2/P4 + P3 收尾全部验收；实施与进度见 `docs/achievements-plan.md`） | 账号级成就：18 条 × 5 档（铜/银/金/钻/王者），指标单调白名单，按浏览器时区计算；读时计算，仅 `token_achievement_seen` 存账号级已读水位；`GET` + `POST /api/app/achievements`（同一 route）+ `/achievements` 页（徽章墙 / 摘要 / 五档详情）、侧栏入口、wrapped 独立成就卡（已获得成就 + 段位）、仪表盘成就条、全局解锁 toast、分享卡、详情 3D 翻面；中英文案与三态齐全；Sessions 类成就标明数据覆盖起点 | 18 条成就全部可计算且只升不降；阈值经真实实例校准；守卫测试（阈值递增 / 单调白名单 / 文案 / 资产）全绿；浏览器验收（正常 / 空 / 错误 / 窄屏 / 深色 / reduced-motion）；`pnpm verify` 全绿 |
+| **M-desktop 桌面端**（2026-11-08 立项，进行中） | `apps/desktop` 托盘伴生工具：Tauri 2 + web 同构前端栈，本机采集视角监控台 + CLI 操作台；定位、架构硬边界与各 D 验收线见 `docs/desktop-plan.md` | 各 D 验收线见 `docs/desktop-plan.md` §8；每期操作者验收 |
 
-工期参考：M1 约 2–4 天，M2–M4 各 2–5 天，M5 1–2 天，M5.5 约 2–4 天，M5.6 约 3–5 天（服务端 + UI，不含 M-CLI），M-CLI 约 1–2 天（fork 改造）+ 联调，M7 约 3–5 天（P0 领域层 / P1 数据面 / P2 界面，三阶段分别验收）；全程 Agent 开发，每个里程碑结束由操作者验收后再进下一个。桌面端（backlog）待 CLI 与 Web 稳定后单独立项。
+工期参考：M1 约 2–4 天，M2–M4 各 2–5 天，M5 1–2 天，M5.5 约 2–4 天，M5.6 约 3–5 天（服务端 + UI，不含 M-CLI），M-CLI 约 1–2 天（fork 改造）+ 联调，M7 约 3–5 天（P0 领域层 / P1 数据面 / P2 界面，三阶段分别验收）；全程 Agent 开发，每个里程碑结束由操作者验收后再进下一个。桌面端已于 2026-11-08 单独立项（M-desktop，`docs/desktop-plan.md`）。
 
 ## 6. 数据迁移 runbook（已完成）
 
@@ -260,7 +270,9 @@ PNG 真导出、中文单语、零新依赖名、根 `pnpm verify` 已含 landin
 类名规范化（6b8deca / 361970a）。**操作者已验收**（2026-11-08，"落地页做完"），设计
 规范收编 `docs/ui-spec.md`「落地页」节；**EdgeOne Pages 实际接入由操作者执行**——
 实际托管为腾讯云 EdgeOne Pages（Makers，运营细节不对外提及，对外口径
-仍为 Vercel），接线见 `apps/landing/README.md`。生产实例
+仍为 Vercel），接线见 `apps/landing/README.md`。**M-desktop（2026-11-08 立项）**：桌面端
+托盘伴生工具进入开发，D1 脚手架落地（`apps/desktop`，拍板与技术栈见
+`docs/desktop-plan.md`）。生产实例
 `token-usage.baiwumm.com` 自 2026-10-26 起承载
 两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.2`（2026-11-08
 发布，tag `cli-v0.5.2`，上传队列防线——白名单重组 / 字节预算 / 400·413 连败逃生阀，

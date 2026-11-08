@@ -7,7 +7,8 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 仓库布局：`apps/web`（Next.js：仪表盘 + CLI 契约层，src 目录结构）；`packages/cli`（采集 CLI
 包，npm `tokenusage-cli`）；`apps/landing`（落地页，2026-11-08 立项：纯静态单页营销站，
 `output: "export"` 部署 token-usage.cc，暗色单主题、中文单语、零新依赖名，接线见
-`apps/landing/README.md`）；`apps/desktop`（桌面端，**尚未创建**）。
+`apps/landing/README.md`）；`apps/desktop`（桌面端托盘伴生工具，2026-11-08 立项：Tauri 2 +
+web 同构前端栈，定位、边界与接线见 `docs/desktop-plan.md`）。
 
 目录规范（2026-10-26 操作者裁定）：`apps/web/src/app/` 只放路由——目录与 URL 一一对应
 （`page.tsx` + `route.ts`，无路由组），页面级 metadata 也在各 `page.tsx`；登录壳
@@ -38,6 +39,9 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 - **`components/` 根级跨页共享件**：被多个页面复用的组件（如 `flow-number.tsx` / `data-table-card.tsx` / `panel-overlay.tsx` / `table-pagination.tsx` / `device-filter-select.tsx` 等）一律放 `components/` 根，文件名按功能/内容命名，不冠页名、不套 `<页名>-*` 后缀。归属规则：跨页复用归根目录，单页专用才归 `components/<路由名>/`。
 - **拆分目录内部文件**：单个组件拆成多文件时放进同名目录（见上文），**目录内文件名按职责自由**，不强加页面级后缀（如 `app-shell/` 的 `brand.tsx` / `sidebar.tsx` / `top-bar.tsx` / `nav-items.tsx` / `use-local-hour.ts`，`share-card/` 的 `broadsheet.ts` / `receipt.ts` / `neon.ts` / `vinyl.ts` / `helpers.ts` / `types.ts` / `hook.ts`）；组件目录用 `index.tsx` 收口对外导出。
 - **页面目录内的纯逻辑 `.ts`**：页面组件目录里的纯计算/规则模块（如 `dashboard/aggregate.ts`、`projects/identity.ts`，及各页 `*-helpers.ts` / `*-filters.ts` / `share-input.ts` 等）不是组件文件，后缀集合不适用；按职责命名、归属所在页面目录即可。
+- **桌面端（`apps/desktop`）组件文件**：遵循与 web 同一登记制、同一后缀集合，登记处为
+  `docs/desktop-plan.md` §5（新增后缀角色先回写该清单再使用）；入口件 `app.tsx` 与
+  `lib/`、`styles/` 纯逻辑不在后缀集合内。
 
 补充：**纯 TS 拆分目录可用 `index.ts` 收口**（与 `index.tsx` 仅差是否含 JSX）——`share-card/index.ts` 为现状；`charts.tsx` / `mini-charts.tsx` 等根级单文件组件直接放根目录，不建页面级桶文件（沿用上文）。
 
@@ -69,6 +73,7 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 | 邀请建号与首次登录（配对、临时密码、自助改密） | `docs/invite-flow.md` |
 | 从零部署（Supabase + Vercel） | `docs/deploy-guide.md` |
 | 改落地页（`apps/landing`：文案、快照数据、部署接线） | `apps/landing/README.md`（UI 仍先读 `docs/ui-spec.md`） |
+| 桌面端（`apps/desktop`：定位、边界、里程碑与验收） | `docs/desktop-plan.md`（UI 仍先读 `docs/ui-spec.md`） |
 | 部署与回滚 | `docs/launch-runbook.md` |
 | 当前进度、剩余事项与待决策 | `docs/rewrite-plan.md` §10 |
 | 历史归档（已完成且不再维护的计划与对比结论） | `docs/archive/` |

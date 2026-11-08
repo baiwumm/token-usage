@@ -9,12 +9,13 @@
   "scripts": {
     "dev": "pnpm --filter @token-usage/web dev",
     "dev:landing": "pnpm --filter @token-usage/landing dev",
+    "dev:desktop": "pnpm --filter @token-usage/desktop tauri dev",
     "build": "pnpm --filter @token-usage/web build",
     "build:landing": "pnpm --filter @token-usage/landing build",
     "start": "pnpm --filter @token-usage/web start",
     "lint": "pnpm --filter @token-usage/web lint",
     "test": "pnpm -r test",
-    "verify": "pnpm --filter @token-usage/web verify && pnpm --filter tokenusage-cli test && pnpm --filter @token-usage/landing verify"
+    "verify": "pnpm --filter @token-usage/web verify && pnpm --filter tokenusage-cli test && pnpm --filter @token-usage/landing verify && pnpm --filter @token-usage/desktop verify"
   },
   "devDependencies": {
     "jpeg-js": "0.4.4",

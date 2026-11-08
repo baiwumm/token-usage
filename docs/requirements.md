@@ -50,12 +50,15 @@ CLI API 走 `docs/cli-contract.md` 自身的公开/鉴权规则，
 ## 边界（v1 不做什么）
 
 排行榜、pet/quota 桌面 widget、`/selfhost` 降级页、社区多实例管理面板、
-数据导入导出工具、端点限流与防滥用（与旧系统行为保持一致，进 backlog）、桌面端托盘应用
-（v1 后视情况，backlog，候选 Tauri）。
+数据导入导出工具、端点限流与防滥用（与旧系统行为保持一致，进 backlog）。
 
 2026-10-30 修订：**成就系统自本表移出**（操作者指令），进入范围（M7，`/achievements`）。
 排行榜与上游云端成就（依赖 Leaderboard 排名、全局发行编号）仍不移植；本项目成就为账号级、
 读时计算的自有实现，见下文与 `docs/achievements-plan.md`。
+
+2026-11-08 修订：**桌面端托盘应用自本表移出**（操作者拍板立项，M-desktop）——仓库内
+`apps/desktop` 托盘伴生工具（Tauri 2），只做本机采集视角监控与 CLI 操作台，不复制 web
+仪表盘；定位与边界见 `docs/desktop-plan.md`。pet/quota 桌面 widget 仍不做。
 
 上游 TokenTracker 的 **Limits**（provider 配额）、**Skills**（本地技能市场）、**Cloud /
 Leaderboard / Pet / Widgets / IP check** 不移植：它们依赖云端、桌面端或本地 CLI 文件，

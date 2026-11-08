@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Default capability for the monitor window (core defaults only; the tray and window management run in Rust, no JS-facing permissions yet)",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

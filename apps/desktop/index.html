@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Token Usage</title>
+    <script>
+      // Three-state theming (跟随系统 → 浅色 → 深色) arrives in D4 with
+      // persistence; until then the window follows the OS preference without
+      // a flash. Runs before paint so the first frame is already correct.
+      document.documentElement.classList.toggle(
+        "dark",
+        matchMedia("(prefers-color-scheme: dark)").matches,
+      );
+    </script>
+  </head>
+  <body class="min-h-screen bg-background font-sans text-foreground antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
