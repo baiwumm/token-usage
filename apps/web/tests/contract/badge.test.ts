@@ -285,6 +285,45 @@ describe.skipIf(!badgeRoute)("GET /api/badge (docs/badge.md §2)", () => {
     expect(await repo.text()).toContain("data:image/png;base64,");
   });
 
+  it("prefers custom_avatar_url and never inlines a provider avatar_url (§5.2)", async () => {
+    const { GET } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
+    const png = Buffer.from("89504e470d0a1a0a", "hex");
+
+    // The OAuth overwrite case (2026-11-08): every GitHub login rewrites
+    // user_metadata.avatar_url to the provider picture, which must stay
+    // outside the own-bucket allowlist; the uploaded reference lives in
+    // custom_avatar_url and wins.
+    fake.adminUsers.set(USER_ID, {
+      user_metadata: {
+        avatar_url: "https://avatars.githubusercontent.com/u/40554571?v=4",
+        custom_avatar_url: `${fake.url}/storage/v1/object/public/avatars/owner.webp`,
+      },
+    });
+    fake.storageObjects.set("owner.webp", { type: "image/webp", body: png });
+
+    const res = await GET(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`));
+
+    expect(await res.text()).toContain(
+      `href="data:image/webp;base64,${png.toString("base64")}"`,
+    );
+
+    // Provider-only metadata: the allowlist rejects the URL outright — no
+    // fetch, no inline, first-letter fallback.
+    fake.adminUsers.set(USER_ID, {
+      user_metadata: {
+        avatar_url: "https://avatars.githubusercontent.com/u/40554571?v=4",
+      },
+    });
+
+    const fallback = await GET(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`));
+
+    // Single read: a Response body must not be consumed twice.
+    const fallbackText = await fallback.text();
+
+    expect(fallbackText).not.toContain("data:image/webp");
+    expect(fallbackText).not.toContain("data:image/png");
+  });
+
   it("answers POST with the 405 envelope and OPTIONS with 204 (§2.2)", async () => {
     const { POST, OPTIONS } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
 

@@ -17,6 +17,23 @@ export interface Profile {
 interface ProfileMeta {
   display_name?: string;
   avatar_url?: string;
+  // Custom avatar reference written by useAvatarUpload. avatar_url is a
+  // provider-owned key — every GitHub/Google OAuth login overwrites it with
+  // the provider's picture (Supabase syncs provider metadata at each login),
+  // so the uploaded avatar must live under a key no provider touches.
+  custom_avatar_url?: string;
+}
+
+// Single source of truth for avatar display across the app (sidebar,
+// settings, wrapped): the upload-written custom key wins; the legacy
+// provider-owned key only serves accounts that never logged in with OAuth
+// (its value may be a provider URL, which the badge/public-page pipeline
+// rejects via its own-bucket allowlist).
+function profileAvatarUrl(meta: ProfileMeta | undefined): string | null {
+  if (meta?.custom_avatar_url) return String(meta.custom_avatar_url);
+  if (meta?.avatar_url) return String(meta.avatar_url);
+
+  return null;
 }
 
 /**
@@ -51,9 +68,7 @@ export function useProfile(): {
       setProfile({
         email: user.email ?? null,
         displayName: String(user.user_metadata?.display_name || ""),
-        avatarUrl: user.user_metadata?.avatar_url
-          ? String(user.user_metadata.avatar_url)
-          : null,
+        avatarUrl: profileAvatarUrl(user.user_metadata),
       });
     };
 
@@ -151,8 +166,10 @@ export function useAvatarUpload(): {
         data: { publicUrl },
       } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
 
+      // avatar_url stays written for legacy readers; custom_avatar_url is the
+      // OAuth-proof reference every reader prefers (see ProfileMeta).
       const { error: updateError } = await supabase.auth.updateUser({
-        data: { avatar_url: publicUrl },
+        data: { avatar_url: publicUrl, custom_avatar_url: publicUrl },
       });
 
       if (updateError) return { error: updateError.message };
@@ -164,22 +181,23 @@ export function useAvatarUpload(): {
 
   const deleteAvatar = useCallback(async () => {
     if (!supabase) return { error: "no client" };
-    const url = (await supabase.auth.getUser()).data.user?.user_metadata
-      ?.avatar_url as string | undefined;
+    const meta = (await supabase.auth.getUser()).data.user?.user_metadata as
+      ProfileMeta | undefined;
 
-    if (url) {
-      // Strip the public URL prefix down to the bucket-relative path.
-      const marker = "/object/public/avatars/";
+    // Both references may exist (OAuth may have rewritten avatar_url since the
+    // upload); each own-bucket URL is removed, stale objects are left alone.
+    const paths = [meta?.custom_avatar_url, meta?.avatar_url]
+      .filter((url): url is string => typeof url === "string" && !!url)
+      .map((url) => url.split("/object/public/avatars/")[1])
+      .filter((path): path is string => !!path);
+    const uniquePaths = [...new Set(paths)];
 
-      if (url.includes(marker)) {
-        await supabase.storage
-          .from(AVATAR_BUCKET)
-          .remove([url.split(marker)[1]]);
-      }
+    if (uniquePaths.length > 0) {
+      await supabase.storage.from(AVATAR_BUCKET).remove(uniquePaths);
     }
 
     const { error: updateError } = await supabase.auth.updateUser({
-      data: { avatar_url: null },
+      data: { avatar_url: null, custom_avatar_url: null },
     });
 
     if (updateError) return { error: updateError.message };

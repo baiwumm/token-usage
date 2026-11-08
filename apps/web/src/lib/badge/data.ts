@@ -516,9 +516,17 @@ async function readAvatarUrl(userId: string): Promise<string | null> {
   );
 
   if (!response.ok) return null;
+  // custom_avatar_url is the upload-written reference (avatar_url is a
+  // provider-owned key that GitHub/Google OAuth logins keep overwriting with
+  // their own picture URL — that value then fails the own-bucket allowlist
+  // below, so a stale provider URL can never be fetched). Legacy accounts
+  // that only ever wrote avatar_url keep working through the fallback.
   const body = (await response.json()) as {
-    user_metadata?: { avatar_url?: unknown };
+    user_metadata?: { avatar_url?: unknown; custom_avatar_url?: unknown };
   };
+  const custom = body.user_metadata?.custom_avatar_url;
+
+  if (typeof custom === "string" && custom) return custom;
   const url = body.user_metadata?.avatar_url;
 
   return typeof url === "string" && url ? url : null;

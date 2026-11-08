@@ -315,12 +315,18 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 - **列对齐**（2026-11-02 / 2026-11-04）：`TOP SOURCES` 标题基线 = 左侧三个标签基线
   （y=120），左边界 x=452（两个 scope 统一）；行名基线 = 三个数值基线（y=150），占比条
   y=157；行名宽 = `右边界 576 − 百分比实测宽 − 8px 间隙 − 行名起点`，不写死
-- **头像加载**（2026-11-02）：`lib/badge/data.ts` 用 service-role 读 `auth.users` 的
-  `user_metadata.avatar_url`，仅允许本部署 host 且路径落于 `/storage/v1/object/public/avatars/`
-  的地址（防 SSRF），类型限 PNG/JPEG/WebP、≤512 KB，内联为 `data:` URI；单飞缓存 5 分钟，
-  `invalidateBadgeData` 一并失效；任何失败（缺头像、超大、非白名单、非图片）回退首字母圆。
-  account 与 repo 两个 scope 渲染同一张头像（2026-11-03 修复：账户分支曾漏传
-  `avatarDataUri`，导致只有仓库徽章显示头像）
+- **头像加载**（2026-11-02；2026-11-08 改读取键）：`lib/badge/data.ts` 用 service-role 读
+  `auth.users` 的 `user_metadata.custom_avatar_url`（上传写入口 `lib/auth/profile.ts` 同步
+  维护），缺省时回退遗留键 `user_metadata.avatar_url`。读取结果仍仅允许本部署 host 且路径
+  落于 `/storage/v1/object/public/avatars/`（防 SSRF），类型限 PNG/JPEG/WebP、≤512 KB，内联为
+  `data:` URI；单飞缓存 5 分钟，`invalidateBadgeData` 一并失效；任何失败（缺头像、超大、
+  非白名单、非图片）回退首字母圆。键调整的原因：`avatar_url` 是 provider 自有键，每次
+  GitHub/Google OAuth 登录都会被 Supabase 用 provider 头像 URL 覆盖（2026-11-08 实测本部署
+  命中，公开页/徽章白名单拒收该 URL → 首字兜底，而仪表盘侧栏无白名单直接显示 provider
+  头像，两处表现分叉）；`custom_avatar_url` 是 provider 不会触碰的自定义键，读取优先级
+  custom > 遗留 avatar_url（后者仍需过白名单，provider URL 天然被拒）。account 与 repo 两个
+  scope 渲染同一张头像（2026-11-03 修复：账户分支曾漏传 `avatarDataUri`，导致只有仓库徽章
+  显示头像）
 
 ### §5.3 style=compact
 
