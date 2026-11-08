@@ -40,8 +40,10 @@
 （配对链接 `?user_code=` 不得因跳转丢失），登录成功进入原目标（无 `?next=` 时缺省 `/`）。
 设置分区用 `/settings?section=appearance|account|devices` 深链，不新增顶层路由。
 产品落地页为仓库内 **`apps/landing`** 纯静态 app（2026-11-08 拍板，原"独立建站"改为
-monorepo 内独立部署），构建产物部署到 **token-usage.cc**（Vercel 第二项目，Root Directory
-= `apps/landing`），与本应用部署域相互独立；实现与部署接线见 `apps/landing/README.md`。
+monorepo 内独立部署），静态产物（`out/`）部署到 **token-usage.cc**——实际托管为腾讯云
+EdgeOne Pages（Makers，运营细节不对外提及），对外口径仍为 Vercel（Deploy to Vercel
+按钮与部署指南面向自部署用户，指向 `apps/web`，不受影响）；与本应用部署域相互独立；
+实现与部署接线见 `apps/landing/README.md`。
 CLI API 走 `docs/cli-contract.md` 自身的公开/鉴权规则，
 不受页面守卫影响。路由表变更需回写本表。
 

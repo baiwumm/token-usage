@@ -21,17 +21,20 @@ pnpm verify          # 根门禁（web + cli + landing 全量）
 页脚「实时公开徽章」与 Hero「公开页演示」链接在**构建期**从仓库根 `README.md`
 解析（`src/lib/badge-url.ts`），README 变更即跟随，不硬编码令牌。
 
-## Vercel 部署（第二项目）
+## 部署（腾讯云 EdgeOne Pages · Makers）
 
-与 `apps/web` 的自托管部署相互独立，绑定域名 **token-usage.cc**：
+实际托管：操作者使用**腾讯云 EdgeOne Pages（Makers 套餐）**部署本站，域名绑定
+**token-usage.cc**（2026-11-08 拍板）。要点：
 
-1. Vercel 上**新建独立项目**（不要复用 web 的项目），导入本仓库；
-2. **Root Directory 设为 `apps/landing`**（框架自动识别 Next.js）；
-3. Build Command 用默认 `next build`（package.json 的 build 已含静态导出）；
-   Output 由 Vercel 从 `output: "export"` 自动识别，无需手工填；
-4. 环境变量：无必填（快照已固化、徽章直链指向实例域名）；
-5. Domains 绑定 `token-usage.cc`（及可选 `www.`），DNS 在腾讯云加 CNAME；
-6. 备案（可选）：.cc 可备案，备案号填 `site-footer.tsx` 的 ICP 占位。
+1. 构建产物为静态导出目录 `out/`（`pnpm build:landing`），EdgeOne Pages 按静态
+   站点接入（Git 连接或产物上传均可），无需 Node 运行时；
+2. 环境变量：无必填（快照已固化、徽章直链指向实例域名）；
+3. 域名 `token-usage.cc`（及可选 `www.`）在腾讯云内侧 CNAME 接入 EdgeOne；
+4. 备案（可选）：.cc 可备案，备案号填 `site-footer.tsx` 的 ICP 占位。
+
+**对外口径仍为 Vercel**：落地页上的 Deploy to Vercel 按钮与部署指南面向的是
+**自部署用户**（部署 `apps/web` 仪表盘），与本站的托管选择无关，保持不变；
+本站实际托管在 EdgeOne 属运营细节，不在对外文案中提及。
 
 ## 素材说明
 

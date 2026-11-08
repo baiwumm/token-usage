@@ -255,8 +255,10 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 **里程碑**：M0–M7 全部交付；**M-landing（2026-11-08）**：官方落地页 `apps/landing`
 开发完成并推送（纯静态单页八段、暗色单主题、VERMILLION accent、真实数据快照
 23.82B tokens / 17 来源 / 58 模型 / 103 活跃天 + 52 周真实日桶热力图、四风格分享卡
-PNG 真导出、中文单语、零新依赖名、根 `pnpm verify` 已含 landing verify）；待操作者
-验收 + Vercel 第二项目上线（接线见 `apps/landing/README.md`）。生产实例
+PNG 真导出、中文单语、零新依赖名、根 `pnpm verify` 已含 landing verify）；后续增量：
+后台实拍轮播 + 分享卡放大预览（c7102c6 / 47f4c58）、实拍去名（1f1b02d）。**待操作者
+验收 + 上线**——实际托管为腾讯云 EdgeOne Pages（Makers，运营细节不对外提及，对外口径
+仍为 Vercel），接线见 `apps/landing/README.md`。生产实例
 `token-usage.baiwumm.com` 自 2026-10-26 起承载
 两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.2`（2026-11-08
 发布，tag `cli-v0.5.2`，上传队列防线——白名单重组 / 字节预算 / 400·413 连败逃生阀，
