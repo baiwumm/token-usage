@@ -52,7 +52,7 @@ function MotifGrid() {
   return (
     <div
       aria-hidden
-      className="login-breathe grid grid-cols-[repeat(36,minmax(0,1fr))] gap-0.75 opacity-35 [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
+      className="login-breathe grid grid-cols-36 gap-0.75 opacity-35 mask-[linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
     >
       {MOTIF_LEVELS.map((level, index) =>
         level === 0 ? (
