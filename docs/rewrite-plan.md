@@ -9,7 +9,7 @@ TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写�
 
 | # | 决策点 | 结论 |
 |---|--------|------|
-| 1 | 功能基线 | 严格对齐旧系统**活功能**：仪表盘+分享卡片、设置（设备管理/吊销）、wrapped、服务状态、`/device` 配对、全套 CLI API。排行榜/成就/pet/quota//selfhost 降级页**不做**。2026-10-24 路由二次修订：仪表盘挂 `/`（需登录），`/dashboard` 取消；产品落地页迁出本应用，使用 token-usage.cc 独立建站；除登录链路外所有页面未登录跳登录（见 requirements 路由约定）。2026-10-30 修订：成就系统移入范围（M7，账号级、读时计算）；排行榜/云端成就、pet/quota、`/selfhost` 降级页仍不做 |
+| 1 | 功能基线 | 严格对齐旧系统**活功能**：仪表盘+分享卡片、设置（设备管理/吊销）、wrapped、服务状态、`/device` 配对、全套 CLI API。排行榜/成就/pet/quota//selfhost 降级页**不做**。2026-10-24 路由二次修订：仪表盘挂 `/`（需登录），`/dashboard` 取消；产品落地页迁出本应用，使用 token-usage.cc 独立建站（**2026-11-08 修订：改为仓库内 `apps/landing`，见拍板记录 3 与 §10 M-landing**）；除登录链路外所有页面未登录跳登录（见 requirements 路由约定）。2026-10-30 修订：成就系统移入范围（M7，账号级、读时计算）；排行榜/云端成就、pet/quota、`/selfhost` 降级页仍不做 |
 | 2 | 许可证 | MIT；署名集中在根 `LICENSE`（含 "Contains code derived from TokenTracker by xiufengsun (MIT)" 衍生声明）与根 `THIRD_PARTY_NOTICES.md`（第三方资产登记，CLI 包另有同名文件）。2026-10-28 修订：README 与 docs 不再重复罗列上游署名，只指向这两处 |
 | 3 | CLI 策略 | 2026-10-23 翻案：fork 上游 CLI（MIT）改造为 **`tokenusage-cli`**——解析器继承上游并跟进 cherry-pick；`sync` 手动为主，`--watch` / `install-task` 可选自动档；自有客户端后契约冻结语义转为「CLI 版本 ↔ 服务端版本配对演进」，旧路径别名降级为过渡品 |
 | 4 | 品牌 | 仓库 `token-usage`，UI 显示 **Token Usage** |
@@ -256,8 +256,10 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 开发完成并推送（纯静态单页八段、暗色单主题、VERMILLION accent、真实数据快照
 23.82B tokens / 17 来源 / 58 模型 / 103 活跃天 + 52 周真实日桶热力图、四风格分享卡
 PNG 真导出、中文单语、零新依赖名、根 `pnpm verify` 已含 landing verify）；后续增量：
-后台实拍轮播 + 分享卡放大预览（c7102c6 / 47f4c58）、实拍去名（1f1b02d）。**待操作者
-验收 + 上线**——实际托管为腾讯云 EdgeOne Pages（Makers，运营细节不对外提及，对外口径
+后台实拍轮播 + 分享卡放大预览（c7102c6 / 47f4c58）、实拍去名（1f1b02d）、canonical
+类名规范化（6b8deca / 361970a）。**操作者已验收**（2026-11-08，"落地页做完"），设计
+规范收编 `docs/ui-spec.md`「落地页」节；**EdgeOne Pages 实际接入由操作者执行**——
+实际托管为腾讯云 EdgeOne Pages（Makers，运营细节不对外提及，对外口径
 仍为 Vercel），接线见 `apps/landing/README.md`。生产实例
 `token-usage.baiwumm.com` 自 2026-10-26 起承载
 两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.2`（2026-11-08

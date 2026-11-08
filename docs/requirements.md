@@ -32,7 +32,7 @@
 | CLI API | `/api/functions/token-usage-*` | CLI 面 9 端点 + Dashboard 面 10 端点（`docs/cli-contract.md` §2） |
 | 公开徽章 API | `/api/badge` | 公开 SVG 徽章端点（无需鉴权，令牌即凭证），规范见 `docs/badge.md` |
 | 仪表盘内部 API | `/api/app/*` | 应用自有接口（非契约面，随 UI 自由演进） |
-| 产品落地页 | token-usage.cc | **仓库内 `apps/landing` 独立部署**（2026-11-08 拍板，原"独立建站"措辞作废）：纯静态单页——产品介绍、自部署入口（部署指南 / GitHub）、公开页演示；暗色单主题、中文单语、`output: "export"`；**2026-11-01 拍板延后**的条件已满足（web / CLI 定型，桌面端为托盘伴生工具不影响叙事），M-landing 同日实施 |
+| 产品落地页 | token-usage.cc | **仓库内 `apps/landing` 独立部署**（2026-11-08 拍板，原"独立建站"措辞作废）：纯静态单页——产品介绍、自部署入口（部署指南 / GitHub）、公开页演示；暗色单主题、中文单语、`output: "export"`；**已交付并操作者验收**（2026-11-08，M-landing：单页八段 + 后台实拍轮播 + 分享卡放大预览，规范见 `docs/ui-spec.md`「落地页」节），静态产物实际托管腾讯云 EdgeOne Pages（对外口径仍为 Vercel，见路由约定与 `apps/landing/README.md`） |
 | 开源自部署 | — | 中文部署指南、迁移脚本、Deploy to Vercel 按钮 |
 
 路由约定：仪表盘挂 `/` 且**需要登录**；**除 `/login`、`/auth/callback`、公开页 `/u/<token>`

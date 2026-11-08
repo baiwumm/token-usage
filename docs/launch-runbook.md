@@ -60,6 +60,14 @@
   写动词应为 **405**（契约 §1.5）。这是有声失败，钉版旧 CLI 会在这里被挡住而不是静默丢数据；
   `apps/web/tests/contract/legacy-alias-removed.test.ts` 守护该行为。
 
+## 落地页部署（apps/landing → token-usage.cc）
+
+官方落地页与 web 部署**相互独立**：纯静态产物（`pnpm build:landing` 的 `out/`），实际
+托管腾讯云 EdgeOne Pages（Makers），无环境变量、无服务端；接线步骤、素材与快照更新
+说明见 [`apps/landing/README.md`](../apps/landing/README.md)。回滚 = 在 EdgeOne 重新
+部署上一版产物；页脚实时徽章依赖操作者实例在线（挂掉仅影响该 `<img>` 演示，页面其余
+部分不受影响）。对外口径仍为 Vercel（Deploy to Vercel 按钮面向自部署用户）。
+
 ## 新 CLI 迁移（tokenusage-cli）
 
 采集器 `packages/cli`（npm 包 `tokenusage-cli`）。与已退役的旧 CLI 的差异：数据目录

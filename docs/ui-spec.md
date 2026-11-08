@@ -806,6 +806,32 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 - 页面为 `max-w-xl` 居中单列审批流（非数据面）：不套 `DataTableCard` / 汇总卡 /
   `DeviceFilterSelect` / CSV 导出；`min-h` 居中、无页面级横向滚动。
 
+### 落地页（`apps/landing`，token-usage.cc）
+
+官方站落地页（2026-11-08 立项并交付，操作者验收）：仓库内独立纯静态 app，
+`output: "export"`，实际托管腾讯云 EdgeOne Pages（对外口径仍为 Vercel，见
+`apps/landing/README.md`）。本节记录其设计决策，写 landing UI 前先读本节与
+`apps/landing/README.md`。
+
+- **暗色单主题**：`html class="dark"` 写死，不引 `next-themes`，无主题切换器；仅引
+  `@heroui/styles` 默认主题，不引 `theme-palettes.css`。
+- **强调色 VERMILLION**：`--accent` 覆盖为 Broadsheet 朱红（`#c2402a` →
+  `oklch(0.5543 0.17 32.08)`）；热力图 `--heatmap-1..4` 由 `--accent` 派生的机制自动跟随，
+  主 CTA 用 `variant="primary"`（HeroUI 3 Button 无 color prop）。
+- **单页八段**：导航 → Hero（真实数据快照计数器 + 364 格年热力图纹样）→ 三步 terminal →
+  仪表盘静态重绘 + 后台实拍轮播 → 功能网格（来源 logo 墙 / 成就币 / 四风格分享卡放大
+  预览）→ 数据自主 → 自部署 → Footer（实时徽章直链）。分节 hairline + 大间距，不堆卡片。
+- **数据规则**：快照（`src/data/snapshot.json`）只含聚合数字与日桶等级，`fetchedAt` 标注
+  提取日期；实拍截图不得出现操作者姓名与邮箱（顶栏问候、侧栏用户菜单均需处理）；
+  分享卡展示用 mock 数据导出的 PNG。
+- **交互模式**：轮播 6s 自动前进（悬停暂停、reduced-motion 停用）、交叉淡入、16:10
+  容器 + absolute 叠放；放大预览为 HeroUI Modal + 三条确定性关闭路径（CloseTrigger /
+  window 级 Escape / backdrop 自身点击——RAC 内建 dismiss 在本页不可靠，见 47f4c58）。
+- **类名**：Tailwind 任意值写法收敛到 canonical（`grid-cols-52`、`aspect-16/10`、
+  `mask-[...]`）；圆角例外——`rounded-[2px]` 保留（canonical `rounded-sm` = 4px 会变值，
+  同 AGENTS 约束 5）。
+- 375px 可用、无页面级横向滚动；文案中文单语（`lib/copy.ts` 留 en 结构位）。
+
 ## 数字、货币与时间格式
 
 - 唯一入口是统一 format provider（`useFormat`）；Dashboard、Sessions、Wrapped、Settings、
