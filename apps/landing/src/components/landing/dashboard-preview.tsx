@@ -3,7 +3,10 @@
 // 仪表盘静态重绘（设计定稿 03 段）：真实快照数据的纯展示卡——头卡
 // （大数字 + KPI 条 + 来源堆叠色条）+ 近 30 天趋势（手绘 SVG 柱）+
 // 近一年热力图缩样。装饰性重绘不引 recharts（已批准的例外）。
+// 2026-11-08 增补：重绘卡下方加「后台实拍」轮播（操作者指令——真实实例
+// 截图，深色 + netflix 主题色与本页朱红同调，侧栏邮箱区域已打码）。
 
+import { useEffect, useRef, useState } from "react";
 import { Typography } from "@heroui/react";
 
 import { FlowNumber } from "./flow-number";
@@ -142,6 +145,9 @@ export function DashboardPreview() {
             </div>
           </div>
         </div>
+
+        {/* 后台实拍轮播（2026-11-08 操作者指令）。 */}
+        <ShotsCarousel />
       </div>
     </section>
   );
@@ -203,6 +209,102 @@ function MiniHeatmap({ cells }: { cells: Array<[string, number, number]> }) {
           }}
         />
       ))}
+    </div>
+  );
+}
+
+// 后台实拍轮播：真实实例截图（1440×900，深色 + netflix 主题色，侧栏邮箱
+// 区域已打码）。四张全部预载（absolute 叠放 + opacity 过渡即交叉淡入）；
+// 每 6s 自动前进，悬停暂停；prefers-reduced-motion 时不自动轮播。
+const SHOTS = [
+  { file: "/dashboard/app-overview.png", alt: "仪表盘总览截图" },
+  { file: "/dashboard/app-trends.png", alt: "用量趋势截图" },
+  { file: "/dashboard/app-achievements.png", alt: "成就墙截图" },
+  { file: "/dashboard/app-wrapped.png", alt: "年度回顾截图" },
+];
+
+const SHOT_INTERVAL_MS = 6000;
+
+function ShotsCarousel() {
+  const copy = LANDING_COPY.zh;
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const reducedRef = useRef(false);
+
+  useEffect(() => {
+    reducedRef.current = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+  }, []);
+
+  useEffect(() => {
+    if (paused || reducedRef.current) return;
+
+    const timer = setInterval(() => {
+      setIndex((current) => (current + 1) % SHOTS.length);
+    }, SHOT_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [paused]);
+
+  return (
+    <div
+      className="mt-12 flex flex-col gap-5"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <Typography type="body-sm" weight="semibold">
+          {copy.preview.shotsTitle}
+        </Typography>
+        <Typography color="muted" type="body-xs">
+          {copy.preview.shotsNote}
+        </Typography>
+      </div>
+
+      {/* 16:10 容器（截图 1440×900）+ absolute 叠放：交叉淡入且不撑高。 */}
+      <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-default/50 bg-surface-secondary">
+        {SHOTS.map((shot, shotIndex) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={shot.file}
+            alt={shot.alt}
+            className={`absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-500 ${
+              shotIndex === index ? "opacity-100" : "opacity-0"
+            }`}
+            loading={shotIndex === 0 ? "eager" : "lazy"}
+            src={shot.file}
+          />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Typography color="muted" type="body-xs">
+          {copy.preview.shots[index]}
+        </Typography>
+        <div className="flex items-center gap-2" role="tablist">
+          {SHOTS.map((shot, shotIndex) => (
+            <button
+              key={shot.file}
+              aria-label={`切换到第 ${shotIndex + 1} 张：${shot.alt}`}
+              aria-selected={shotIndex === index}
+              className="rounded-full p-1"
+              role="tab"
+              type="button"
+              onClick={() => setIndex(shotIndex)}
+            >
+              <span
+                aria-hidden="true"
+                className="block size-2 rounded-full transition-colors"
+                style={{
+                  background:
+                    shotIndex === index ? "var(--accent)" : "var(--default)",
+                }}
+              />
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

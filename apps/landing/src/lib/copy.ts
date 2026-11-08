@@ -49,6 +49,10 @@ export interface LandingCopy {
     };
     trendTitle: string;
     heatmapTitle: string;
+    shotsTitle: string;
+    shotsNote: string;
+    /** 与组件内 SHOTS 文件顺序一一对应。 */
+    shots: string[];
   };
   features: {
     eyebrow: string;
@@ -136,6 +140,14 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
       },
       trendTitle: "近 30 天趋势",
       heatmapTitle: "近一年活跃热力图",
+      shotsTitle: "后台实拍",
+      shotsNote: "真实实例截图 · 深色主题，与本页同一抹朱红",
+      shots: [
+        "仪表盘总览 —— 总量、来源构成与模型占比",
+        "用量趋势 —— 按日/按月切换、构成拆分与成本分析",
+        "成就墙 —— 20 条成就 × 5 档段位，读时计算",
+        "年度回顾 —— 全年聚合、月度趋势与年度成就",
+      ],
     },
     features: {
       eyebrow: "03 / 功能",
@@ -320,6 +332,15 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
       },
       trendTitle: "Last 30 days",
       heatmapTitle: "Year activity heatmap",
+      shotsTitle: "Inside the app",
+      shotsNote:
+        "Real instance screenshots · dark theme, the same vermillion as this page",
+      shots: [
+        "Dashboard overview — totals, source mix and model shares",
+        "Usage trends — daily/monthly, composition breakdown, cost analysis",
+        "Achievement wall — 20 achievements × 5 tiers, computed at read time",
+        "Yearly wrapped — annual aggregates, monthly trend and year achievements",
+      ],
     },
     features: {
       eyebrow: "03 / Features",
