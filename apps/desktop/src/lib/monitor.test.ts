@@ -1,0 +1,102 @@
+import { describe, expect, it } from "vitest";
+
+import { buildMonitorSnapshot } from "@/lib/monitor";
+
+const NOW = Date.parse("2026-11-08T12:00:00.000Z");
+const ROW_TODAY = JSON.stringify({
+  source: "codex",
+  model: "deepseek-v4-flash",
+  hour_start: "2026-11-08T01:00:00.000Z",
+  total_tokens: 150,
+  billable_total_tokens: 150,
+  conversation_count: 2,
+});
+const FINISHED_RUN = JSON.stringify({
+  ts: "2026-11-08T09:00:00.000Z",
+  msg: "Auto sync finished",
+  phase: "finished",
+  parsed_files: 12,
+  buckets: 3,
+  inserted: 3,
+  skipped: 0,
+  tokens: 9694213,
+  sessions_uploaded: 1,
+  sessions_skipped: 0,
+  pending_bytes: 0,
+  duration_ms: 4123,
+  uploaded: true,
+});
+
+const BASE_FILES = {
+  queue: `${ROW_TODAY}\n`,
+  pause: null,
+  queueState: null,
+  syncLog: null,
+};
+
+describe("buildMonitorSnapshot", () => {
+  it("composes today/week windows, sync status and CLI info", () => {
+    const snapshot = buildMonitorSnapshot(
+      {
+        ...BASE_FILES,
+        syncLog: `${FINISHED_RUN}\n`,
+        queueState: `${JSON.stringify({ offset: 100 })}\n`,
+      },
+      { available: true, version: "0.5.2" },
+      "https://example.selfhost.test",
+      NOW,
+    );
+
+    expect(snapshot.today.totalTokens).toBe(150);
+    expect(snapshot.week.totalTokens).toBe(150);
+    expect(snapshot.lastRun?.tokens).toBe(9694213);
+    expect(snapshot.cli).toEqual({ available: true, version: "0.5.2" });
+    expect(snapshot.dashboardUrl).toBe("https://example.selfhost.test");
+    expect(snapshot.paused).toBe(false);
+  });
+
+  it("computes pending bytes from the upload offset", () => {
+    const snapshot = buildMonitorSnapshot(
+      { ...BASE_FILES, queueState: `${JSON.stringify({ offset: 40 })}\n` },
+      { available: true, version: null },
+      null,
+      NOW,
+    );
+    const queueBytes = new TextEncoder().encode(`${ROW_TODAY}\n`).length;
+
+    expect(snapshot.queueBytes).toBe(queueBytes);
+    expect(snapshot.pendingBytes).toBe(queueBytes - 40);
+  });
+
+  it("reads the pause flag and ignores corrupt state", () => {
+    const paused = buildMonitorSnapshot(
+      {
+        ...BASE_FILES,
+        pause: `${JSON.stringify({ paused: true, at: "2026-11-08T00:00:00.000Z" })}\n`,
+        queueState: "corrupt",
+      },
+      { available: true, version: null },
+      null,
+      NOW,
+    );
+
+    expect(paused.paused).toBe(true);
+    expect(paused.pausedAt).toBe("2026-11-08T00:00:00.000Z");
+    // Corrupt state falls back to "fully uploaded", not a giant pending.
+    expect(paused.pendingBytes).toBe(0);
+  });
+
+  it("handles a machine without any CLI data yet", () => {
+    const snapshot = buildMonitorSnapshot(
+      { queue: null, pause: null, queueState: null, syncLog: null },
+      { available: false, version: null },
+      null,
+      NOW,
+    );
+
+    expect(snapshot.today.totalTokens).toBe(0);
+    expect(snapshot.pendingBytes).toBe(0);
+    expect(snapshot.lastRun).toBeNull();
+    expect(snapshot.cli.available).toBe(false);
+  });
+});

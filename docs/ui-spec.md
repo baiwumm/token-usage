@@ -922,3 +922,27 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   壳与侧栏宽度恒定，切页时内容宽度按档位跳变属内容驱动的有意区分，不是待修的不一致。
 - 审查：UI 代码提交前用 web-design-guidelines Skill 对照最新 Web Interface Guidelines，
   输出 `file:line` 问题清单并修复。
+
+## 桌面端（`apps/desktop`）
+
+2026-11-08 M-desktop 立项（`docs/desktop-plan.md`）。桌面端沿用本文 Design Tokens、组件
+规则（HeroUI 内置优先 / 复合结构 / 语义文本组件）、三态与数字格式，另有窗口级约定：
+
+- **主窗口结构**（400×620，min 340×480，单页滚动无路由）：页头（品牌 lockup + 暂停
+  chip）→ 三张单值卡（今日 tokens / 近 7 天 / 待上传，`tabular-nums`）→ 来源构成（近
+  7 天，ranked bars：share 0–1，条宽下限 2%，最多 8 行）→ 最近同步卡（`logs/sync.log`
+  的 `phase:"finished"` 行 + 更新的 `error` 行）→ 采集操作卡（立即同步 = `sync --auto`
+  / Doctor / 对账 7 天 / 暂停·恢复；输出区 `pre` 最多 8 行）→ 设备身份脚注（主机名
+  #machineId 前 8 · CLI 版本 · 实例 host）。
+- **三态**：Loading 骨架（pulse 块）；错误态（桥接不可用，可重试）；无 CLI 态（未装
+  tokenusage-cli 且无任何数据 → 安装引导卡）；空态（CLI 在但队列与 sync 记录皆空）。
+- **主题与语言**：跟随系统 → 浅色 → 深色三态（脚手架期用 `prefers-color-scheme` 内联
+  脚本，D4 落循环切换与持久化）；语言 zh-CN 单语（对齐 landing，web 双语不强制桌面）。
+- **托盘**（D2）：左键唤起主窗口；右键菜单 = 今日 tokens 与采集状态两行只读信息 +
+  立即同步（`sync --auto`，写 sync.log、尊重暂停旗标）+ 暂停/恢复采集 + 打开主窗口 +
+  打开 Web 仪表盘 + 退出；菜单文案由 webview 每 10s 轮询推送（`update_tray`）。
+- **数据边界**：窗口内容只读 `~/.tokenusage/tracker`（单文件 8 MiB 上限、canonicalize
+  前缀校验防穿越）；动作一律子进程调 CLI（`cmd /C tokenusage`，`CREATE_NO_WINDOW` 防
+  闪黑窗）；本地聚合口径 = queue.jsonl last-wins（与 AGENTS 约束 8 同源）；设备令牌与
+  anon key 永不出 Rust（config.json 只白名单返回 baseUrl / dashboardUrl / machineId）；
+  成本不在桌面计算。
