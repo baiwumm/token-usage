@@ -27,7 +27,7 @@ TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写�
 | 16 | 退役 | **2026-10-29 已执行**（操作者直接退役，跳过观察期与备份）：旧 Supabase 项目、旧 Vercel 项目、`tokentracker.baiwumm.com` 域名 DNS、旧仓库全部删除（G2/G3；旧仓库原 Archive 方案作废） |
 | 17 | 契约分档 | 2026-10-23 评审增补：两档制——CLI 面（7 端点）硬冻结；Dashboard 面（account-*×7 + dashboard）可演进、消费者仅新 UI，v1 复用现有形状，变更回写契约并同步 golden 测试与前端 |
 | 18 | 分支与门禁 | 直推 main；本地 `pnpm verify` + GitHub Actions CI 兜底（test 自 M1 接入）；`.vscode/` 入库 |
-| 19 | 官方域名 | 2026-10-24 注册 **token-usage.cc**（腾讯云，.cc 可备案）——开源项目官方站：落地页、文档（`docs.` 子域）、可选 demo 实例；操作者自部署实例仍为 `token-usage.baiwumm.com`，与官方站相互独立。命名注意：tokenusage.org 为同类 Rust 工具，无横杠的 tokenusage 域名/品牌一律避开 |
+| 19 | 官方域名 | 2026-10-24 注册 **token-usage.cc**（腾讯云，.cc 可备案）——开源项目官方站：落地页、文档（`docs.` 子域）、可选 demo 实例；操作者自部署实例仍为 `token-usage.baiwumm.com`，与官方站相互独立。命名注意：tokenusage.org 为同类 Rust 工具，无横杠的 tokenusage 域名/品牌一律避开。**2026-11-08 更新**：落地页已实施（仓库内 `apps/landing` 纯静态单页，见 §10 M-landing），`docs.` 子域与 demo 实例仍为后续可选项 |
 | 20 | 上游基础功能 | 2026-10-25 操作者指令：先按上游 TokenTracker 的基础功能对齐——**A. Dashboard 核心 + 外观设置**，**B. Sessions**。不做上游全量复刻；Limits / Skills / Cloud / Leaderboard / Pet / Widgets / IP check 仍排除；Achievements 于 2026-10-30 移入范围（M7，账号级、读时计算，不移植上游云端成就，见 §5 与 `docs/achievements-plan.md`） |
 | 21 | Dashboard A | 上游 Dashboard 的信息架构（rolling stats、Top 模型、趋势、热力图、模型/来源/设备、日/时/月明细、成本分析）全部复用现有 Dashboard 面契约；不新增表/端点，不改 CLI；HeroUI 重做，图表继续 recharts |
 | 22 | Sessions B | 设备级会话明细：新增 `token_sessions`（`models` JSONB）、ingest 可选 `sessions` 数组、`account-sessions` series；只收用量元数据（source/session_id/时间/项目标签/token/模型），不收 prompt/正文/绝对路径/resume command/标题；成本读取时算；账户级来源（cursor/trae-cn）不进 Sessions v1；旧 CLI 不传 sessions 时行为不变 |
@@ -163,6 +163,14 @@ CLI 依赖集单独维护在 `packages/cli/package.json`：2026-10-29 删除
 `captureException` 无调用点，却是运行时副本 44 MB、全局安装约 59 MB 的主体），
 当前运行时依赖为 `@journeyapps/wa-sqlite`、`smol-toml`、`undici`、`yauzl`。
 
+2026-11-08 增量（M-landing，操作者批准的立项内）：`apps/landing` 的依赖为
+`apps/web` 依赖集的**子集镜像，零新依赖名**——运行时 `next` / `react` /
+`react-dom` / `@heroui/react` / `@heroui/styles` / `@gravity-ui/icons` /
+`clsx` / `@number-flow/react`，devDeps 为 web 的 eslint / tailwind /
+prettier / typescript 组同版本；不引 `next-themes`（暗色写死）、不引 `motion`
+（动效全 CSS）、不引 `recharts`（趋势为手绘 SVG 静态重绘）。lockfile 根级统一
+管理，`minimumReleaseAgeExclude` 已覆盖全部所需版本 pin，无需新增排除项。
+
 ## 5. 里程碑（契约层先行）
 
 | 里程碑 | 内容 | 验收线 |
@@ -242,9 +250,14 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），
 其值从 publishable key 取——公开客户端值的语义不变。
 
-## 10. 当前状态与剩余事项（2026-11-06 复核）
+## 10. 当前状态与剩余事项（2026-11-06 复核；2026-11-08 增补 M-landing）
 
-**里程碑**：M0–M7 全部交付；生产实例 `token-usage.baiwumm.com` 自 2026-10-26 起承载
+**里程碑**：M0–M7 全部交付；**M-landing（2026-11-08）**：官方落地页 `apps/landing`
+开发完成并推送（纯静态单页八段、暗色单主题、VERMILLION accent、真实数据快照
+23.82B tokens / 17 来源 / 58 模型 / 103 活跃天 + 52 周真实日桶热力图、四风格分享卡
+PNG 真导出、中文单语、零新依赖名、根 `pnpm verify` 已含 landing verify）；待操作者
+验收 + Vercel 第二项目上线（接线见 `apps/landing/README.md`）。生产实例
+`token-usage.baiwumm.com` 自 2026-10-26 起承载
 两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.2`（2026-11-08
 发布，tag `cli-v0.5.2`，上传队列防线——白名单重组 / 字节预算 / 400·413 连败逃生阀，
 零契约变更）；`0.5.0` / `0.5.1` 已于 2026-11-06 发版。两台采集机的身份与状态（设备名即契约 §2.2 的 `<主机名> #<machine_id 前 8 位>`，
@@ -394,8 +407,11 @@ web 修账户快照全主键分页（>100 万行显式 500，不静默截断）�
    推送观察 Vercel 部署。完成后勾掉 E1。
 2. **D2 Sessions CSV 导出** → 只做 CSV，**取消列排序**；单独一批并单独验收
    （2026-11-01 完成）。
-3. **`token-usage.cc` 官方落地页** → **延后**，等 web、桌面端与 CLI 端功能全部完成后
-   再启动；在那之前不排期、不改 requirements 的「v1 范围」表述（仍属规划内，只是后置）。
+3. **`token-usage.cc` 官方落地页** → ~~延后~~ **已修订（2026-11-08 拍板：立即启动 M-landing）**。
+   web / CLI 已定型，桌面端为托盘伴生工具不影响产品叙事——原"三端全部完成"条件翻转；
+   形态改为**仓库内 `apps/landing` 独立部署**（原"独立建站"措辞作废，requirements 路由表
+   同步修订）。2026-11-08 实施：纯静态单页（暗色单主题、VERMILLION accent、真实数据快照、
+   中文单语、零新依赖名），见 §10 M-landing 行。
 4. **旧 `tokentracker-*` 路径别名** → ~~暂不退役~~ **已修订（2026-11-03 拍板：执行退役）**。
    两条 rewrite 已删，旧路径 GET→404 / 写动词→405、均无处理器（contract 测试
    `legacy-alias-removed.test.ts` 守护），退役记录见 `docs/cli-contract.md` §1.5。

@@ -32,15 +32,17 @@
 | CLI API | `/api/functions/token-usage-*` | CLI 面 9 端点 + Dashboard 面 10 端点（`docs/cli-contract.md` §2） |
 | 公开徽章 API | `/api/badge` | 公开 SVG 徽章端点（无需鉴权，令牌即凭证），规范见 `docs/badge.md` |
 | 仪表盘内部 API | `/api/app/*` | 应用自有接口（非契约面，随 UI 自由演进） |
-| 产品落地页 | token-usage.cc | **独立建站**（不在本应用内）：产品介绍、自部署入口（部署指南 / GitHub）、登录入口；**2026-11-01 拍板延后**，等 web / 桌面端 / CLI 功能全部完成后启动 |
+| 产品落地页 | token-usage.cc | **仓库内 `apps/landing` 独立部署**（2026-11-08 拍板，原"独立建站"措辞作废）：纯静态单页——产品介绍、自部署入口（部署指南 / GitHub）、公开页演示；暗色单主题、中文单语、`output: "export"`；**2026-11-01 拍板延后**的条件已满足（web / CLI 定型，桌面端为托盘伴生工具不影响叙事），M-landing 同日实施 |
 | 开源自部署 | — | 中文部署指南、迁移脚本、Deploy to Vercel 按钮 |
 
 路由约定：仪表盘挂 `/` 且**需要登录**；**除 `/login`、`/auth/callback`、公开页 `/u/<token>`
 与 CLI API 外，所有页面未登录一律重定向到登录页**，重定向须保留原始路径与查询参数
 （配对链接 `?user_code=` 不得因跳转丢失），登录成功进入原目标（无 `?next=` 时缺省 `/`）。
 设置分区用 `/settings?section=appearance|account|devices` 深链，不新增顶层路由。
-产品落地页不在本应用内，使用 **token-usage.cc** 独立域名创建（开源自部署介绍站，与本
-应用部署域相互独立）；启动时机见上表。CLI API 走 `docs/cli-contract.md` 自身的公开/鉴权规则，
+产品落地页为仓库内 **`apps/landing`** 纯静态 app（2026-11-08 拍板，原"独立建站"改为
+monorepo 内独立部署），构建产物部署到 **token-usage.cc**（Vercel 第二项目，Root Directory
+= `apps/landing`），与本应用部署域相互独立；实现与部署接线见 `apps/landing/README.md`。
+CLI API 走 `docs/cli-contract.md` 自身的公开/鉴权规则，
 不受页面守卫影响。路由表变更需回写本表。
 
 ## 边界（v1 不做什么）

@@ -5,7 +5,9 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 `xiufengsun/TokenTracker`），代码不回搬。
 
 仓库布局：`apps/web`（Next.js：仪表盘 + CLI 契约层，src 目录结构）；`packages/cli`（采集 CLI
-包，npm `tokenusage-cli`）；`apps/desktop`（桌面端，**尚未创建**）。
+包，npm `tokenusage-cli`）；`apps/landing`（落地页，2026-11-08 立项：纯静态单页营销站，
+`output: "export"` 部署 token-usage.cc，暗色单主题、中文单语、零新依赖名，接线见
+`apps/landing/README.md`）；`apps/desktop`（桌面端，**尚未创建**）。
 
 目录规范（2026-10-26 操作者裁定）：`apps/web/src/app/` 只放路由——目录与 URL 一一对应
 （`page.tsx` + `route.ts`，无路由组），页面级 metadata 也在各 `page.tsx`；登录壳
@@ -66,6 +68,7 @@ Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwi
 | 公开徽章、公开页与 Settings 徽章卡（`/api/badge`、`/api/app/badge`、`/u/<token>`） | `docs/badge.md` |
 | 邀请建号与首次登录（配对、临时密码、自助改密） | `docs/invite-flow.md` |
 | 从零部署（Supabase + Vercel） | `docs/deploy-guide.md` |
+| 改落地页（`apps/landing`：文案、快照数据、部署接线） | `apps/landing/README.md`（UI 仍先读 `docs/ui-spec.md`） |
 | 部署与回滚 | `docs/launch-runbook.md` |
 | 当前进度、剩余事项与待决策 | `docs/rewrite-plan.md` §10 |
 | 历史归档（已完成且不再维护的计划与对比结论） | `docs/archive/` |
