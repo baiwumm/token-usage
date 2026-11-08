@@ -195,7 +195,7 @@ function HeroMotif() {
   return (
     <div
       aria-hidden="true"
-      className="grid grid-cols-[repeat(52,minmax(0,1fr))] gap-0.75 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]"
+      className="grid grid-cols-52 gap-0.75 mask-[linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]"
     >
       {cells.map(([day, , level], index) => (
         <span

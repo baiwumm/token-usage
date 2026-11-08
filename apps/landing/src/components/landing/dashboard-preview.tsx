@@ -194,10 +194,7 @@ function TrendBars({ series }: { series: number[] }) {
 // 热力图缩样：同一份 364 格（52 列 × 7 行），复用 HeroMotif 的排布手法。
 function MiniHeatmap({ cells }: { cells: Array<[string, number, number]> }) {
   return (
-    <div
-      aria-hidden="true"
-      className="grid grid-cols-[repeat(52,minmax(0,1fr))] gap-0.75"
-    >
+    <div aria-hidden="true" className="grid grid-cols-52 gap-0.75">
       {cells.map(([day, , level]) => (
         <span
           key={day}
@@ -263,7 +260,7 @@ function ShotsCarousel() {
       </div>
 
       {/* 16:10 容器（截图 1440×900）+ absolute 叠放：交叉淡入且不撑高。 */}
-      <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-default/50 bg-surface-secondary">
+      <div className="relative aspect-16/10 overflow-hidden rounded-2xl border border-default/50 bg-surface-secondary">
         {SHOTS.map((shot, shotIndex) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img
