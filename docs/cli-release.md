@@ -858,3 +858,24 @@ run `42224011411` 成功；GitHub Release
 待办：公司机 `PC-20260408RIKF #68e47b34` 仍为 0.5.0。它是提升权限 shell 注册的（未触发降级），
 但需升级到 0.5.1 才能获得 `doctor` 自检与后续修复；升级后按同口径复核 `doctor`（17 项）与
 `reconcile --days 7`。macOS/Linux 调度真机验证仍缺硬件。
+
+## 十一、0.5.2 发版（2026-11-08）
+
+npm `tokenusage-cli@0.5.2`；tag `cli-v0.5.2`；Release workflow 自动发包。零契约变更，
+服务端无需同步升级；对账基线（`queue.jsonl` last-wins）与队列文件格式不变。
+
+| 批次 | 内容 | 影响面 |
+|---|---|---|
+| `fix(cli)` 队列防线 | 上传行白名单重组 + safe-integer 钳制 + 桶批 512 KiB 字节预算 + 400/413 连败逃生阀（隔离到 `queue.quarantine.jsonl` 并推进偏移） | 彻底消除「毒批/超大批次 → 队头永久卡死」类故障（2026-11 审计 P0）；隔离行为有声且被 `reconcile` 持续报 drift |
+| `feat(cli)` 可见性 | sync 摘要新增「models omitted on N」（>32 模型或单模型恒等式失败丢弃模型明细的会话数） | 这类会话此前静默按 0 计成本 |
+| `chore(cli)` 发版 | 版本号 + CHANGELOG | — |
+
+发版前检查：
+
+- [x] `pnpm verify` 全绿（web 642 用例 + CLI 283 用例；新增 `test/upload-guards.test.js` 9 用例覆盖白名单/钳制/字节预算/逃生阀/401-403-5xx 不触发）
+- [x] tag `cli-v0.5.2` 与 `packages/cli/package.json` 一致、落在 `origin/main`
+- [ ] release workflow 全绿（npm Trusted Publishing + provenance）
+- [ ] 两台采集机升级 0.5.2 并复验（`doctor` 17 项、`sync --drain`、`reconcile --days 7`）
+
+升级说明：无需任何动作，随下次计划任务自动生效；若历史上已有卡死批次，升级后第一轮
+`sync` 即触发逃生阀完成隔离（检查 `queue.quarantine.jsonl` 并按需人工处理）。
