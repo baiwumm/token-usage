@@ -190,12 +190,22 @@ function mapSessionRow(row) {
 function buildSessionUploadRows(rows) {
   const out = [];
   let skipped = 0;
+  let modelsOmitted = 0;
   for (const row of Array.isArray(rows) ? rows : []) {
+    const carriedModels = Array.isArray(row?.model_usage) && row.model_usage.length > 0;
     const mapped = mapSessionRow(row);
-    if (mapped) out.push(mapped);
-    else skipped += 1;
+    if (mapped) {
+      // Sessions whose model detail was dropped (>32 models, or a per-model
+      // identity/sum failure — see mapSessionRow) still upload but price as
+      // 0 on the read side. Count them so the sync summary makes the
+      // trade-off visible instead of silently costing nothing.
+      if (carriedModels && !Array.isArray(mapped.models)) modelsOmitted += 1;
+      out.push(mapped);
+    } else {
+      skipped += 1;
+    }
   }
-  return { rows: out, skipped };
+  return { rows: out, skipped, modelsOmitted };
 }
 
 function watermarkKey(source, sessionId) {
@@ -298,7 +308,7 @@ async function uploadSessions({
   // Map first: callers hand us RAW session-analytics rows (tokens nested in
   // row.tokens, sidecar-only fields present); the wire shape is built here so
   // no call site can bypass the whitelist/identity checks.
-  const { rows: mapped, skipped: skippedLocal } = buildSessionUploadRows(sessions);
+  const { rows: mapped, skipped: skippedLocal, modelsOmitted } = buildSessionUploadRows(sessions);
   const watermarks = loadWatermarks(watermarkPath);
   const pending = selectSessionsForUpload(mapped, watermarks);
   const maxRows = Math.min(Math.max(1, batchSize), MAX_SESSIONS_PER_BATCH);
@@ -378,6 +388,7 @@ async function uploadSessions({
     upserted,
     skippedServer,
     skippedLocal,
+    modelsOmitted,
     batches,
   };
 }

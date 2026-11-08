@@ -611,8 +611,11 @@ function buildSyncSummaryLines({
     lines.push(`- Credits: ${formatNumber(uploadedCredits)}`);
   }
   if (sessionUploadSummary) {
+    const omittedSuffix = sessionUploadSummary.modelsOmitted > 0
+      ? `, models omitted on ${formatNumber(sessionUploadSummary.modelsOmitted)}`
+      : "";
     lines.push(
-      `- Sessions: ${formatNumber(sessionUploadSummary.uploaded)}/${formatNumber(sessionUploadSummary.pending)} uploaded (upserted ${formatNumber(sessionUploadSummary.upserted)}, skipped ${formatNumber(sessionUploadSummary.skipped)})`,
+      `- Sessions: ${formatNumber(sessionUploadSummary.uploaded)}/${formatNumber(sessionUploadSummary.pending)} uploaded (upserted ${formatNumber(sessionUploadSummary.upserted)}, skipped ${formatNumber(sessionUploadSummary.skipped)}${omittedSuffix})`,
     );
   }
   if (hasDeviceToken && pendingBytes > 0 && !drain) {
@@ -3894,6 +3897,7 @@ async function cmdSync(argv, context = {}) {
             pending: result.pending,
             upserted: result.upserted,
             skipped: (result.skippedServer || 0) + (result.skippedLocal || 0),
+            modelsOmitted: result.modelsOmitted || 0,
           };
           // Auto runs keep the rolling log line; a manual run reports the same
           // counters inside the final summary block (printing here would put
@@ -3903,7 +3907,11 @@ async function cmdSync(argv, context = {}) {
               result.upserted || result.skippedServer
                 ? ` (upserted ${result.upserted}, skipped ${result.skippedServer})`
                 : "";
-            autoLog(`Sessions: ${result.uploaded}/${result.pending} uploaded${sessionSuffix}`);
+            const omittedSuffix =
+              sessionUploadSummary.modelsOmitted > 0
+                ? `, models omitted on ${sessionUploadSummary.modelsOmitted}`
+                : "";
+            autoLog(`Sessions: ${result.uploaded}/${result.pending} uploaded${sessionSuffix}${omittedSuffix}`);
           }
         }
         syncRun?.noteSessions({
@@ -4745,8 +4753,14 @@ const { buildSessionAnalytics } = require("../lib/session-analytics");
 const { uploadSessions } = require("../lib/session-upload");
 const { uploadProjectRepos } = require("../lib/project-repos");
 const MAX_INGEST_BUCKETS = 500;
+// Sessions split batches on a 500 KiB byte budget (lib/session-upload.js);
+// the hourly drain used to rely on the row cap alone. Raw queue-line bytes
+// upper-bound the sanitized wire rows (the whitelist in ingest-sanitize only
+// shrinks them), so cutting on raw bytes keeps every request comfortably
+// under the contract's 1 MiB body cap (§1.2 → 413).
+const MAX_BATCH_BYTES = 512 * 1024;
 
-async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, queueStatePath, maxBatches = 5, batchSize = 200, maxDurationMs = UPLOAD_BUDGET_MS, canUpload = () => true }) {
+async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, queueStatePath, maxBatches = 5, batchSize = 200, maxDurationMs = UPLOAD_BUDGET_MS, canUpload = () => true, fetchImpl = fetch }) {
   const state = (await readJson(queueStatePath)) || { offset: 0 };
   let offset = Number(state.offset || 0);
   let inserted = 0;
@@ -4755,6 +4769,7 @@ async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, que
   let tokensIngested = 0;
   let creditsIngested = 0;
   let cloudAccess = null;
+  let rejectStrikes = readRejectStrikes(state);
   const uploadId = crypto.randomUUID();
   const deadline = Date.now() + maxDurationMs;
   let batchBudget = Math.min(maxBatches, 100);
@@ -4807,7 +4822,7 @@ async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, que
             ? { account_session_states: result.sessionStates }
             : {}),
         }),
-      });
+      }, fetchImpl);
 
       const rawText = await res.text();
       let data = {};
@@ -4821,6 +4836,36 @@ async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, que
         const retryAfter = res.headers?.get?.("Retry-After") ?? null;
         const retryAfterMs = parseRetryAfterMs(retryAfter);
         if (retryAfterMs !== null) err.retryAfterMs = retryAfterMs;
+        // 400/413 are deterministic client-shape rejections: retrying the
+        // identical batch can never succeed, and the offset only moves on
+        // success. Count strikes per offset (persisted, so the count survives
+        // process exits between scheduled syncs); after three, quarantine the
+        // batch and advance past it — a loud, inspectable drop instead of a
+        // silent stall. Quarantined rows stay in queue.jsonl, so
+        // `tokenusage reconcile` keeps reporting them as drift for a human
+        // to judge.
+        if (err.status === 400 || err.status === 413) {
+          const strikes = rejectStrikes.offset === offset ? rejectStrikes.count + 1 : 1;
+          rejectStrikes = { count: strikes, offset };
+          if (strikes >= REJECT_VALVE_LIMIT) {
+            const quarantinePath = `${queuePath}.quarantine.jsonl`;
+            const quarantined = await quarantineBatchAt({ queuePath, offset, limit, quarantinePath });
+            offset = quarantined.nextOffset;
+            state.offset = offset;
+            delete state.reject;
+            state.updatedAt = new Date().toISOString();
+            await writeJson(queueStatePath, state);
+            process.stderr.write(
+              `Upload escape valve: HTTP ${err.status} rejected the same batch ${strikes} times; ` +
+              `quarantined ${quarantined.rows} row(s) to ${quarantinePath} and advanced past them. ` +
+              `Inspect the quarantine file — \`tokenusage reconcile\` will flag these keys as drift.\n`,
+            );
+            continue;
+          }
+          state.reject = { count: strikes, offset };
+          state.updatedAt = new Date().toISOString();
+          await writeJson(queueStatePath, state);
+        }
         throw err;
       }
 
@@ -4850,6 +4895,7 @@ async function drainQueueToCloud({ baseUrl, anonKey, deviceToken, queuePath, que
 
       offset = result.nextOffset;
       state.offset = offset;
+      delete state.reject;
       state.updatedAt = new Date().toISOString();
       await writeJson(queueStatePath, state);
     }
@@ -4881,6 +4927,42 @@ function isCount(value) {
 function isConfirmedIngestResponse(data) {
   return Boolean(data) && typeof data === "object" && !Array.isArray(data) &&
     isCount(data.inserted) && isCount(data.skipped);
+}
+
+// Consecutive client-shape rejections (400/413) tolerated for one batch
+// offset before the escape valve quarantines it. Three strikes mean the batch
+// failed across three separate sync passes — no transient server state
+// explains it.
+const REJECT_VALVE_LIMIT = 3;
+
+function readRejectStrikes(state) {
+  const raw = state && typeof state.reject === "object" && state.reject !== null
+    ? state.reject
+    : {};
+  const count = Number(raw.count);
+  const offset = Number(raw.offset);
+
+  return {
+    count: Number.isFinite(count) && count > 0 ? Math.floor(count) : 0,
+    offset: Number.isFinite(offset) ? offset : null,
+  };
+}
+
+// Re-read the batch at `offset` through the exact same pipeline the upload
+// used, append the rows verbatim to the quarantine file, and report where the
+// offset should jump to. The queue itself is never rewritten: quarantined rows
+// stay in queue.jsonl, so reconcile keeps flagging their keys as
+// missing_on_server drift for a human to judge.
+async function quarantineBatchAt({ queuePath, offset, limit, quarantinePath }) {
+  const result = await readQueueBatch(queuePath, offset, limit);
+  const rows = [...result.buckets, ...result.sessionStates];
+
+  if (rows.length > 0) {
+    const payload = rows.map((row) => JSON.stringify(row)).join("\n") + "\n";
+    await fs.appendFile(quarantinePath, payload, "utf8");
+  }
+
+  return { rows: rows.length, nextOffset: result.nextOffset };
 }
 
 async function readQueueBatch(queuePath, startOffset, maxBuckets) {
@@ -4915,11 +4997,17 @@ async function readQueueBatch(queuePath, startOffset, maxBuckets) {
   let offset = startOffset;
   let linesRead = 0;
   try {
+    let batchBytes = 0;
     for await (const record of iterateQueueLines(handle, startOffset, st.size)) {
       // A producer may still be writing the last row; retry it once complete.
       if (!record.complete) break;
+      // Byte budget: cut before the row that would overflow, never on the
+      // batch's first row (a single oversized line cannot be split anyway,
+      // and the whitelist keeps its wire shape small).
+      if (linesRead > 0 && batchBytes + record.bytes.length > MAX_BATCH_BYTES) break;
       const line = record.bytes.toString("utf8");
       offset += record.bytes.length;
+      batchBytes += record.bytes.length;
       if (!line.trim()) continue;
       let bucket;
       try {

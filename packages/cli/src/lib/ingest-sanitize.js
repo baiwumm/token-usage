@@ -9,12 +9,27 @@
 // Rows are therefore coerced into the contract shape here, and dropped
 // (return null) when they cannot be repaired — losing one row beats losing
 // the whole queue behind it.
+//
+// The coercion is a WHITELIST REBUILD, not a spread: queue rows accumulate
+// producer-private extras over time (queuedKey fingerprints, parser scratch
+// fields, repair bookkeeping). Spreading them onto the wire bloated request
+// bodies toward the contract's 1 MiB cap (§1.2 → 413, which with the
+// success-only offset used to mean an unretryable batch), and a producer that
+// wrote a huge value into an unknown key could grow a row without bound.
+// Only the contract's fields ride the wire — the server ignores unknown keys
+// anyway, and no consumer of the sanitized row (sync upload, reconcile
+// comparison, drain telemetry) reads anything else.
 
 const { TOKEN_COLUMNS } = require("./account-usage-dedup");
 
+// Contract §2.4: counters must be non-negative SAFE integers, or the edge
+// 400s the whole batch. Clamping to Number.MAX_SAFE_INTEGER (instead of only
+// flooring) keeps a producer that wrote an unsafe value from stalling the
+// queue on a deterministic 400.
 function nonNegativeInteger(value) {
   const n = Number(value);
-  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(Math.max(0, Math.floor(n)), Number.MAX_SAFE_INTEGER);
 }
 
 function nonNegativeNumber(value) {
@@ -25,7 +40,11 @@ function nonNegativeNumber(value) {
 function sanitizeBucketForUpload(bucket) {
   if (!bucket || typeof bucket !== "object" || Array.isArray(bucket)) return null;
   if (typeof bucket.hour_start !== "string" || !Number.isFinite(Date.parse(bucket.hour_start))) return null;
-  const sanitized = { ...bucket };
+  const sanitized = {
+    hour_start: bucket.hour_start,
+    source: bucket.source,
+    model: bucket.model,
+  };
   for (const column of TOKEN_COLUMNS) {
     sanitized[column] = nonNegativeInteger(bucket[column]);
   }
@@ -41,8 +60,6 @@ function sanitizeBucketForUpload(bucket) {
   const credits = Number(bucket.credits);
   if (Number.isFinite(credits) && credits > 0) {
     sanitized.credits = Math.round(credits * 1e6) / 1e6;
-  } else {
-    delete sanitized.credits;
   }
   // project_key (contract v2, 2026-11-03): optional pass-through, string only
   // (anything else is a producer bug — drop the field, not the row); the
@@ -50,8 +67,6 @@ function sanitizeBucketForUpload(bucket) {
   // dropped so unattributed rows keep the old wire shape.
   if (typeof bucket.project_key === "string" && bucket.project_key.trim()) {
     sanitized.project_key = bucket.project_key;
-  } else {
-    delete sanitized.project_key;
   }
   return sanitized;
 }
