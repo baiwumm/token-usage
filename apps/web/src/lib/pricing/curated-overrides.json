@@ -250,6 +250,18 @@
       "cache_read": 0.06,
       "note": "InclusionAI Ant Ling 3.1 Flash (released 2026-09-29). Novita USD list via models.dev: $0.30/$0.90 per MTok input/output, $0.06 cache read; no published cache-write rate (retrieved 2026-11-08). Queue rows report the bare id; LiteLLM only carries ling-3.0 variants under provider-qualified keys."
     },
+    "ling-3.2-flash": {
+      "input": 0.3,
+      "output": 0.9,
+      "cache_read": 0.06,
+      "note": "InclusionAI Ant Ling 3.2 Flash (multimodal MoE, released 2026-11). Launch rates reported at parity with Ling 3.1 Flash ($0.30/$0.90 per MTok); the API is free on some channels during the launch window and no official pricing page has been located yet (retrieved 2026-11-08), so this entry is provisional — revisit against the official rate card. Spotted unpriced by `tokenusage doctor` pricing.coverage (dsh rows, ~20M tokens / 7d). Cache read mirrors the 3.1 pin pending a published cache-hit rate."
+    },
+    "Ling-3.2-flash": {
+      "input": 0.3,
+      "output": 0.9,
+      "cache_read": 0.06,
+      "note": "Same SKU and rates as ling-3.2-flash; the capitalized spelling is what the dsh collector actually reports (exact matching is case-sensitive, and the dot-restored form ling-3.2.flash cannot hit the dash key). Mirrors the MiniMax-M2.7-highspeed/minimax-m3 dual-registration precedent."
+    },
     "deepseek-v4-flash": {
       "input": 0.44,
       "output": 1.32,

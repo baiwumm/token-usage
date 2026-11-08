@@ -874,8 +874,18 @@ npm `tokenusage-cli@0.5.2`；tag `cli-v0.5.2`；Release workflow 自动发包。
 
 - [x] `pnpm verify` 全绿（web 642 用例 + CLI 283 用例；新增 `test/upload-guards.test.js` 9 用例覆盖白名单/钳制/字节预算/逃生阀/401-403-5xx 不触发）
 - [x] tag `cli-v0.5.2` 与 `packages/cli/package.json` 一致、落在 `origin/main`
-- [ ] release workflow 全绿（npm Trusted Publishing + provenance）
-- [ ] 两台采集机升级 0.5.2 并复验（`doctor` 17 项、`sync --drain`、`reconcile --days 7`）
+- [x] release workflow 全绿（run `42446462303`，npm Trusted Publishing + provenance 签发成功；GitHub Release 已建）
+- [x] 家机升级 0.5.2 并复验（见下表）；公司机 `PC-20260408RIKF #68e47b34` 待升级
+
+家机验收记录（2026-11-08，`DESKTOP-MHFON1J #48ea790e`，`npm i -g tokenusage-cli@0.5.2`
+→ `init --yes --no-integrations --no-open` 刷新运行时副本）：
+
+| 项 | 结果 |
+|---|---|
+| `init` | 计划任务 `TokenUsageSync: hourly, hidden window`——**无 degraded**；运行时副本 `runtime.copy` v0.5.2；首同步 6,417,189,463 tokens / 13 providers |
+| `doctor` | **17 项全 OK / 0 warn / 0 fail**；`schedule.registered` = `enhanced definition (catch-up, logon, retry)`；7 天计价覆盖 95.7%（top unpriced：`Ling-3.2-flash`，dsh，20,252,906 tokens——已按「doctor 报出即补」钉入 curated，含大写拼写键，见 `9ad6886` 后续提交） |
+| `sync --drain` | 解析 30,379 文件、上传 **2 行 / 2,013,494 tokens / 0 跳过**、sessions 1/1，耗时 13s；**零逃生阀告警**（健康队列不触发隔离） |
+| 对账 | `reconcile --days 1` OK（37 桶逐键匹配）、`--days 7` OK（118 桶、0 drift、退出码 0） |
 
 升级说明：无需任何动作，随下次计划任务自动生效；若历史上已有卡死批次，升级后第一轮
 `sync` 即触发逃生阀完成隔离（检查 `queue.quarantine.jsonl` 并按需人工处理）。
