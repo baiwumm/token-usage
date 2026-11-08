@@ -20,7 +20,9 @@
   TIER_RAMPS / LOCKED_*，对齐上游 TokenTracker 五档段位）；(3) 3D 成就硬币
   （`achievement-coin.tsx` / `achievement-medallion.tsx` / `achievement-art.tsx`）的 rgba
   高光、描边与插画色（SVG gradient stops / inline background 无法响应主题 class）；
-  (4) `components/source-icon.tsx` 的品牌回退色块（各来源品牌色、无 SVG 资源时的兜底）。
+  (4) `components/source-icon.tsx` 的品牌回退色块（各来源品牌色、无 SVG 资源时的兜底）；
+  (5) 登录页 OAuth 品牌标（`components/login/login-body.tsx` 的内联 SVG：GitHub 标用
+  `currentColor` 不涉裸色，Google 官方四色标为固定品牌资产、不随主题切换，2026-11-08 登记）。
   **DOM 组件（HeroUI / Tailwind 渲染的常规界面）仍一律使用语义 token 与
   `var(--color-chart-N)` 等主题变量**，不得引用上述字面色值；新增例外须在本清单登记。
 
@@ -651,8 +653,9 @@ top/height 镜像品牌行的 `pt-8`+自然行高 与 `lg:py-10`+`h-9`，两侧�
   字距 tagline（同侧栏 `brand.tsx` 语言）；**静态展示不链接**（链 `/` 会触发
   `/login → / → /login` 循环）。
 - 主标语 + 副标语（双语，操作者可改文案）。
-- 「近一年热力图」抽象纹样：53×7 种子伪随机矩阵（确定性种子，无 `Math.random`，
-  避免 hydration 漂移），单元格色 `var(--heatmap-1..4)` 内联（同仪表盘
+- 「近一年热力图」抽象纹样：36×7 种子伪随机矩阵（确定性种子，无 `Math.random`，
+  避免 hydration 漂移；`login-brand-panel.tsx` 的 `WEEKS = 36`——2026-11-08 按实现
+  回写，取代早先误记的 53×7），单元格色 `var(--heatmap-1..4)` 内联（同仪表盘
   `heatmap-geometry.ts` 用法），整体透明度压低；容器淡出遮罩。呼吸动效纯 CSS 且
   `prefers-reduced-motion` 下关停。
 - 底部页脚一行 muted 小字（`text-[10px]`）：`Token Usage · token-usage.cc`。
@@ -733,7 +736,8 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
     `aria-label` 兜底。
 - 文件：`src/components/u/u-body.tsx` 编排，`u-hero.tsx` / `u-metrics.tsx` /
   `u-breakdown-section.tsx` / `u-heatmap.tsx` / `u-achievements.tsx` /
-  `u-achievement-dialog.tsx` / `u-public-number.tsx`（按需）
+  `u-achievement-dialog.tsx` / `u-brand.tsx`（品牌栏，2026-11-08 补录）/
+  `u-public-number.tsx`（按需）
 
 ### 采集记录（`/sync-runs`）
 
