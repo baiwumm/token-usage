@@ -321,6 +321,27 @@ function isDeepSeekTimePricedModel(model: unknown): boolean {
   return DEEPSEEK_TIME_PRICED_MODELS.some((name) => lower.includes(name));
 }
 
+// DeepSeek's official time-of-use windows (operator-verified against the
+// official pricing page on 2026-08-21; see the `deepseek_v4_pricing_note` in
+// src/lib/pricing/curated-overrides.json): peak = 01:00–04:00 and 06:00–10:00
+// UTC, every other hour bills at half price. The midday gap is intentional —
+// the official schedule is two peak blocks, not one night-long off-peak.
+// Kept as data (not inline comparisons) so a pricing-policy change is a
+// one-line table edit guarded by tests/unit/deepseek-offpeak.test.ts, and a
+// seed-snapshot rebuild can never silently rewrite the schedule.
+export const DEEPSEEK_PEAK_HOURS_UTC: Array<
+  [start: number, endExclusive: number]
+> = [
+  [1, 4],
+  [6, 10],
+];
+
+export function isDeepSeekPeakHourUtc(hour: number): boolean {
+  return DEEPSEEK_PEAK_HOURS_UTC.some(
+    ([start, end]) => hour >= start && hour < end,
+  );
+}
+
 // From 00:00 Beijing time on 2026-08-23 DeepSeek bills whole Beijing weekends
 // off-peak, peak hours included. The weekend is bounded in Beijing time, so it
 // runs 16:00Z Friday to 16:00Z Sunday; China has had no DST since 1991.
@@ -333,7 +354,7 @@ function isBeijingWeekendOffPeak(timestamp: number): boolean {
   return beijingDay === 0 || beijingDay === 6;
 }
 
-function isDeepSeekOffPeak(
+export function isDeepSeekOffPeak(
   row: Record<string, unknown> | null | undefined,
 ): boolean {
   if (row?.pricing_tier === "off_peak") return true;
@@ -342,9 +363,8 @@ function isDeepSeekOffPeak(
 
   if (!Number.isFinite(timestamp)) return false;
   if (isBeijingWeekendOffPeak(timestamp)) return true;
-  const hour = new Date(timestamp).getUTCHours();
 
-  return !((hour >= 1 && hour < 4) || (hour >= 6 && hour < 10));
+  return !isDeepSeekPeakHourUtc(new Date(timestamp).getUTCHours());
 }
 
 export function getRowPricing(

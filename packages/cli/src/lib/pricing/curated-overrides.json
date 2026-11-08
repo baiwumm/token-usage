@@ -238,6 +238,18 @@
       "cache_read": 0.06,
       "cache_write": 0
     },
+    "minimax-m3.1-flash": {
+      "input": 0.1494,
+      "output": 0.5976,
+      "cache_read": 0.0149,
+      "note": "MiniMax M3.1 Flash (released 2026-10-19). Official MiniMax rates as listed on models.dev (minimax-cn provider): $0.1494/$0.5976 per MTok input/output, $0.0149 cache read; no published cache-write rate (retrieved 2026-11-08). Pinned so the bare id reported by collectors does not fall through to LiteLLM prefix-strip, which would pick a third-party provider entry deterministically."
+    },
+    "ling-3.1-flash": {
+      "input": 0.3,
+      "output": 0.9,
+      "cache_read": 0.06,
+      "note": "InclusionAI Ant Ling 3.1 Flash (released 2026-09-29). Novita USD list via models.dev: $0.30/$0.90 per MTok input/output, $0.06 cache read; no published cache-write rate (retrieved 2026-11-08). Queue rows report the bare id; LiteLLM only carries ling-3.0 variants under provider-qualified keys."
+    },
     "deepseek-v4-flash": {
       "input": 0.44,
       "output": 1.32,
