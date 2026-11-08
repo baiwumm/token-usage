@@ -243,8 +243,12 @@ function ShareCardShowcase() {
       >
         <Modal.Container>
           {/* 高卡竖版（特刊 1200×1630 等）：宽度收窄到 28rem，高度交给
-              max-h-[85vh]，图片 object-contain 居中，四周留黑边呼吸。 */}
-          <Modal.Dialog className="w-[calc(100vw-2rem)] overflow-hidden p-0 sm:w-[min(28rem,calc(100vw-6rem))]">
+              max-h-[85vh]，图片 object-contain 居中，四周留黑边呼吸。
+              Dialog 无可视化 Heading，按 RAC 要求带 aria-label 供读屏。 */}
+          <Modal.Dialog
+            aria-label={`${copy.features.shareCardsTitle} · ${copy.features.zoomHint}`}
+            className="w-[calc(100vw-2rem)] overflow-hidden p-0 sm:w-[min(28rem,calc(100vw-6rem))]"
+          >
             <Modal.CloseTrigger aria-label={copy.features.closePreview} />
             <Modal.Body className="p-0">
               {active !== null ? (
