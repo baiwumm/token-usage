@@ -1,7 +1,10 @@
+"use client";
+
 // 功能网格（设计定稿 04 段）：9 个功能项 hairline 分格，不堆卡片；
 // 来源项嵌 16 枚采集端 logo 墙，成就项嵌 3 枚真实成就币，下方四风格
-// 分享卡展示位（P2 导出的真实 PNG）。
+// 分享卡展示位（真实导出 PNG，点击放大预览——2026-11-08 操作者指令）。
 
+import { useEffect, useState } from "react";
 import {
   Calendar,
   FileCode,
@@ -13,7 +16,7 @@ import {
   Server,
   Wallet,
 } from "@gravity-ui/icons";
-import { Typography } from "@heroui/react";
+import { Modal, Typography } from "@heroui/react";
 
 import { SectionHeader } from "./section-header";
 
@@ -170,6 +173,26 @@ const SHARE_CARDS: Array<{ file: string; label: string }> = [
 
 function ShareCardShowcase() {
   const copy = LANDING_COPY.zh;
+  // 点击卡片放大预览（2026-11-08 操作者指令）：单实例受控 Modal，
+  // active 为当前卡索引、null 即关闭。
+  // 关闭走三条确定性路径（RAC 的 Esc/外部点击 dismiss 在本页不可靠——
+  // backdrop 即 overlay 本体、Escape 监听挂在 overlay 元素上依赖焦点链）：
+  // 1) 原生 CloseTrigger（HeroUI）；2) window 级 Escape 监听（开层期间
+  //   挂载，焦点无关）；3) backdrop 自身点击（target === currentTarget，
+  //   dialog 内部的冒泡点击被判定排除）。
+  const [active, setActive] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (active === null) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setActive(null);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [active]);
 
   if (SHARE_CARDS.length === 0) return null;
 
@@ -184,17 +207,22 @@ function ShareCardShowcase() {
         </Typography>
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {SHARE_CARDS.map((card) => (
+        {SHARE_CARDS.map((card, index) => (
           <figure key={card.file} className="flex flex-col gap-2">
-            <span className="overflow-hidden rounded-xl border border-default/50">
+            <button
+              aria-label={`${copy.features.zoomHint}：${card.label}`}
+              className="group overflow-hidden rounded-xl border border-default/50"
+              type="button"
+              onClick={() => setActive(index)}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 alt={card.label}
-                className="w-full"
+                className="w-full cursor-zoom-in transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transition-none"
                 loading="lazy"
                 src={card.file}
               />
-            </span>
+            </button>
             <figcaption>
               <Typography color="muted" type="body-xs">
                 {card.label}
@@ -203,6 +231,42 @@ function ShareCardShowcase() {
           </figure>
         ))}
       </div>
+
+      <Modal.Backdrop
+        isOpen={active !== null}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) setActive(null);
+        }}
+        onOpenChange={(open) => {
+          if (!open) setActive(null);
+        }}
+      >
+        <Modal.Container>
+          {/* 高卡竖版（特刊 1200×1630 等）：宽度收窄到 28rem，高度交给
+              max-h-[85vh]，图片 object-contain 居中，四周留黑边呼吸。 */}
+          <Modal.Dialog className="w-[calc(100vw-2rem)] overflow-hidden p-0 sm:w-[min(28rem,calc(100vw-6rem))]">
+            <Modal.CloseTrigger aria-label={copy.features.closePreview} />
+            <Modal.Body className="p-0">
+              {active !== null ? (
+                <figure className="flex flex-col">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    alt={SHARE_CARDS[active].label}
+                    className="mx-auto max-h-[80vh] w-auto max-w-full"
+                    src={SHARE_CARDS[active].file}
+                  />
+                  <figcaption className="border-t border-default/50 px-5 py-3">
+                    <Typography color="muted" type="body-xs">
+                      {SHARE_CARDS[active].label} ·{" "}
+                      {copy.features.shareCardsTitle}
+                    </Typography>
+                  </figcaption>
+                </figure>
+              ) : null}
+            </Modal.Body>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </div>
   );
 }

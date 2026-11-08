@@ -61,6 +61,8 @@ export interface LandingCopy {
     items: Array<{ title: string; body: string }>;
     shareCardsTitle: string;
     shareCardsSub: string;
+    zoomHint: string;
+    closePreview: string;
   };
   ownership: {
     eyebrow: string;
@@ -192,7 +194,10 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
         },
       ],
       shareCardsTitle: "分享卡 · 四种版式",
-      shareCardsSub: "同一份数据，四种气质——由 Canvas 手绘引擎直出。",
+      shareCardsSub:
+        "同一份数据，四种气质——由 Canvas 手绘引擎直出，点击卡片放大预览。",
+      zoomHint: "放大预览",
+      closePreview: "关闭预览",
     },
     ownership: {
       eyebrow: "04 / 数据自主",
@@ -386,7 +391,9 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
       ],
       shareCardsTitle: "Share cards · four styles",
       shareCardsSub:
-        "One dataset, four temperaments — drawn by the Canvas engine.",
+        "One dataset, four temperaments — drawn by the Canvas engine. Click a card to zoom in.",
+      zoomHint: "Zoom in",
+      closePreview: "Close preview",
     },
     ownership: {
       eyebrow: "04 / Data ownership",
