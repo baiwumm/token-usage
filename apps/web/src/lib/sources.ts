@@ -19,6 +19,12 @@ const CANONICAL_RULES: Array<[test: string, id: string]> = [
   ["command_code", "command-code"],
   ["command-code", "command-code"],
   ["deepseek", "deepseek"],
+  // Kilo Code ships as a VS Code extension (kilocode) and a CLI (kilo-cli);
+  // both collect the same product, so both fold into the existing "kilo"
+  // label + logo (the CLI-side alias table normalizes kilo→kilo-cli and
+  // kilo-code→kilocode).
+  ["kilo-cli", "kilo"],
+  ["kilocode", "kilo"],
   // MiniMax ships its own coding CLI ("minimax-code"); the prefix rule also
   // catches future "minimax-*" source ids.
   ["minimax", "minimax"],
@@ -35,6 +41,7 @@ const SOURCE_LABELS: Record<string, string> = {
   antigravity: "Antigravity",
   mimo: "Mimo",
   kimi: "Kimi",
+  "kimi-code": "Kimi Code",
   gemini: "Gemini",
   grok: "Grok",
   copilot: "Copilot",
@@ -47,7 +54,14 @@ const SOURCE_LABELS: Record<string, string> = {
   "command-code": "Command Code",
   kiro: "Kiro",
   devin: "Devin",
+  droid: "Droid",
+  dumate: "Qianfan",
+  "every-code": "Every Code",
+  goose: "Goose",
   lmstudio: "LM Studio",
+  muse: "Muse",
+  omo: "OmO",
+  omp: "Oh My Pi",
   openclaw: "OpenClaw",
   hermes: "Hermes",
   kilo: "Kilo",
@@ -70,6 +84,7 @@ const SOURCE_LOGOS: Record<string, string> = {
   antigravity: "antigravity.svg",
   mimo: "mimo.svg",
   kimi: "kimi.svg",
+  "kimi-code": "kimi.svg",
   gemini: "gemini.svg",
   grok: "grok.svg",
   copilot: "copilot.svg",
