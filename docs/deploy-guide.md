@@ -131,8 +131,12 @@ Deploy 后得到部署域名（如 `https://token-usage-xxx.vercel.app`）。**�
 配置，把 Site URL 与 Redirect URLs 里的域名核对成这个实际域名**；`TOKEN_USAGE_DASHBOARD_URL`
 若有出入也在 Vercel 改后 Redeploy 一次。
 
-**方式 B：Vercel CLI / Git 集成**：把仓库导入 Vercel 项目（framework 自动识别 Next.js），
-环境变量同上。
+**方式 B：Vercel CLI / Git 集成**：把仓库导入 Vercel 项目，**Root Directory 设为
+`apps/web`**（monorepo 结构），framework 自动识别 Next.js，环境变量同上。依赖安装：
+Vercel 在 `apps/web` 下用 npm 安装（pnpm lockfile 在仓库根，嵌套 Root Directory 探测不到），
+`apps/web/.npmrc` 已带 `legacy-peer-deps=true`——repo 的 eslint@10 与 eslint-plugin-import@2
+的 peer 声明（最高 ^9）在 npm 严格模式下冲突，该开关恢复 npm 经典解析，与 pnpm（开发/CI）
+的实际行为一致，无需手工处理。
 
 部署完成后自检：打开 `https://<部署域名>/api/functions/token-usage-public-config`，
 应返回包含 `supabase_url` 的 JSON。
