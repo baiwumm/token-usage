@@ -72,6 +72,16 @@ const MAX_RECLAIM_DEPTH = 4;
 const MAX_RECLAIM_SWEEP_DEPTH = 64;
 const TRANSITION_GUARD_RETRY_MS = 5;
 const TRANSITION_GUARD_ATTEMPTS = 1000;
+// Windows: creating the lock NAME itself can transiently fail with
+// ERROR_ACCESS_DENIED (Node reports EPERM; sharing-mode conflicts surface as
+// EBUSY) while a filter driver settles or the previous lease's release
+// completes. A live holder can never produce these codes — an existing name
+// always collides as EEXIST first. Retry briefly, then fall through to the
+// held semantics so a real constant failure stays visible via sync.skip.json
+// instead of crashing every run with a raw errno (issue #431's lesson: lock
+// trouble must be survivable and queryable, not loud).
+const LOCK_TRANSIENT_OPEN_RETRIES = 3;
+const LOCK_TRANSIENT_OPEN_RETRY_MS = 150;
 
 function parseLockOwner(raw) {
   try {
@@ -290,6 +300,7 @@ async function openLock(
     reclaimDepth = 0,
     serializeRelease = true,
     sweptReclaimGuards = false,
+    retryTransient = true,
   } = {},
 ) {
   try {
@@ -402,6 +413,38 @@ async function openLock(
         } finally {
           if (quarantinePath) await fs.unlink(quarantinePath).catch(() => {});
           await reclaimGuard.release();
+        }
+      }
+      if (!quietIfLocked) {
+        process.stdout.write("Another sync is already running.\n");
+      }
+      return null;
+    }
+    if (e && (e.code === "EPERM" || e.code === "EBUSY") && retryTransient) {
+      // Transient create-denial on the lock name (see LOCK_TRANSIENT_OPEN_*
+      // above): retry briefly, then the held semantics. Nothing about a live
+      // holder reaches this branch — EEXIST owns that path.
+      for (let attempt = 0; attempt < LOCK_TRANSIENT_OPEN_RETRIES; attempt += 1) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, LOCK_TRANSIENT_OPEN_RETRY_MS),
+        );
+        try {
+          return await openLock(lockPath, {
+            quietIfLocked,
+            beforeReclaim,
+            beforeReleaseUnlink,
+            reclaimDepth,
+            serializeRelease,
+            sweptReclaimGuards,
+            retryTransient: false,
+          });
+        } catch (retryError) {
+          if (
+            !retryError ||
+            (retryError.code !== "EPERM" && retryError.code !== "EBUSY")
+          ) {
+            throw retryError;
+          }
         }
       }
       if (!quietIfLocked) {
