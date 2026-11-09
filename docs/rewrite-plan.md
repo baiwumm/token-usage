@@ -180,6 +180,13 @@ prettier / typescript 组同版本；不引 `next-themes`（暗色写死）、�
 `zustand` 等 web 独有名不进桌面。Rust crate（`tauri` 2 + `tauri-build`）走 cargo、不进
 pnpm lockfile，依赖树披露随发版文档（`docs/desktop-plan.md` §6）。
 
+2026-11-09 增量（M-desktop D4，操作者批准"三个官方插件全上"）：`apps/desktop` 运行时装
+`@tauri-apps/plugin-notification@2.8.0` 与 `@tauri-apps/plugin-autostart@2.7.0`；Rust crate
+增 `tauri-plugin-notification@2.8.0` / `tauri-plugin-autostart@2.7.0` /
+`tauri-plugin-single-instance@2.5.5`（均 Tauri 官方、与 `tauri` 2.12 同源）。用途：每日汇总与
+连败/积压提醒、开机自启、单实例聚焦已有窗口；能力表只给主窗口
+`notification:default` + `autostart:default`。浏览器端仍零网络。
+
 ## 5. 里程碑（契约层先行）
 
 | 里程碑 | 内容 | 验收线 |
@@ -274,8 +281,10 @@ PNG 真导出、中文单语、零新依赖名、根 `pnpm verify` 已含 landin
 托盘伴生工具进入开发——D1 脚手架、D2 本地监控盘均已真机验收（2026-11-09），**D3 配对与
 引导已收尾**（2026-11-09 操作者验收：向导默认流程通过；同批交付采集操作卡、中文 Toast、
 `logo-dark` 图标与托盘不可用降级。托盘菜单点击在本机因 UAC 关闭无法验，随 D5 在 UAC 正常
-环境补验）；下一步 D4 通知与常驻（`apps/desktop`，拍板、技术栈与验收记录见
-`docs/desktop-plan.md` §1 / §10）。生产实例
+环境补验）；**D4 通知与常驻已交付待验收**（2026-11-09：每日汇总 / 连败 / 队列积压三类提醒
++ 免打扰时段、开机自启、单实例、主题三态持久化与设置面板；toast 可见性与自启成效需在安装
+形态 / UAC 正常环境验，原因与验收路径见 `docs/desktop-plan.md` §10）（`apps/desktop`，拍板、
+技术栈与验收记录见 `docs/desktop-plan.md` §1 / §10）。生产实例
 `token-usage.baiwumm.com` 自 2026-10-26 起承载
 两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.4`（2026-11-09 发布，tag `cli-v0.5.4`——tracker 写入被拒时
 的 tmp 重试与 `hint`、pause 标志改原子写、skip 标记写入失败不再致命；零契约变更）。

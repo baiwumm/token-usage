@@ -753,6 +753,17 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Registered first (the plugin documents this): a second launch hands
+        // its argv to the running instance and exits, so the tray/monitor is
+        // never duplicated.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app);
+        }))
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(DeviceLoginState::default())
         .invoke_handler(tauri::generate_handler![
             tracker_paths,

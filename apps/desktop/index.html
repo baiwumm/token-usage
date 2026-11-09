@@ -6,13 +6,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Token Usage</title>
     <script>
-      // Three-state theming (跟随系统 → 浅色 → 深色) arrives in D4 with
-      // persistence; until then the window follows the OS preference without
-      // a flash. Runs before paint so the first frame is already correct.
-      document.documentElement.classList.toggle(
-        "dark",
-        matchMedia("(prefers-color-scheme: dark)").matches,
-      );
+      // Three-state theming (跟随系统 → 浅色 → 深色, persisted by D4). Runs
+      // before paint and reads the same storage key as lib/preferences.ts, so
+      // the first frame already matches the chosen mode (no flash).
+      (function () {
+        var prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+        var dark = prefersDark;
+
+        try {
+          var raw = localStorage.getItem("tokenusage.desktop.preferences");
+          var mode = raw ? JSON.parse(raw).theme : "system";
+
+          if (mode === "dark") dark = true;
+          else if (mode === "light") dark = false;
+        } catch (error) {
+          // Corrupt storage falls back to the OS preference.
+        }
+        document.documentElement.classList.toggle("dark", dark);
+      })();
     </script>
   </head>
   <body class="min-h-screen bg-background font-sans text-foreground antialiased">

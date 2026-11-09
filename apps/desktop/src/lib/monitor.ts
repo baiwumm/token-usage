@@ -8,7 +8,11 @@ import {
   localDayStartMs,
   type UsageWindow,
 } from "@/lib/queue-lines";
-import { summarizeSyncLog, type SyncRunSummary } from "@/lib/sync-log";
+import {
+  summarizeSyncLog,
+  syncFailureStreak,
+  type SyncRunSummary,
+} from "@/lib/sync-log";
 
 export interface TrackerFileTexts {
   /** queue.jsonl — missing file reads as null (fresh install / no CLI). */
@@ -37,6 +41,10 @@ export interface MonitorSnapshot {
   pausedAt: string | null;
   lastRun: SyncRunSummary | null;
   lastError: { ts: string; msg: string } | null;
+  /** Consecutive failed sync runs (D4 failure alert threshold). */
+  failureStreak: number;
+  /** Message of the newest error in the current failing streak. */
+  failureMessage: string | null;
   /** Paired instance dashboard URL (from CLI config, read-only). */
   dashboardUrl: string | null;
   cli: CliStatus;
@@ -60,6 +68,7 @@ export function buildMonitorSnapshot(
   );
   const pause = parsePauseFlag(files.pause);
   const { lastRun, lastError } = summarizeSyncLog(files.syncLog ?? "");
+  const failure = syncFailureStreak(files.syncLog ?? "");
 
   return {
     today,
@@ -70,6 +79,8 @@ export function buildMonitorSnapshot(
     pausedAt: pause.at,
     lastRun,
     lastError,
+    failureStreak: failure.streak,
+    failureMessage: failure.message,
     dashboardUrl,
     cli,
   };

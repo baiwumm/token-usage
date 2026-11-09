@@ -77,6 +77,13 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
   独有名一律不进）。
 - Rust crate 走 cargo、不进 pnpm lockfile：`tauri` 2（`tray-icon` feature）+ `tauri-build`；
   依赖树披露随 D5 发版文档。
+- **2026-11-09 D4 报批（操作者批准「三个官方插件全上」）**：前端增
+  `@tauri-apps/plugin-notification@2.8.0`、`@tauri-apps/plugin-autostart@2.7.0`；Rust 增
+  `tauri-plugin-notification@2.8.0` / `tauri-plugin-autostart@2.7.0` /
+  `tauri-plugin-single-instance@2.5.5`。选址理由：通知、开机自启、单实例都是 Tauri 官方
+  维护件，自写同等功能还需额外 crate，与升级路径也最不齐。能力面（`capabilities/default.json`）
+  只对主窗口开 `notification:default` + `autostart:default`（core 默认之外唯一两项）；托盘、
+  窗口、CLI 子进程仍全在 Rust。
 
 ## 7. 环境前置（本机开发 / 真机验收）
 
@@ -103,7 +110,7 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
 | **D1 立项与脚手架** | workspace 加 `apps/desktop`（Tauri 2 + Vite + React + HeroUI + Tailwind）；托盘（打开主窗口 / 退出）+ 主窗口骨架 + close-to-tray；`sync.log` 解析模块与测试（D2 数据面第一块）；图标生成脚本与资产；根 `pnpm verify` 并入 desktop lint/tsc/test/build；本文档 + AGENTS / rewrite-plan / requirements 回写 | 根 `pnpm verify` 全绿 + CI 绿；装好 Rust 后 `pnpm dev:desktop` 托盘可见、窗口关闭进托盘、托盘退出（真机项，待操作者） |
 | **D2 本地监控盘** | 托盘菜单补全（今日 tokens、采集状态、Sync now、暂停/恢复、打开 web 仪表盘）；主窗口三段（顶部 strip：今日/7 天 tokens + 最近 sync 结果 + 队列体积行数；来源构成 mini 条 + 设备身份行；操作条调 CLI 展示摘要）；三态齐全；ui-spec 回写「桌面端」节 | 本地聚合与 queue.jsonl last-wins 口径一致；无 CLI / 无数据 / 错误三态齐全；离线可用；窄窗不横向滚动 |
 | **D3 配对与引导** | 首启向导：检测 CLI → 引导安装 → `device-login` 开浏览器 `/device?user_code=` → 等待→已批准→首同步统计；复用 CLI 现有配对流，desktop 不碰令牌 | 新机器从装 desktop 到配对成功全程有引导。**已收尾**（2026-11-09 操作者验收：向导默认流程通过）；托盘菜单点击本机无法验（§10 六追记），随 D5 在 UAC 正常环境补验 |
-| **D4 通知与常驻** | 每日汇总通知、sync 连败/队列积压提醒（阈值可配）、自启动、单实例、ThemeToggle 三态循环与持久化 | 通知免打扰时段可配；reduced-motion 遵守 |
+| **D4 通知与常驻** | 每日汇总通知、sync 连败/队列积压提醒（阈值可配）、自启动、单实例、ThemeToggle 三态循环与持久化 | 通知免打扰时段可配；reduced-motion 遵守。**已交付待验收**（2026-11-09：判定层 22 例单测、单实例与主题真机过；toast 可见性与自启动需在安装包 / UAC 正常环境验收，见 §10） |
 | **D5 发版** | Windows NSIS 安装包 + tauri updater（Ed25519 签名密钥操作者生成入 GitHub secret）；Rust 编译门禁进 CI（Windows runner） | 从 Release 下载安装 → 托盘出现 → D2/D3 功能真机全过 |
 
 工期参考：D1 约 1 天，D2 约 3–5 天，D3 约 2–3 天，D4 约 2 天，D5 约 2 天；全程 Agent
@@ -341,3 +348,38 @@ requirements 边界表。
   - D3 范围外的已知问题：计划任务上下文里的 0xC0000409（再追记⑧，系统层、CLI 不兜底）。
   - 下一步：**D4 通知与常驻**（每日汇总通知、sync 连败/队列积压提醒 ±阈值、自启动、单实例、
     ThemeToggle 三态持久化）。
+- **D4（2026-11-09 交付，待操作者真机验收）**：通知与常驻四项 + 主题持久化全量落地。
+  ① **依赖与接线**（操作者批准"三个官方插件全上"，预算回写 §6 与 rewrite-plan §4）：
+  `tauri-plugin-single-instance` 作为**第一个**注册的插件，第二次启动把 argv 交给已跑实例并
+  退出（实测：再跑一次 exe → exit 0，进程数仍为 1）；`notification` + `autostart` 插件；
+  能力表只给主窗口加 `notification:default` / `autostart:default`。
+  ② **偏好模型**（`lib/preferences.ts`，localStorage `tokenusage.desktop.preferences`）：
+  主题 / 每日汇总 + 时间 / 连败提醒 + 阈值（2·3·5 次）/ 积压提醒 + 阈值（10·20·50·100 MB）/
+  免打扰 + 起止小时 / 自启动镜像。每个字段经 `normalizePreferences` 校验（非法值回默认、
+  越界夹回），坏 JSON 与禁用 storage 都不崩。
+  ③ **判定层**（`lib/notifications.ts`，纯函数 + 22 例单测）：免打扰窗口（跨零点）只**抑制发送**、
+  不标记已发——到期未发的会顺延到窗口结束后；每日汇总按本地日期键去重（当天一次，到点才发）；
+  连败按 `syncFailureStreak`（`finished` 分隔 run，上传失败也计一次；尾部未收尾的 error 计入
+  进行中那一轮）每段连败只报一次，恢复后重新武装；积压越阀报一次、回落才重新武装。
+  ④ **发送**（`hooks/use-notifications.ts`）：每次快照刷新 + 30 s tick 重算；先落去重状态再发送
+  （崩在中间不会重启后重发）；权限首次发送时请求。真机：`isPermissionGranted=true`、
+  `sendNotification` 返回无错、去重状态落到 `lastDailyDate=2026-11-09`。
+  ⚠ **本机看不到 toast 是开发形态 + 系统的限制，不是接线错**：`tauri-plugin-notification`
+  在 `target/debug|release` 下**有意不设** `System.AppUserModel.ID`（安装后才有），而本机对
+  未注册 AUMID 的 toast 直接丢弃（对照：High 权限 PowerShell 用
+  `Microsoft.Windows.PowerShell` AUMID 发的探针同样没出现在通知历史）；D5 的 NSIS 安装
+  包带开始菜单快捷方式 + AUMID，真实弹出在发版形态验收。
+  ⑤ **主题三态**（`components/theme-toggle.tsx` + `hooks/use-theme.ts`）：页头单个按钮循环
+  跟随系统 → 浅色 → 深色，图标与 tooltip 始终显示**当前**模式；`index.html` 首帧前读同一
+  storage key 先上 dark 类（无闪烁），系统模式下监听 `prefers-color-scheme` 变化。CDP 实测：
+  两下点击 → `dark` 类切换、label 变「主题：深色」、localStorage 持久化，重载后仍为 dark。
+  ⑥ **设置面板**（`components/monitor/settings-dialog.tsx`，页头齿轮 + 向导页头同样可见）：
+  Modal 复合结构，五组开关（每日汇总 / 连败 / 积压 / 免打扰 / 开机自启）与按开关联动显示的
+  下拉（时间、次数、体积、起止）；副标题明写「仅保存在本机，不随账号同步」。CDP 实机：
+  打开后 5 个 switch 与全部文案正确渲染。
+  ⑦ **自启动的真机结论**：本机点击开关抛 `拒绝访问。(os error -2147024891)`——写
+  `HKCU\…\Run` 同样被 Low 完整性挡住（与四追记的 tracker 写入同源），开关保持关闭；错误文案
+  已按 E_ACCESSDENIED 映射成「系统拒绝写入启动项（本应用权限或完整性级别低于登录会话）」。
+  在 Low 环境下这是环境限制，需在正常 UAC 机器上验收自启成效；单实例与主题在两种环境都可验。
+  ⑧ **reduced-motion**：新增交互均为 HeroUI 默认过渡，无自写动画；设置面板/开关的过渡由
+  组件层的 `prefers-reduced-motion` 处理，未新增任何 animation 代码。

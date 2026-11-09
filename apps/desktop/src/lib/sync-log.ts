@@ -88,6 +88,44 @@ export function parseSyncLogLine(line: string): SyncLogEntry | null {
   }
 }
 
+export interface SyncFailureStreak {
+  /** Consecutive failed runs, newest last; 0 when the latest run succeeded. */
+  streak: number;
+  /** Message of the most recent error line contributing to the streak. */
+  message: string | null;
+}
+
+/**
+ * How many runs in a row failed, for the D4 failure alert.
+ *
+ * A run is delimited by its `phase:"finished"` line: an error anywhere
+ * between two finished lines (or after the last one) marks that run failed.
+ * Upload errors still end with a finished line, so counting bare trailing
+ * errors would never see them; trailing errors past the last finished line
+ * are counted as the in-flight run so a hang shows up too.
+ */
+export function syncFailureStreak(text: string): SyncFailureStreak {
+  let streak = 0;
+  let message: string | null = null;
+  let runFailed = false;
+
+  for (const line of text.split(/\r?\n/)) {
+    const entry = parseSyncLogLine(line);
+
+    if (!entry) continue;
+
+    if (entry.phase === "finished") {
+      streak = runFailed ? streak + 1 : 0;
+      runFailed = false;
+    } else if (isErrorEntry(entry)) {
+      runFailed = true;
+      message = entry.msg;
+    }
+  }
+
+  return { streak: runFailed ? streak + 1 : streak, message };
+}
+
 export function summarizeSyncLog(text: string): SyncLogStatus {
   let lastRun: SyncRunSummary | null = null;
   let lastError: { ts: string; msg: string } | null = null;

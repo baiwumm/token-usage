@@ -986,8 +986,20 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   `warning` Alert「托盘图标未注册」——说明任务栏权限高于本应用，**关闭窗口只最小化到任务栏**
   （同一判据下 Rust 把 CloseRequested 从 `hide()` 降级为 `minimize()`）。说明块只在确认不可用时
   出现，正常机器无此元素。
-- **主题与语言**：跟随系统 → 浅色 → 深色三态（脚手架期用 `prefers-color-scheme` 内联
-  脚本，D4 落循环切换与持久化）；语言 zh-CN 单语（对齐 landing，web 双语不强制桌面）。
+- **主题与语言**（2026-11-09 D4 定稿）：页头单个图标按钮循环 跟随系统 → 浅色 → 深色，
+  图标与 tooltip（「主题：{当前模式}」）始终显示**当前**模式（图标：`Display` / `Sun` / `Moon`）；
+  选择写 `tokenusage.desktop.preferences`，`index.html` 首帧前读同一 key 上 `dark` 类（无闪烁），
+  系统模式监听 `prefers-color-scheme`；语言 zh-CN 单语（对齐 landing，web 双语不强制桌面）。
+- **设置面板**（D4，页头齿轮；向导页头同样可进）：Modal 复合结构（`Modal.Backdrop /
+  Container / Dialog / Header / Heading / Body`），宽 `calc(100vw-1.5rem)`、最高 85vh、内部
+  滼动；副标题「仅保存在本机，不随账号同步」。分组：通知（每日汇总 + 汇总时间 / 同步连败 +
+  连续次数 / 队列积压 + 阀值，均开关 + 按开关联动显示的下拉）→ 免打扰（开关 + 起止整点）→
+  启动（开机自启）。开关一律 HeroUI `Switch` 复合结构（`Switch.Content / Control / Thumb` +
+  `Label`），说明用 `Description` 小字；数值/时段用 `Select` + `ListBox`（小时 00:00–23:00）。
+- **通知规则**（D4）：三类——每日汇总（本地时间到点、每天一次）、同步连败（`finished` 分隔
+  轮次，上传失败也计；达阀值报一次，恢复后重新武装）、队列积压（待上传超阀报一次，回落才
+  重新武装）。免打扰时段只**抑制发送**、不标记已发（到期未发的顺延到时段结束后）。通知正文
+  只用中文摘要（tokens / 会话 / 体积），不嵌 CLI 英文原文。
 - **托盘**（D2）：左键唤起主窗口；右键菜单 = 今日 tokens 与采集状态两行只读信息 +
   立即同步（`sync --auto`，写 sync.log、尊重暂停旗标）+ 暂停/恢复采集 + 打开主窗口 +
   打开 Web 仪表盘 + 退出；菜单文案由 webview 每 10s 轮询推送（`update_tray`）。

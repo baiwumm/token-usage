@@ -1,6 +1,10 @@
 {
   "identifier": "default",
-  "description": "Default capability for the monitor window (core defaults only; the tray and window management run in Rust, no JS-facing permissions yet)",
+  "description": "Default capability for the monitor window: core defaults plus the notification (D4 daily summary / alerts) and autostart (D4 launch-at-login switch) command sets. Tray and window management stay in Rust.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "notification:default",
+    "autostart:default"
+  ]
 }

@@ -1,6 +1,7 @@
 import type { FirstSyncPhase } from "@/hooks/use-pairing";
 import type { CliStatus } from "@/lib/monitor";
 import type { LoginPhase } from "@/lib/pairing";
+import type { ThemeMode } from "@/lib/preferences";
 
 import { Button, Typography } from "@heroui/react";
 
@@ -11,6 +12,9 @@ import { SyncStepCard } from "@/components/pairing/sync-step-card";
 
 interface PairingBodyProps {
   paused: boolean;
+  theme: ThemeMode;
+  onChangeTheme: (mode: ThemeMode) => void;
+  onOpenSettings: () => void;
   cli: CliStatus;
   /** CLI probe or `status --json` re-check in flight. */
   checking: boolean;
@@ -35,6 +39,9 @@ interface PairingBodyProps {
  */
 export function PairingBody({
   paused,
+  theme,
+  onChangeTheme,
+  onOpenSettings,
   cli,
   checking,
   rechecking,
@@ -57,7 +64,12 @@ export function PairingBody({
 
   return (
     <main className="flex min-h-screen flex-col gap-4 p-4">
-      <MonitorHeader paused={paused} />
+      <MonitorHeader
+        paused={paused}
+        theme={theme}
+        onChangeTheme={onChangeTheme}
+        onOpenSettings={onOpenSettings}
+      />
       <div className="flex flex-col gap-1">
         <Typography type="h6" weight="semibold">
           接入这台机器
