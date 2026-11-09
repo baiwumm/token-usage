@@ -234,4 +234,13 @@ requirements 边界表。
   `lib/source-logos.ts` 6 例单测）；c. 四个操作按钮改 **PendingButton**（移植 web 同名件：
   render-prop `isPending` + current-color Spinner），被点的按钮转 Spinner、其余禁用——
   修复前是「点了全部禁用且无任何进行中反馈」。
-  **遗留不变**：向导批准环节与托盘菜单点击仍待操作者；0xC0000409 待探针 2 结论。
+  ⑩ **「桌面端调旧版 CLI」的 Volta 化石副本**（操作者截图 v0.5.0 的根因，已清理）：
+  公司机 `tools/image/node/<ver>/` 下有一份从未被 Volta 接管的 `tokenusage-cli`（npm 全局式
+  安装 + 同目录 shim），不随 `npm i -g` 更新；pnpm 把 image-dir 排在 PATH 最前，于是
+  `pnpm dev:desktop` 起的桌面端解析到该化石（0.5.0）而非权威全局（`tools/image/packages/`，
+  `volta which` 指向它）。表现：操作者升级后桌面端仍显示旧版本号、仍复现已修复的问题。
+  清理：删除化石包与 shim；bash 直起 / node 子进程 / pnpm 三种上下文复验均解析到新版。
+  判断法：桌面端页脚或 `status` 的版本与 `tokenusage --version`（用户终端）不一致时，先查
+  `pnpm --filter @token-usage/desktop exec where tokenusage`。详见 `docs/cli-release.md` §十二。
+  **遗留不变**：向导批准环节与托盘菜单点击仍待操作者；0xC0000409 的结论已出（见 ⑨，
+  非 CLI 问题、不在 CLI 侧兜底）。

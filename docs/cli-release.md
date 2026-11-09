@@ -889,3 +889,45 @@ npm `tokenusage-cli@0.5.2`；tag `cli-v0.5.2`；Release workflow 自动发包。
 
 升级说明：无需任何动作，随下次计划任务自动生效；若历史上已有卡死批次，升级后第一轮
 `sync` 即触发逃生阀完成隔离（检查 `queue.quarantine.jsonl` 并按需人工处理）。
+
+## 十二、0.5.3 发版（2026-11-09）
+
+npm `tokenusage-cli@0.5.3`（`dist-tags.latest = 0.5.3`）；tag `cli-v0.5.3`；Release workflow
+run `42579126386` 全绿（verify → npm Trusted Publishing + provenance 签发 → GitHub Release
+`https://github.com/baiwumm/token-usage/releases/tag/cli-v0.5.3`，正文取 CHANGELOG）。
+零契约变更，服务端无需同步升级；对账基线与队列格式不变。
+
+| 批次 | 内容 | 影响面 |
+|---|---|---|
+| `fix(cli)` 锁稳健性 | `sync.lock` 创建瞬时被拒（Windows `EPERM`/`EBUSY`）不再裸崩：3×150 ms 短重试 → 耗尽归入 held 语义（`sync.skip.json` 标记 + 干净退出） | 桌面端「立即同步」曾以一行裸 errno 中断；活锁持有者仍只走 `EEXIST` |
+| `fix(cli)` 命名清理 | 上游 `tracker <命令>` 残留（含 device-login 过期提示这条用户可见错误）改 `tokenusage <命令>`；branding 守卫测试 | 照着旧提示敲会「命令不存在」 |
+| `chore(cli)` 发版 | 版本号 + CHANGELOG | — |
+
+发版前检查：
+
+- [x] `pnpm verify` 全绿（web 643 用例 + CLI 289 用例；新增 `test/sync-lock-transient.test.js` 5 例）
+- [x] tag `cli-v0.5.3` 与 `packages/cli/package.json` 一致、落在 `origin/main`（`28e81f0`）
+- [x] release workflow 全绿（npm 发布后约 1 分钟传播到位；`npm view` 提前查会得 404）
+
+公司机验收记录（2026-11-09，`PC-20260408RIKF #68e47b34`，Volta + npmmirror）：
+
+| 项 | 结果 |
+|---|---|
+| 安装 | `npm i -g tokenusage-cli@0.5.3` → `init --yes --no-integrations --no-open`；运行时副本 `runtime.copy` v0.5.3；首同步 3,520,624,710 tokens / 13 providers |
+| `doctor` | **17 项全 OK / 0 warn / 0 fail**；`schedule.registered` = `enhanced definition`；7 天计价覆盖 100.0%（148/161 桶） |
+| 计划任务 | 手动触发 `LastTaskResult=0`（15:31:46）；sync.log 新行「uploaded 6, queue drained」；init 首同步遗留的 6 个 pending 桶已随该轮上云 |
+| 对账 | `reconcile --days 1` OK（52 行逐键匹配）、`--days 7` OK（259 行、0 drift、退出码 0） |
+| `status` | Version 0.5.3；Device token set；Device `PC-20260408RIKF #68e47b34`；Queue pending 0 B / size 461,971 B；无锁残留 |
+| 文案修复 | 运行时副本与全局安装的 `device-login.js` 均为「re-run `tokenusage device-login`」 |
+
+**Volta 化石副本清理（本机特有，已处理）**：`tools/image/node/24.15.0/` 下有一份从未被
+Volta 接管的 `tokenusage-cli@0.5.0`（npm 全局式安装：image-dir `node_modules/` + 同目录
+`tokenusage{,.cmd,.ps1}` shim）。权威全局在 `tools/image/packages/tokenusage-cli`（Volta
+`which`/`list` 均指向它，随 `npm i -g` 更新）。该化石会被 **pnpm 的 PATH 注入放大**——
+pnpm 把 image-dir 排在 PATH 最前，于是 `pnpm dev:desktop` 起的桌面端解析到 0.5.0（操作者
+2026-11-09 截图里的 `v0.5.0` 与「修复后仍报 EPERM」即此因；修复只在新版里）。已删除化石
+包与三个 shim；复验 bash 直起、node 子进程、pnpm 三种上下文全部解析到 0.5.3。若日后
+`npm i -g` 再次落入 image-dir（未接管的安装路径），按同法清理。
+
+升级说明：无需任何动作，随下次计划任务自动生效；桌面端「立即同步」在下一版桌面端
+（随附 CLI）或本机已更新的全局 CLI 下立即可用。
