@@ -260,7 +260,7 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），
 其值从 publishable key 取——公开客户端值的语义不变。
 
-## 10. 当前状态与剩余事项（2026-11-06 复核；2026-11-08 增补 M-landing）
+## 10. 当前状态与剩余事项（2026-11-06 复核；2026-11-08 增补 M-landing；2026-11-09 增补 M-desktop D3 与 CLI 0.5.4）
 
 **里程碑**：M0–M7 全部交付；**M-landing（2026-11-08）**：官方落地页 `apps/landing`
 开发完成并推送（纯静态单页八段、暗色单主题、VERMILLION accent、真实数据快照
@@ -272,18 +272,19 @@ PNG 真导出、中文单语、零新依赖名、根 `pnpm verify` 已含 landin
 实际托管为腾讯云 EdgeOne Pages（Makers，运营细节不对外提及，对外口径
 仍为 Vercel），接线见 `apps/landing/README.md`。**M-desktop（2026-11-08 立项）**：桌面端
 托盘伴生工具进入开发——D1 脚手架、D2 本地监控盘均已真机验收（2026-11-09），D3 配对与
-引导已交付、待操作者真机验收（`apps/desktop`，拍板、技术栈与验收记录见
+引导已交付并完成真机验收（2026-11-09：向导、采集操作卡、中文 Toast 与 `logo-dark` 图标）（`apps/desktop`，拍板、技术栈与验收记录见
 `docs/desktop-plan.md` §1 / §10）。生产实例
 `token-usage.baiwumm.com` 自 2026-10-26 起承载
-两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.2`（2026-11-08
-发布，tag `cli-v0.5.2`，上传队列防线——白名单重组 / 字节预算 / 400·413 连败逃生阀，
-零契约变更）；`0.5.0` / `0.5.1` 已于 2026-11-06 发版。两台采集机的身份与状态（设备名即契约 §2.2 的 `<主机名> #<machine_id 前 8 位>`，
+两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.4`（2026-11-09 发布，tag `cli-v0.5.4`——tracker 写入被拒时
+的 tmp 重试与 `hint`、pause 标志改原子写、skip 标记写入失败不再致命；零契约变更）。
+`0.5.2` 是上传队列防线（白名单重组 / 字节预算 / 400·413 连败逃生阀）、`0.5.3` 是 sync.lock
+瞬时拒绝与上游命令名残留，均在 2026-11-08/09 发版；`0.5.0` / `0.5.1` 于 2026-11-06 发版。两台采集机的身份与状态（设备名即契约 §2.2 的 `<主机名> #<machine_id 前 8 位>`，
 对照表见 `docs/cli-release.md` 开头「机器称呼约定」与 `docs/launch-runbook.md` 的采集机清单）：
 
 | 机器 | 云端当前名 | 默认名（稳定标识） | CLI 版本 | 状态 |
 |---|---|---|---|---|
-| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | **0.5.1**（2026-11-06 升级） | `doctor` **17 项全 OK**（新增 `schedule.registered` = enhanced；7 天计价覆盖 100%）；`init` 无 degraded；`sync --drain` 上传 2 行 / 9,694,213 tokens、sessions 1/1；`reconcile --days 1` / `--days 7` 均 OK（11 / 123 桶逐键匹配、0 drift、退出码 0）；计划任务补跑/重试/无限时长齐全、登录触发带 `UserId`、`LastTaskResult=0`。0.5.0 验收数据（WorkBuddy 16 行项目桶 / 27.2%、16 条仓库、首采 6,053,545,539 tokens / 13 providers）见 `docs/cli-release.md` §九 |
-| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | **0.5.0**（2026-11-06 升级） | `doctor` 16 项全 OK（7 天计价覆盖 99.9%）；`sync --drain` 上传 54 行 / 242,022,064 tokens；`reconcile --days 1` / `--days 7` 均 OK（48 / 261 桶逐键匹配、0 drift、退出码 0）；WorkBuddy 项目行已写入（29 行项目行 + 27 余量行，49.9% token 已归因）；`project.repos.state.json` 确认 15 条仓库；首采 3,338,516,793 tokens / 13 providers；计划任务以 XML 增强定义注册（提升权限 shell，无 degraded）。**待升级 0.5.1**（获得调度器修复与 `doctor` 自检，见 `docs/cli-release.md` §十） |
+| 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | **0.5.1**（2026-11-06 升级） | `doctor` **17 项全 OK**（新增 `schedule.registered` = enhanced；7 天计价覆盖 100%）；`init` 无 degraded；`sync --drain` 上传 2 行 / 9,694,213 tokens、sessions 1/1；`reconcile --days 1` / `--days 7` 均 OK（11 / 123 桶逐键匹配、0 drift、退出码 0）；计划任务补跑/重试/无限时长齐全、登录触发带 `UserId`、`LastTaskResult=0`。0.5.0 验收数据（WorkBuddy 16 行项目桶 / 27.2%、16 条仓库、首采 6,053,545,539 tokens / 13 providers）见 `docs/cli-release.md` §九；**待升级 0.5.4** |
+| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | **0.5.4**（2026-11-09 升级） | `doctor` **17 项全 OK**（`schedule.registered` = enhanced；7 天计价覆盖 100.0%，149/162 桶）；运行时副本 v0.5.4（`installedAt 08:59:53Z`，副本自跑 `--version` 同为 v0.5.4）；首同步 3,561,675,540 tokens / 13 providers；手动 `sync` 上传 12 行 / 22,814,115 tokens、队列排空（offset = 文件字节数）；`reconcile --days 7` OK（271 桶逐键匹配）；`pause` / `resume` 标志写入与删除正常（计划任务可禁用/启用）；手动触发计划任务 `LastTaskResult=0`、sync.log 新行 +2 桶 / 1,046,808 tokens / queue drained。明细见 `docs/cli-release.md` §十三 |
 
 两台 `device_id` 与服务端核对记录见 `docs/cli-release.md` 开头「机器称呼约定」与
 `docs/launch-runbook.md` 的采集机清单表；CLI 自报身份（`status` / `doctor` 输出设备行）
@@ -298,7 +299,8 @@ PNG 真导出、中文单语、零新依赖名、根 `pnpm verify` 已含 landin
 队列去重丢拆分项目行、上传确认、VBS 编码与首同步统计，0.4.6 修 Cursor 准入 / Qoder credits
 与限额快照、加 `status --limits`，0.4.7 让每条命令自报设备身份并补全采集结果摘要
 （清单见 `docs/cli-release.md` §五–§八）；0.5.1 修 Windows 计划任务的登录触发并新增 `doctor`
-计划任务自检（§十）。
+计划任务自检（§十）；0.5.2 上传队列防线，0.5.3 修 sync.lock 瞬时拒绝、清上游命令名残留，
+0.5.4 给 tracker 写入加重试与可读 `hint`（§十一–§十三）。
 「同小时键多行递增值」观测已用源库核对证伪（属累计重入队，见
 `docs/cli-release.md` §四 0.4.3 条）。
 

@@ -284,3 +284,25 @@ requirements 边界表。
   `Hint:`，桌面端 Alert 可见），skip 标记写入失败不再致命。
   ⑤ 新机器排查顺序：先看进程 IL（`Get-Process` + 令牌 IL），再查镜像 SACL 与 `target/debug`
   的继承标签，最后才查目录 ACL。构建目录若被沙箱类工具打了 Low 标签会周期性复现。
+- **D3 五追记（2026-11-09 晚，中文反馈 + 品牌图标 + 0.5.4）**：
+  ① **中文 Toast**（操作者要求：CLI 输出只有英文）：结果块保留 CLI 原文，另加中文摘要——
+  `hooks/use-monitor-toasts.ts` 把 `CliRunOutcome` 映射成 success / danger / 中性三类；中性
+  覆盖两种「成功但需解释」的情形（同步被跳过、暂停成功但计划任务未能关闭 → 补一句「暂停标志
+  仍然生效」）。启动期同理：CLI 探测未完成时四个按钮全禁用，先发常驻 `isLoading` toast「正在
+  检测本地 tokenusage-cli……」，落定后同一 toast `toast.update` 成「已就绪」或 danger「未检测到
+  tokenusage-cli：采集操作已禁用…」。`Toast.Provider`（`placement="bottom end"`）挂在
+  `app.tsx`。设计规则已回写 `docs/ui-spec.md`「采集操作卡反馈 Toast」条。
+  ② **图标改用 `logo-dark`**：`apps/desktop/public/logo-dark.svg`（白底深色 mark，与页头 dark 态
+  同源）作为 `scripts/admin/desktop-assets/generate.mjs` 的唯一输入，重出 1024 源图 → `tauri icon`。
+  ⚠ 图标是**嵌在 exe 资源里**的：`tauri icon` 改写 `icons/*` 后 crate 本身未变，cargo 认为构建是
+  新的、直接复用旧 exe，窗口与托盘仍显示上一版图标（本次实测：exe 12:15 / 图标 16:40）。修复：
+  `src-tauri/build.rs` 声明 `cargo:rerun-if-changed=icons/icon.ico` 与 `icons/icon.png`，
+  重建后从 exe 抽出 32×32 图标比对 md5（`f9892f…` → `0557bf…`）并目检为新 mark。
+  排查口径：任务栏图标不对时先看 exe 时间戳，确认真的重建过，再怀疑 Windows 图标缓存。
+  ③ **真机复验**（CDP `Input.dispatchMouseEvent` 真点击 + `Page.reload`）：`sync` →「同步完成」；
+  `pause` →「采集已暂停；计划任务未能关闭（权限不足），暂停标志仍然生效」；`resume` →「采集已
+  恢复，自动同步重新生效」；重载后启动 toast 只有一条「tokenusage-cli v0.5.4 已就绪」，2.5 s
+  自动消失（无常驻/重复）。
+  ④ 同日发布 **CLI 0.5.4** 并在公司机升级验收（运行时副本 v0.5.4、`doctor` 17 OK、`reconcile
+  --days 7` 271 桶逐键匹配、计划任务 `LastTaskResult=0`），明细见 `docs/cli-release.md` §十三；
+  桌面端经 PATH 解析到的 CLI 与运行时副本均已是 v0.5.4。
