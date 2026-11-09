@@ -92,6 +92,7 @@ function configPayload(row: BadgeRow | undefined) {
     enabled: row?.enabled === true,
     timezone: normalizeBadgeTimezone(row?.timezone),
     allowedProjects: normalizeBadgeAllowlist(row?.allowed_projects),
+    displayName: typeof row?.display_name === "string" ? row.display_name : "",
     hasToken: Boolean(row?.token_hash),
     tokenLast4: row?.token_hash && row.token_last4 ? row.token_last4 : null,
   };
@@ -158,7 +159,11 @@ async function previewResponse(
     const data = await loadBadgeData(
       session.userId,
       {
-        displayName: row?.display_name || session.displayName,
+        // Nullish coalescing on purpose (§7.3 parity): an existing row's empty
+        // display_name is a legitimate "show the generic label" value — falling
+        // back on || would preview the profile name while the public badge says
+        // "AI Coding Usage". Only a missing row previews the profile name.
+        displayName: row?.display_name ?? session.displayName,
         timezone: normalizeBadgeTimezone(row?.timezone),
       },
       params.scope,
@@ -247,6 +252,7 @@ export async function PUT(request: NextRequest) {
     enabled?: unknown;
     timezone?: unknown;
     allowedProjects?: unknown;
+    displayName?: unknown;
   };
   const patch: Record<string, unknown> = {};
 
@@ -255,6 +261,15 @@ export async function PUT(request: NextRequest) {
       return jsonError(400, "Invalid enabled");
     }
     patch.enabled = input.enabled;
+  }
+  if (input.displayName !== undefined) {
+    // §7.1: the public name is decoupled from the profile name — trimmed and
+    // capped like the generate snapshot; an empty string is legal and makes
+    // the renderer fall back to the generic "AI Coding Usage" label.
+    if (typeof input.displayName !== "string") {
+      return jsonError(400, "Invalid displayName");
+    }
+    patch.display_name = input.displayName.trim().slice(0, MAX_DISPLAY_NAME);
   }
   if (input.timezone !== undefined) {
     // §3.4: invalid zones normalize to UTC instead of failing the save.

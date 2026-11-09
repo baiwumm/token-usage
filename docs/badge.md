@@ -112,7 +112,9 @@ create table if not exists public.token_public_badges (
 - `token_last4` 是生成时落库的明文末 4 位，仅供 §7.1 GET 的 `tokenLast4` 展示；
   sha256 不可逆、末 4 位无法从哈希还原，必须随生成持久化（2026-11-02 P2 实施修订，
   由 contract golden 钉定）
-- `display_name` 是**会话快照**（§7.1 写入），公开渲染不回查 auth，也绝不回退到 email
+- `display_name` 初始为**会话快照**（§7.1 generate 写入），公开渲染不回查 auth，也绝不
+  回退到 email；2026-11-09 起可经 §7.1 `PUT {displayName}` 单独改写（含清空，空串由渲染
+  器回退 `AI Coding Usage`），令牌不动
 - `allowed_projects` 元素级校验（每项 ≤120 字符、过 `normalizeProjectKey`）在应用层
   完成（PG CHECK 不能含子查询）
 
@@ -486,10 +488,10 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 | 方法 | 行为 |
 |---|---|
-| `GET` | 返回 `{enabled, timezone, allowedProjects, hasToken, tokenLast4, knownProjects}`（永不回明文）；`knownProjects` 是本人 `token_sessions` 去重的非空 project_key（按 tokens 降序，≤200），白名单多选的数据源（§7.2）；**不含** `showHeatmap` / `showAchievements`（§3.5 已移除，契约测试断言响应无此两属性） |
+| `GET` | 返回 `{enabled, timezone, allowedProjects, displayName, hasToken, tokenLast4, knownProjects}`（永不回明文）；`knownProjects` 是本人 `token_sessions` 去重的非空 project_key（按 tokens 降序，≤200），白名单多选的数据源（§7.2）；**不含** `showHeatmap` / `showAchievements`（§3.5 已移除，契约测试断言响应无此两属性） |
 | `GET ?preview=1&style=…&theme=…&range=…&scope=…&project=…` | 本人预览（§7.3）：会话鉴权代替令牌，参数/加载器/渲染器与 `/api/badge` 同源，返回 SVG（`no-store`）；不看 `enabled`（未公开也可预览），repo 预览仍校验白名单 |
 | `POST {action:"generate"}` | 生成/重置令牌：写 `token_hash`、`token_last4`、`enabled=true`、`display_name` 快照（取会话 `user_metadata.display_name`，缺省空串），响应**一次性**携带明文 token |
-| `PUT` | 更新 `{enabled?, timezone?, allowedProjects?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项报 `400`；timezone 按 `parseTzContext` 约定归一；**只接受这三个字段**（`showHeatmap` / `showAchievements` 已随 §3.5 移除，不解析）；变更成功失效公开页缓存 |
+| `PUT` | 更新 `{enabled?, timezone?, allowedProjects?, displayName?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项报 `400`；displayName 须为 string（trim、截 80，**空串合法**=清空，渲染回退 `AI Coding Usage`），非 string 报 `400`；timezone 按 `parseTzContext` 约定归一；**只接受这四个字段**（`showHeatmap` / `showAchievements` 已随 §3.5 移除，不解析）；变更成功失效公开页缓存 |
 | `DELETE` | 吊销：`enabled=false`（哈希与末 4 位保留，公开端呈现 `badge disabled`，§3.2） |
 
 - 无会话 → `401 {error:"Unauthorized"}`；非法体 → `400 {error}`；一律 `no-store`
@@ -497,7 +499,9 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 ### §7.2 Settings 卡片 `components/settings/badge-card.tsx`
 
-- 开关；令牌生成/重置（二次确认 + 明文只显示一次 + 复制）；白名单多选（数据源：
+- 开关；公开名称输入框（§7.1 `PUT {displayName}`，2026-11-09：与个人信息名称解耦，
+  清空保存后公开面显示 `AI Coding Usage`，令牌不动；重生成令牌会以会话名重新快照，卡内
+  随 GET 重新同步）；令牌生成/重置（二次确认 + 明文只显示一次 + 复制）；白名单多选（数据源：
   §7.1 `knownProjects`——Sessions 已展示数据的投影，白名单里已不在会话中的项仍列出以便移除）；
   时区只读展示（浏览器时区，保存时随 PUT）
 - 公开展示开关：**仅 1 个 `Switch`**（`enabled`，公开展示开关），沿用现有 `enabled` 开关的复合

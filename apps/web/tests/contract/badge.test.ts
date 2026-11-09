@@ -374,6 +374,7 @@ describe.skipIf(!badgeAppRoute)("/api/app/badge config (docs/badge.md §7.1)", (
       enabled: true,
       timezone: "Asia/Shanghai",
       allowedProjects: ["token-usage"],
+      displayName: "Ming Wei",
       hasToken: true,
       tokenLast4: BADGE_TOKEN.slice(-4),
     });
@@ -428,6 +429,65 @@ describe.skipIf(!badgeAppRoute)("/api/app/badge config (docs/badge.md §7.1)", (
     const res = await PUT(
       jsonPostPut("PUT", { allowedProjects: ["x".repeat(121)] }),
     );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: expect.any(String) });
+  });
+
+  it("PUT rewrites the public name without touching the token (§7.1)", async () => {
+    const { GET, PUT } = unwrapSpecModule(badgeAppRoute, "app/api/app/badge/route");
+    auth.user = { id: USER_ID, user_metadata: { display_name: "Ming Wei" } };
+
+    const put = await PUT(
+      jsonPostPut("PUT", { displayName: "  Octocat  " }),
+    );
+    expect(put.status).toBe(200);
+    expect((await put.json()).displayName).toBe("Octocat");
+
+    const body = await (await GET(new NextRequest(APP_URL))).json();
+    expect(body.displayName).toBe("Octocat");
+
+    // The public surface picks the rewritten snapshot up; the token is intact.
+    const { GET: badgeGet } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
+    const badge = await badgeGet(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`));
+    const svg = await badge.text();
+
+    expect(svg).toContain("Octocat");
+    expect(svg).not.toContain("Ming Wei");
+    expect(svg).not.toContain(BADGE_TOKEN);
+  });
+
+  it("PUT clears the public name and the renderer falls back (§5.2)", async () => {
+    const { PUT } = unwrapSpecModule(badgeAppRoute, "app/api/app/badge/route");
+    auth.user = { id: USER_ID, user_metadata: { display_name: "Ming Wei" } };
+
+    const put = await PUT(jsonPostPut("PUT", { displayName: "" }));
+    expect(put.status).toBe(200);
+    expect((await put.json()).displayName).toBe("");
+
+    const { GET: badgeGet } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
+    const badge = await badgeGet(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`));
+
+    expect(await badge.text()).toContain("AI Coding Usage");
+
+    // §7.3 parity: the owner preview must match the public badge — an empty
+    // row value stays empty (generic label), it does not fall back to the
+    // profile name.
+    const { GET: appGet } = unwrapSpecModule(badgeAppRoute, "app/api/app/badge/route");
+    const preview = await appGet(
+      new NextRequest(`${APP_URL}?preview=1&style=panel&theme=light`),
+    );
+
+    const svg = await preview.text();
+
+    expect(svg).toContain("AI Coding Usage");
+    expect(svg).not.toContain("Ming Wei");
+  });
+
+  it("PUT rejects a non-string displayName with 400", async () => {
+    const { PUT } = unwrapSpecModule(badgeAppRoute, "app/api/app/badge/route");
+    auth.user = { id: USER_ID, user_metadata: { display_name: "Ming Wei" } };
+
+    const res = await PUT(jsonPostPut("PUT", { displayName: 42 }));
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: expect.any(String) });
   });

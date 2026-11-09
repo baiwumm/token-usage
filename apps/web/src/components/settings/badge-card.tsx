@@ -15,10 +15,12 @@ import {
   Button,
   Card,
   Description,
+  Input,
   ListBox,
   Select,
   Skeleton,
   Switch,
+  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
@@ -53,8 +55,11 @@ import { formatMessage } from "@/lib/copy/message";
 import { browserTimezone } from "@/lib/dashboard/ranges";
 
 const MAX_PROJECTS = 32;
+// Mirrors the server cap (docs/badge.md §7.1): the input stops at 80 so the
+// trimmed save can never come back shorter than what was typed.
+const MAX_NAME_LENGTH = 80;
 
-type Busy = "toggle" | "token" | "projects" | null;
+type Busy = "toggle" | "token" | "projects" | "name" | null;
 
 // Long-content row: label + description stacked above a full-width body
 // (allowlist caveat, preview image, README snippet). Same divider rhythm as
@@ -136,6 +141,7 @@ export function BadgeCard() {
 
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [settings, setSettings] = useState<BadgeSettings | null>(null);
+  const [draftName, setDraftName] = useState("");
   const [draftProjects, setDraftProjects] = useState<string[]>([]);
   const [busy, setBusy] = useState<Busy>(null);
   const [resetOpen, setResetOpen] = useState(false);
@@ -168,6 +174,7 @@ export function BadgeCard() {
       const next = await fetchBadgeSettings();
 
       setSettings(next);
+      setDraftName(next.displayName);
       setDraftProjects(next.allowedProjects);
       setStatus("ready");
     } catch (error) {
@@ -239,7 +246,40 @@ export function BadgeCard() {
             }
           : current,
       );
+      // Generation also re-snapshots the public name from the profile (§7.1) —
+      // re-sync from GET so the name input never shows a value the row no
+      // longer holds. Best effort: the token flow itself already succeeded.
+      const fresh = await fetchBadgeSettings().catch(() => null);
+
+      if (fresh) {
+        setSettings((current) =>
+          current ? { ...fresh, knownProjects: current.knownProjects } : fresh,
+        );
+        setDraftName(fresh.displayName);
+      }
       setPreviewVersion((value) => value + 1);
+    } catch (error) {
+      handleFailure(error);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function saveName() {
+    if (busy) return;
+    setBusy("name");
+    try {
+      // §3.4: every save carries the browser's zone for active-day bucketing.
+      const config = await updateBadgeConfig({
+        displayName: draftName,
+        timezone: browserTimezone(),
+      });
+
+      applyConfig(config);
+      // The server trims; adopt its value so the dirty check settles.
+      setDraftName(config.displayName);
+      setPreviewVersion((value) => value + 1);
+      toast.success(copy.nameSaved);
     } catch (error) {
       handleFailure(error);
     } finally {
@@ -370,6 +410,34 @@ export function BadgeCard() {
             </PendingButton>
           )}
         </Row>
+
+        <Block description={copy.nameDescription} label={copy.nameLabel}>
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
+            <TextField
+              aria-label={copy.nameLabel}
+              className="w-full md:max-w-md"
+              maxLength={MAX_NAME_LENGTH}
+              name="public_name"
+              value={draftName}
+              onChange={setDraftName}
+            >
+              <Input placeholder={copy.namePlaceholder} variant="secondary" />
+            </TextField>
+            <PendingButton
+              isDisabled={
+                draftName.trim() === (settings.displayName ?? "") ||
+                (busy !== null && busy !== "name")
+              }
+              pending={busy === "name"}
+              size="sm"
+              onPress={() => {
+                void saveName();
+              }}
+            >
+              {copy.nameSave}
+            </PendingButton>
+          </div>
+        </Block>
 
         <Block
           description={copy.projectsDescription}

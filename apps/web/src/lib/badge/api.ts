@@ -8,6 +8,8 @@ export type BadgeConfig = {
   enabled: boolean;
   timezone: string;
   allowedProjects: string[];
+  /** The publicly rendered name; "" falls back to "AI Coding Usage" (§5.2). */
+  displayName: string;
   hasToken: boolean;
   tokenLast4: string | null;
 };
@@ -67,6 +69,8 @@ export function updateBadgeConfig(patch: {
   enabled?: boolean;
   timezone?: string;
   allowedProjects?: string[];
+  /** Empty string clears the public name (§7.1). */
+  displayName?: string;
 }): Promise<BadgeConfig> {
   return request<BadgeConfig>({ method: "PUT", body: JSON.stringify(patch) });
 }

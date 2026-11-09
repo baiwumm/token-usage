@@ -30,6 +30,11 @@ export interface BadgeCopy {
   copy: string;
   copied: string;
   copyFailed: string;
+  nameLabel: string;
+  nameDescription: string;
+  namePlaceholder: string;
+  nameSave: string;
+  nameSaved: string;
   projectsLabel: string;
   projectsDescription: string;
   projectsCaveat: string;
@@ -95,6 +100,12 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     copy: "复制",
     copied: "已复制",
     copyFailed: "复制失败，请手动选择文本。",
+    nameLabel: "公开名称",
+    nameDescription:
+      "徽章与公开页头像旁显示的名称，与个人信息里的名称相互独立，最多 80 字符；清空保存后显示通用的「AI Coding Usage」。重置令牌会以个人信息名称重新快照。",
+    namePlaceholder: "留空则显示 AI Coding Usage",
+    nameSave: "保存名称",
+    nameSaved: "公开名称已保存",
     projectsLabel: "仓库白名单",
     projectsDescription: "只有列入白名单的仓库可以生成仓库徽章，最多 32 个。",
     projectsCaveat:
@@ -162,6 +173,12 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     copy: "Copy",
     copied: "Copied",
     copyFailed: "Couldn't copy — select the text manually.",
+    nameLabel: "Public name",
+    nameDescription:
+      "The name shown next to the avatar on the badge and public page — independent of your profile name, up to 80 characters. Saving an empty value shows the generic “AI Coding Usage”. Resetting the token re-snapshots your profile name.",
+    namePlaceholder: "Empty shows AI Coding Usage",
+    nameSave: "Save name",
+    nameSaved: "Public name saved",
     projectsLabel: "Repository allowlist",
     projectsDescription:
       "Only allowlisted repositories can have a repo badge (up to 32).",
