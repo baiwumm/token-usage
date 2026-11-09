@@ -1,7 +1,6 @@
-import { ArrowUpRightFromSquare } from "@gravity-ui/icons";
 import { Button, Card, Typography } from "@heroui/react";
 
-/** Loading / error / no-CLI / empty states for the monitor window. */
+/** Loading / error / empty states for the monitor window (no-CLI → pairing wizard). */
 
 export function MonitorSkeleton() {
   return (
@@ -40,35 +39,15 @@ export function MonitorErrorState({
   );
 }
 
-export function NoCliState({ onOpenGuide }: { onOpenGuide: () => void }) {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6">
-      <Typography type="h6" weight="semibold">
-        未检测到 tokenusage-cli
-      </Typography>
-      <Typography className="text-muted" type="body">
-        桌面端只负责监控与操作，采集由 tokenusage-cli 完成。 先安装并配对：npm i
-        -g tokenusage-cli → tokenusage init
-      </Typography>
-      <Button variant="secondary" onPress={onOpenGuide}>
-        <ArrowUpRightFromSquare
-          aria-hidden="true"
-          className="size-4 shrink-0"
-        />
-        打开安装指南
-      </Button>
-    </main>
-  );
-}
-
-export function MonitorEmptyState() {
+export function MonitorEmptyState({ cliAvailable }: { cliAvailable: boolean }) {
   return (
     <Card className="border-border">
       <Card.Header>
         <Card.Title>尚无采集数据</Card.Title>
         <Card.Description>
-          CLI 已就绪但本地还没有用量记录——等待第一轮采集，或在终端跑一次
-          `tokenusage sync`。
+          {cliAvailable
+            ? "CLI 已就绪但本地还没有用量记录——等待第一轮采集，或在终端跑一次 `tokenusage sync`。"
+            : "未检测到 tokenusage-cli，本地也还没有用量记录——重新安装 CLI 后会继续采集。"}
         </Card.Description>
       </Card.Header>
     </Card>

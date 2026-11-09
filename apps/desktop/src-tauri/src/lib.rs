@@ -16,11 +16,17 @@
 //   run_cli             — allowlisted CLI subcommand runner (cmd /C)
 //   open_in_browser     — http(s)-validated default-browser open
 //   update_tray         — JS pushes tray label texts + pause state
+//   device_login_start / _poll / _cancel — managed `device-login --json`
+//                         child for the pairing wizard (D3); the CLI owns the
+//                         whole flow, the bridge only shepherds the process
 
-use std::io::ErrorKind;
+use std::collections::VecDeque;
+use std::io::{BufRead, BufReader, ErrorKind, Read};
 use std::path::PathBuf;
-use std::process::Command;
-use std::sync::Mutex;
+use std::process::{Child, ChildStderr, ChildStdout, Command, Stdio};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use tauri::{
@@ -30,9 +36,11 @@ use tauri::{
 };
 
 const TRAY_ID: &str = "main-tray";
-const CLI_COMMANDS: [&str; 7] = [
-    "sync", "status", "doctor", "reconcile", "pause", "resume", "device-login",
-];
+// `device-login` is deliberately absent: the wizard drives it through the
+// managed device_login_* commands below — a plain run_cli call would block
+// on `.output()` for the whole 16-minute pairing window and a stray second
+// spawn would race the first one for config.json.
+const CLI_COMMANDS: [&str; 6] = ["sync", "status", "doctor", "reconcile", "pause", "resume"];
 const MAX_TRACKER_FILE_BYTES: u64 = 8 * 1024 * 1024;
 const DEFAULT_DASHBOARD_URL: &str = "https://token-usage.baiwumm.com";
 
@@ -119,8 +127,12 @@ fn open_url(url: &str) -> Result<(), String> {
 }
 
 fn read_instance_config_inner(app: &AppHandle) -> Result<InstanceConfig, String> {
+    // The CLI writes config.json keys in camelCase (baseUrl / dashboardUrl /
+    // machineId — see runtime-config.js); before 2026-11-09 this struct read
+    // snake_case, so every whitelisted field silently read as None and the
+    // tray's dashboard link fell back to the default instance.
     #[derive(Deserialize, Default)]
-    #[serde(default)]
+    #[serde(default, rename_all = "camelCase")]
     struct CliConfigFields {
         base_url: Option<String>,
         dashboard_url: Option<String>,
@@ -286,6 +298,300 @@ fn open_in_browser(url: String) -> Result<(), String> {
     open_url(&url)
 }
 
+// --- D3 device login: managed `device-login --json` child process ---
+//
+// The CLI owns the entire pairing flow (authorize → browser approval → poll
+// → token write); the bridge only keeps the process alive between polls and
+// relays display fields. The authorize blob's `device_code` never leaves the
+// reader thread: whoever holds it could poll the server for the freshly
+// minted device token after approval, so it is dropped like a secret and the
+// webview only ever sees user_code + verification URLs (docs/desktop-plan.md
+// §3 boundary 3).
+
+const DEVICE_LOGIN_TAIL_LINES: usize = 50;
+const MAX_AUTH_BLOB_BYTES: usize = 64 * 1024;
+const DEVICE_LOGIN_DRAIN_WAIT: Duration = Duration::from_millis(500);
+
+/// Poison-tolerant lock: release builds abort on panic, so a poisoned mutex
+/// must never take the whole tray down.
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct AuthCode {
+    user_code: String,
+    verification_uri: String,
+    verification_uri_complete: Option<String>,
+    /// Serialized as `expiresInSec` — the webview's `AuthCode` field name.
+    expires_in_sec: Option<u64>,
+}
+
+/// Picks the display fields out of the authorize response; everything else
+/// (device_code first of all) is dropped with the parsed value.
+fn whitelist_auth(value: &serde_json::Value) -> Option<AuthCode> {
+    let text = |key: &str| -> Option<String> {
+        value
+            .get(key)
+            .and_then(|v| v.as_str())
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(str::to_string)
+    };
+    let expires_in = value.get("expires_in").and_then(|v| {
+        v.as_u64().or_else(|| {
+            v.as_f64()
+                .filter(|f| f.is_finite() && *f >= 0.0)
+                .map(|f| f as u64)
+        })
+    });
+    Some(AuthCode {
+        user_code: text("user_code")?,
+        verification_uri: text("verification_uri")?,
+        verification_uri_complete: text("verification_uri_complete"),
+        expires_in_sec: expires_in,
+    })
+}
+
+/// Line reader that never stops on invalid UTF-8: `cmd`'s own errors come in
+/// the console codepage (GBK on zh-CN Windows), and a reader that bailed on
+/// them would leave the child blocked on a full pipe.
+fn for_each_lossy_line(stream: impl Read, mut on_line: impl FnMut(String)) {
+    let mut reader = BufReader::new(stream);
+    let mut buf = Vec::new();
+    loop {
+        buf.clear();
+        match reader.read_until(b'\n', &mut buf) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {
+                let text = String::from_utf8_lossy(&buf);
+                on_line(
+                    text.trim_end_matches(|c: char| c == '\r' || c == '\n')
+                        .to_string(),
+                );
+            }
+        }
+    }
+}
+
+fn push_tail(tail: &Mutex<VecDeque<String>>, line: String) {
+    let mut guard = lock(tail);
+    if guard.len() >= DEVICE_LOGIN_TAIL_LINES {
+        guard.pop_front();
+    }
+    guard.push_back(line);
+}
+
+fn spawn_stdout_reader(
+    stdout: ChildStdout,
+    code: Arc<Mutex<Option<AuthCode>>>,
+    tail: Arc<Mutex<VecDeque<String>>>,
+    done: Arc<AtomicUsize>,
+) {
+    std::thread::spawn(move || {
+        // `device-login --json` prints a status line, then the pretty-printed
+        // authorize JSON (one top-level object), then the approval line. The
+        // blob goes through the brace-anchored accumulator and never reaches
+        // the tail buffer.
+        let mut candidate = String::new();
+        for_each_lossy_line(stdout, |line| {
+            if candidate.is_empty() && !line.trim_start().starts_with('{') {
+                push_tail(&tail, line);
+                return;
+            }
+            if !candidate.is_empty() {
+                candidate.push('\n');
+            }
+            candidate.push_str(&line);
+            match serde_json::from_str::<serde_json::Value>(&candidate) {
+                Ok(value) => {
+                    if let Some(auth) = whitelist_auth(&value) {
+                        *lock(&code) = Some(auth);
+                    }
+                    candidate.clear();
+                }
+                // Incomplete blob: keep accumulating up to a sane bound.
+                Err(err) if err.is_eof() && candidate.len() < MAX_AUTH_BLOB_BYTES => {}
+                // Not JSON after all (or runaway): drop it — it may hold the
+                // device_code, so it never falls through to the tail.
+                Err(_) => candidate.clear(),
+            }
+        });
+        done.fetch_add(1, Ordering::Release);
+    });
+}
+
+fn spawn_stderr_reader(
+    stderr: ChildStderr,
+    tail: Arc<Mutex<VecDeque<String>>>,
+    done: Arc<AtomicUsize>,
+) {
+    std::thread::spawn(move || {
+        for_each_lossy_line(stderr, |line| push_tail(&tail, line));
+        done.fetch_add(1, Ordering::Release);
+    });
+}
+
+struct ActiveDeviceLogin {
+    child: Child,
+    code: Arc<Mutex<Option<AuthCode>>>,
+    stdout_tail: Arc<Mutex<VecDeque<String>>>,
+    stderr_tail: Arc<Mutex<VecDeque<String>>>,
+    readers: usize,
+    readers_done: Arc<AtomicUsize>,
+}
+
+impl ActiveDeviceLogin {
+    fn output_tail(&self) -> String {
+        let stdout = lock(&self.stdout_tail)
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n");
+        let stderr = lock(&self.stderr_tail)
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n");
+        [stdout, stderr]
+            .into_iter()
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// Bounded wait for both pipes to hit EOF after the child exited, so the
+    /// final error line is in the tail before the webview reads it.
+    fn wait_for_readers(&self) {
+        let deadline = Instant::now() + DEVICE_LOGIN_DRAIN_WAIT;
+        while self.readers_done.load(Ordering::Acquire) < self.readers
+            && Instant::now() < deadline
+        {
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+}
+
+#[derive(Default)]
+struct DeviceLoginState(Mutex<Option<ActiveDeviceLogin>>);
+
+/// `cmd /C tokenusage` → npm/Volta shim → node: killing `cmd` alone would
+/// orphan node, which keeps polling the server for the whole pairing window.
+fn kill_process_tree(child: &mut Child) {
+    if matches!(child.try_wait(), Ok(Some(_))) {
+        return;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let pid = child.id().to_string();
+        let _ = gui_command("taskkill")
+            .args(["/PID", pid.as_str(), "/T", "/F"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+fn stop_device_login(state: &DeviceLoginState) {
+    let taken = lock(&state.0).take();
+    if let Some(mut active) = taken {
+        kill_process_tree(&mut active.child);
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DeviceLoginPoll {
+    running: bool,
+    exit_code: Option<i32>,
+    code: Option<AuthCode>,
+    output_tail: String,
+}
+
+#[tauri::command]
+async fn device_login_start(state: State<'_, DeviceLoginState>) -> Result<(), String> {
+    let mut guard = lock(&state.0);
+    if let Some(active) = guard.as_mut() {
+        if matches!(active.child.try_wait(), Ok(None)) {
+            return Err("device login is already running".into());
+        }
+    }
+    let mut command = build_cli_command(&["device-login".to_string(), "--json".to_string()]);
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = command.spawn().map_err(|e| e.to_string())?;
+    let code = Arc::new(Mutex::new(None));
+    let stdout_tail = Arc::new(Mutex::new(VecDeque::new()));
+    let stderr_tail = Arc::new(Mutex::new(VecDeque::new()));
+    let readers_done = Arc::new(AtomicUsize::new(0));
+    let mut readers = 0;
+    if let Some(out) = child.stdout.take() {
+        spawn_stdout_reader(out, code.clone(), stdout_tail.clone(), readers_done.clone());
+        readers += 1;
+    }
+    if let Some(err) = child.stderr.take() {
+        spawn_stderr_reader(err, stderr_tail.clone(), readers_done.clone());
+        readers += 1;
+    }
+    *guard = Some(ActiveDeviceLogin {
+        child,
+        code,
+        stdout_tail,
+        stderr_tail,
+        readers,
+        readers_done,
+    });
+    Ok(())
+}
+
+#[tauri::command]
+async fn device_login_poll(state: State<'_, DeviceLoginState>) -> Result<DeviceLoginPoll, String> {
+    let mut guard = lock(&state.0);
+    let Some(active) = guard.as_mut() else {
+        return Ok(DeviceLoginPoll {
+            running: false,
+            exit_code: None,
+            code: None,
+            output_tail: String::new(),
+        });
+    };
+    match active.child.try_wait() {
+        Ok(None) => Ok(DeviceLoginPoll {
+            running: true,
+            exit_code: None,
+            code: lock(&active.code).clone(),
+            output_tail: active.output_tail(),
+        }),
+        Ok(Some(status)) => {
+            active.wait_for_readers();
+            Ok(DeviceLoginPoll {
+                running: false,
+                exit_code: status.code(),
+                code: lock(&active.code).clone(),
+                output_tail: active.output_tail(),
+            })
+        }
+        Err(err) => Ok(DeviceLoginPoll {
+            running: false,
+            exit_code: None,
+            code: None,
+            output_tail: err.to_string(),
+        }),
+    }
+}
+
+#[tauri::command]
+async fn device_login_cancel(state: State<'_, DeviceLoginState>) -> Result<(), String> {
+    stop_device_login(&state);
+    Ok(())
+}
+
 /// Menu-item handles + pause mirror so the webview can push tray label
 /// updates; the tray's pause action reads the mirrored flag to decide
 /// between `pause` and `resume`.
@@ -388,7 +694,14 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
                 }
             }
             "show" => show_main_window(app),
-            "quit" => app.exit(0),
+            "quit" => {
+                // A pending pairing must not outlive the app as an orphan
+                // node process polling the server.
+                if let Some(state) = app.try_state::<DeviceLoginState>() {
+                    stop_device_login(&state);
+                }
+                app.exit(0);
+            }
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
@@ -418,6 +731,7 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(DeviceLoginState::default())
         .invoke_handler(tauri::generate_handler![
             tracker_paths,
             read_tracker_file,
@@ -426,6 +740,9 @@ pub fn run() {
             run_cli,
             open_in_browser,
             update_tray,
+            device_login_start,
+            device_login_poll,
+            device_login_cancel,
         ])
         .setup(|app| {
             create_tray(app)?;

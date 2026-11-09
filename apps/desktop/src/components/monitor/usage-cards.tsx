@@ -1,6 +1,6 @@
 import type { MonitorSnapshot } from "@/lib/monitor";
 
-import { Typography } from "@heroui/react";
+import { Card, Typography, cn } from "@heroui/react";
 
 import { formatBytes, formatTokens } from "@/lib/format-tokens";
 
@@ -8,7 +8,12 @@ interface UsageCardsProps {
   snapshot: MonitorSnapshot;
 }
 
-/** Three single-value tiles: today, rolling 7 days, and queue backlog. */
+/**
+ * Three single-value tiles: today, rolling 7 days, and queue backlog. Same
+ * anatomy as the web's SummaryCards (label in Card.Header, value + caption in
+ * Card.Content); labels stay text-xs so they hold one line at 400 px and the
+ * three values line up.
+ */
 export function UsageCards({ snapshot }: UsageCardsProps) {
   return (
     <div className="grid grid-cols-3 gap-3">
@@ -44,24 +49,27 @@ function UsageTile({
   tone?: "default" | "accent";
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface p-3">
-      <Typography className="text-muted" type="body">
-        {label}
-      </Typography>
-      <Typography
-        className={
-          tone === "accent"
-            ? "text-accent tabular-nums"
-            : "text-foreground tabular-nums"
-        }
-        type="h6"
-        weight="semibold"
-      >
-        {value}
-      </Typography>
-      <Typography className="text-muted tabular-nums" type="body">
-        {sub}
-      </Typography>
-    </div>
+    <Card className="gap-1 border-border p-3">
+      <Card.Header>
+        <Card.Title className="truncate text-xs font-normal text-muted">
+          {label}
+        </Card.Title>
+      </Card.Header>
+      <Card.Content className="gap-0.5">
+        <Typography
+          className={cn(
+            "tabular-nums",
+            tone === "accent" ? "text-accent" : "text-foreground",
+          )}
+          type="h6"
+          weight="semibold"
+        >
+          {value}
+        </Typography>
+        <Typography className="truncate text-muted tabular-nums" type="body-xs">
+          {sub}
+        </Typography>
+      </Card.Content>
+    </Card>
   );
 }

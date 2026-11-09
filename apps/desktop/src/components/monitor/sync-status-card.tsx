@@ -2,7 +2,7 @@ import type { MonitorSnapshot } from "@/lib/monitor";
 
 import { Card, Typography } from "@heroui/react";
 
-import { formatDuration, formatTokens } from "@/lib/format-tokens";
+import { formatBytes, formatDuration, formatTokens } from "@/lib/format-tokens";
 
 interface SyncStatusCardProps {
   snapshot: MonitorSnapshot;
@@ -24,22 +24,26 @@ export function SyncStatusCard({ snapshot }: SyncStatusCardProps) {
           <Card.Description>尚无记录</Card.Description>
         )}
       </Card.Header>
-      {run ? (
-        <Typography className="text-foreground tabular-nums" type="body">
-          上传 {formatTokens(run.tokens)} tokens · {run.buckets} 桶 · 耗时{" "}
-          {formatDuration(run.durationMs)}
-          {run.pendingBytes > 0
-            ? ` · 待传 ${run.pendingBytes} B`
-            : " · 队列已清"}
-        </Typography>
-      ) : null}
-      {snapshot.lastError ? (
-        <Typography className="text-danger" type="body">
-          {new Date(snapshot.lastError.ts).toLocaleString("zh-CN", {
-            hour12: false,
-          })}
-          ：{snapshot.lastError.msg}
-        </Typography>
+      {run || snapshot.lastError ? (
+        <Card.Content className="gap-1">
+          {run ? (
+            <Typography className="text-foreground tabular-nums" type="body">
+              上传 {formatTokens(run.tokens)} tokens · {run.buckets} 桶 · 耗时{" "}
+              {formatDuration(run.durationMs)}
+              {run.pendingBytes > 0
+                ? ` · 待传 ${formatBytes(run.pendingBytes)}`
+                : " · 队列已清"}
+            </Typography>
+          ) : null}
+          {snapshot.lastError ? (
+            <Typography className="text-danger" type="body">
+              {new Date(snapshot.lastError.ts).toLocaleString("zh-CN", {
+                hour12: false,
+              })}
+              ：{snapshot.lastError.msg}
+            </Typography>
+          ) : null}
+        </Card.Content>
       ) : null}
     </Card>
   );

@@ -15,7 +15,8 @@ CLI 采集端 [`packages/cli/`](./packages/cli/) 由 [TokenTracker](https://gith
 
 ## Provider 品牌图标
 
-`apps/web/public/brand-logos/` 下的图标用于标识用量来源对应的 AI 编码工具（Anthropic Claude
+`apps/web/public/brand-logos/` 与 `apps/desktop/public/brand-logos/`（桌面端来源构成复用同一套
+资产）下的图标用于标识用量来源对应的 AI 编码工具（Anthropic Claude
 Code、OpenAI Codex/ChatGPT、Cursor、GitHub Copilot、Google Gemini、DeepSeek、Moonshot Kimi、
 xAI Grok、TRAE、Zed、Qoder、Kiro、MiniMax、腾讯混元、NVIDIA Nemotron 等）。名称与图形是各厂商
 的商标，此处仅作来源指示（nominative use），不代表任何隶属或背书关系。

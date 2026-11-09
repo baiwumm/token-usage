@@ -45,7 +45,7 @@ function asNumber(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-function toSummary(entry: SyncLogEntry): SyncRunSummary {
+export function toRunSummary(entry: SyncLogEntry): SyncRunSummary {
   return {
     ts: entry.ts,
     parsedFiles: asNumber(entry.parsed_files),
@@ -61,7 +61,7 @@ function toSummary(entry: SyncLogEntry): SyncRunSummary {
   };
 }
 
-function isErrorEntry(entry: SyncLogEntry): boolean {
+export function isErrorEntry(entry: SyncLogEntry): boolean {
   return typeof entry.error === "string";
 }
 
@@ -98,7 +98,7 @@ export function summarizeSyncLog(text: string): SyncLogStatus {
     if (!entry) continue;
 
     if (entry.phase === "finished") {
-      lastRun = toSummary(entry);
+      lastRun = toRunSummary(entry);
       // A run that finished supersedes whatever failed before it.
       lastError = null;
     } else if (isErrorEntry(entry)) {

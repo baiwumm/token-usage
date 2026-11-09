@@ -64,22 +64,27 @@ export function useMonitor() {
     available: false,
     version: null,
   });
+  /** True once the first `--version` probe settled — distinguishes "probing"
+   * from "confirmed absent" so the pairing gate never flashes the wizard. */
+  const [cliResolved, setCliResolved] = useState(false);
   const [runningCommand, setRunningCommand] = useState<string | null>(null);
   const [lastOutcome, setLastOutcome] = useState<CliRunOutcome | null>(null);
+  // Snapshots embed the CLI status, so the ref is written in the same tick
+  // as the probe resolves: a refresh() right after refreshCli() must not
+  // compose a snapshot with the previous probe's answer.
   const cliRef = useRef<CliStatus>(cli);
 
-  useEffect(() => {
-    cliRef.current = cli;
-  }, [cli]);
-
   const refreshCli = useCallback(async () => {
-    try {
-      const info = await invoke<CliStatus>("cli_info");
+    let info: CliStatus;
 
-      setCli(info);
+    try {
+      info = await invoke<CliStatus>("cli_info");
     } catch {
-      setCli({ available: false, version: null });
+      info = { available: false, version: null };
     }
+    cliRef.current = info;
+    setCli(info);
+    setCliResolved(true);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -177,9 +182,11 @@ export function useMonitor() {
     machineId,
     hostname,
     cli,
+    cliResolved,
     runningCommand,
     lastOutcome,
     refresh,
+    refreshCli,
     runCli,
   };
 }
