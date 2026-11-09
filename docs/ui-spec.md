@@ -963,7 +963,9 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 - **应用图标**（2026-11-09）：窗口与托盘图标改用项目 logo（`apps/desktop/public/logo-dark.svg`
   ——白底深色 mark 的深色界面变体，与窗口页头 dark 态同源，在深色任务栏 16–32 px 下可辨），
   `scripts/admin/desktop-assets/generate.mjs` 直接读该 SVG 的 viewBox/rect 渲染 1024 源图再走
-  `tauri icon`，品牌几何只维护一处；换图标后需重启 dev（资源重编译）才生效。
+  `tauri icon`，品牌几何只维护一处。图标是**嵌在 exe 资源里**的，重新生成 PNG/ICO 不会自动进二进制：
+  `src-tauri/build.rs` 对 `icons/icon.ico` / `icon.png` 声明了 `rerun-if-changed`，重启 dev 时 cargo
+  会自动重编译资源；任务栏仍显旧图标时先看 exe 时间戳（是否真的重建），再怀疑 Windows 图标缓存。
 - **三态**：Loading 骨架（pulse 块，含配对门控检测中）；错误态（桥接不可用，可重试）；
   空态（CLI 在但队列与 sync 记录皆空；CLI 缺失时文案改为重新安装提示）。无 CLI / 未配对
   由下条配对门控接管（D3 起取代原「安装引导卡」）。
