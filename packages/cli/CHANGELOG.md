@@ -6,6 +6,26 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.5.4
+
+2026-11-09。tracker 目录写入被拒时的可诊断性与降级。零契约变更，服务端无需同步升级；对账
+基线（`queue.jsonl` last-wins）与队列文件格式不变。
+
+- **原子写的临时文件创建加短重试**：Windows 上过滤驱动或上一轮释放的收尾窗口会让 `*.tmp`
+  创建偶发返回 `EPERM`/`EBUSY`；此前 `writeFileAtomic` 直接抛出，桌面端「立即同步」「暂停
+  采集」以一行裸 errno 中断。现在与 `sync.lock` 同策略（3 × 150 ms），耗尽后才原样上抛。
+- **写入失败附带可读提示**：`EPERM`/`EACCES`/`EBUSY`/`EROFS` 时错误挂一行
+  `Hint: Cannot create files in <目录> (<code>) …`，点明「进程权限或完整性级别低于该目录」并
+  给出处理方向；`bin/tokenusage.js` 打印 `Hint:`，桌面端 Alert 直接可见。
+- **`pause` 标志改走 `writeFileAtomic`**：原先手写 `<file>.<pid>.tmp`，没有任何保护；
+  `resume` 的 unlink 失败同样附带 hint。
+- **skip 标记写入失败不再致命**：锁没拿到时若 `sync.skip.json` 写不进去，仍输出同义的
+  `Sync skipped: … (<code>)` 并以 exit 0 结束——标记缺失只影响可观测面，不会把一次「跳过」
+  升级成崩溃。
+
+升级说明：无需任何动作，随下次计划任务自动生效；桌面端「立即同步 / 暂停」遇到这类拒绝时
+从裸崩溃改为可读错误。
+
 ## 0.5.3
 
 2026-11-09。同步锁稳健性 + 上游命令名残留清理。零契约变更，服务端无需同步升级；对账基线
