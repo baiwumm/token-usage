@@ -271,8 +271,9 @@ PNG 真导出、中文单语、零新依赖名、根 `pnpm verify` 已含 landin
 规范收编 `docs/ui-spec.md`「落地页」节；**EdgeOne Pages 实际接入由操作者执行**——
 实际托管为腾讯云 EdgeOne Pages（Makers，运营细节不对外提及，对外口径
 仍为 Vercel），接线见 `apps/landing/README.md`。**M-desktop（2026-11-08 立项）**：桌面端
-托盘伴生工具进入开发，D1 脚手架落地（`apps/desktop`，拍板与技术栈见
-`docs/desktop-plan.md`）。生产实例
+托盘伴生工具进入开发——D1 脚手架、D2 本地监控盘均已真机验收（2026-11-09），D3 配对与
+引导已交付、待操作者真机验收（`apps/desktop`，拍板、技术栈与验收记录见
+`docs/desktop-plan.md` §1 / §10）。生产实例
 `token-usage.baiwumm.com` 自 2026-10-26 起承载
 两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.2`（2026-11-08
 发布，tag `cli-v0.5.2`，上传队列防线——白名单重组 / 字节预算 / 400·413 连败逃生阀，

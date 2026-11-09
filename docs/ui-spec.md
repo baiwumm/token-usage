@@ -929,13 +929,40 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 规则（HeroUI 内置优先 / 复合结构 / 语义文本组件）、三态与数字格式，另有窗口级约定：
 
 - **主窗口结构**（400×620，min 340×480，单页滚动无路由）：页头（品牌 lockup + 暂停
-  chip）→ 三张单值卡（今日 tokens / 近 7 天 / 待上传，`tabular-nums`）→ 来源构成（近
-  7 天，ranked bars：share 0–1，条宽下限 2%，最多 8 行）→ 最近同步卡（`logs/sync.log`
-  的 `phase:"finished"` 行 + 更新的 `error` 行）→ 采集操作卡（立即同步 = `sync --auto`
-  / Doctor / 对账 7 天 / 暂停·恢复；输出区 `pre` 最多 8 行）→ 设备身份脚注（主机名
-  #machineId 前 8 · CLI 版本 · 实例 host）。
-- **三态**：Loading 骨架（pulse 块）；错误态（桥接不可用，可重试）；无 CLI 态（未装
-  tokenusage-cli 且无任何数据 → 安装引导卡）；空态（CLI 在但队列与 sync 记录皆空）。
+  chip）→（未配对且本次已跳过向导时：warning Alert「这台机器还没配对」+「去配对」）→
+  三张单值卡（今日 tokens / 近 7 天 / 待上传；与 web `SummaryCards` 同构——`Card.Header`
+  放 `text-xs` 标签、`Card.Content` 放数值 + 说明，`tabular-nums`；400 宽下标签须单行、
+  三格数值顶边对齐）→ 来源构成卡（标题 + 说明「近 7 天」，行 = `SourceIcon` 品牌 logo +
+  `sourceDisplayLabel` 规范名 + ranked bars：share 0–1，条宽下限 2%，最多 8 行；别名行先按
+  `lib/source-logos.ts` 的 `canonicalSource` 归并（trae-cn + trae → Trae，占比与 token 求和后
+  重算），窗口内 0 token 的纯 credits 来源如 qoder-cn 不进榜；logo 资产与暗色双图登记同 web
+  `lib/sources.ts`，桌面侧为移植件）→ 最近同步卡（`logs/sync.log` 的 `phase:"finished"` 行 +
+  更新的 `error` 行；体积一律 `formatBytes`）→ 采集操作卡（立即同步 = `sync --auto` / Doctor /
+  对账 7 天 / 暂停·恢复）→ 设备身份脚注（主机名 #machineId 前 8 ·
+  CLI 版本 · 实例 host；三段各自 `whitespace-nowrap`，只在 `·` 之间换行，域名不在连字符
+  处折断）。卡片一律走 `Card` 复合结构（Header / Title / Description + Content），
+  2026-11-09 起 D2 手写的带边框 div 卡片收编为 `Card`。
+- **采集操作卡交互**（2026-11-09 操作者要求）：① 四个按钮一律 `PendingButton`——被点的那个
+  按钮内渲染 current-color `Spinner`（`size="sm"`，`aria-hidden`），其余按钮 `isDisabled`；
+  HeroUI Button 无内建 pending，web 的 `PendingButton`（render-prop `isPending`）移植至
+  `components/pending-button.tsx` 复用。② 运行结果：失败（exit≠0 或未能启动）渲染
+  **danger Alert**（`status="danger"`，标题 = `命令 · exit N`，描述 = CLI 输出尾部，`font-mono`
+  `whitespace-pre-wrap break-all`——长路径无空格须可断行，`Alert.Content` 加 `min-w-0` 防 400
+  宽溢出）；成功仍用中性 `bg-default` 结果块 + `pre`（最多 8 行）。
+- **三态**：Loading 骨架（pulse 块，含配对门控检测中）；错误态（桥接不可用，可重试）；
+  空态（CLI 在但队列与 sync 记录皆空；CLI 缺失时文案改为重新安装提示）。无 CLI / 未配对
+  由下条配对门控接管（D3 起取代原「安装引导卡」）。
+- **配对门控与首启向导**（D3）：未配对（`status --json` 的 `device_token_set` 为假；
+  localStorage 缓存「配过对」，CLI 暂缺时缓存决定）→ 向导取代监控盘：品牌页头 +「接入这台
+  机器」标题 → 三张步骤卡，标题前 `StepIcon` 序号徽记（未开始 `bg-default` / 进行中
+  `bg-accent` / 完成 success 勾，`sr-only` 读出「第 N 步，状态」）：① 安装 CLI（安装命令用
+  `Typography type="code"` + ghost 复制图标钮、「装好了，重新检测」、tertiary「安装指南」）
+  ② 配对设备（配对码 `type="code"` 大字 + 复制、`等待批准 · 剩余 mm:ss`、secondary「重新
+  打开批准页」+ ghost「取消」；失败 danger Alert + 「重新配对」；tertiary「已配对？重新
+  检测」逃生口）③ 首次同步（批准后自动跑：三格 tokens / 会话 / 耗时——卡内格窄，标签须
+  单行——+ 同轮上传错误 warning Alert；失败或无新记录可「重试同步」）→「进入监控台」（同步
+  完成为 primary，进行中为 tertiary 可提前进入）。「稍后再说，先看本机数据」仅在流程外
+  （未开始 / 失败）出现，跳过为会话级。装饰性 Spinner 一律 `aria-hidden`（旁边文字已表达状态）。
 - **主题与语言**：跟随系统 → 浅色 → 深色三态（脚手架期用 `prefers-color-scheme` 内联
   脚本，D4 落循环切换与持久化）；语言 zh-CN 单语（对齐 landing，web 双语不强制桌面）。
 - **托盘**（D2）：左键唤起主窗口；右键菜单 = 今日 tokens 与采集状态两行只读信息 +
@@ -945,4 +972,5 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   前缀校验防穿越）；动作一律子进程调 CLI（`cmd /C tokenusage`，`CREATE_NO_WINDOW` 防
   闪黑窗）；本地聚合口径 = queue.jsonl last-wins（与 AGENTS 约束 8 同源）；设备令牌与
   anon key 永不出 Rust（config.json 只白名单返回 baseUrl / dashboardUrl / machineId）；
-  成本不在桌面计算。
+  配对只经 Rust 托管的 `device-login --json` 子进程（`device_code` 不出 Rust，取消与退出
+  杀整棵进程树）；成本不在桌面计算。

@@ -48,6 +48,9 @@
 | `…/logs/sync.log`（JSONL `{ts,msg,...fields}`，1 MiB 滚动一代 `.1`） | 最近一轮 sync 结果/错误：`phase:"finished"` 行带 tokens / buckets / inserted / skipped / sessions_uploaded / pending_bytes / duration_ms 等结构化字段；错误行带 `error` 字段（`phase: upload` / `session-upload` 等） |
 
 永不读取：设备令牌文件（cloud-device-token 存储）、provider key store、配对码。
+配对状态（D3）只认 `tokenusage status --json` 的 `device_token_set` 布尔（经 `run_cli` 子进程，
+CLI 自己的判定逻辑），webview 以 localStorage 缓存「这台机器配过对」以免每次启动跑
+status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它翻回未配对。
 窗口内容 zh-CN 单语（对齐 landing 的单语面；web 双语不强制桌面，如需 i18n 再立项）。
 
 ## 5. UI 规范落点与命名登记
@@ -55,8 +58,10 @@
 - ui-spec 的 Design Tokens、组件规则（HeroUI 内置优先 / 复合结构 / 语义文本组件）、三态与
   响应式、数字格式全部沿用；「桌面端」节（窗口结构、托盘菜单规范）在 D2 动手时回写 ui-spec。
 - **命名登记制**：desktop 组件文件遵循与 web 同一登记制、同一后缀集合（`<页名>-body.tsx` /
-  `-skeleton.tsx` / `-strip.tsx` / `-card.tsx` / `-bar.tsx` / `-row.tsx` / `-dialog.tsx` /
-  `-header.tsx` / `-states.tsx` / 纯计算 `-helpers.ts` / `-filters.ts` / 钩子 `use-*.ts`）；
+  `-skeleton.tsx` / `-strip.tsx` / `-card.tsx` / `-cards.tsx` / `-section.tsx` / `-bar.tsx` /
+  `-row.tsx` / `-dialog.tsx` / `-header.tsx` / `-states.tsx` / `-icon.tsx` / `-note.tsx` /
+  纯计算 `-helpers.ts` / `-filters.ts` / 钩子 `use-*.ts`；D3 起用 `-icon`（向导步骤徽记
+  `step-icon.tsx`）与 `-note`（监控盘未配对说明块 `unpaired-note.tsx`），均属 AGENTS 共享集合）；
   新增后缀角色先回写本节再使用；跨页共享件放 `src/components/` 根；拆分目录用 `index.tsx`
   收口。D1 仅有入口件：`src/app.tsx`（根编排）与 `src/lib/` 纯逻辑、`src/styles/`。
 - 字体：复用 web 的 Maple Mono CN 自托管子集（woff2 直接复制到 `public/fonts/`，零新依赖）。
@@ -75,8 +80,18 @@
 
 ## 7. 环境前置（本机开发 / 真机验收）
 
-- Rust stable（rustup，`x86_64-pc-windows-msvc` 工具链）+ MSVC Build Tools（C++ 工作负载）
-  ——本机 2026-11-08 时点未装；装好后本地 `pnpm dev:desktop`。
+- Rust stable（rustup，`x86_64-pc-windows-msvc` 工具链）+ MSVC Build Tools（C++ 工作负载）。
+  两台采集机均已就绪（2026-11-09 公司机补装）：VS 2022 Build Tools 经 winget 装到
+  `C:\BuildTools2022`（`--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended`）；
+  rustup-init 走清华镜像下载并以 `static.rust-lang.org` 的 SHA-256 校验，工具链安装时设
+  `RUSTUP_DIST_SERVER` / `RUSTUP_UPDATE_ROOT` 指清华镜像；crates 走 rsproxy 稀疏索引
+  （用户级 `~/.cargo/config.toml`，不进仓库）。装好后本地 `pnpm dev:desktop`。
+- **1420 端口**（Tauri devUrl，`strictPort`）可能落进 Hyper-V/WinNAT 的动态保留段
+  （`netsh interface ipv4 show excludedportrange protocol=tcp`；表现为 vite 报
+  `EACCES ::1:1420`）。一次性修复（管理员）：`net stop winnat` →
+  `netsh interface ipv4 add excludedportrange protocol=tcp startport=1420 numberofports=1`
+  （TCP 保留表 v4/v6 共用）→ `net start winnat`；登记后显示为 `1420-1420 *`，WinNAT 不再
+  划走它而应用仍可绑定。公司机 2026-11-09 已处理。
 - WebView2 Evergreen：Windows 11 内置；异常兜底按 Tauri 官方 bootstrapper 处理。
 - CI（Ubuntu）只跑 desktop 的 node 侧门禁（lint / tsc / test / build，并入根 `pnpm verify`）；
   Rust 编译门禁随 D5 发版流程进 Windows runner。
@@ -127,3 +142,96 @@ requirements 边界表。
   （须配 `pnpm dev` 使用，`pnpm dev:desktop` 即完整开发流），release 构建内嵌 dist
   （D5 发版形态）；Win11 新托盘图标默认收进隐藏图标飞出层，操作者可在任务栏设置里
   手动常驻。
+- **D3（2026-11-09 交付，待操作者真机验收）**：首启配对向导落地。门控见 §4「配对状态」；
+  未配对时向导取代监控盘，三步卡——① 安装 CLI（复制安装命令 / 重新检测 / 安装指南）
+  ② 配对设备：Rust 托管 `device-login --json` 子进程（`device_login_start/_poll/_cancel`），
+  authorize 回包在 Rust 读线程里白名单出 user_code + 验证链接，**`device_code` 不出 Rust**
+  （持有者可在批准后轮询到新令牌）；自动开浏览器 `/device?user_code=`、配对码大字 + 复制 +
+  15 分钟倒计时、重新打开批准页 / 取消；取消与托盘「退出」以 `taskkill /T /F` 杀整棵进程树
+  （只杀 `cmd` 会把 node 孤儿留下继续轮询 16 分钟）；读管道按字节 + lossy 解码（`cmd` 自身
+  报错为 GBK，按行 UTF-8 读会提前停读）③ 首次同步：批准后自动 `sync --auto`，统计取本轮
+  起点之后的 sync.log 行——finished 行不吞掉同轮的上传错误（与监控盘「最近同步」口径不同，
+  有意为之）。流程外可「稍后再说」（会话级跳过），监控盘页头下的「未配对」说明块可回到
+  向导；终端里已配对可点「已配对？重新检测」放行。`run_cli` 白名单移除 `device-login`
+  （`.output()` 会阻塞整个配对窗口，且重复拉起会抢 config.json）。验收证据：desktop 单测
+  45 例（新增 `lib/pairing.ts` 21 例：status 解析、轮询状态机、倒计时、首同步归属）；
+  vite dev + 按 Rust serde 实际 wire 形状写的 mock 桥，在 IAB 以 DOM 快照走通 安装检测 →
+  申请码 → 批准 → 首同步 → 进入监控台、跳过 → 说明块 → 回向导、配对码过期失败、取消
+  全部路径（调用序列逐条核对：浏览器只开一次、取消后不再轮询）；Edge 无头 CDP 截图浅/深
+  7 态，400×620 均无横向溢出。过程中修复：Rust `expires_in` 序列化名与 TS `expiresInSec`
+  不一致（倒计时会失效）、首同步统计格标签折行、「重新检测」后操作卡读到旧快照的 CLI 状态
+  （`refreshCli` 改为同步写 ref + 紧跟 `refresh()`）。
+- **D3 补充（2026-11-09 同日，公司机工具链落地 + 真机冒烟）**：① 公司机补齐环境——VS 2022
+  Build Tools 17.14.44（winget → `C:\BuildTools2022`，VCTools + 推荐组件）、rustup
+  stable-msvc 1.99.1（清华镜像下载 + 官方 SHA-256 校验；crates 走 rsproxy 用户级配置）、
+  1420 端口从 WinNAT 保留段解出（§7 记录了可复用的修复命令）；② `cargo check` /
+  `cargo build` 全绿零告警，`pnpm dev:desktop` 真机窗口起来；③ WebView2 CDP（9222）真桥
+  冒烟全过：真实数据监控盘渲染（今日 1927.74万 / 7 天 6.74亿 / 待上传 0 B，qoder-cn 等
+  credits-only 来源不再进 token 榜——`SourceMixCard` 过滤 `tokens<=0`，同批把 D2 手写卡片
+  收编为 `Card` 复合结构并修页脚 nowrap 分段）；`run_cli` 白名单确认拒绝 `device-login`
+  （"command not allowed"）；`device_login_*` 真实后端全链路——authorize 拿到真码
+  （`XXXX-XXXX` 形态、`token-usage.baiwumm.com/device` 深链、`expiresInSec:900`）、
+  64 位 hex `device_code` 与 JSON blob 均未出现在 webview 可见输出、运行中进程树为
+  `cmd.exe+node.exe`、cancel 后两者皆清（无孤儿）、`running:false` + `code:null`；
+  `update_tray` 推送桥实测可用。close-to-tray / 托盘菜单（立即同步、暂停、退出）为 D1/D2
+  已验路径、本次未改，且 webview 只有 `core:default`、无窗口命令权限，冒烟中未重放；D3 在
+  「退出」里新增的「先结束配对进程」与取消共用 `stop_device_login`（取消已实测杀净进程树）。
+  ④ 顺带修 CLI：7 处上游 `tracker <命令>`
+  文案改 `tokenusage <命令>`（含 device-login 过期提示这条用户可见错误），branding 守卫
+  测试锁死回潮。
+- **D3 追记（2026-11-09 下午，操作者报「立即同步」EPERM 后的修复与升级验收）**：
+  ① **CLI 升级 0.5.2**（公司机，按 `docs/cli-release.md` 流程）：`npm i -g` → `init
+  --yes --no-integrations`（运行时副本 0.5.2、计划任务重登记）→ doctor **17 OK / 0 warn**
+  （0.4.7 基线 16/1，kiro 检查转绿）→ reconcile 1 天 / 7 天全 OK → 计划任务手动触发
+  `LastTaskResult=0`、sync.log 新行 queue drained；桌面端与终端版本自此一致（此前
+  pnpm-PATH 解析 runtime copy 0.5.0、终端 Volta shim 0.4.7 的分叉消除）。
+  ② **sync.lock EPERM 修复**（`packages/cli/src/lib/fs.js`，随下次 CLI 发版）：操作者点
+  桌面「立即同步」偶发裸 `EPERM: open ...sync.lock`。排查：Win11+Node24 删除挂起不复现
+  （POSIX unlink）；活锁持有者恒为 EEXIST（名字冲突先于共享检查）→ 锁名**瞬时创建被拒**
+  （过滤驱动 / 释放收尾窗口，ERROR_ACCESS_DENIED→EPERM），而 `openLock` 只认 EEXIST、
+  其余错误码裸抛。修复：EPERM/EBUSY 走一轮短重试（3×150ms，递归 `retryTransient:false`
+  防嵌套），耗尽后归入既有 held 语义（skip 标记可见、不打断采集）——持久性损坏仍经
+  `sync.skip.json` 暴露，符合 issue #431「可观测、可恢复」原则。新增 5 例 mock 注入单测
+  （ACL 型向量在本机沙箱与目录只读属性下均不可复现，弃用）。
+  ③ **desktop Rust 读 config 字段名 bug**（D2 之来，本次暴露）：`read_instance_config`
+  按 snake_case 解析 `base_url` / `dashboard_url` / `machine_id`，而 CLI config.json 写
+  camelCase → 三个白名单字段恒 None：页脚 `#machineId` 从未显示、托盘「打开 Web 仪表盘」
+  对自部署实例会跳到默认官方地址。加 `#[serde(rename_all = "camelCase")]` 修复，真机复验
+  页脚 `PC-20260408RIKF #68e47b34 · tokenusage-cli v0.5.2`。
+  ④ **构建形态澄清**：裸 `cargo build --release` 仍是 dev-URL 二进制（连 localhost:1420），
+  内嵌 dist 的发版形态必须走 `tauri build`（D5）——§10 D2 记录的「release 构建内嵌 dist」
+  指后者。真机验证桌面端时需先起 vite 或用 `pnpm dev:desktop`。
+  ⑤ 桌面端「立即同步」真机点击验证：release 实例 CDP 真实点击 → `sync · exit 0`，输出区
+  显示 CLI 尾行，页脚版本即时刷新。
+- **D3 再追记（2026-11-09 下午，操作者复报 EPERM + 三项 UI 调整）**：
+  ⑥ **修复版 CLI 端到端验证**（`bin/tokenusage.js` 正确入口，勿直跑 `src/cli.js`——它只导出
+  `run` 不自调用）：预加载注入 EPERM——瞬时一次 → 150ms 后重试成功、完整 sync exit 0；
+  持续 → 「Another sync is already running.」+ `sync.skip.json`（`lock_busy`，detail 可读），
+  exit 0 不崩；另用 holder 脚本按真锁 → contender 正确走 skip 标记路径。三态全部符合预期。
+  ⑦ **探针实测发现更深层问题**：非沙箱计划任务跑连续 `sync --auto`，第 3 轮**整个进程树
+  被 0xC0000409（STATUS_STACK_BUFFER_OVERRUN）崩掉**（任务 `LastTaskResult` 即该码；与
+  本机已知的 vitest Windows worker fork 崩溃同码），node 写完 finished 行后锁来不及释放 →
+  debris（owner pid 已死）。安装的 0.5.2 对 debris 自愈正确（stale reclaim → exit 0）；
+  安全侧已排除（Defender 实时防护 + 行为监控在跑但零拦截记录、无 CFA、无第三方 EDR）。
+  EPERM（锁名瞬时创建被拒）与 0xC0000409（进程 fork 崩溃）是**两个独立故障**：前者已修复
+  待发版，后者是这台机器的系统性问题（fork 链偶发硬崩），需单独观察——探针 2（15:57–16:03
+  整点竞争窗口、心跳 + try/finally）已布置，结论到齐后回写本节。
+  ⑨ **探针 2 结论（同日 15:10）**：Phase B 未及采集——探针 2 于 15:06:30 在**纯 sleep 等待
+  阶段**再次被 0xC0000409 杀掉（`LastTaskResult` 同码），即崩溃与 sync/锁无关，是**本机
+  计划任务上下文里 powershell 宿主进程的系统性硬崩**（启动 1–4 分钟内；先后两台探针同一
+  死法，首台死在 sync 后的锁释放前、次台死在空闲 sleep）。对照证据：CLI 自己的小时计划
+  任务（`TokenUsageSync`，wscript 宿主）14:00/15:00 连续 `LastTaskResult=0`，bash 沙箱内
+  直跑 CLI、holder 竞争测试、桌面端点击全部正常——崩溃面局限于「提权 + powershell -File」
+  这一种任务形态。整点竞争场景改由 holder 脚本直接验证（见 ⑥）。**处理建议**：不在 CLI 侧
+  兜底 0xC0000409（那是 OS 级进程处决，CLI 无从捕获）；保留锁自愈与 skip 标记作为崩溃后
+  的观测面（已实测有效）。若操作者桌面端也偶发「窗口/托盘消失」，先查该码。
+  ⑧ **三项 UI 调整**（操作者要求，全部落地并 CDP 复验）：a. 采集操作卡失败结果改
+  **danger Alert**（HeroUI `status="danger"`，标题 `命令 · exit N` + CLI 输出尾部；长路径
+  `break-all` + `Alert.Content` `min-w-0` 防 400 宽溢出——首版漏了这条复验时抓到溢出）；
+  b. 来源构成加**品牌 logo**（移植 web `lib/sources.ts` 为桌面 `lib/source-logos.ts` +
+  `components/source-icon.tsx` 根级共享件，52 个 MIT 资产复制到 `apps/desktop/public/
+  brand-logos/`，暗色双图按登记表 `.dark` 叠放；别名行 trae-cn+trae 归并后 token/占比重算；
+  `lib/source-logos.ts` 6 例单测）；c. 四个操作按钮改 **PendingButton**（移植 web 同名件：
+  render-prop `isPending` + current-color Spinner），被点的按钮转 Spinner、其余禁用——
+  修复前是「点了全部禁用且无任何进行中反馈」。
+  **遗留不变**：向导批准环节与托盘菜单点击仍待操作者；0xC0000409 待探针 2 结论。
