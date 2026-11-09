@@ -102,7 +102,7 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
 |--------|------|--------|
 | **D1 立项与脚手架** | workspace 加 `apps/desktop`（Tauri 2 + Vite + React + HeroUI + Tailwind）；托盘（打开主窗口 / 退出）+ 主窗口骨架 + close-to-tray；`sync.log` 解析模块与测试（D2 数据面第一块）；图标生成脚本与资产；根 `pnpm verify` 并入 desktop lint/tsc/test/build；本文档 + AGENTS / rewrite-plan / requirements 回写 | 根 `pnpm verify` 全绿 + CI 绿；装好 Rust 后 `pnpm dev:desktop` 托盘可见、窗口关闭进托盘、托盘退出（真机项，待操作者） |
 | **D2 本地监控盘** | 托盘菜单补全（今日 tokens、采集状态、Sync now、暂停/恢复、打开 web 仪表盘）；主窗口三段（顶部 strip：今日/7 天 tokens + 最近 sync 结果 + 队列体积行数；来源构成 mini 条 + 设备身份行；操作条调 CLI 展示摘要）；三态齐全；ui-spec 回写「桌面端」节 | 本地聚合与 queue.jsonl last-wins 口径一致；无 CLI / 无数据 / 错误三态齐全；离线可用；窄窗不横向滚动 |
-| **D3 配对与引导** | 首启向导：检测 CLI → 引导安装 → `device-login` 开浏览器 `/device?user_code=` → 等待→已批准→首同步统计；复用 CLI 现有配对流，desktop 不碰令牌 | 新机器从装 desktop 到配对成功全程有引导 |
+| **D3 配对与引导** | 首启向导：检测 CLI → 引导安装 → `device-login` 开浏览器 `/device?user_code=` → 等待→已批准→首同步统计；复用 CLI 现有配对流，desktop 不碰令牌 | 新机器从装 desktop 到配对成功全程有引导。**已收尾**（2026-11-09 操作者验收：向导默认流程通过）；托盘菜单点击本机无法验（§10 六追记），随 D5 在 UAC 正常环境补验 |
 | **D4 通知与常驻** | 每日汇总通知、sync 连败/队列积压提醒（阈值可配）、自启动、单实例、ThemeToggle 三态循环与持久化 | 通知免打扰时段可配；reduced-motion 遵守 |
 | **D5 发版** | Windows NSIS 安装包 + tauri updater（Ed25519 签名密钥操作者生成入 GitHub secret）；Rust 编译门禁进 CI（Windows runner） | 从 Release 下载安装 → 托盘出现 → D2/D3 功能真机全过 |
 
@@ -330,3 +330,14 @@ requirements 边界表。
   `deviceToken` 一并清掉）→ 重开桌面端，`status --json` 的 `device_token_set` 转假 → 向导出现
   →「配对设备」拿码 → 浏览器 `/device?user_code=…` 用已登录账号批准 → 向导自动跑首同步 →
   「进入监控台」（新令牌由批准时签发，旧文件留作对照）。
+- **D3 收尾（2026-11-09 操作者验收）**：**D3 关闭**。
+  - 验收结论：向导默认流程通过（首次启动 → 检测 CLI → 配对码 + 自动开批准页 → 已批准 →
+    首同步统计 → 进入监控台）；操作者原话「向导默认没问题」。向导不另加交互改动。
+  - 遗留项去向：托盘菜单点击（立即同步 / 暂停·恢复 / 打开仪表盘 / 打开主窗口 / 退出）在本机
+    因 UAC 关闭而无图标可点（六追记），**随 D5 在 UAC 正常环境补验**；同一批 `spawn_cli_detached`
+    与窗口控制路径已由窗口按钮、托盘 quit / show 事件分发（D2）覆盖，不在 D3 挂账。
+  - 环境相关事项不入库、继续有效：本机 `~/.tokenusage` 与 `src-tauri/target` 的 Low 完整性标签、
+    桌面端必须跑在 Low（四追记）、托盘不可用降级与说明块（六追记）。
+  - D3 范围外的已知问题：计划任务上下文里的 0xC0000409（再追记⑧，系统层、CLI 不兜底）。
+  - 下一步：**D4 通知与常驻**（每日汇总通知、sync 连败/队列积压提醒 ±阈值、自启动、单实例、
+    ThemeToggle 三态持久化）。
