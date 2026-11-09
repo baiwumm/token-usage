@@ -952,10 +952,18 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   **danger Alert**（`status="danger"`，标题 = `命令 · exit N`，描述 = CLI 输出尾部，`font-mono`
   `whitespace-pre-wrap break-all`——长路径无空格须可断行，`Alert.Content` 加 `min-w-0` 防 400
   宽溢出）；成功仍用中性 `bg-default` 结果块 + `pre`（最多 8 行）。
-- **应用图标**（2026-11-09）：窗口与托盘图标改用项目 logo（`apps/desktop/public/logo.svg`，与
-  web/落地页同一 mark），`scripts/admin/desktop-assets/generate.mjs` 直接读该 SVG 的
-  viewBox/rect 渲染 1024 源图再走 `tauri icon`，品牌几何只维护一处；换图标后需重启 dev
-  （资源重编译）才生效。
+- **采集操作卡反馈 Toast**（2026-11-09 操作者要求：CLI 输出只有英文，需中文反馈）：
+  结果块保留 CLI 原始输出（英文是 CLI 的口径，便于排查），另在 `hooks/use-monitor-toasts.ts`
+  用 HeroUI `toast` 汇报中文摘要——成功 `toast.success`（同步完成 / 采集已暂停·已恢复）、
+  失败 `toast.danger`（未能启动、exit≠0）、需解释的中性结果用默认 `toast`（同步被跳过、
+  暂停成功但计划任务未能关闭 → 补一句「暂停标志仍然生效」）。启动期同理：CLI 探测未完成时
+  四个按钮全禁用，先发一个 `isLoading` 常驻 toast「正在检测本地 tokenusage-cli……」，探测落定
+  后同一 toast `toast.update` 成「已就绪」或 danger「未检测到 tokenusage-cli：采集操作已禁用」。
+  `Toast.Provider` 挂在 `app.tsx`（`placement="bottom end"`）。
+- **应用图标**（2026-11-09）：窗口与托盘图标改用项目 logo（`apps/desktop/public/logo-dark.svg`
+  ——白底深色 mark 的深色界面变体，与窗口页头 dark 态同源，在深色任务栏 16–32 px 下可辨），
+  `scripts/admin/desktop-assets/generate.mjs` 直接读该 SVG 的 viewBox/rect 渲染 1024 源图再走
+  `tauri icon`，品牌几何只维护一处；换图标后需重启 dev（资源重编译）才生效。
 - **三态**：Loading 骨架（pulse 块，含配对门控检测中）；错误态（桥接不可用，可重试）；
   空态（CLI 在但队列与 sync 记录皆空；CLI 缺失时文案改为重新安装提示）。无 CLI / 未配对
   由下条配对门控接管（D3 起取代原「安装引导卡」）。

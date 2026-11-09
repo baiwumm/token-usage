@@ -1,6 +1,8 @@
 // Generate the desktop app icon source (1024×1024 PNG) for `tauri icon`,
-// straight from the project logo (apps/desktop/public/logo.svg) so the brand
-// mark lives in exactly one place.
+// straight from the project logo (apps/desktop/public/logo-dark.svg) so the
+// brand mark lives in exactly one place. That variant is the white tile with
+// the dark mark — the one the window header shows on dark surfaces, and the
+// one that reads against a dark Windows taskbar at 16–32 px.
 //
 // The logo is simple geometry (rounded tiles drawn as <rect> elements), so the
 // renderer reads those rects out of the SVG and paints them in document order
@@ -20,7 +22,7 @@ import { PNG } from "pngjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..", "..", "..");
-const LOGO = join(ROOT, "apps", "desktop", "public", "logo.svg");
+const LOGO = join(ROOT, "apps", "desktop", "public", "logo-dark.svg");
 const OUT = join(ROOT, "apps", "desktop", "src-tauri", "icons", "source.png");
 
 const SIZE = 1024;

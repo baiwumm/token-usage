@@ -15,6 +15,7 @@ import { UnpairedNote } from "@/components/monitor/unpaired-note";
 import { UsageCards } from "@/components/monitor/usage-cards";
 import { PairingBody } from "@/components/pairing/pairing-body";
 import { useMonitor } from "@/hooks/use-monitor";
+import { useMonitorToasts } from "@/hooks/use-monitor-toasts";
 import { usePairing } from "@/hooks/use-pairing";
 
 const GUIDE_URL = "https://github.com/baiwumm/token-usage#readme";
@@ -37,6 +38,8 @@ export function MonitorBody() {
     refreshCli,
     runCli,
   } = useMonitor();
+
+  useMonitorToasts({ cli, cliResolved, lastOutcome });
   const pairing = usePairing({
     cliAvailable: cli.available,
     cliResolved,
