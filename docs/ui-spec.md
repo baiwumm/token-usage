@@ -944,11 +944,18 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   2026-11-09 起 D2 手写的带边框 div 卡片收编为 `Card`。
 - **采集操作卡交互**（2026-11-09 操作者要求）：① 四个按钮一律 `PendingButton`——被点的那个
   按钮内渲染 current-color `Spinner`（`size="sm"`，`aria-hidden`），其余按钮 `isDisabled`；
+  有前置图标的按钮（立即同步 / 暂停·恢复）pending 时 **Spinner 顶替图标位**，不与图标并排
+  （HeroUI 官方 pending pattern：同一槽位 `isPending ? <Spinner /> : <Icon />`），图标经
+  `PendingButton` 的 `icon` prop 传入；
   HeroUI Button 无内建 pending，web 的 `PendingButton`（render-prop `isPending`）移植至
   `components/pending-button.tsx` 复用。② 运行结果：失败（exit≠0 或未能启动）渲染
   **danger Alert**（`status="danger"`，标题 = `命令 · exit N`，描述 = CLI 输出尾部，`font-mono`
   `whitespace-pre-wrap break-all`——长路径无空格须可断行，`Alert.Content` 加 `min-w-0` 防 400
   宽溢出）；成功仍用中性 `bg-default` 结果块 + `pre`（最多 8 行）。
+- **应用图标**（2026-11-09）：窗口与托盘图标改用项目 logo（`apps/desktop/public/logo.svg`，与
+  web/落地页同一 mark），`scripts/admin/desktop-assets/generate.mjs` 直接读该 SVG 的
+  viewBox/rect 渲染 1024 源图再走 `tauri icon`，品牌几何只维护一处；换图标后需重启 dev
+  （资源重编译）才生效。
 - **三态**：Loading 骨架（pulse 块，含配对门控检测中）；错误态（桥接不可用，可重试）；
   空态（CLI 在但队列与 sync 记录皆空；CLI 缺失时文案改为重新安装提示）。无 CLI / 未配对
   由下条配对门控接管（D3 起取代原「安装引导卡」）。

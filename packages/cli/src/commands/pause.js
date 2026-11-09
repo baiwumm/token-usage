@@ -25,7 +25,7 @@ async function cmdPause() {
   const { trackerDir } = await resolveTrackerPaths({ home: os.homedir() });
   const alreadyPaused = isCollectionPaused(trackerDir);
 
-  setCollectionPaused(trackerDir, true);
+  await setCollectionPaused(trackerDir, true);
   const schedule = setAutoSyncEnabled(false);
 
   process.stdout.write(
@@ -46,7 +46,7 @@ async function cmdResume() {
   const { trackerDir } = await resolveTrackerPaths({ home: os.homedir() });
   const wasPaused = isCollectionPaused(trackerDir);
 
-  setCollectionPaused(trackerDir, false);
+  await setCollectionPaused(trackerDir, false);
   const schedule = setAutoSyncEnabled(true);
 
   process.stdout.write(

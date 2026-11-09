@@ -16,11 +16,7 @@ async function writeFileAtomic(filePath, content, { mode } = {}) {
   // private from creation instead of relying on a later chmod that a crash
   // between write and chmod would skip.
   try {
-    await fs.writeFile(
-      tmp,
-      content,
-      mode == null ? { encoding: "utf8" } : { encoding: "utf8", mode },
-    );
+    await writeTmpFile(tmp, content, mode);
     await fs.rename(tmp, filePath);
   } catch (err) {
     try {
@@ -28,7 +24,7 @@ async function writeFileAtomic(filePath, content, { mode } = {}) {
     } catch {
       /* tmp may not exist if writeFile failed before creating it */
     }
-    throw err;
+    throw attachWriteHint(err, filePath);
   }
 }
 
@@ -82,6 +78,52 @@ const TRANSITION_GUARD_ATTEMPTS = 1000;
 // trouble must be survivable and queryable, not loud).
 const LOCK_TRANSIENT_OPEN_RETRIES = 3;
 const LOCK_TRANSIENT_OPEN_RETRY_MS = 150;
+// The same Windows create-denial that the lock absorbs also hits plain atomic
+// writes: `sync.skip.json.tmp…` and `pause.flag.json…tmp` surfaced a raw EPERM
+// and aborted the command (desktop「立即同步」/「暂停采集」). Retry the tmp create
+// briefly, then let the error out unchanged.
+const WRITE_TRANSIENT_RETRIES = 3;
+const WRITE_TRANSIENT_RETRY_MS = 150;
+
+function isTransientCreateError(error) {
+  return error?.code === "EPERM" || error?.code === "EBUSY";
+}
+
+// A write failure is usually actionable in one specific way: the *folder*
+// refused the create (permissions, or a process integrity level lower than the
+// folder's label). Attach that as a one-line hint — bin/tokenusage.js prints
+// `hint` after the error, and the desktop's actions card shows the same tail.
+const WRITE_HINT_CODES = new Set(["EPERM", "EACCES", "EBUSY", "EROFS"]);
+
+function attachWriteHint(error, filePath) {
+  if (!error || typeof error !== "object" || error.hint) return error;
+  if (!WRITE_HINT_CODES.has(error.code)) return error;
+  const dir = path.dirname(filePath);
+  error.hint =
+    `Cannot create files in ${dir} (${error.code}). ` +
+    "The process may run with less access or a lower integrity level than that folder " +
+    "(for example inside a sandbox, or started by a host process that runs at low integrity). " +
+    "Retry from a normal terminal, or grant this user write access to the folder.";
+  return error;
+}
+
+async function writeTmpFile(tmp, content, mode) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await fs.writeFile(
+        tmp,
+        content,
+        mode == null ? { encoding: "utf8" } : { encoding: "utf8", mode },
+      );
+      return;
+    } catch (error) {
+      if (attempt >= WRITE_TRANSIENT_RETRIES - 1 || !isTransientCreateError(error)) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, WRITE_TRANSIENT_RETRY_MS));
+    }
+  }
+}
 
 function parseLockOwner(raw) {
   try {
@@ -488,6 +530,7 @@ async function updateJsonLocked(
 module.exports = {
   ensureDir,
   writeFileAtomic,
+  attachWriteHint,
   readJson,
   readJsonStrict,
   writeJson,

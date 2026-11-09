@@ -693,8 +693,19 @@ async function cmdSync(argv, context = {}) {
   const lock = await acquireSyncLock(lockPath, opts, lockWaitOptions);
   if (!lock) {
     // Warn on stderr so the notice reaches interactive and background runs
-    // alike without disturbing anything that parses sync's stdout.
-    process.stderr.write(await recordSyncSkip(trackerDir, lockPath));
+    // alike without disturbing anything that parses sync's stdout. The marker
+    // is diagnostics, not the skip itself: a failed write (Windows' transient
+    // EPERM on create) must not turn a skipped sync into a crash — the notice
+    // still reaches stderr, just without the marker.
+    let notice;
+    try {
+      notice = await recordSyncSkip(trackerDir, lockPath);
+    } catch (error) {
+      notice =
+        "Sync skipped: sync lock could not be acquired — " +
+        `failed to write ${SYNC_SKIP_MARKER} (${error?.code || error?.message || "unknown error"})\n`;
+    }
+    process.stderr.write(notice);
     return;
   }
   let progress = null;

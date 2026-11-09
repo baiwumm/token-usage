@@ -39,16 +39,16 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test("pause flag round-trips and defaults to unpaused on missing/corrupt state", () => {
+test("pause flag round-trips and defaults to unpaused on missing/corrupt state", async () => {
   assert.equal(isCollectionPaused(tmpDir), false);
 
-  setCollectionPaused(tmpDir, true);
+  await setCollectionPaused(tmpDir, true);
   assert.equal(isCollectionPaused(tmpDir), true);
   const raw = JSON.parse(fs.readFileSync(pauseFilePath(tmpDir), "utf8"));
   assert.equal(raw.paused, true);
   assert.ok(typeof raw.at === "string");
 
-  setCollectionPaused(tmpDir, false);
+  await setCollectionPaused(tmpDir, false);
   assert.equal(isCollectionPaused(tmpDir), false);
   assert.equal(fs.existsSync(pauseFilePath(tmpDir)), false);
 

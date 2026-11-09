@@ -11,6 +11,8 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+const { writeFileAtomic, attachWriteHint } = require("./fs");
+
 const PAUSE_FILE = "pause.flag.json";
 const RUN_REPORT_KEY = "runReport";
 
@@ -39,22 +41,23 @@ function readCollectionPause(trackerDir) {
   }
 }
 
-function setCollectionPaused(trackerDir, paused, { at = new Date().toISOString() } = {}) {
-  fs.mkdirSync(trackerDir, { recursive: true });
+// Async so the write goes through writeFileAtomic (same-directory tmp + rename,
+// with its short retry for Windows' transient EPERM on create): the previous
+// hand-rolled `${file}.${process.pid}.tmp` write aborted `tokenusage pause`
+// with a bare errno instead of landing the flag.
+async function setCollectionPaused(trackerDir, paused, { at = new Date().toISOString() } = {}) {
   const file = pauseFilePath(trackerDir);
 
   if (!paused) {
     try {
       fs.unlinkSync(file);
     } catch (error) {
-      if (error?.code !== "ENOENT") throw error;
+      if (error?.code !== "ENOENT") throw attachWriteHint(error, file);
     }
     return;
   }
 
-  const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, `${JSON.stringify({ paused: true, at })}\n`, { mode: 0o600 });
-  fs.renameSync(tmp, file);
+  await writeFileAtomic(file, `${JSON.stringify({ paused: true, at })}\n`, { mode: 0o600 });
 }
 
 function isRunReportEnabled(trackerDir) {

@@ -48,11 +48,16 @@ export function CliActionsCard({
       <Card.Content className="gap-3">
         <div className="flex flex-wrap gap-2">
           <PendingButton
+            icon={
+              <ArrowRotateRight
+                aria-hidden="true"
+                className="size-4 shrink-0"
+              />
+            }
             isDisabled={busy || !snapshot.cli.available}
             pending={runningCommand === "sync"}
             onPress={() => onRun("sync", ["--auto"])}
           >
-            <ArrowRotateRight aria-hidden="true" className="size-4 shrink-0" />
             立即同步
           </PendingButton>
           <PendingButton
@@ -72,16 +77,18 @@ export function CliActionsCard({
             对账 7 天
           </PendingButton>
           <PendingButton
+            icon={
+              snapshot.paused ? (
+                <CirclePlay aria-hidden="true" className="size-4 shrink-0" />
+              ) : (
+                <CirclePause aria-hidden="true" className="size-4 shrink-0" />
+              )
+            }
             isDisabled={busy || !snapshot.cli.available}
             pending={runningCommand === "pause" || runningCommand === "resume"}
             variant="secondary"
             onPress={() => onRun(snapshot.paused ? "resume" : "pause")}
           >
-            {snapshot.paused ? (
-              <CirclePlay aria-hidden="true" className="size-4 shrink-0" />
-            ) : (
-              <CirclePause aria-hidden="true" className="size-4 shrink-0" />
-            )}
             {snapshot.paused ? "恢复采集" : "暂停采集"}
           </PendingButton>
         </div>

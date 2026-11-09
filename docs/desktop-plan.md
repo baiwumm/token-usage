@@ -244,3 +244,43 @@ requirements 边界表。
   `pnpm --filter @token-usage/desktop exec where tokenusage`。详见 `docs/cli-release.md` §十二。
   **遗留不变**：向导批准环节与托盘菜单点击仍待操作者；0xC0000409 的结论已出（见 ⑨，
   非 CLI 问题、不在 CLI 侧兜底）。
+- **D3 三追记（2026-11-09 傍晚，操作者复报 skip 标记 / pause 标志写入 EPERM）**：
+  ① 现场证据：tracker 目录 ACL 正常（Administrator 继承 F），bash 与终端直跑
+  `cmd /C tokenusage sync --auto` 均 exit 0；仅桌面端起的 CLI 子进程**创建新文件**被拒
+  （EPERM: open `*.tmp`），且两次报错分别落在 `sync.skip.json.tmp…`（锁未拿到后写跳过
+  标记）与 `pause.flag.json.<pid>.tmp`——即这两个此前未加保护的写路径。属系统层瞬时/上下文
+  拒绝，CLI 无法根治。
+  ② CLI 侧补同样的瞬时创建重试：`writeFileAtomic` 的 tmp 创建 3×150 ms（与 `sync.lock`
+  同一策略）；`setCollectionPaused` 改 async 并复用 `writeFileAtomic`（原手写 `${pid}.tmp`
+  写入无保护）；skip 标记写入失败不再把一次「跳过」升级成崩溃，改为同义 stderr 提示
+  （exit 0），标记缺失只影响可观测面（issue #431 语义不变）。单测 11 例回绿，mock 注入
+  复验：首次 EPERM → 重试成功；持续 EPERM → 约 300 ms 后原样抛出。
+  ③ 桌面端 pending 图标：有前置图标的按钮（立即同步 / 暂停·恢复）在 Spinner 出现时隐藏
+  原图标——`PendingButton` 新增 `icon` prop，按官方同槽替换（`isPending ? <Spinner/> :
+  <Icon/>`），不再并排显示两个字形（ui-spec 采集操作卡节已回写）。
+- **D3 四追记（2026-11-09，写入 EPERM 的根因定位）**：桌面端点「暂停采集」持续 EPERM，重试
+  无效。排查：tracker 目录 ACL 正常（High 进程可自由读写），但 `token-usage-desktop.exe`
+  的进程令牌是 **Low 完整性级别**（cargo / rustup / node / pnpm / Zed / explorer 全为 High，
+  直接启动同一 exe 亦然），其 CLI 子进程继承 Low，向默认 Medium 的 `~/.tokenusage/tracker`
+  **创建文件**被强制完整性控制拒绝、读取不受限——与「读全正常、写全 EPERM、重试无效」完全吻合。
+  根因：构建产物 `src-tauri/target/debug/token-usage-desktop.exe` 带 **Low 完整性标签**（SACL，
+  `Get-Acl -Audit` 下不可见；进程 IL 取父令牌与镜像标签的较低者）。
+  ① **反证：不能把 exe 改 Medium**。改标后桌面端直接崩：
+  `Failed to setup app: failed to create webview: WebView2 error: HRESULT(0x80070005) 拒绝访问`。
+  本机会话整体提权（UAC 关闭：explorer/full shell 都是 High），Medium 及以上进程被 WebView2
+  拒绝、Low 才允许创建 webview。清空 profile 后的对照（同一 exe 只改标签）：Low → 进程存活且
+  `EBWebView` 正常生成；Medium → panic 0x80070005。⇒ **本机桌面端必须留在 Low**，改 Medium
+  的方案作废。
+  ② **写权限改从目标目录侧解决（本机环境，不入库）**：
+  `icacls %USERPROFILE%\.tokenusage /setintegritylevel "(OI)(CI)Low"`，并对已有子项逐个设
+  `Low`（父目录继承让新建文件也是 Low；已存在的 queue/config 需逐个改，否则 Low 进程无法覆盖
+  它们）。实测：复制并标 Low 的 `cmd.exe` 作为 Low 探针 —— tracker 内创建/覆盖文件成功，
+  `tokenusage pause` exit 0 并落下 `pause.flag.json`，`resume` 成功删除。构建侧保留
+  `(OI)(CI)Low` 于 `src-tauri/target` + `target/debug`，重链接产物自动继承，dev 重启即一致。
+  ③ **副作用**：Low 进程改不了计划任务 → `pause` 末尾出现
+  `TokenUsageSync could not be disabled (错误: 拒绝访问。)`；标志仍是权威（所有 auto sync 都
+  看标志），采集开关功能不受影响。
+  ④ CLI 侧可见面：`writeFileAtomic` 遇 EPERM/EACCES/EBUSY/EROFS 时挂 `hint`（bin 打印
+  `Hint:`，桌面端 Alert 可见），skip 标记写入失败不再致命。
+  ⑤ 新机器排查顺序：先看进程 IL（`Get-Process` + 令牌 IL），再查镜像 SACL 与 `target/debug`
+  的继承标签，最后才查目录 ACL。构建目录若被沙箱类工具打了 Low 标签会周期性复现。
