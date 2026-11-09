@@ -1233,7 +1233,7 @@ async function applyIntegrationSetup({
   }
 
   // CodeBuddy: Claude-Code fork. Install the SessionEnd hook so finished
-  // sessions trigger notify.cjs → tracker sync; passive scan still runs as a
+  // sessions trigger notify.cjs → tokenusage sync; passive scan still runs as a
   // safety net for sessions that don't fire SessionEnd cleanly.
   const codebuddyDirExists = want("codebuddy") && await isDir(context.codebuddyDir);
   if (!want("codebuddy")) {
@@ -1249,7 +1249,7 @@ async function applyIntegrationSetup({
   }
 
   // WorkBuddy: sibling Claude-Code fork. Same SessionEnd hook → notify.cjs →
-  // tracker sync; passive scan still runs as a safety net.
+  // tokenusage sync; passive scan still runs as a safety net.
   const workbuddyDirExists = want("workbuddy") && await isDir(context.workbuddyDir);
   if (!want("workbuddy")) {
     summary.push(notSelectedItem("workbuddy"));

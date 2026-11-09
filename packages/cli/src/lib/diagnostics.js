@@ -162,7 +162,7 @@ async function collectTrackerDiagnostics({
   const kiroCliDbPath = resolveKiroCliDbPathInline(process.env, home);
   const kiroCliPresent = require("node:fs").existsSync(kiroCliDbPath);
 
-  // WSL installs (win32 only) — surfaced so `tracker doctor --json` can
+  // WSL installs (win32 only) — surfaced so `tokenusage doctor --json` can
   // confirm dual-install discovery without running a sync.
   let kiroWslInstalls = null;
   let claudeWslProjects = null;

@@ -12,13 +12,13 @@
  * session logs (`~/.claude/projects/`, `~/.gemini/sessions/`, etc.). Our
  * parsers can read those logs directly without the hook; the only loss is
  * "data is fresh within seconds" → it's now "data is fresh after the next
- * scheduled `tracker sync`".
+ * scheduled `tokenusage sync`".
  *
  * This module surfaces that fact: for each hook-driven provider, decide
  * whether the local install is in **passive mode** (no hook + log dir
- * present). `tracker status` reports it, and the dashboard can show a
+ * present). `tokenusage status` reports it, and the dashboard can show a
  * single banner asking the user whether to acknowledge & continue in
- * passive mode or attempt re-install (`tracker init`).
+ * passive mode or attempt re-install (`tokenusage init`).
  *
  * Detection is purely best-effort — we never *fail* sync because hooks are
  * missing; we just label the source so users / AI agents know latency is

@@ -174,7 +174,7 @@ async function cmdDeviceLogin(argv = [], options = {}) {
       return;
     }
     if (result.status === "expired") {
-      throw new Error("device_code expired — re-run `tracker device-login`");
+      throw new Error("device_code expired — re-run `tokenusage device-login`");
     }
     if (result.status === "unknown") {
       throw new Error("device_code is unknown — server may have evicted it");
