@@ -644,6 +644,28 @@ fn show_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     }
 }
 
+/// Whether the shell actually accepted the tray icon.
+///
+/// `TrayIconBuilder::build` only fails when the hidden window cannot be
+/// created: `tray-icon` deliberately ignores a rejected `Shell_NotifyIcon`
+/// (it waits for `TaskbarCreated` and retries). A lower-integrity process
+/// cannot post to an elevated taskbar at all, so on a UAC-off session the
+/// icon never registers while `build` still returns `Ok` — `rect()` is the
+/// only honest answer.
+fn tray_registered<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> bool {
+    app.tray_by_id(TRAY_ID)
+        .map(|tray| matches!(tray.rect(), Ok(Some(_))))
+        .unwrap_or(false)
+}
+
+/// Tray visibility for the webview, so a machine where the shell rejected the
+/// icon gets an explanation instead of silently losing the tray. Polled a few
+/// times after the window loads: registration can land just after the query.
+#[tauri::command]
+fn tray_status(app: AppHandle) -> bool {
+    tray_registered(&app)
+}
+
 fn create_tray(app: &tauri::App) -> tauri::Result<()> {
     let today = MenuItem::with_id(app, "tray-today", "今日 tokens：…", false, None::<&str>)?;
     let status = MenuItem::with_id(app, "tray-status", "采集：正常", false, None::<&str>)?;
@@ -740,6 +762,7 @@ pub fn run() {
             run_cli,
             open_in_browser,
             update_tray,
+            tray_status,
             device_login_start,
             device_login_poll,
             device_login_cancel,
@@ -751,10 +774,17 @@ pub fn run() {
         .on_window_event(|window, event| {
             // Close-to-tray: the monitor keeps watching from the tray; a real
             // quit goes through the tray menu so the process stays intentional.
+            // When the shell never registered the icon (window lower integrity
+            // than the taskbar, e.g. an elevated/UAC-off session) hiding would
+            // strand the app with no way back — minimize to the taskbar instead.
             if let WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
                     api.prevent_close();
-                    let _ = window.hide();
+                    if tray_registered(window.app_handle()) {
+                        let _ = window.hide();
+                    } else {
+                        let _ = window.minimize();
+                    }
                 }
             }
         })

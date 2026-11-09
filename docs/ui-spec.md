@@ -980,6 +980,12 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   单行——+ 同轮上传错误 warning Alert；失败或无新记录可「重试同步」）→「进入监控台」（同步
   完成为 primary，进行中为 tertiary 可提前进入）。「稍后再说，先看本机数据」仅在流程外
   （未开始 / 失败）出现，跳过为会话级。装饰性 Spinner 一律 `aria-hidden`（旁边文字已表达状态）。
+- **托盘不可用说明**（2026-11-09，desktop-plan §10 六追记）：`tray-icon` 会吞掉被 Shell 拒绝的
+  `Shell_NotifyIcon`，低完整性进程在提权任务栏（关闭 UAC 的 Windows）下永远注册不上。webview
+  调 `tray_status`（400 / 1200 / 3000 ms 三次探测，任一 true 即视为可用）后，监控盘页头下方显示
+  `warning` Alert「托盘图标未注册」——说明任务栏权限高于本应用，**关闭窗口只最小化到任务栏**
+  （同一判据下 Rust 把 CloseRequested 从 `hide()` 降级为 `minimize()`）。说明块只在确认不可用时
+  出现，正常机器无此元素。
 - **主题与语言**：跟随系统 → 浅色 → 深色三态（脚手架期用 `prefers-color-scheme` 内联
   脚本，D4 落循环切换与持久化）；语言 zh-CN 单语（对齐 landing，web 双语不强制桌面）。
 - **托盘**（D2）：左键唤起主窗口；右键菜单 = 今日 tokens 与采集状态两行只读信息 +

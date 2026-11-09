@@ -306,3 +306,27 @@ requirements 边界表。
   ④ 同日发布 **CLI 0.5.4** 并在公司机升级验收（运行时副本 v0.5.4、`doctor` 17 OK、`reconcile
   --days 7` 271 桶逐键匹配、计划任务 `LastTaskResult=0`），明细见 `docs/cli-release.md` §十三；
   桌面端经 PATH 解析到的 CLI 与运行时副本均已是 v0.5.4。
+- **D3 六追记（2026-11-09 晚，本机托盘不可注册的根因与降级）**：操作者报「`pnpm dev:desktop`
+  起来后没有托盘图标」。排查：进程活着、`TrayIconBuilder::build` 返回 `Ok`、tray 的隐藏窗口
+  `tray_icon_app` 存在，但 `Shell_NotifyIconGetRect` 给出 `Ok(None)`（Shell 从未登记它）；UIA
+  树里可见区与 Win11 折叠区都找不到。用「同一 exe、只改进程完整性标签」做 A/B 对照确认：
+  **High 注册成功**（图标进折叠区，所以可见区列表里没有，`rect=Some`）、**Medium / Low 注册
+  失败**（`rect=None`）——这台机器 UAC 关闭，explorer/任务栏跑在 High，`Shell_NotifyIcon` 的
+  消息被 UIPI 丢弃；`tray-icon` 有意吞掉这次失败（等 `TaskbarCreated` 再重试），所以 `build`
+  照旧 `Ok`、进程也不报错。而四追记已证 Medium 及以上建不了 WebView2 ⇒ 「能建窗口」与「能进
+  托盘」在本机互斥：**托盘不可用是环境事实，不是代码 bug**。
+  ① **降级**：`on_window_event` 的 CloseRequested 先查 `tray_registered()`（`rect()` 是否为
+  `Ok(Some(_))`，这是唯一诚实的判据）；有托盘 → `hide()`（原行为），无托盘 → `minimize()`，
+  避免「藏起来又没有托盘可召回」把用户锁在窗口外。
+  ② **可见面**：新增 `tray_status` 命令 + `hooks/use-tray.ts`（400 / 1200 / 3000 ms 三次探测，
+  任一 `true` 即判定可用，躲开「注册晚于查询」的误报）+ `components/monitor/tray-note.tsx`
+  （`warning` Alert「托盘图标未注册」：任务栏权限更高，关闭窗口只最小化）。CDP 断言：本机
+  监控盘顶部出现该说明块，与降级行为一致。
+  ③ **验收口径**：托盘菜单点击只能在「托盘可用」的环境验（UAC 正常的机器），本机以窗口上的
+  「立即同步 / 暂停·恢复」验同一批 `spawn_cli_detached` 路径（五追记已测）；D5 的「托盘出现」
+  验收项同理需要 UAC 正常的环境。
+  ④ **在已配对的机器上重走向导**（本次验收路径）：关掉桌面端 → 把
+  `%USERPROFILE%\.tokenusage\tracker\cloud-device-token.json` 改名备份（`config.json` 里若有
+  `deviceToken` 一并清掉）→ 重开桌面端，`status --json` 的 `device_token_set` 转假 → 向导出现
+  →「配对设备」拿码 → 浏览器 `/device?user_code=…` 用已登录账号批准 → 向导自动跑首同步 →
+  「进入监控台」（新令牌由批准时签发，旧文件留作对照）。

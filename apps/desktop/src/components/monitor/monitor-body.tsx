@@ -11,12 +11,14 @@ import {
 } from "@/components/monitor/monitor-states";
 import { SourceMixCard } from "@/components/monitor/source-mix-card";
 import { SyncStatusCard } from "@/components/monitor/sync-status-card";
+import { TrayNote } from "@/components/monitor/tray-note";
 import { UnpairedNote } from "@/components/monitor/unpaired-note";
 import { UsageCards } from "@/components/monitor/usage-cards";
 import { PairingBody } from "@/components/pairing/pairing-body";
 import { useMonitor } from "@/hooks/use-monitor";
 import { useMonitorToasts } from "@/hooks/use-monitor-toasts";
 import { usePairing } from "@/hooks/use-pairing";
+import { useTrayAvailable } from "@/hooks/use-tray";
 
 const GUIDE_URL = "https://github.com/baiwumm/token-usage#readme";
 
@@ -40,6 +42,7 @@ export function MonitorBody() {
   } = useMonitor();
 
   useMonitorToasts({ cli, cliResolved, lastOutcome });
+  const trayAvailable = useTrayAvailable();
   const pairing = usePairing({
     cliAvailable: cli.available,
     cliResolved,
@@ -106,6 +109,7 @@ export function MonitorBody() {
   return (
     <main className="flex min-h-screen flex-col gap-4 p-4">
       <MonitorHeader paused={snapshot.paused} />
+      {trayAvailable === false ? <TrayNote /> : null}
       {pairing.gate.kind === "unpaired" ? (
         <UnpairedNote onPair={() => setSkipped(false)} />
       ) : null}
