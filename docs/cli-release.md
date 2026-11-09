@@ -931,3 +931,46 @@ pnpm 把 image-dir 排在 PATH 最前，于是 `pnpm dev:desktop` 起的桌面�
 
 升级说明：无需任何动作，随下次计划任务自动生效；桌面端「立即同步」在下一版桌面端
 （随附 CLI）或本机已更新的全局 CLI 下立即可用。
+
+## 十三、0.5.4 发版（2026-11-09）
+
+npm `tokenusage-cli@0.5.4`（`dist-tags.latest = 0.5.4`）；tag `cli-v0.5.4`（`5467403`）；
+Release workflow run `42589025405` 全绿（verify → npm Trusted Publishing + provenance →
+GitHub Release `https://github.com/baiwumm/token-usage/releases/tag/cli-v0.5.4`，正文取
+CHANGELOG）。零契约变更，服务端无需同步升级；对账基线与队列格式不变。
+
+| 批次 | 内容 | 影响面 |
+|---|---|---|
+| `fix(cli)` 写入重试 | `writeFileAtomic` 的 tmp 创建加 3 × 150 ms 重试（`EPERM`/`EBUSY`），耗尽后才原样上抛 | 桌面端「立即同步 / 暂停」遇过滤驱动类瞬时拒绝不再裸崩 |
+| `fix(cli)` 可读提示 | `EPERM`/`EACCES`/`EBUSY`/`EROFS` 挂 `hint`，点名目录并指出「权限或完整性级别低于该目录」方向 | 桌面端 Alert / 终端都能看懂是哪一层拒绝 |
+| `fix(cli)` pause 复用原子写 | `setCollectionPaused` 改 async + `writeFileAtomic`（原手写 `<file>.<pid>.tmp` 无保护）；resume 的 unlink 失败带 hint | `pause.flag.json` 落盘更稳 |
+| `fix(cli)` skip 标记不致命 | 锁没拿到时 `sync.skip.json` 写失败仍输出同义提示、exit 0 | 「跳过」不再被升级成崩溃 |
+| `chore(cli)` 发版 | 版本号 + CHANGELOG | — |
+
+发版前检查：
+
+- [x] `pnpm verify` 全绿（CLI 291 用例，含新增 `test/write-hint.test.js`）
+- [x] `pnpm audit --prod --registry=https://registry.npmjs.org` → No known vulnerabilities found
+- [x] tag `cli-v0.5.4` 与 `packages/cli/package.json` 一致、落在 `origin/main`（`5467403`）
+- [x] release workflow 全绿；publish 步日志 `+ tokenusage-cli@0.5.4`（08:53:37Z），registry
+  约 75 s 后可解析
+
+公司机验收记录（2026-11-09，`PC-20260408RIKF #68e47b34`，Volta + npmmirror）：
+
+| 项 | 结果 |
+|---|---|
+| 安装 | `npm i -g tokenusage-cli@0.5.4 --prefer-online --registry=https://registry.npmjs.org` → `init --yes --no-integrations --no-open`；运行时副本 `runtime.copy` v0.5.4（`installedAt 08:59:53Z`，副本 `bin/tracker.js --version` 也是 v0.5.4）；首同步 3,561,675,540 tokens / 13 providers |
+| `doctor` | **17 项全 OK / 0 warn / 0 fail**；`schedule.registered` = `enhanced definition`；7 天计价覆盖 100.0%（149/162 桶） |
+| `sync`（手动） | exit 0；parsed 4,848 文件、+5 桶、上传 12 行 / 22,814,115 tokens、credits 4、sessions 2/2；`queue.state.json` offset = 468,247 = 文件字节数（队列排空） |
+| `reconcile --days 7` | **OK — every local bucket matches the cloud row**（本地 271 桶 / 云端 271 行），退出码 0 |
+| `pause` / `resume` | 标志落下 `pause.flag.json`、`TokenUsageSync disabled`；resume 删除标志并重新启用任务 |
+| 计划任务 | `Start-ScheduledTask` → `LastTaskResult=0`；sync.log 新行「parsed 4857 files, +2 buckets, uploaded 2, 1,046,808 tokens, queue drained」；offset 468,920 = 文件字节数 |
+
+**npm 缓存坑（本机实测）**：registry 已返回 0.5.4（`dist-tags.latest = 0.5.4`）时，
+`npm i -g tokenusage-cli@0.5.4 --registry=https://registry.npmjs.org` 仍报 `ETARGET` ——
+npm 的 packument 缓存是旧的（`--registry` 不刷新缓存）。加 `--prefer-online` 后立刻装上
+（日志可见 `GET 200 .../tokenusage-cli 882ms (cache updated)` 与 `0.5.4.tgz (cache miss)`）。
+今后核对 npm 版本一律直查 registry 或 `--prefer-online`，不要相信 `npm view` 的本地缓存。
+
+升级说明：无需任何动作，随下次计划任务自动生效；桌面端「立即同步 / 暂停」在这类写入
+拒绝下从裸崩溃改为可读错误 + 重试。
