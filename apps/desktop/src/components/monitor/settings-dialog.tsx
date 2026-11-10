@@ -59,6 +59,7 @@ function HourSelect({
         aria-label={label}
         className="w-28"
         value={String(value)}
+        variant="secondary"
         onChange={(key) => {
           if (key == null) return;
           onChange(Number(key));
@@ -109,6 +110,7 @@ function NumberSelect({
         aria-label={label}
         className="w-28"
         value={String(value)}
+        variant="secondary"
         onChange={(key) => {
           if (key == null) return;
           onChange(Number(key));

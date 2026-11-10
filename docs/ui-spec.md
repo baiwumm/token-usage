@@ -993,10 +993,12 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   系统模式监听 `prefers-color-scheme`；语言 zh-CN 单语（对齐 landing，web 双语不强制桌面）。
 - **设置面板**（D4，页头齿轮；向导页头同样可进）：Modal 复合结构（`Modal.Backdrop /
   Container / Dialog / Header / Heading / Body`），宽 `calc(100vw-1.5rem)`、最高 85vh、内部
-  滼动；副标题「仅保存在本机，不随账号同步」。分组：通知（每日汇总 + 汇总时间 / 同步连败 +
+  滚动；副标题「仅保存在本机，不随账号同步」。分组：通知（每日汇总 + 汇总时间 / 同步连败 +
   连续次数 / 队列积压 + 阀值，均开关 + 按开关联动显示的下拉）→ 免打扰（开关 + 起止整点）→
   启动（开机自启）。开关一律 HeroUI `Switch` 复合结构（`Switch.Content / Control / Thumb` +
-  `Label`），说明用 `Description` 小字；数值/时段用 `Select` + `ListBox`（小时 00:00–23:00）。
+  `Label`），说明用 `Description` 小字；数值/时段用 `Select` + `ListBox`（小时 00:00–23:00），
+  Select 一律 `variant="secondary"`（2026-11-10 操作者验收要求；Modal 即 Surface 场景，低
+  强调无阴影）。
 - **通知规则**（D4）：三类——每日汇总（本地时间到点、每天一次）、同步连败（`finished` 分隔
   轮次，上传失败也计；达阀值报一次，恢复后重新武装）、队列积压（待上传超阀报一次，回落才
   重新武装）。免打扰时段只**抑制发送**、不标记已发（到期未发的顺延到时段结束后）。通知正文

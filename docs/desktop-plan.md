@@ -110,7 +110,7 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
 | **D1 立项与脚手架** | workspace 加 `apps/desktop`（Tauri 2 + Vite + React + HeroUI + Tailwind）；托盘（打开主窗口 / 退出）+ 主窗口骨架 + close-to-tray；`sync.log` 解析模块与测试（D2 数据面第一块）；图标生成脚本与资产；根 `pnpm verify` 并入 desktop lint/tsc/test/build；本文档 + AGENTS / rewrite-plan / requirements 回写 | 根 `pnpm verify` 全绿 + CI 绿；装好 Rust 后 `pnpm dev:desktop` 托盘可见、窗口关闭进托盘、托盘退出（真机项，待操作者） |
 | **D2 本地监控盘** | 托盘菜单补全（今日 tokens、采集状态、Sync now、暂停/恢复、打开 web 仪表盘）；主窗口三段（顶部 strip：今日/7 天 tokens + 最近 sync 结果 + 队列体积行数；来源构成 mini 条 + 设备身份行；操作条调 CLI 展示摘要）；三态齐全；ui-spec 回写「桌面端」节 | 本地聚合与 queue.jsonl last-wins 口径一致；无 CLI / 无数据 / 错误三态齐全；离线可用；窄窗不横向滚动 |
 | **D3 配对与引导** | 首启向导：检测 CLI → 引导安装 → `device-login` 开浏览器 `/device?user_code=` → 等待→已批准→首同步统计；复用 CLI 现有配对流，desktop 不碰令牌 | 新机器从装 desktop 到配对成功全程有引导。**已收尾**（2026-11-09 操作者验收：向导默认流程通过）；托盘菜单点击本机无法验（§10 六追记），随 D5 在 UAC 正常环境补验 |
-| **D4 通知与常驻** | 每日汇总通知、sync 连败/队列积压提醒（阈值可配）、自启动、单实例、ThemeToggle 三态循环与持久化 | 通知免打扰时段可配；reduced-motion 遵守。**已交付待验收**（2026-11-09：判定层 22 例单测、单实例与主题真机过；toast 可见性与自启动需在安装包 / UAC 正常环境验收，见 §10） |
+| **D4 通知与常驻** | 每日汇总通知、sync 连败/队列积压提醒（阈值可配）、自启动、单实例、ThemeToggle 三态循环与持久化 | 通知免打扰时段可配；reduced-motion 遵守。**已验收关闭**（2026-11-10 操作者验收，见 §10；toast 可见性与自启动成效随 D5 发版形态补验） |
 | **D5 发版** | Windows NSIS 安装包 + tauri updater（Ed25519 签名密钥操作者生成入 GitHub secret）；Rust 编译门禁进 CI（Windows runner） | 从 Release 下载安装 → 托盘出现 → D2/D3 功能真机全过 |
 
 工期参考：D1 约 1 天，D2 约 3–5 天，D3 约 2–3 天，D4 约 2 天，D5 约 2 天；全程 Agent
@@ -383,3 +383,12 @@ requirements 边界表。
   在 Low 环境下这是环境限制，需在正常 UAC 机器上验收自启成效；单实例与主题在两种环境都可验。
   ⑧ **reduced-motion**：新增交互均为 HeroUI 默认过渡，无自写动画；设置面板/开关的过渡由
   组件层的 `prefers-reduced-motion` 处理，未新增任何 animation 代码。
+- **D4 验收（2026-11-10 操作者）：D4 关闭**。
+  - 验收范围：主题三态循环与重启持久化、设置面板渲染与开关联动、偏好持久化、判定层去重
+    状态落盘（`tokenusage.desktop.notifications`）、单实例、自启动开关的降级错误文案（Low
+    完整性环境限制下的映射文案）。操作者结论：验收通过。
+  - 验收要求的一处调整：设置面板全部 `Select` 加 `variant="secondary"`（Modal 即 Surface
+    场景的低强调变体），已落地并过 desktop 门禁；ui-spec「设置面板」节同步回写。
+  - 遗留三项随 D5 验收（本机结构性验不了，见 D4 交付记录 ④⑦）：toast 真实弹出与免打扰
+    真实抑制（等 NSIS 安装包的 AUMID）、自启动成效（等 UAC 正常机器）。
+  - 下一步：**D5 发版**（Windows NSIS 安装包 + tauri updater + Rust 编译门禁进 CI）。
