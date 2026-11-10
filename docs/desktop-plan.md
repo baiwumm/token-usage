@@ -15,6 +15,11 @@
 | 5 | 平台顺序 | Windows 先行（两台采集机均为 Windows）；mac/Linux 由 Tauri 可出包但真机验证留待有机器 |
 | 6 | CLI 增量 | v1 不加 `status --json`；desktop 解析 `logs/sync.log`（JSONL）+ 展示子命令文本输出；CLI 面 JSON 化列 0.6 候选、单独走依赖报批 |
 | 7 | 代码签名 | 首版不上（EV 证书成本高）；SmartScreen 提示接受；updater 签名密钥 2026-11-10 改由 Agent 代生成（操作者委托：口令操作者自设；私钥唯一副本在操作者机器 `%USERPROFILE%\.tauri\`，GitHub secrets 只写不可读，须另行备份） |
+| 8 | 成本展示（2026-11-10） | **不进桌面**：边界 4 不变，`project.queue.jsonl` 虽自带 `total_cost_usd` 也不展示；成本口径只在 web 读取侧 |
+| 9 | 成就（2026-11-10） | **不做账号成就页/进度**；只保留 web 深链（`/achievements`），不新增设备只读端点 |
+| 10 | 窗口状态（2026-11-10） | 手写 localStorage 记录宽高并在启动时恢复，**不引入** `tauri-plugin-window-state` |
+| 11 | 会话读取（2026-11-10） | 新增只读 `read_tracker_tail(rel, max_bytes)`（尾部 ≤512 KiB，同一 canonical 目录守卫），不引依赖、不写文件 |
+| 12 | 0.2 产品迭代（2026-11-10） | 范围与分期见 §12：D6 用量构成（模型 / 项目仓库 / 周期切换 / 深链）、D7 使用节奏（热力图 / 最近会话）、D8 交互打磨；D6 待放行 |
 
 ## 2. 定位与分工
 
@@ -117,6 +122,9 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
 | **D3 配对与引导** | 首启向导：检测 CLI → 引导安装 → `device-login` 开浏览器 `/device?user_code=` → 等待→已批准→首同步统计；复用 CLI 现有配对流，desktop 不碰令牌 | 新机器从装 desktop 到配对成功全程有引导。**已收尾**（2026-11-09 操作者验收：向导默认流程通过）；托盘菜单点击已随 D5 补验（2026-11-10，按 §11 对安装版 exe 打 High 标签后全项可用） |
 | **D4 通知与常驻** | 每日汇总通知、sync 连败/队列积压提醒（阈值可配）、自启动、单实例、ThemeToggle 三态循环与持久化 | 通知免打扰时段可配；reduced-motion 遵守。**已验收关闭**（2026-11-10 操作者验收，见 §10；自启随 D5 首次真正写入，重启周期待观察；toast 仍需系统通知被动观测，见 D5 遗留观察①） |
 | **D5 发版** | Windows NSIS 安装包 + tauri updater（Ed25519 签名，密钥 Agent 代生成入 GitHub secret，见 §1 #7）；Rust 编译门禁进 CI（Windows runner）；发版流程见 §11。**已验收关闭**（2026-11-10 发布 `desktop-v0.1.0` 并操作者本机安装验收，M-desktop 收官，见 §10） | 从 Release 下载安装 → 应用启动 → D2–D4 功能真机全过；托盘按 §11 兜底（High 标签）后本机补验成功；toast 仍待系统通知被动观测（操作者 2026-11-10 拍板「先发布、本机安装验收」） |
+| **D6 用量构成**（0.2 产品迭代，**待放行**） | 周期切换 + 主要模型卡 + 项目与仓库卡 + 用量卡收敛 + web 深链 + 数据新鲜度；范围见 §12.3 | 模型/项目 Top 5 与 web 同设备同窗口人工一致；仓库链接正确；三卡联动；400 / 340 px 无横向滚动；`pnpm verify` 全绿 |
+| **D7 使用节奏**（0.3 产品迭代，待 D6 验收） | 热力图（近 12 周）+ 最近会话（只读尾部）+ 卡片显隐；范围见 §12.4 | 日聚合计与单值卡边界一致；最近 5 条与 `session.queue.jsonl` 尾部一致且无正文；隐私字段不出现 |
+| **D8 交互打磨**（0.4 产品迭代，待 D7 验收） | 维护操作折叠 + 窗口尺寸记忆（localStorage）+ 失败复制 + GitHub 仓库入口 + 空态/窄窗/可达性；范围见 §12.5 | 重启保留窗口尺寸；默认折叠不挡主操作；无新增依赖 |
 
 工期参考：D1 约 1 天，D2 约 3–5 天，D3 约 2–3 天，D4 约 2 天，D5 约 2 天；全程 Agent
 开发，每个里程碑操作者验收后再进下一个。
@@ -486,3 +494,87 @@ requirements 边界表。
   全项可用，High 进程的 WebView2 也正常（修正四追记「Medium 及以上全拒」的表述：那是
   Low 标签构建目录的 profile 继承问题）。⚠ High 标签打在 exe 文件上，**升级/重装会换
   新文件，需重打一次**（本机环境手段，不入库；重装后托盘消失先想起这个）。
+
+## 12. 0.2 产品迭代计划（2026-11-10 立项，待操作者放行）
+
+M-desktop 0.1.0 收官后的产品向迭代：把桌面端从「来源构成 + 采集健康」推进到「本机用量
+构成与使用节奏」，仍守本机视角、零网络、零新依赖。范围经操作者 2026-11-10 拍板：**成本
+不进桌面、不做账号成就页（只留 web 深链）、窗口状态手写、会话读取新增只读尾部命令**；
+D6 → D7 → D8 逐期由操作者验收后进入下一期。
+
+### 12.1 原则
+
+- 单列 400×620（min 340×480），所有卡片沿用 `Card` 复合结构、既有 tokens 与三态规范。
+- 数据只读：继续走 `read_tracker_file`（canonical + 8 MiB 上限）；新增 `read_tracker_tail`
+  只读尾部、同样目录守卫，不写任何文件，CLI 仍是唯一写入方。
+- 零网络：除用户点击深链 / 仓库链接外不发请求；不请求 `/api/functions/*`、不直连 Supabase。
+- 零新运行时依赖：图表用手写 CSS / SVG；窗口尺寸记忆用 localStorage。
+- 成本与计价不进桌面（边界 4 不变，即便 `project.queue.jsonl` 自带 `total_cost_usd`）；
+  账号成就只做深链。
+
+### 12.2 数据面增量
+
+| 来源 | 用途 | 读法 |
+|---|---|---|
+| `queue.jsonl`（已有） | 模型 / 项目聚合、日聚合（热力图） | 既有 last-wins + 窗口过滤；`QueueBucketRow` 已含 `model` / `projectKey` |
+| `project.repos.state.json` | `project_key → GitHub URL`（`confirmed` 映射） | 新增只读；缺失 / 损坏按「无链接」降级 |
+| `session.queue.jsonl` | 最近会话（只取尾部） | 新增 `read_tracker_tail(rel, max_bytes≤512 KiB)` |
+| `queue.state.json` / `logs/sync.log`（已有） | 数据新鲜度 / 最近同步 | 不变 |
+
+项目口径：以 `queue.jsonl` 的项目拆分行聚合（与来源 / 模型同一 last-wins 基线），仓库链接
+按 `project_key` 查 `confirmed` 映射；无映射的项目只显示名字，不推断 URL。
+
+### 12.3 D6（desktop v0.2.0，约 2 天）：用量构成
+
+| 项 | 内容 | 验收线 |
+|---|---|---|
+| 周期切换 | `period-filter.tsx`：「今日 / 近 7 天」（默认近 7 天），作用于模型 / 来源 / 项目三卡；选择写 preferences | 三卡联动；重启保留；顶部单值卡口径不变 |
+| 主要模型卡 | `model-mix-card.tsx`：Top 5（最多 8 行）+「其余 N 个模型」；模型名截断 + tooltip；占比条与来源卡同构 | Top 5 与 web 同设备同窗口人工核对一致；空态正常 |
+| 项目与仓库卡 | `project-repos-card.tsx`：Top 5 项目；有 confirmed 仓库的显示 GitHub 图标 + `owner/name`（点击 `open_in_browser`），无仓库只显名字；底部「已归因 X% · 其余未归因」；右上「在 web 查看项目」 | 链接打开正确 URL；未归因占比与 queue 残差行一致；无网络请求 |
+| 用量卡收敛 | 顶部三格改两格（今日 / 近 7 天）；「待上传」并入同步卡（数据已有） | 400 / 340 宽无横向滚动；同步卡信息不重复 |
+| 深链 | `lib/links.ts` 统一拼 `${dashboardUrl}` + `/`、`/projects`、`/sessions`、`/achievements`；未配对时隐藏入口 | 未配对无入口；已配对点击正确 |
+| 数据新鲜度 | 同步卡加「更新于 HH:mm:ss」+ 手动刷新图标（复用现有 refresh） | 轮询后时间更新；失败态可见 |
+
+验收补充：`pnpm verify` 全绿；`read_tracker_file` 白名单未放宽；断网时除点击链接外功能不变。
+
+### 12.4 D7（desktop v0.3.0，约 1.5 天）：使用节奏
+
+1. **热力图** `heatmap-section.tsx` + `heatmap-helpers.ts`：近 12 周（84 格），日聚合按本机
+   时区；5 档色阶沿用 chart token；tooltip「日期 · tokens · 会话」；legend；键盘可聚焦 +
+   `aria-label` 汇总。
+   验收：日合计与「今日 / 近 7 天」卡边界一致；340 宽不出横向滚动；reduced-motion 无动画。
+2. **最近会话** `recent-sessions-card.tsx`：最近 5 条（相对时间 + 模型 + 项目 + tokens），
+   只读会话元数据，**不显示正文 / 标题 / 绝对路径**；Rust 加 `read_tracker_tail`，每 60 s
+   或跟随主轮询但只读尾部。
+   验收：与 `session.queue.jsonl` 尾部逐条一致；隐私字段不出现；1.7 MB 文件不全量 IPC。
+3. **卡片显隐**（设置面板）：来源 / 模型 / 项目 / 热力图 / 最近会话，默认前三开。
+   验收：开关即时生效并持久化；默认界面保持简洁。
+
+### 12.5 D8（desktop v0.4.0，约 1 天）：交互打磨
+
+1. 采集操作卡：立即同步 / 暂停·恢复留主区；Doctor / 对账收进「维护」折叠（默认收起），
+   结果块跟随折叠展开。
+2. 窗口尺寸记忆：localStorage 存宽高，启动时 `set_size`；不引窗口状态插件。
+3. 失败输出加复制按钮；设置补「GitHub 仓库」入口（本应用仓库，非项目仓库）。
+4. 空态 / 骨架补齐新卡片；340 px 复核；热力图键盘可达复验。
+
+验收：重启后窗口尺寸保留；默认折叠不挡主操作；复制可用；`pnpm verify` 全绿。
+
+### 12.6 明确不做（本轮）
+
+成本 / 计价与费用弹窗、账号成就页与进度、Sessions / Projects 全页与筛选、wrapped / 分享卡 /
+公开徽章、云端服务探活、webview 登录态。
+
+### 12.7 规范与发版
+
+- 文件命名沿用登记集，不新增后缀角色：`period-filter.tsx`（`-filter`）、`model-mix-card.tsx` /
+  `project-repos-card.tsx` / `recent-sessions-card.tsx`（`-card`）、`heatmap-section.tsx`
+  （`-section`）、`heatmap-helpers.ts`（`-helpers`）、`use-heatmap.ts`（钩子）、`lib/links.ts`
+  （纯逻辑）。
+- 实现时把新卡片 anatomy 回写 `docs/ui-spec.md`「桌面端」节；AGENTS 的 UI 规则不变。
+- 每期 bump 三处 version + CHANGELOG，tag `desktop-v0.2.0` / `desktop-v0.3.0` /
+  `desktop-v0.4.0`；安装后按 §11 重打 High 标签。
+
+### 12.8 放行状态
+
+**D6 待操作者指令开工**；D7 / D8 依次在上一期验收后进入，范围可随验收反馈调整。
