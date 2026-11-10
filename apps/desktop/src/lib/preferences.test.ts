@@ -87,6 +87,30 @@ describe("normalizePreferences", () => {
   });
 });
 
+describe("card visibility", () => {
+  it("defaults to the three mix cards and hides the rhythm cards", () => {
+    expect(DEFAULT_PREFERENCES.showSources).toBe(true);
+    expect(DEFAULT_PREFERENCES.showModels).toBe(true);
+    expect(DEFAULT_PREFERENCES.showProjects).toBe(true);
+    expect(DEFAULT_PREFERENCES.showHeatmap).toBe(false);
+    expect(DEFAULT_PREFERENCES.showRecentSessions).toBe(false);
+  });
+
+  it("keeps booleans, falls back for junk", () => {
+    const prefs = normalizePreferences({
+      showSources: false,
+      showHeatmap: true,
+      showRecentSessions: "yes",
+    });
+
+    expect(prefs.showSources).toBe(false);
+    expect(prefs.showHeatmap).toBe(true);
+    expect(prefs.showRecentSessions).toBe(
+      DEFAULT_PREFERENCES.showRecentSessions,
+    );
+  });
+});
+
 describe("theme cycle", () => {
   it("cycles system → light → dark → system", () => {
     expect(nextTheme("system")).toBe("light");

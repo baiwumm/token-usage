@@ -8,12 +8,14 @@ import {
   type ProjectRepoUsage,
   type RepoUrls,
 } from "@/lib/project-repos";
+import { buildHeatmap, type HeatmapDay } from "@/lib/heatmap-helpers";
 import {
   SEVEN_DAY_MS,
   aggregateQueue,
   localDayStartMs,
   type UsageWindow,
 } from "@/lib/queue-lines";
+import { parseRecentSessions, type RecentSession } from "@/lib/recent-sessions";
 import {
   summarizeSyncLog,
   syncFailureStreak,
@@ -31,6 +33,8 @@ export interface TrackerFileTexts {
   syncLog: string | null;
   /** project.repos.state.json — confirmed `project_key → URL` map. */
   projectRepos: string | null;
+  /** session.queue.jsonl tail (read_tracker_tail) — recent session metadata. */
+  sessionQueue?: string | null;
 }
 
 export interface CliStatus {
@@ -62,6 +66,10 @@ export interface MonitorSnapshot {
   dashboardUrl: string | null;
   /** Confirmed `project_key → repository URL` map (may be empty). */
   repoUrls: RepoUrls;
+  /** 12-week local-day heatmap (Monday-aligned, future days empty). */
+  heatmap: { days: HeatmapDay[]; totalTokens: number; maxTokens: number };
+  /** Newest sidecar sessions, metadata only (no title / prompt / path). */
+  recentSessions: RecentSession[];
   /** When this snapshot was composed (ms) — the "更新于" stamp. */
   updatedAt: number;
   cli: CliStatus;
@@ -93,6 +101,8 @@ export function buildMonitorSnapshot(
   const pause = parsePauseFlag(files.pause);
   const { lastRun, lastError } = summarizeSyncLog(files.syncLog ?? "");
   const failure = syncFailureStreak(files.syncLog ?? "");
+  const heatmap = buildHeatmap(queueText, nowMs);
+  const recentSessions = parseRecentSessions(files.sessionQueue ?? null);
 
   return {
     today,
@@ -107,6 +117,8 @@ export function buildMonitorSnapshot(
     failureMessage: failure.message,
     dashboardUrl,
     repoUrls,
+    heatmap,
+    recentSessions,
     updatedAt: nowMs,
     cli,
   };

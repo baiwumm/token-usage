@@ -17,6 +17,8 @@ import {
 } from "@/lib/monitor";
 
 const REFRESH_MS = 10_000;
+/** Tail window for the session sidecar (D7); the file itself is several MB. */
+const SESSION_TAIL_BYTES = 512 * 1024;
 /** How long the manual-refresh spinner stays visible at minimum (ms). */
 const MIN_REFRESH_MS = 400;
 
@@ -52,6 +54,22 @@ async function readTrackerFile(relPath: string): Promise<string | null> {
     return result ?? null;
   } catch {
     // Missing file, size cap, transient lock — degrade to "no data".
+    return null;
+  }
+}
+
+/** Tail-only read for `session.queue.jsonl` (recent sessions, D7). */
+async function readTrackerTail(
+  relPath: string,
+  maxBytes: number,
+): Promise<string | null> {
+  try {
+    return await invoke<string | null>("read_tracker_tail", {
+      relPath,
+      maxBytes,
+    });
+  } catch {
+    // Missing file, size cap, transient lock — degrade to "no sessions".
     return null;
   }
 }
@@ -98,19 +116,34 @@ export function useMonitor() {
 
   const refresh = useCallback(async () => {
     try {
-      const [queue, pause, queueState, syncLog, projectRepos, config] =
-        await Promise.all([
-          readTrackerFile("queue.jsonl"),
-          readTrackerFile("pause.flag.json"),
-          readTrackerFile("queue.state.json"),
-          readTrackerFile("logs/sync.log"),
-          readTrackerFile("project.repos.state.json"),
-          readInstanceConfig(),
-        ]);
+      const [
+        queue,
+        pause,
+        queueState,
+        syncLog,
+        projectRepos,
+        sessionTail,
+        config,
+      ] = await Promise.all([
+        readTrackerFile("queue.jsonl"),
+        readTrackerFile("pause.flag.json"),
+        readTrackerFile("queue.state.json"),
+        readTrackerFile("logs/sync.log"),
+        readTrackerFile("project.repos.state.json"),
+        readTrackerTail("session.queue.jsonl", SESSION_TAIL_BYTES),
+        readInstanceConfig(),
+      ]);
       const dashboardUrl =
         config?.dashboardUrl ?? config?.baseUrl ?? DEFAULT_DASHBOARD_URL;
       const snapshot = buildMonitorSnapshot(
-        { queue, pause, queueState, syncLog, projectRepos },
+        {
+          queue,
+          pause,
+          queueState,
+          syncLog,
+          projectRepos,
+          sessionQueue: sessionTail,
+        },
         cliRef.current,
         dashboardUrl,
         Date.now(),

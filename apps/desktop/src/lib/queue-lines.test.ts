@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   aggregateQueue,
+  aggregateQueueDays,
+  localDayKey,
   localDayStartMs,
   parseQueueLine,
 } from "@/lib/queue-lines";
@@ -195,6 +197,32 @@ describe("aggregateQueue", () => {
         share: 100 / 650,
       },
     ]);
+  });
+});
+
+describe("aggregateQueueDays", () => {
+  it("sums the deduped rows of a local day", () => {
+    const updated = { ...ROW_A, total_tokens: 300, conversation_count: 4 };
+    const text = [ROW_A, updated].map((row) => JSON.stringify(row)).join("\n");
+    const key = localDayKey(Date.parse(ROW_A.hour_start));
+
+    expect(aggregateQueueDays(text, NOW - 24 * 3600e3, NOW).get(key)).toEqual({
+      day: key,
+      tokens: 300,
+      conversations: 4,
+    });
+  });
+
+  it("drops buckets outside the window", () => {
+    const text = JSON.stringify(ROW_OLD);
+
+    expect(aggregateQueueDays(text, NOW - 10 * 24 * 3600e3, NOW).size).toBe(0);
+  });
+
+  it("formats local day keys as YYYY-MM-DD", () => {
+    expect(localDayKey(Date.parse("2026-01-02T01:00:00.000Z"))).toMatch(
+      /^\d{4}-\d{2}-\d{2}$/,
+    );
   });
 });
 

@@ -951,7 +951,15 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   `baiwumm/token-usage` 已合并为一行，见 desktop-plan §12.2；`confirmed` 有映射时渲染
   GitHub mark + 项目名按钮，点击走 `open_in_browser`，无映射只显示名字、**不推断 URL**；
   底部左 = 归因覆盖「已归因 X% · 其余未归因」或「已全部归因」（残差 = 无 project_key 的
-  行），右 = 「在 web 查看」→ `${dashboardUrl}/projects`，未配对隐藏）→ 采集与同步卡
+  行），右 = 「在 web 查看」→ `${dashboardUrl}/projects`，未配对隐藏）→ 使用节奏卡
+  （`HeatmapSection`：近 12 周 = 12 列 × 7 行的本地日历格，周一起始、最后一列收在周日，
+  今日之后的格留空；5 档色阶 `bg-default` → `bg-accent/25` / `/45` / `/70` → `bg-accent`，
+  格子 10 px（`size-2.5`）+ `gap-1`，400/340 宽均不横向滚动；格 `title` =「日期 · tokens ·
+  会话」，栅格 `role="img"` + 汇总 aria-label（不给 84 个格逐格设 Tab 焦点）；
+  底部右对齐「少 →多」图例；窗口内无用量显示空态。日聚合与顶部单值卡同一 last-wins 基线
+  与本机时区）→ 最近会话卡（`RecentSessionsCard`：`read_tracker_tail` 只读
+  `session.queue.jsonl` 末尾 ≤512 KiB，最近 5 条；行 = `ModelIcon` + 模型名（截断 + title）
+  与 tokens，次行 = 项目 basename 与相对时间；**不显示标题、正文、绝对路径**）→ 采集与同步卡
   （Header 左 = 标题「采集与同步」+「更新于 HH:mm:ss」，右 = 刷新图标钮，读取期间图标位
   换成 `Spinner`，且手动刷新至少保持 400 ms 可见；Content = 待上传 / 队列体积
   （`formatBytes`）+ `logs/sync.log` 的 `phase:"finished"` 行 + 更新的 `error` 行）→
@@ -1019,7 +1027,9 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   Container / Dialog / Header / Heading / Body`），宽 `calc(100vw-1.5rem)`、最高 85vh、内部
   滚动；副标题「仅保存在本机，不随账号同步」。分组：通知（每日汇总 + 汇总时间 / 同步连败 +
   连续次数 / 队列积压 + 阀值，均开关 + 按开关联动显示的下拉）→ 免打扰（开关 + 起止整点）→
-  启动（开机自启）→ 网页（已配对时四枚 `fullWidth` secondary 按钮 2×2 排布：仪表盘 `/` /
+  启动（开机自启）→ 卡片显示（五个 `Switch`：来源构成 / 主要模型 / 项目与仓库 / 使用节奏 /
+  最近会话，默认前三开、后两关，开关即时生效并持久化；三张构成卡全关时连同上方「用量构成」
+  条与周期切换一起隐藏）→ 网页（已配对时四枚 `fullWidth` secondary 按钮 2×2 排布：仪表盘 `/` /
   项目 `/projects` / 会话 `/sessions` / 成就 `/achievements`，由 `lib/links.ts` 拼
   `dashboardUrl` 后经 `open_in_browser` 打开；未配对整组隐藏；按钮撑满网格单元，避免
   400 宽下四枚小按钮浮在大片空白里，2026-11-10 验收修正；按钮前置图标取 web 侧栏同组

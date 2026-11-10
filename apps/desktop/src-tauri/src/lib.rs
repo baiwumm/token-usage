@@ -249,6 +249,52 @@ fn read_tracker_file(app: AppHandle, rel_path: String) -> Result<Option<String>,
         .map_err(|e| e.to_string())
 }
 
+/// Read only the tail of a tracker file: `session.queue.jsonl` grows to a few
+/// MB while the monitor needs the newest rows. Same canonical guard as
+/// `read_tracker_file`; a truncated read drops the partial first line, so the
+/// caller only ever receives whole JSONL rows. Cap: 512 KiB (D7).
+#[tauri::command]
+fn read_tracker_tail(
+    app: AppHandle,
+    rel_path: String,
+    max_bytes: Option<u64>,
+) -> Result<Option<String>, String> {
+    use std::io::{Read, Seek, SeekFrom};
+
+    const MAX_TAIL_BYTES: u64 = 512 * 1024;
+    let tracker = tracker_dir(&app)?;
+    let tracker_canonical = match tracker.canonicalize() {
+        Ok(path) => path,
+        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(err) => return Err(err.to_string()),
+    };
+    let target = tracker.join(&rel_path);
+    let canonical = match target.canonicalize() {
+        Ok(path) => path,
+        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(err) => return Err(err.to_string()),
+    };
+    if !canonical.starts_with(&tracker_canonical) {
+        return Err("path outside tracker dir".into());
+    }
+    let meta = std::fs::metadata(&canonical).map_err(|e| e.to_string())?;
+    let cap = max_bytes.unwrap_or(MAX_TAIL_BYTES).min(MAX_TAIL_BYTES);
+    let start = meta.len().saturating_sub(cap);
+    let mut file = std::fs::File::open(&canonical).map_err(|e| e.to_string())?;
+    file.seek(SeekFrom::Start(start))
+        .map_err(|e| e.to_string())?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).map_err(|e| e.to_string())?;
+    if start > 0 {
+        match buffer.iter().position(|byte| *byte == b'\n') {
+            Some(position) => buffer.drain(..=position),
+            // No complete line inside the tail window yet.
+            None => return Ok(None),
+        };
+    }
+    Ok(Some(String::from_utf8_lossy(&buffer).into_owned()))
+}
+
 #[tauri::command]
 fn read_instance_config(app: AppHandle) -> Result<InstanceConfig, String> {
     read_instance_config_inner(&app)
@@ -804,6 +850,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             tracker_paths,
             read_tracker_file,
+            read_tracker_tail,
             read_instance_config,
             cli_info,
             run_cli,

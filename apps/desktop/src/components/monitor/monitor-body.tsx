@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 
 import { CliActionsCard } from "@/components/monitor/cli-actions-card";
 import { DeviceRow } from "@/components/monitor/device-row";
+import { HeatmapSection } from "@/components/monitor/heatmap-section";
 import { ModelMixCard } from "@/components/monitor/model-mix-card";
 import { MonitorHeader } from "@/components/monitor/monitor-header";
 import {
@@ -13,6 +14,7 @@ import {
 } from "@/components/monitor/monitor-states";
 import { PeriodFilter } from "@/components/monitor/period-filter";
 import { ProjectReposCard } from "@/components/monitor/project-repos-card";
+import { RecentSessionsCard } from "@/components/monitor/recent-sessions-card";
 import { SourceMixCard } from "@/components/monitor/source-mix-card";
 import { SettingsDialog } from "@/components/monitor/settings-dialog";
 import { SyncStatusCard } from "@/components/monitor/sync-status-card";
@@ -112,6 +114,8 @@ export function MonitorBody() {
   const pairedUrl =
     pairing.gate.kind === "paired" ? snapshot.dashboardUrl : null;
   const projectsUrl = webUrl(pairedUrl, "projects");
+  const mixCardsVisible =
+    prefs.showSources || prefs.showModels || prefs.showProjects;
 
   const settingsDialog = (
     <SettingsDialog
@@ -175,24 +179,45 @@ export function MonitorBody() {
         {hasAnyData ? (
           <>
             <UsageCards snapshot={snapshot} />
-            <div className="flex items-center justify-between gap-3">
-              <Typography className="text-muted" type="body-xs">
-                用量构成
-              </Typography>
-              <PeriodFilter
-                period={period}
-                onChange={(next) => update({ period: next })}
+            {mixCardsVisible ? (
+              <div className="flex items-center justify-between gap-3">
+                <Typography className="text-muted" type="body-xs">
+                  用量构成
+                </Typography>
+                <PeriodFilter
+                  period={period}
+                  onChange={(next) => update({ period: next })}
+                />
+              </div>
+            ) : null}
+            {prefs.showSources ? (
+              <SourceMixCard sources={activeWindow.sources} />
+            ) : null}
+            {prefs.showModels ? (
+              <ModelMixCard models={activeWindow.models} />
+            ) : null}
+            {prefs.showProjects ? (
+              <ProjectReposCard
+                attributedTokens={activeWindow.attributedTokens}
+                projects={activeWindow.projects}
+                projectsUrl={projectsUrl}
+                totalTokens={activeWindow.totalTokens}
+                onOpenUrl={openUrl}
               />
-            </div>
-            <SourceMixCard sources={activeWindow.sources} />
-            <ModelMixCard models={activeWindow.models} />
-            <ProjectReposCard
-              attributedTokens={activeWindow.attributedTokens}
-              projects={activeWindow.projects}
-              projectsUrl={projectsUrl}
-              totalTokens={activeWindow.totalTokens}
-              onOpenUrl={openUrl}
-            />
+            ) : null}
+            {prefs.showHeatmap ? (
+              <HeatmapSection
+                days={snapshot.heatmap.days}
+                maxTokens={snapshot.heatmap.maxTokens}
+                totalTokens={snapshot.heatmap.totalTokens}
+              />
+            ) : null}
+            {prefs.showRecentSessions ? (
+              <RecentSessionsCard
+                nowMs={snapshot.updatedAt}
+                sessions={snapshot.recentSessions}
+              />
+            ) : null}
             <SyncStatusCard
               refreshing={refreshing}
               snapshot={snapshot}

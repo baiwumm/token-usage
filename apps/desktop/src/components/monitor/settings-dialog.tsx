@@ -324,6 +324,42 @@ export function SettingsDialog({
               />
             </section>
 
+            <Separator />
+
+            <section className="flex flex-col gap-3">
+              <Typography type="body-sm" weight="semibold">
+                卡片显示
+              </Typography>
+              <ToggleRow
+                isSelected={prefs.showSources}
+                label="来源构成"
+                onChange={(value) => onChange({ showSources: value })}
+              />
+              <ToggleRow
+                isSelected={prefs.showModels}
+                label="主要模型"
+                onChange={(value) => onChange({ showModels: value })}
+              />
+              <ToggleRow
+                isSelected={prefs.showProjects}
+                label="项目与仓库"
+                onChange={(value) => onChange({ showProjects: value })}
+              />
+              <ToggleRow
+                isSelected={prefs.showHeatmap}
+                label="使用节奏"
+                onChange={(value) => onChange({ showHeatmap: value })}
+              />
+              <ToggleRow
+                isSelected={prefs.showRecentSessions}
+                label="最近会话"
+                onChange={(value) => onChange({ showRecentSessions: value })}
+              />
+              <Description className="text-xs">
+                默认只展开用量构成三卡；开关即时生效
+              </Description>
+            </section>
+
             {webLinks.length > 0 ? (
               <>
                 <Separator />

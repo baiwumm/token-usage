@@ -105,11 +105,8 @@ export function parseQueueLine(line: string): QueueBucketRow | null {
  * reconcile baseline semantics (dedup on the full file, windows filter the
  * deduplicated set).
  */
-export function aggregateQueue(
-  text: string,
-  windowStartMs: number,
-  nowMs: number,
-): UsageWindow {
+/** Last-wins bucket rows for the whole file (the reconcile baseline). */
+export function dedupeQueue(text: string): QueueBucketRow[] {
   const buckets = new Map<string, QueueBucketRow>();
 
   for (const line of text.split(/\r?\n/)) {
@@ -119,6 +116,14 @@ export function aggregateQueue(
     buckets.set(rowKey(row), row); // Map.set overwrites → last line wins
   }
 
+  return [...buckets.values()];
+}
+
+export function aggregateQueue(
+  text: string,
+  windowStartMs: number,
+  nowMs: number,
+): UsageWindow {
   let totalTokens = 0;
   let conversations = 0;
   let attributedTokens = 0;
@@ -126,7 +131,7 @@ export function aggregateQueue(
   const byModel = new Map<string, TokenEntry>();
   const byProject = new Map<string, TokenEntry>();
 
-  for (const row of buckets.values()) {
+  for (const row of dedupeQueue(text)) {
     const startMs = Date.parse(row.hourStart);
 
     if (
@@ -222,6 +227,54 @@ export function localDayStartMs(nowMs: number): number {
   day.setHours(0, 0, 0, 0);
 
   return day.getTime();
+}
+
+/** Local `YYYY-MM-DD` key for a bucket start (heatmap day bucket). */
+export function localDayKey(ms: number): string {
+  const date = new Date(ms);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export interface DailyUsage {
+  day: string;
+  tokens: number;
+  conversations: number;
+}
+
+/**
+ * Dedupe once, then fold each bucket into its local calendar day inside
+ * `[windowStartMs, nowMs]`. The heatmap reads this map, so its daily totals
+ * share the window filter and last-wins baseline of the summary cards.
+ */
+export function aggregateQueueDays(
+  text: string,
+  windowStartMs: number,
+  nowMs: number,
+): Map<string, DailyUsage> {
+  const days = new Map<string, DailyUsage>();
+
+  for (const row of dedupeQueue(text)) {
+    const startMs = Date.parse(row.hourStart);
+
+    if (
+      !Number.isFinite(startMs) ||
+      startMs < windowStartMs ||
+      startMs > nowMs
+    ) {
+      continue;
+    }
+    const day = localDayKey(startMs);
+    const entry = days.get(day) ?? { day, tokens: 0, conversations: 0 };
+
+    entry.tokens += row.totalTokens;
+    entry.conversations += row.conversationCount;
+    days.set(day, entry);
+  }
+
+  return days;
 }
 
 export const SEVEN_DAY_MS = 7 * 24 * 60 * 60 * 1000;

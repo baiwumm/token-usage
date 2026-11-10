@@ -31,6 +31,12 @@ export interface Preferences {
   quietEndHour: number;
   /** Mirrors the OS autostart registration (plugin is the source of truth). */
   autostart: boolean;
+  /** Card visibility (D7); the first three are on by default. */
+  showSources: boolean;
+  showModels: boolean;
+  showProjects: boolean;
+  showHeatmap: boolean;
+  showRecentSessions: boolean;
 }
 
 export const STORAGE_KEY = "tokenusage.desktop.preferences";
@@ -53,6 +59,11 @@ export const DEFAULT_PREFERENCES: Preferences = {
   quietStartHour: 22,
   quietEndHour: 8,
   autostart: false,
+  showSources: true,
+  showModels: true,
+  showProjects: true,
+  showHeatmap: false,
+  showRecentSessions: false,
 };
 
 const THEMES: readonly ThemeMode[] = ["system", "light", "dark"];
@@ -128,6 +139,17 @@ export function normalizePreferences(raw: unknown): Preferences {
     ),
     quietEndHour: asHour(source.quietEndHour, DEFAULT_PREFERENCES.quietEndHour),
     autostart: asBoolean(source.autostart, DEFAULT_PREFERENCES.autostart),
+    showSources: asBoolean(source.showSources, DEFAULT_PREFERENCES.showSources),
+    showModels: asBoolean(source.showModels, DEFAULT_PREFERENCES.showModels),
+    showProjects: asBoolean(
+      source.showProjects,
+      DEFAULT_PREFERENCES.showProjects,
+    ),
+    showHeatmap: asBoolean(source.showHeatmap, DEFAULT_PREFERENCES.showHeatmap),
+    showRecentSessions: asBoolean(
+      source.showRecentSessions,
+      DEFAULT_PREFERENCES.showRecentSessions,
+    ),
   };
 }
 
