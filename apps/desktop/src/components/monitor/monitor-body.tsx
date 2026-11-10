@@ -23,6 +23,7 @@ import { usePairing } from "@/hooks/use-pairing";
 import { usePreferences } from "@/hooks/use-preferences";
 import { useTheme } from "@/hooks/use-theme";
 import { useTrayAvailable } from "@/hooks/use-tray";
+import { useUpdater } from "@/hooks/use-updater";
 
 const GUIDE_URL = "https://github.com/baiwumm/token-usage#readme";
 
@@ -48,6 +49,7 @@ export function MonitorBody() {
   useMonitorToasts({ cli, cliResolved, lastOutcome });
   const trayAvailable = useTrayAvailable();
   const { prefs, update, setAutostart } = usePreferences();
+  const updater = useUpdater();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useTheme(prefs.theme);
@@ -99,7 +101,9 @@ export function MonitorBody() {
     <SettingsDialog
       open={settingsOpen}
       prefs={prefs}
+      updater={updater}
       onChange={update}
+      onCheckUpdate={() => void updater.checkForUpdates(true)}
       onOpenChange={setSettingsOpen}
       onToggleAutostart={setAutostart}
     />

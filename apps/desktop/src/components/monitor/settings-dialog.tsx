@@ -3,6 +3,8 @@
 // `lib/notifications.ts` read the same fields, so the dialog never has to
 // explain behavior the scheduler does not implement.
 
+import type { UpdaterState } from "@/hooks/use-updater";
+
 import {
   Description,
   Label,
@@ -16,6 +18,7 @@ import {
   toast,
 } from "@heroui/react";
 
+import { PendingButton } from "@/components/pending-button";
 import {
   BACKLOG_BYTES_OPTIONS,
   FAILURE_THRESHOLD_OPTIONS,
@@ -173,12 +176,17 @@ export function SettingsDialog({
   onChange,
   onOpenChange,
   onToggleAutostart,
+  updater,
+  onCheckUpdate,
 }: {
   open: boolean;
   prefs: Preferences;
   onChange: (patch: Partial<Preferences>) => void;
   onOpenChange: (open: boolean) => void;
   onToggleAutostart: (enabled: boolean) => Promise<void>;
+  /** D5 updater state; checked silently at startup, installed on click. */
+  updater: UpdaterState;
+  onCheckUpdate: () => void;
 }) {
   return (
     <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
@@ -287,6 +295,44 @@ export function SettingsDialog({
                   });
                 }}
               />
+            </section>
+
+            <Separator />
+
+            <section className="flex flex-col gap-3">
+              <Typography type="body-sm" weight="semibold">
+                更新
+              </Typography>
+              <div className="flex items-center justify-between gap-3">
+                <Typography color="muted" type="body-sm">
+                  当前版本
+                </Typography>
+                <Typography className="tabular-nums" type="body-sm">
+                  {updater.currentVersion === null
+                    ? "…"
+                    : `v${updater.currentVersion}`}
+                </Typography>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <Label>手动检查</Label>
+                  <Description className="text-xs">
+                    {updater.availableVersion === null
+                      ? "发现新版本会下载安装并重启应用"
+                      : `有新版本 v${updater.availableVersion}，确认后自动重启`}
+                  </Description>
+                </div>
+                <PendingButton
+                  className="shrink-0"
+                  isDisabled={updater.status !== "idle"}
+                  pending={updater.status !== "idle"}
+                  size="sm"
+                  variant="secondary"
+                  onPress={onCheckUpdate}
+                >
+                  检查更新
+                </PendingButton>
+              </div>
             </section>
           </Modal.Body>
         </Modal.Dialog>

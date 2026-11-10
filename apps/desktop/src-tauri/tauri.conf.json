@@ -29,11 +29,26 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["SimpChinese", "English"]
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhERTM1RjRFNjlCMkY5NDUKUldSRitiSnBUbC9qalo0WkJDcjdUMU9iQTB1cnM4TzZRQysrcjBOMnI3Z0g1N1ZtaW1QQllSenQK",
+      "endpoints": [
+        "https://github.com/baiwumm/token-usage/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

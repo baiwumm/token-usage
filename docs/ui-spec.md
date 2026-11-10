@@ -995,7 +995,9 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   Container / Dialog / Header / Heading / Body`），宽 `calc(100vw-1.5rem)`、最高 85vh、内部
   滚动；副标题「仅保存在本机，不随账号同步」。分组：通知（每日汇总 + 汇总时间 / 同步连败 +
   连续次数 / 队列积压 + 阀值，均开关 + 按开关联动显示的下拉）→ 免打扰（开关 + 起止整点）→
-  启动（开机自启）。开关一律 HeroUI `Switch` 复合结构（`Switch.Content / Control / Thumb` +
+  启动（开机自启）→ 更新（当前版本行 + 「检查更新」`PendingButton`，D5：启动期静默检查只
+  播报中性 toast，安装永远走手动确认——点击即同意 下载→安装→自动重启，检测/下载期
+  Spinner，失败 danger toast）。开关一律 HeroUI `Switch` 复合结构（`Switch.Content / Control / Thumb` +
   `Label`），说明用 `Description` 小字；数值/时段用 `Select` + `ListBox`（小时 00:00–23:00），
   Select 一律 `variant="secondary"`（2026-11-10 操作者验收要求；Modal 即 Surface 场景，低
   强调无阴影）。

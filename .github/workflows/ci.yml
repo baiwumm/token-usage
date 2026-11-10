@@ -56,3 +56,45 @@ jobs:
           if ($code -ne 0) { throw "init --dry-run exited $code" }
           if ($output -match "Skipped - Skipped") { throw "init output still contains duplicate skipped label" }
           if ([regex]::Matches($output, "Dry run complete").Count -ne 1) { throw "init output does not have exactly one Dry run complete line" }
+
+  # D5：Rust 编译门禁（desktop-plan §7）。generate_context! 要求 frontendDist
+  # 存在，所以先跑一次 vite build；--locked 保证 Cargo.lock 与 Cargo.toml
+  # 一致（lockfile 入库）。
+  rust-gate:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop frontend (tauri macro needs frontendDist)
+        run: pnpm --filter @token-usage/desktop build
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: cargo fmt
+        run: cargo fmt --check --locked
+        working-directory: apps/desktop/src-tauri
+
+      - name: cargo clippy
+        run: cargo clippy --locked -- -D warnings
+        working-directory: apps/desktop/src-tauri
+
+      - name: cargo check
+        run: cargo check --locked
+        working-directory: apps/desktop/src-tauri

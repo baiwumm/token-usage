@@ -73,7 +73,7 @@ web 同构前端栈，定位、边界与接线见 `docs/desktop-plan.md`）。
 | 邀请建号与首次登录（配对、临时密码、自助改密） | `docs/invite-flow.md` |
 | 从零部署（Supabase + Vercel） | `docs/deploy-guide.md` |
 | 改落地页（`apps/landing`：文案、快照数据、部署接线） | `apps/landing/README.md`（UI 仍先读 `docs/ui-spec.md`） |
-| 桌面端（`apps/desktop`：定位、边界、里程碑与验收） | `docs/desktop-plan.md`（UI 仍先读 `docs/ui-spec.md`） |
+| 桌面端（`apps/desktop`：定位、边界、里程碑、验收与发版） | `docs/desktop-plan.md`（UI 仍先读 `docs/ui-spec.md`；发版流程与 updater 机制见其 §11） |
 | 部署与回滚 | `docs/launch-runbook.md` |
 | 当前进度、剩余事项与待决策 | `docs/rewrite-plan.md` §10 |
 | 历史归档（已完成且不再维护的计划与对比结论） | `docs/archive/` |

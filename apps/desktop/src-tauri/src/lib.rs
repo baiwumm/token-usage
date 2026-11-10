@@ -142,15 +142,16 @@ fn read_instance_config_inner(app: &AppHandle) -> Result<InstanceConfig, String>
     let path = tracker_dir(app)?.join("config.json");
     let text = match std::fs::read_to_string(&path) {
         Ok(text) => text,
-        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(InstanceConfig {
-            base_url: None,
-            dashboard_url: None,
-            machine_id: None,
-        }),
+        Err(err) if err.kind() == ErrorKind::NotFound => {
+            return Ok(InstanceConfig {
+                base_url: None,
+                dashboard_url: None,
+                machine_id: None,
+            })
+        }
         Err(err) => return Err(err.to_string()),
     };
-    let parsed: CliConfigFields =
-        serde_json::from_str(&text).map_err(|e| e.to_string())?;
+    let parsed: CliConfigFields = serde_json::from_str(&text).map_err(|e| e.to_string())?;
     let non_empty = |value: &Option<String>| -> Option<String> {
         value
             .as_deref()
@@ -273,21 +274,19 @@ async fn run_cli(args: Vec<String>) -> Result<CliRunResult, String> {
         return Err(format!("command not allowed: {first}"));
     }
     let owned: Vec<String> = args;
-    tauri::async_runtime::spawn_blocking(move || {
-        match build_cli_command(&owned).output() {
-            Ok(out) => Ok(CliRunResult {
-                resolved: true,
-                exit_code: out.status.code(),
-                stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
-                stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
-            }),
-            Err(err) => Ok(CliRunResult {
-                resolved: false,
-                exit_code: None,
-                stdout: String::new(),
-                stderr: err.to_string(),
-            }),
-        }
+    tauri::async_runtime::spawn_blocking(move || match build_cli_command(&owned).output() {
+        Ok(out) => Ok(CliRunResult {
+            resolved: true,
+            exit_code: out.status.code(),
+            stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+        }),
+        Err(err) => Ok(CliRunResult {
+            resolved: false,
+            exit_code: None,
+            stdout: String::new(),
+            stderr: err.to_string(),
+        }),
     })
     .await
     .map_err(|e| e.to_string())?
@@ -315,7 +314,9 @@ const DEVICE_LOGIN_DRAIN_WAIT: Duration = Duration::from_millis(500);
 /// Poison-tolerant lock: release builds abort on panic, so a poisoned mutex
 /// must never take the whole tray down.
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 #[derive(Serialize, Clone)]
@@ -465,8 +466,7 @@ impl ActiveDeviceLogin {
     /// final error line is in the tail before the webview reads it.
     fn wait_for_readers(&self) {
         let deadline = Instant::now() + DEVICE_LOGIN_DRAIN_WAIT;
-        while self.readers_done.load(Ordering::Acquire) < self.readers
-            && Instant::now() < deadline
+        while self.readers_done.load(Ordering::Acquire) < self.readers && Instant::now() < deadline
         {
             std::thread::sleep(Duration::from_millis(20));
         }
@@ -672,13 +672,16 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
     let sync_now = MenuItem::with_id(app, "sync-now", "立即同步", true, None::<&str>)?;
     let pause = MenuItem::with_id(app, "pause-toggle", "暂停采集", true, None::<&str>)?;
     let show = MenuItem::with_id(app, "show", "打开主窗口", true, None::<&str>)?;
-    let dashboard = MenuItem::with_id(app, "open-dashboard", "打开 Web 仪表盘", true, None::<&str>)?;
+    let dashboard =
+        MenuItem::with_id(app, "open-dashboard", "打开 Web 仪表盘", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(
         app,
-        &[&today, &status, &sep1, &sync_now, &pause, &sep2, &show, &dashboard, &quit],
+        &[
+            &today, &status, &sep1, &sync_now, &pause, &sep2, &show, &dashboard, &quit,
+        ],
     )?;
 
     TrayIconBuilder::with_id(TRAY_ID)
@@ -764,6 +767,10 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
+        // D5 updater: the webview checks the GitHub Releases manifest and
+        // relaunches through the process plugin after an in-place install.
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(DeviceLoginState::default())
         .invoke_handler(tauri::generate_handler![
             tracker_paths,

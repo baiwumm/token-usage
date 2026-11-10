@@ -14,7 +14,7 @@
 | 4 | 云端数据 | v1 纯本地 + 浏览器跳转 web；不做 webview 嵌入登录态（后续可选，另行立项） |
 | 5 | 平台顺序 | Windows 先行（两台采集机均为 Windows）；mac/Linux 由 Tauri 可出包但真机验证留待有机器 |
 | 6 | CLI 增量 | v1 不加 `status --json`；desktop 解析 `logs/sync.log`（JSONL）+ 展示子命令文本输出；CLI 面 JSON 化列 0.6 候选、单独走依赖报批 |
-| 7 | 代码签名 | 首版不上（EV 证书成本高）；SmartScreen 提示接受；D5 的 updater 签名密钥由操作者生成 |
+| 7 | 代码签名 | 首版不上（EV 证书成本高）；SmartScreen 提示接受；updater 签名密钥 2026-11-10 改由 Agent 代生成（操作者委托：口令操作者自设；私钥唯一副本在操作者机器 `%USERPROFILE%\.tauri\`，GitHub secrets 只写不可读，须另行备份） |
 
 ## 2. 定位与分工
 
@@ -84,6 +84,11 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
   维护件，自写同等功能还需额外 crate，与升级路径也最不齐。能力面（`capabilities/default.json`）
   只对主窗口开 `notification:default` + `autostart:default`（core 默认之外唯一两项）；托盘、
   窗口、CLI 子进程仍全在 Rust。
+- **2026-11-10 D5 报批（随 D5 开工，操作者拍板「updater 配置 + CI + 先发布后验收」）**：
+  前端增 `@tauri-apps/plugin-updater@2.14.1`、`@tauri-apps/plugin-process@2.4.0`；Rust 增
+  `tauri-plugin-updater@2.14.1` / `tauri-plugin-process@2.4.0`（均为官方件，npm 与 crate
+  版本一一对应；process 为 updater 安装后 relaunch 的伴生件，属 §8 D5「tauri updater」
+  的固有组成）。能力面只加 `updater:default` + `process:default`。
 
 ## 7. 环境前置（本机开发 / 真机验收）
 
@@ -111,7 +116,7 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
 | **D2 本地监控盘** | 托盘菜单补全（今日 tokens、采集状态、Sync now、暂停/恢复、打开 web 仪表盘）；主窗口三段（顶部 strip：今日/7 天 tokens + 最近 sync 结果 + 队列体积行数；来源构成 mini 条 + 设备身份行；操作条调 CLI 展示摘要）；三态齐全；ui-spec 回写「桌面端」节 | 本地聚合与 queue.jsonl last-wins 口径一致；无 CLI / 无数据 / 错误三态齐全；离线可用；窄窗不横向滚动 |
 | **D3 配对与引导** | 首启向导：检测 CLI → 引导安装 → `device-login` 开浏览器 `/device?user_code=` → 等待→已批准→首同步统计；复用 CLI 现有配对流，desktop 不碰令牌 | 新机器从装 desktop 到配对成功全程有引导。**已收尾**（2026-11-09 操作者验收：向导默认流程通过）；托盘菜单点击本机无法验（§10 六追记），随 D5 在 UAC 正常环境补验 |
 | **D4 通知与常驻** | 每日汇总通知、sync 连败/队列积压提醒（阈值可配）、自启动、单实例、ThemeToggle 三态循环与持久化 | 通知免打扰时段可配；reduced-motion 遵守。**已验收关闭**（2026-11-10 操作者验收，见 §10；toast 可见性与自启动成效随 D5 发版形态补验） |
-| **D5 发版** | Windows NSIS 安装包 + tauri updater（Ed25519 签名密钥操作者生成入 GitHub secret）；Rust 编译门禁进 CI（Windows runner） | 从 Release 下载安装 → 托盘出现 → D2/D3 功能真机全过 |
+| **D5 发版** | Windows NSIS 安装包 + tauri updater（Ed25519 签名，密钥 Agent 代生成入 GitHub secret，见 §1 #7）；Rust 编译门禁进 CI（Windows runner）；发版流程见 §11。**2026-11-10 交付，发布待操作者放行** | 从 Release 下载安装 → 应用启动 → D2–D4 功能真机全过；托盘/toast 本机（UAC 关）验不了，按 §11 兜底尝试并如实记录，仍不可验的挂遗留（操作者 2026-11-10 拍板「先发布、本机安装验收」） |
 
 工期参考：D1 约 1 天，D2 约 3–5 天，D3 约 2–3 天，D4 约 2 天，D5 约 2 天；全程 Agent
 开发，每个里程碑操作者验收后再进下一个。
@@ -392,3 +397,54 @@ requirements 边界表。
   - 遗留三项随 D5 验收（本机结构性验不了，见 D4 交付记录 ④⑦）：toast 真实弹出与免打扰
     真实抑制（等 NSIS 安装包的 AUMID）、自启动成效（等 UAC 正常机器）。
   - 下一步：**D5 发版**（Windows NSIS 安装包 + tauri updater + Rust 编译门禁进 CI）。
+- **D5（2026-11-10 交付，发布待操作者放行）**：updater/发版链路全量落地。
+  ① **密钥**：Ed25519 密钥对由 Agent 代生成（§1 #7 改判），secrets
+  `TAURI_SIGNING_PRIVATE_KEY[_PASSWORD]` 已推 GitHub（值不落仓库与文档），公钥进
+  `tauri.conf.json`。② **updater 接线**：`plugins.updater`（endpoint = Releases 的
+  latest.json）+ `bundle.createUpdaterArtifacts` + NSIS（`installMode: currentUser`、
+  SimpChinese/English 双语言）；Rust 注册 updater + process 插件（能力面仅加
+  `updater:default` / `process:default`）；webview 侧 `hooks/use-updater.ts`——启动 8 s
+  静默检查只**播报**（中性 toast「发现新版本…」），安装永远走设置面板「检查更新」
+  （点击即同意：下载→安装→relaunch，进度与失败各有中文 toast，对齐 D4 反馈规范），
+  后台启动绝不自行重启应用。设置面板新增「更新」节（当前版本行 + 手动检查按钮，
+  PendingButton，检测/下载期 Spinner）。③ **CI**：`ci.yml` 增 `rust-gate`（Windows
+  runner，`cargo fmt/clippy/check --locked`；先跑 vite build 满足 generate_context! 对
+  frontendDist 的存在性校验）；`release-desktop.yml`（tag `desktop-v*` → 三处版本校验 +
+  desktop verify → `tauri build` 签名出包 → `assemble-updater-manifest.mjs` 组装
+  latest.json → **draft Release**，操作者 publish 即放行闸门，§11）。④ **本机 Rust 编译
+  受阻**：新依赖树引入 `ring`（updater→rustls），其 C 构建在本机 cargo 上下文恒
+  D8050（c1.dll 无法加载）——同参数 cl 在 cmd+vcvars、以及 node 直起 ring 构建脚本
+  （cc-rs 同路径同环境二分）均成功，排除环境变量面，属本机 cargo×cc 进程上下文怪癖
+  （与再追记 ⑨ 的 0xC0000409 同类，机器层，不在项目侧兜底）；**Rust 门禁以 CI Windows
+  runner 为权威**。⑤ **验收顺序**：CI（含 rust-gate）绿 → 操作者放行打 tag
+  `desktop-v0.1.0` → CI 出 draft Release → 操作者本机安装，按 §8 新验收线走。
+
+## 11. 发版流程（D5 起）
+
+发布流水线 `release-desktop.yml`，机制对齐 `release-cli.yml`：
+
+- **tag 触发**：`desktop-v*`；tag 必须落在 main 上（旧提交打 tag 不触发）；三处版本
+  强校验（`apps/desktop/package.json` = `src-tauri/tauri.conf.json` =
+  `src-tauri/Cargo.toml` = tag）。
+- **构建**：Windows runner + stable Rust；`tauri build`（NSIS +
+  `createUpdaterArtifacts` 产出 `.sig`）；Ed25519 私钥经 GitHub secrets 注入
+  （`TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`），公钥在
+  `tauri.conf.json`——密钥由操作者持有、Agent 代生成（§1 #7），**私钥文件是唯一本地
+  副本，丢失后已装用户永远无法再收更新**。
+- **发布**：`scripts/admin/desktop-release/assemble-updater-manifest.mjs` 组装
+  `latest.json`（安装包改名 `token-usage-desktop_<ver>_x64-setup.exe` 免 URL 空格编码，
+  签名内联进 manifest），Release 以 **draft** 创建、正文取 `apps/desktop/CHANGELOG.md`
+  对应段。**updater 端点只解析已发布 Release**（`/releases/latest/download/latest.json`
+  不含 draft），操作者 publish 前已装用户不会收到更新提示——publish 即人工放行闸门。
+- **日常步骤**：bump 三处 version + CHANGELOG 顶部补节 → push main（CI 全绿）→
+  `git tag desktop-v0.x.y && git push origin desktop-v0.x.y` → CI 出 draft → 操作者
+  Release 页 publish。
+- **Rust 依赖披露**（§6 承诺）：Rust 侧直接依赖 = `tauri 2`（tray-icon feature）+
+  `tauri-build 2` + D4 三插件（notification / autostart / single-instance）+ D5 两插件
+  （updater / process）；传递依赖以入库的 `src-tauri/Cargo.lock` 为准（lockfile 入库 +
+  CI `--locked` 锁死，防漂移）。
+- **本机（公司机）验收注记**：UAC 关闭 + 任务栏 High ⇒ 安装版托盘注册不上，可尝试对
+  安装后的 exe 打 **High** 完整性标签兜底（六追记证明 High 可注册；Medium 的 WebView2
+  拒绝仅出现在 Low 标签的构建目录 profile 下，安装版数据目录在 `%APPDATA%` 继承
+  Medium，理论可启动，实测为准）；toast 依赖系统通知管道，D4 记录 ④ 的系统 AUMID
+  探针未弹出 ⇒ 本机通知可能整体关闭，验收时先查系统设置的通知总开关。

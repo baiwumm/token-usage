@@ -1,0 +1,132 @@
+name: Release Desktop
+
+# apps/desktop（Windows NSIS 安装包 + tauri updater）发布流水线。机制对齐
+# release-cli.yml：tag 触发（desktop-v*）、tag 与版本强校验、tag 必须落在
+# main 上、发布正文取 apps/desktop/CHANGELOG.md。
+#
+# 与 CLI 发版的差异：
+#   - Windows runner + Rust 工具链：tauri build 产出 NSIS 安装包与 updater
+#     签名（Ed25519，密钥在 secrets TAURI_SIGNING_PRIVATE_KEY[_PASSWORD]，
+#     公钥在 tauri.conf.json——desktop-plan §11 发版流程）。
+#   - Release 以 **draft** 创建：操作者在 Release 页确认后手动 publish。
+#     updater 的 latest.json 端点只解析已发布 Release，publish 之前已装
+#     用户不会收到更新提示，天然是一道人工放行闸门。
+#
+# 日常发布：
+#   1. bump apps/desktop/package.json + src-tauri/tauri.conf.json +
+#      src-tauri/Cargo.toml 三处 version，并在 apps/desktop/CHANGELOG.md
+#      顶部补一节（`## <版本>` 行会被取作 Release 正文）
+#   2. git push（tag 必须落在 main 上，同 release-cli）
+#   3. git tag desktop-v0.x.y && git push origin desktop-v0.x.y
+#   4. CI 产出 draft Release（安装包 + latest.json）→ 操作者 publish
+
+on:
+  push:
+    tags:
+      - 'desktop-v*'
+
+permissions:
+  contents: write # 创建 GitHub Release
+
+concurrency:
+  group: release-desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & Sign the Windows Installer
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # 判断 tag 是否落在 main 上，需要 origin/main 可达
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches version and sits on main
+        shell: bash
+        run: |
+          TAG=${GITHUB_REF_NAME#desktop-v}
+          PKG=$(node -p "require('./apps/desktop/package.json').version")
+          CONF=$(node -p "JSON.parse(require('fs').readFileSync('./apps/desktop/src-tauri/tauri.conf.json','utf8')).version")
+          CARGO=$(node -p "require('fs').readFileSync('./apps/desktop/src-tauri/Cargo.toml','utf8').match(/^version = \"(.*)\"\/m)[1]")
+          for pair in "package.json:$PKG" "tauri.conf.json:$CONF" "Cargo.toml:$CARGO"; do
+            file=${pair%%:*}; got=${pair#*:}
+            [ "$got" = "$TAG" ] || { echo "$file version $got != tag $TAG"; exit 1; }
+          done
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "tag 不在 origin/main 上，拒绝发布（避免把没进主干的代码发出去）"; exit 1; }
+
+      - name: Verify (desktop lint/typecheck/tests/build)
+        run: pnpm --filter @token-usage/desktop verify
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Build & sign the installer
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm --filter @token-usage/desktop exec tauri build
+
+      - name: Assemble the updater manifest (latest.json)
+        shell: bash
+        run: |
+          node scripts/admin/desktop-release/assemble-updater-manifest.mjs \
+            apps/desktop/src-tauri/target/release/bundle/nsis \
+            "$(node -p "require('./apps/desktop/package.json').version")" \
+            "$GITHUB_REF_NAME"
+
+      - name: Build release notes from CHANGELOG
+        shell: bash
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const v = process.env.GITHUB_REF_NAME.replace(/^desktop-v/, "");
+            let lines = [];
+            try { lines = fs.readFileSync("apps/desktop/CHANGELOG.md", "utf8").split(/\r?\n/); } catch {}
+            const start = lines.findIndex((l) => l.trim() === "## " + v);
+            let body = "";
+            if (start >= 0) {
+              let end = lines.length;
+              for (let i = start + 1; i < lines.length; i += 1) {
+                if (/^##\s/.test(lines[i])) { end = i; break; }
+              }
+              body = lines.slice(start, end).join("\n").trim();
+            }
+            const out = process.env.RUNNER_TEMP + "/release-notes.md";
+            if (body) {
+              fs.writeFileSync(out, body + "\n");
+              console.log("Release 正文取 CHANGELOG 的 " + v + " 段");
+            } else {
+              fs.writeFileSync(out, "Token Usage Desktop " + process.env.GITHUB_REF_NAME + "\n");
+              console.log("::notice::CHANGELOG 没有 " + v + " 段，退回标题正文");
+            }
+          '
+
+      - name: Create draft GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NSIS=apps/desktop/src-tauri/target/release/bundle/nsis
+          EXE="token-usage-desktop_$(node -p "require('./apps/desktop/package.json').version")_x64-setup.exe"
+          gh release create "$GITHUB_REF_NAME" \
+            --draft --verify-tag \
+            --title "Token Usage Desktop $GITHUB_REF_NAME" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
+          gh release upload "$GITHUB_REF_NAME" "$NSIS/$EXE" "$NSIS/latest.json"
+          echo "::notice::draft Release 已创建，等待操作者 publish 后 updater 端点生效"
