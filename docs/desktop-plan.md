@@ -317,7 +317,9 @@ requirements 边界表。
   自动消失（无常驻/重复）。
   ④ 同日发布 **CLI 0.5.4** 并在公司机升级验收（运行时副本 v0.5.4、`doctor` 17 OK、`reconcile
   --days 7` 271 桶逐键匹配、计划任务 `LastTaskResult=0`），明细见 `docs/cli-release.md` §十三；
-  桌面端经 PATH 解析到的 CLI 与运行时副本均已是 v0.5.4。
+  桌面端经 PATH 解析到的 CLI 与运行时副本均已是 v0.5.4。（**2026-11-10 更正**：当时桌面端
+  经 PATH 命中的 Volta 托管副本实为 0.5.3，页脚即由此而来；已 `volta install` 对齐，见本节
+  末「顺手核对项」。）
 - **D3 六追记（2026-11-09 晚，本机托盘不可注册的根因与降级）**：操作者报「`pnpm dev:desktop`
   起来后没有托盘图标」。排查：进程活着、`TrayIconBuilder::build` 返回 `Ok`、tray 的隐藏窗口
   `tray_icon_app` 存在，但 `Shell_NotifyIconGetRect` 给出 `Ok(None)`（Shell 从未登记它）；UIA
@@ -439,8 +441,13 @@ requirements 边界表。
     ——in-app 中文反馈 toast 全部正常，系统通知留每日汇总到点被动验证（先查系统通知
     总开关）；② 自启动的「重启后生效」未做整周期验证（写入已成功）。两者属环境/时间
     因素，出问题再单开事项。
-  - 顺手核对项（不影响验收）：页脚显示 tokenusage-cli v0.5.3，与 D3 五追记 ④ 的
-    「已升 0.5.4」记录不一致，以终端 `tokenusage --version` 为准核对一次。
+  - 顺手核对项（**2026-11-10 已结，非桌面端 bug**）：页脚 v0.5.3 来自 Volta 托管副本——
+    `npm i -g` 只更新了 image-dir 副本，`~/.volta/bin/tokenusage` shim 仍解析
+    `tools/image/packages/tokenusage-cli`（0.5.3），桌面端 `cmd /C tokenusage` 命中的就是它。
+    已 `volta install tokenusage-cli@0.5.4` 对齐：cmd / image-dir shim / pnpm 三处均 v0.5.4，
+    `init` 刷新副本、`doctor` 17 OK、`reconcile` 63（1d）/ 262（7d）桶逐键 OK；桌面端重载后
+    页脚即显示 v0.5.4。根因与「升级后必须补 `volta install`」的操作规则见
+    `docs/cli-release.md` §十三「0.5.4 复验」。
 
 ## 11. 发版流程（D5 起）
 

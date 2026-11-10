@@ -14,7 +14,7 @@ npm 包 `tokenusage-cli` 的发布流程、首发未竟事项与发版后检查�
 | 别名 | 云端当前名 | 默认名（稳定标识） | device_id | 账号 / 数据目录 | Node 与安装方式 |
 |---|---|---|---|---|---|
 | 家机 | `Home · C Future City` | `DESKTOP-MHFON1J #48ea790e` | `6a074a51-693b-48e3-9f65-0728f9f2ee5c` | `C:\Users\i\.tokenusage` | nvm-windows + npm 全局（`E:\nodejs` → `E:\nvm\nvm\v24.4.1` 符号链接），registry 为 npmjs |
-| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | `1bd2ff67-653f-4b9c-80a9-c7589432d431` | `C:\Users\Administrator\.tokenusage` | Volta 管理的 node（`npm i -g` 由 Volta 接管，`npm prefix -g` 路径不可用），registry 为 npmmirror |
+| 公司机 | `Company · Partner` | `PC-20260408RIKF #68e47b34` | `1bd2ff67-653f-4b9c-80a9-c7589432d431` | `C:\Users\Administrator\.tokenusage` | Volta 管理的 node（`npm i -g` 落 image-dir `tools/image/node/<ver>`，shim 解析 `volta install` 的 `tools/image/packages/tokenusage-cli`——升级两条都要跑，见 `docs/cli-release.md` §十三），registry 为 npmmirror |
 
 ⚠ 「云端当前名」是操作者在仪表盘改过的名字，可变；「默认名」是签发时按契约生成的快照，
 不随改名更新，是**稳定标识**——文档引用机器时两个都写，CLI 打印的也正是默认名。
@@ -929,6 +929,12 @@ pnpm 把 image-dir 排在 PATH 最前，于是 `pnpm dev:desktop` 起的桌面�
 包与三个 shim；复验 bash 直起、node 子进程、pnpm 三种上下文全部解析到 0.5.3。若日后
 `npm i -g` 再次落入 image-dir（未接管的安装路径），按同法清理。
 
+> **2026-11-10 更正**：本段「权威全局在 packages、随 `npm i -g` 更新」不成立。实测
+> `npm prefix -g` 就在 `tools/image/node/24.15.0`，`npm i -g` 写入 image-dir 副本；
+> `packages/tokenusage-cli` 只随 `volta install` 更新，shim（用户终端与桌面端）却解析它。
+> 0.5.4 升级即因此出现「`npm ls -g` 是 0.5.4、`tokenusage --version` 仍 0.5.3」。升级后必须
+> `volta install tokenusage-cli@<ver>` 对齐，详见 §十三「0.5.4 复验」。
+
 升级说明：无需任何动作，随下次计划任务自动生效；桌面端「立即同步」在下一版桌面端
 （随附 CLI）或本机已更新的全局 CLI 下立即可用。
 
@@ -971,6 +977,44 @@ CHANGELOG）。零契约变更，服务端无需同步升级；对账基线与�
 npm 的 packument 缓存是旧的（`--registry` 不刷新缓存）。加 `--prefer-online` 后立刻装上
 （日志可见 `GET 200 .../tokenusage-cli 882ms (cache updated)` 与 `0.5.4.tgz (cache miss)`）。
 今后核对 npm 版本一律直查 registry 或 `--prefer-online`，不要相信 `npm view` 的本地缓存。
+
+### 0.5.4 复验（2026-11-10，桌面端页脚仍显示 v0.5.3 的根因）
+
+**现象**：桌面端页脚与终端 `tokenusage --version` 均报 **v0.5.3**，而 `npm ls -g` 已是
+0.5.4；运行时副本（`~/.tokenusage/tracker/app`）与计划任务一直是 v0.5.4，所以采集与
+上传没有受影响——只有「用户终端的 `tokenusage`」和「桌面端探测到的版本」落后。
+
+**根因（两份物理副本）**：公司机 `npm prefix -g` 落在 Volta 的 node 镜像
+`tools/image/node/24.15.0`，`npm i -g` 写入的是 **image-dir 副本 + 同名 shim**（0.5.4）；
+而 `~/.volta/bin/tokenusage` 是 Volta shim，`volta run` 解析到 **Volta 托管包**
+`tools/image/packages/tokenusage-cli`（`volta which tokenusage` 指向它），该副本只随
+`volta install` 更新，于是停在 0.5.3。桌面端 `build_cli_command` 走 `cmd /C tokenusage`，
+命中的正是这条 shim 链，页脚因此显示 0.5.3。
+
+**修复**：`$env:npm_config_registry='https://registry.npmjs.org'; volta install
+tokenusage-cli@0.5.4`（镜像/缓存绕过写法同 §四）。复验三处上下文全部 v0.5.4：cmd
+（`cmd /C "tokenusage --version"`，即桌面端探测路径）、image-dir shim、pnpm 上下文
+（`pnpm --filter @token-usage/desktop exec where tokenusage` → v0.5.4）；`volta list` /
+`volta which` 亦为 0.5.4。桌面端进程重载后页脚即更新。
+
+**操作规则（Volta 机）**：`npm i -g` 不保证更新 **shim 提供者**，升级后必须补
+`volta install tokenusage-cli@<ver>`，并复验 `volta which tokenusage` 与
+`tokenusage --version`；只看 `npm ls -g` 会漏掉这一类落后。§十二 末段「packages 副本随
+`npm i -g` 更新」的表述据此更正。
+
+**复验验收数据**（同日，`PC-20260408RIKF #68e47b34`）：
+
+| 项 | 结果 |
+|---|---|
+| `init --yes --no-integrations --no-open` | 计划任务 `TokenUsageSync: hourly, hidden window`（无 degraded）；运行时副本 `.runtime-ready` v0.5.4（06:17:24Z）；首同步 3,637,833,500 tokens / 13 providers |
+| `doctor` | **17 项全 OK / 0 warn / 0 fail**；`schedule.registered` = enhanced；7 天计价覆盖 100.0%（136/150 桶） |
+| `sync`（手动） | exit 0；解析 5,538 文件、+1 桶、上传 1 行 / 546,430 tokens、0 skipped、sessions 2/2；`queue.state.json` offset 482,955 = `queue.jsonl` 字节数（队列排空） |
+| `reconcile` | `--days 1` OK（63 桶逐键匹配）、`--days 7` OK（262 桶、0 drift），退出码 0 |
+| 计划任务 | 手动触发 `LastTaskResult=0`（14:19:41）；sync.log 新行「parsed 5537 files, +1 buckets, uploaded 1, skipped 0, 673,447 tokens, queue drained」 |
+
+既有噪声（非本次引入）：`Cursor session expired` 与
+`codex rescan repair: rebuild produced 0 codex buckets from 2 files` 两条提示照旧出现，
+见 §六 公司机观察 ②③。
 
 升级说明：无需任何动作，随下次计划任务自动生效；桌面端「立即同步 / 暂停」在这类写入
 拒绝下从裸崩溃改为可读错误 + 重试。
