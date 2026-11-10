@@ -88,7 +88,7 @@ jobs:
           workspaces: apps/desktop/src-tauri
 
       - name: cargo fmt
-        run: cargo fmt --check --locked
+        run: cargo fmt --check
         working-directory: apps/desktop/src-tauri
 
       - name: cargo clippy
