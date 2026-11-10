@@ -139,7 +139,18 @@ Vercel 在嵌套 Root Directory 下探测不到仓库根的 pnpm lockfile，会�
 `pnpm install --frozen-lockfile`（与开发/CI 同一 lockfile），并在 `apps/web/package.json`
 声明 `packageManager` 供 corepack 解析 pnpm 版本。**注意**：项目设置里的
 "Include files outside the root directory in the Build Step" 必须保持 **Enabled**——
-pnpm 的 workspace 根与 lockfile 都在仓库根，关掉它构建容器里没有这些文件。
+pnpm 的 workspace 根与 lockfile 都在仓库根，关掉它构建容器里没有这些文件，
+install 阶段即报 `ERROR Headless installation requires a pnpm-lock.yaml file`
+（2026-11-10 实测；本地只留 workspace 标记、撤掉根 lockfile 可逐字复现）。
+
+**触发判定**：根设置的 `Skip deployments when there are no changes to the root
+directory or its dependencies` 保持 **Enabled**——它只决定「是否构建」，与上面的
+文件可见范围互不相干。判定规则：`apps/web` 或其 workspace 依赖变动、或 lockfile
+变动且只影响 web 依赖时才构建；`apps/desktop` 等与 web 无依赖关系的 workspace
+内改动会被跳过（Skipped - Not affected）；但 workspace 定义之外的文件（`docs/`、
+`.github/`、根级配置）算全局变更，仍会触发 web 部署——docs-only 的 push 也会
+部署 web。若要求严格「只有 `apps/web/` 改动才部署」，改用 Ignored Build Step
+脚本（被取消的构建占用部署额度；内置 skip 不占构建槽位，通常够用）。
 
 部署完成后自检：打开 `https://<部署域名>/api/functions/token-usage-public-config`，
 应返回包含 `supabase_url` 的 JSON。

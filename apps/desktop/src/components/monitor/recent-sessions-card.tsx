@@ -46,15 +46,13 @@ export function RecentSessionsCard({
                     </span>
                   </span>
                   <span className="shrink-0 text-xs text-muted tabular-nums">
-                    {formatTokens(session.tokens)}
+                    {formatTokens(session.tokens)} ·{" "}
+                    {formatRelativeTime(session.endedAt, nowMs)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-2 text-xs text-muted">
+                <div className="flex min-w-0 text-xs text-muted">
                   <span className="truncate">
                     {session.projectKey || "未归因"}
-                  </span>
-                  <span className="shrink-0 tabular-nums">
-                    {formatRelativeTime(session.endedAt, nowMs)}
                   </span>
                 </div>
               </li>

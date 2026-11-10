@@ -179,6 +179,13 @@ export function MonitorBody() {
         {hasAnyData ? (
           <>
             <UsageCards snapshot={snapshot} />
+            {prefs.showHeatmap ? (
+              <HeatmapSection
+                days={snapshot.heatmap.days}
+                maxTokens={snapshot.heatmap.maxTokens}
+                totalTokens={snapshot.heatmap.totalTokens}
+              />
+            ) : null}
             {mixCardsVisible ? (
               <div className="flex items-center justify-between gap-3">
                 <Typography className="text-muted" type="body-xs">
@@ -203,13 +210,6 @@ export function MonitorBody() {
                 projectsUrl={projectsUrl}
                 totalTokens={activeWindow.totalTokens}
                 onOpenUrl={openUrl}
-              />
-            ) : null}
-            {prefs.showHeatmap ? (
-              <HeatmapSection
-                days={snapshot.heatmap.days}
-                maxTokens={snapshot.heatmap.maxTokens}
-                totalTokens={snapshot.heatmap.totalTokens}
               />
             ) : null}
             {prefs.showRecentSessions ? (

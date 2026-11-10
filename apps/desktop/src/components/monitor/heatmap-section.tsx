@@ -22,9 +22,10 @@ interface HeatmapSectionProps {
 /**
  * 12-week rhythm heatmap (desktop-plan §12.4): 12 columns × 7 local days,
  * Monday-aligned, last column ending on Sunday so weekday rows never drift.
- * The grid carries one accessible summary label instead of 84 tab stops; each
- * cell keeps its own title for hover. Levels reuse the accent token, so the
- * scale follows the theme.
+ * Cells split the card width evenly and stay square, so the grid fills the
+ * row instead of huddling in one corner. The grid carries one accessible
+ * summary label instead of 84 tab stops; each cell keeps its own title for
+ * hover. Levels reuse the accent token, so the scale follows the theme.
  */
 export function HeatmapSection({
   days,
@@ -48,15 +49,15 @@ export function HeatmapSection({
           <>
             <div
               aria-label={`近 12 周每日用量热力图，合计 ${formatTokens(totalTokens)} tokens`}
-              className="grid w-fit grid-flow-col gap-1"
+              className="grid w-full grid-flow-col grid-cols-12 gap-1"
               role="img"
-              style={{ gridTemplateRows: "repeat(7, minmax(0, 1fr))" }}
+              style={{ gridTemplateRows: "repeat(7, auto)" }}
             >
               {days.map((day) => (
                 <span
                   key={day.day}
                   aria-hidden="true"
-                  className={`size-2.5 rounded-[3px] ${LEVEL_CLASSES[heatmapLevel(day.tokens, maxTokens)]}`}
+                  className={`aspect-square w-full rounded-[4px] ${LEVEL_CLASSES[heatmapLevel(day.tokens, maxTokens)]}`}
                   title={`${day.day} · ${formatTokens(day.tokens)} tokens · ${day.conversations} 会话`}
                 />
               ))}
@@ -67,7 +68,7 @@ export function HeatmapSection({
                 <span
                   key={className}
                   aria-hidden="true"
-                  className={`size-2.5 rounded-[3px] ${className}`}
+                  className={`size-3 rounded-[4px] ${className}`}
                 />
               ))}
               <span>多</span>

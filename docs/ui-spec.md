@@ -933,7 +933,13 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   chip）→（未配对且本次已跳过向导时：warning Alert「这台机器还没配对」+「去配对」）→
   两张单值卡（今日 tokens / 近 7 天；与 web `SummaryCards` 同构——`Card.Header` 放
   `text-xs` 标签、`Card.Content` 放数值 + 说明，`tabular-nums`；400 宽下标签须单行、
-  两格数值顶边对齐；待上传已移入采集与同步卡）→ 用量构成条（左「用量构成」小字，右
+  两格数值顶边对齐；待上传已移入采集与同步卡）→ 使用节奏卡（`HeatmapSection`，紧随单值卡
+  之下：近 12 周 = 12 列 × 7 行的本地日历格，周一起始、最后一列收在周日，今日之后的格
+  留空；格子等分卡宽且保持正方（`aspect-square`）+ `gap-1`，400/340 宽不横向滚动；5 档
+  色阶 `bg-default` → `bg-accent/25` / `/45` / `/70` → `bg-accent`；格 `title` =「日期 ·
+  tokens · 会话」，栅格 `role="img"` + 汇总 aria-label（不给 84 个格逐格设 Tab 焦点）；
+  底部右对齐「少 → 多」图例；窗口内无用量显示空态。日聚合与顶部单值卡同一 last-wins
+  基线与本机时区）→ 用量构成条（左「用量构成」小字，右
   周期切换 `PeriodFilter`：连接的 `ToggleButtonGroup`「今日 / 近 7 天」，默认近 7 天、
   写 preferences；只作用于下方三张构成卡，顶部单值卡口径固定；按钮用 HeroUI **默认填充
   变体**（`variant="ghost"` 会让未选中段与卡片底色同色，退化成一行裸文字，2026-11-10
@@ -951,15 +957,10 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   `baiwumm/token-usage` 已合并为一行，见 desktop-plan §12.2；`confirmed` 有映射时渲染
   GitHub mark + 项目名按钮，点击走 `open_in_browser`，无映射只显示名字、**不推断 URL**；
   底部左 = 归因覆盖「已归因 X% · 其余未归因」或「已全部归因」（残差 = 无 project_key 的
-  行），右 = 「在 web 查看」→ `${dashboardUrl}/projects`，未配对隐藏）→ 使用节奏卡
-  （`HeatmapSection`：近 12 周 = 12 列 × 7 行的本地日历格，周一起始、最后一列收在周日，
-  今日之后的格留空；5 档色阶 `bg-default` → `bg-accent/25` / `/45` / `/70` → `bg-accent`，
-  格子 10 px（`size-2.5`）+ `gap-1`，400/340 宽均不横向滚动；格 `title` =「日期 · tokens ·
-  会话」，栅格 `role="img"` + 汇总 aria-label（不给 84 个格逐格设 Tab 焦点）；
-  底部右对齐「少 →多」图例；窗口内无用量显示空态。日聚合与顶部单值卡同一 last-wins 基线
-  与本机时区）→ 最近会话卡（`RecentSessionsCard`：`read_tracker_tail` 只读
-  `session.queue.jsonl` 末尾 ≤512 KiB，最近 5 条；行 = `ModelIcon` + 模型名（截断 + title）
-  与 tokens，次行 = 项目 basename 与相对时间；**不显示标题、正文、绝对路径**）→ 采集与同步卡
+  行），右 = 「在 web 查看」→ `${dashboardUrl}/projects`，未配对隐藏）→ 最近会话卡
+  （`RecentSessionsCard`：`read_tracker_tail` 只读 `session.queue.jsonl` 末尾 ≤512 KiB，
+  最近 5 条；首行 = `ModelIcon` + 模型名（截断 + title），右侧一行放「tokens · 相对时间」；
+  次行 = 项目 basename；**不显示标题、正文、绝对路径**）→ 采集与同步卡
   （Header 左 = 标题「采集与同步」+「更新于 HH:mm:ss」，右 = 刷新图标钮，读取期间图标位
   换成 `Spinner`，且手动刷新至少保持 400 ms 可见；Content = 待上传 / 队列体积
   （`formatBytes`）+ `logs/sync.log` 的 `phase:"finished"` 行 + 更新的 `error` 行）→
