@@ -157,6 +157,55 @@ export function sourceLogoFile(source: string): string | null {
   return file ? `/brand-logos/${file}` : null;
 }
 
+/**
+ * Model-name prefixes carrying a recognizable vendor mark (ported from web's
+ * `lib/sources.ts`): the model mix shows the vendor logo next to the raw model
+ * id, exactly like the web dashboard's Top models panel.
+ */
+const MODEL_PREFIX_LOGOS: Array<[prefix: string, file: string]> = [
+  // Zhipu GLM is the ZCode mark (operator call, 2026-10-25).
+  ["glm", "zcode.svg"],
+  ["z-ai", "zcode.svg"],
+  ["zai", "zcode.svg"],
+  ["deepseek", "deepseek.svg"],
+  ["kimi", "kimi.svg"],
+  ["k3", "kimi.svg"], // Kimi Code emits the bare alias "k3" / "k3-256k".
+  ["gemini", "gemini.svg"],
+  ["grok", "grok.svg"],
+  ["mimo", "mimo.svg"],
+  ["gpt", "codex.svg"],
+  ["composer", "cursor.svg"],
+  ["claude", "claude-code.svg"],
+  ["step", "stepfun.png"],
+  ["minimax", "minimax.svg"],
+  ["hy", "hunyuan.svg"], // Tencent Hunyuan: hy3, hy4-preview.
+  ["nemotron", "nvidia.svg"],
+  // Ant Ling (百灵) family: Ling-3.2-flash and siblings.
+  ["ling-", "bailing.png"],
+  // Cline's own gateway routes carry the "cline-free/" prefix.
+  ["cline-free/", "cline.png"],
+  // OpenCode Zen stealth SKUs have no vendor of their own.
+  ["big-pickle", "opencode.svg"],
+  ["union-alpha", "opencode.svg"],
+  ["x-preview", "opencode.svg"],
+  // dsh route behind a renamed MiniMax M3.1 Flash.
+  ["space-bunny", "minimax.svg"],
+  ["doubao", "volcano-ark.svg"],
+];
+
+/** Vendor mark for a raw model id, or null when no prefix is registered. */
+export function modelLogoFile(model: string): string | null {
+  const key = String(model || "")
+    .trim()
+    .toLowerCase();
+
+  for (const [prefix, file] of MODEL_PREFIX_LOGOS) {
+    if (key.startsWith(prefix)) return `/brand-logos/${file}`;
+  }
+
+  return null;
+}
+
 /** Dark-theme twin for a registered logo file, if any. */
 export function darkLogoFile(file: string): string | null {
   const base = file.replace(/^\/brand-logos\//, "");

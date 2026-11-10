@@ -28,10 +28,8 @@ import { usePreferences } from "@/hooks/use-preferences";
 import { useTheme } from "@/hooks/use-theme";
 import { useTrayAvailable } from "@/hooks/use-tray";
 import { useUpdater } from "@/hooks/use-updater";
-import { webUrl } from "@/lib/links";
+import { webUrl, README_URL, REPO_URL } from "@/lib/links";
 import { periodLabel } from "@/lib/preferences";
-
-const GUIDE_URL = "https://github.com/baiwumm/token-usage#readme";
 
 /**
  * Window orchestration: loading / error gates, the pairing gate (an unpaired
@@ -76,7 +74,7 @@ export function MonitorBody() {
   const [probing, setProbing] = useState(false);
 
   const openGuide = useCallback(() => {
-    void invoke("open_in_browser", { url: GUIDE_URL }).catch(() => undefined);
+    void invoke("open_in_browser", { url: README_URL }).catch(() => undefined);
   }, []);
 
   const openUrl = useCallback((url: string) => {
@@ -146,6 +144,7 @@ export function MonitorBody() {
           onChangeTheme={(mode) => update({ theme: mode })}
           onFinish={pairing.finishPairing}
           onOpenGuide={openGuide}
+          onOpenRepo={() => openUrl(REPO_URL)}
           onOpenSettings={() => setSettingsOpen(true)}
           onRecheckCli={() => void recheckCli()}
           onRecheckPairing={() => void pairing.recheckGate()}
@@ -168,6 +167,7 @@ export function MonitorBody() {
           paused={snapshot.paused}
           theme={prefs.theme}
           onChangeTheme={(mode) => update({ theme: mode })}
+          onOpenRepo={() => openUrl(REPO_URL)}
           onOpenSettings={() => setSettingsOpen(true)}
         />
         {trayAvailable === false ? <TrayNote /> : null}
@@ -199,7 +199,6 @@ export function MonitorBody() {
               periodLabel={activeLabel}
               projects={activeWindow.projects}
               projectsUrl={projectsUrl}
-              repoUrls={snapshot.repoUrls}
               totalTokens={activeWindow.totalTokens}
               onOpenUrl={openUrl}
             />

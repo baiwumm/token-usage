@@ -32,7 +32,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, State, WindowEvent,
+    AppHandle, Emitter, Manager, State, WindowEvent,
 };
 
 const TRAY_ID: &str = "main-tray";
@@ -85,11 +85,43 @@ fn build_cli_command(args: &[String]) -> Command {
     }
 }
 
-fn spawn_cli_detached(args: &[String]) -> Result<(), String> {
-    build_cli_command(args)
+/// Tray menu run: the CLI is detached (a 4-minute manual sync must not block
+/// the menu), so the window learns about it through two events — a start
+/// bracket flips the action card's pending state, the done bracket re-reads
+/// the tracker files (the pause flag included) once the child exits.
+fn spawn_cli_watched(app: &AppHandle, args: Vec<String>) -> Result<(), String> {
+    let command = args.first().cloned().unwrap_or_default();
+
+    if let Err(err) = app.emit(
+        "tray-cli-start",
+        TrayCliEvent {
+            command: command.clone(),
+            exit_code: None,
+        },
+    ) {
+        eprintln!("tray cli event failed: {err}");
+    }
+
+    let mut child = build_cli_command(&args)
         .spawn()
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    let handle = app.clone();
+
+    std::thread::spawn(move || {
+        let exit_code = child.wait().ok().and_then(|status| status.code());
+        if let Err(err) = handle.emit("tray-cli-done", TrayCliEvent { command, exit_code }) {
+            eprintln!("tray cli event failed: {err}");
+        }
+    });
+
+    Ok(())
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TrayCliEvent {
+    command: String,
+    exit_code: Option<i32>,
 }
 
 fn open_url(url: &str) -> Result<(), String> {
@@ -693,7 +725,7 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id.as_ref() {
             "sync-now" => {
                 let args = vec!["sync".to_string(), "--auto".to_string()];
-                if let Err(err) = spawn_cli_detached(&args) {
+                if let Err(err) = spawn_cli_watched(app, args) {
                     eprintln!("tray sync spawn failed: {err}");
                 }
             }
@@ -705,7 +737,7 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
                     .map(|flag| *flag)
                     .unwrap_or(false);
                 let command = if paused { "resume" } else { "pause" };
-                if let Err(err) = spawn_cli_detached(&[command.to_string()]) {
+                if let Err(err) = spawn_cli_watched(app, vec![command.to_string()]) {
                     eprintln!("tray {command} spawn failed: {err}");
                 }
             }

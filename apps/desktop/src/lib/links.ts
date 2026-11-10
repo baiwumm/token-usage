@@ -5,6 +5,10 @@
 
 export type WebPage = "dashboard" | "projects" | "sessions" | "achievements";
 
+/** This app's own repository (header entry + install guide). */
+export const REPO_URL = "https://github.com/baiwumm/token-usage";
+export const README_URL = `${REPO_URL}#readme`;
+
 const PATHS: Record<WebPage, string> = {
   dashboard: "/",
   projects: "/projects",

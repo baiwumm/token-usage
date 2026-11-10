@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { webUrl } from "@/lib/links";
+import { webUrl, README_URL, REPO_URL } from "@/lib/links";
+
+describe("repo links", () => {
+  it("points the header entry and install guide at this app's repository", () => {
+    expect(REPO_URL).toBe("https://github.com/baiwumm/token-usage");
+    expect(README_URL).toBe(`${REPO_URL}#readme`);
+  });
+});
 
 describe("webUrl", () => {
   it("joins every known page onto the dashboard base", () => {

@@ -2,7 +2,12 @@
 // (read by the Rust layer, never written) into the numbers the UI and the
 // tray show. Pure and synchronous — the polling hook only does IO.
 
-import { parseProjectRepoMap, type RepoUrls } from "@/lib/project-repos";
+import {
+  mergeProjectsByRepo,
+  parseProjectRepoMap,
+  type ProjectRepoUsage,
+  type RepoUrls,
+} from "@/lib/project-repos";
 import {
   SEVEN_DAY_MS,
   aggregateQueue,
@@ -33,9 +38,14 @@ export interface CliStatus {
   version: string | null;
 }
 
+/** A usage window whose project rows carry their confirmed repository URL. */
+export interface MonitorWindow extends UsageWindow {
+  projects: ProjectRepoUsage[];
+}
+
 export interface MonitorSnapshot {
-  today: UsageWindow;
-  week: UsageWindow;
+  today: MonitorWindow;
+  week: MonitorWindow;
   /** Bytes of queue.jsonl the CLI hasn't uploaded yet (size - offset). */
   pendingBytes: number;
   /** Total size of queue.jsonl in bytes (proxy for queue growth). */
@@ -66,8 +76,15 @@ export function buildMonitorSnapshot(
   nowMs: number = Date.now(),
 ): MonitorSnapshot {
   const queueText = files.queue ?? "";
-  const today = aggregateQueue(queueText, localDayStartMs(nowMs), nowMs);
-  const week = aggregateQueue(queueText, nowMs - SEVEN_DAY_MS, nowMs);
+  const repoUrls = parseProjectRepoMap(files.projectRepos);
+  const today = withRepoLinks(
+    aggregateQueue(queueText, localDayStartMs(nowMs), nowMs),
+    repoUrls,
+  );
+  const week = withRepoLinks(
+    aggregateQueue(queueText, nowMs - SEVEN_DAY_MS, nowMs),
+    repoUrls,
+  );
 
   const { pendingBytes, queueBytes } = queueSizes(
     files.queue,
@@ -89,9 +106,21 @@ export function buildMonitorSnapshot(
     failureStreak: failure.streak,
     failureMessage: failure.message,
     dashboardUrl,
-    repoUrls: parseProjectRepoMap(files.projectRepos),
+    repoUrls,
     updatedAt: nowMs,
     cli,
+  };
+}
+
+/** Swap the raw project rows for repo-merged ones (one row per repository). */
+function withRepoLinks(window: UsageWindow, repoUrls: RepoUrls): MonitorWindow {
+  return {
+    ...window,
+    projects: mergeProjectsByRepo(
+      window.projects,
+      repoUrls,
+      window.totalTokens,
+    ),
   };
 }
 

@@ -5,6 +5,7 @@
 // error phase is reserved for the bridge itself being unusable.
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { formatTokens } from "@/lib/format-tokens";
@@ -16,6 +17,13 @@ import {
 } from "@/lib/monitor";
 
 const REFRESH_MS = 10_000;
+/** How long the manual-refresh spinner stays visible at minimum (ms). */
+const MIN_REFRESH_MS = 400;
+
+/** Tray menu runs the CLI detached; Rust brackets it with these two events so
+ * the window's action buttons follow along (pending spinner, then a re-read). */
+const TRAY_CLI_START = "tray-cli-start";
+const TRAY_CLI_DONE = "tray-cli-done";
 
 interface InstanceConfig {
   baseUrl: string | null;
@@ -120,12 +128,22 @@ export function useMonitor() {
   }, []);
 
   /** User-initiated refresh: same read path, plus a spinner flag the sync card
-   * shows while the poller-triggered calls stay silent. */
+   * shows while the poller-triggered calls stay silent. A local read finishes
+   * in a few ms, so the flag is held for a beat to stay perceptible. */
   const refreshNow = useCallback(async () => {
+    const startedAt = Date.now();
+
     setRefreshing(true);
     try {
       await refresh();
     } finally {
+      const remaining = MIN_REFRESH_MS - (Date.now() - startedAt);
+
+      if (remaining > 0) {
+        await new Promise<void>((resolve) =>
+          window.setTimeout(resolve, remaining),
+        );
+      }
       setRefreshing(false);
     }
   }, [refresh]);
@@ -188,6 +206,43 @@ export function useMonitor() {
     return () => {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [refresh, refreshCli]);
+
+  // Tray action mirror: the menu spawns tokenusage in the Rust process, so the
+  // window has no idea a run started — these events flip the action card into
+  // its pending state and re-read the tracker files when the child exits.
+  useEffect(() => {
+    let disposed = false;
+    const unlisteners: Array<() => void> = [];
+    const track = (pending: Promise<() => void>) => {
+      void pending
+        .then((unlisten) => {
+          if (disposed) unlisten();
+          else unlisteners.push(unlisten);
+        })
+        .catch(() => undefined);
+    };
+
+    track(
+      listen<{ command: string }>(TRAY_CLI_START, (event) => {
+        setRunningCommand(event.payload.command);
+      }),
+    );
+    track(
+      listen<{ command: string; exitCode: number | null }>(
+        TRAY_CLI_DONE,
+        () => {
+          setRunningCommand(null);
+          void refreshCli();
+          void refresh();
+        },
+      ),
+    );
+
+    return () => {
+      disposed = true;
+      for (const unlisten of unlisteners) unlisten();
     };
   }, [refresh, refreshCli]);
 

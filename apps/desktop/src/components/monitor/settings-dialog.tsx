@@ -329,6 +329,7 @@ export function SettingsDialog({
                     {webLinks.map((link) => (
                       <Button
                         key={link.page}
+                        fullWidth
                         size="sm"
                         variant="secondary"
                         onPress={() => onOpenUrl(link.url)}

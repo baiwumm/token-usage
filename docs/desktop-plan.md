@@ -524,18 +524,35 @@ D6 → D7 → D8 逐期由操作者验收后进入下一期。
 项目口径：以 `queue.jsonl` 的项目拆分行聚合（与来源 / 模型同一 last-wins 基线），仓库链接
 按 `project_key` 查 `confirmed` 映射；无映射的项目只显示名字，不推断 URL。
 
+两边的键口径不同（2026-11-10 第一轮验收发现）：`queue.jsonl` 的 `project_key` 是目录
+basename（`token-usage`），`confirmed` 映射的键是 CLI 的仓库身份（`baiwumm/token-usage`），
+同一个工作区还可能在队列里两种键各留一批行。因此 `lib/project-repos.ts` 建**别名索引**
+（完整键 + 仓库名，均小写），命中后把同一仓库的行**合并成一行**（显示名优先裸 basename），
+占比按窗口总量重算。仍是精确匹配，不做任何 URL 推断。
+
 ### 12.3 D6（desktop v0.2.0，约 2 天）：用量构成
 
 | 项 | 内容 | 验收线 |
 |---|---|---|
 | 周期切换 | `period-filter.tsx`：「今日 / 近 7 天」（默认近 7 天），作用于模型 / 来源 / 项目三卡；选择写 preferences | 三卡联动；重启保留；顶部单值卡口径不变 |
 | 主要模型卡 | `model-mix-card.tsx`：Top 5（最多 8 行）+「其余 N 个模型」；模型名截断 + tooltip；占比条与来源卡同构 | Top 5 与 web 同设备同窗口人工核对一致；空态正常 |
-| 项目与仓库卡 | `project-repos-card.tsx`：Top 5 项目；有 confirmed 仓库的显示 GitHub 图标 + `owner/name`（点击 `open_in_browser`），无仓库只显名字；底部「已归因 X% · 其余未归因」；右上「在 web 查看项目」 | 链接打开正确 URL；未归因占比与 queue 残差行一致；无网络请求 |
+| 项目与仓库卡 | `project-repos-card.tsx`：Top 5 项目（同一仓库的 basename / `owner/name` 行已合并）；有 confirmed 仓库的显示 GitHub 图标 + 项目名（点击 `open_in_browser`），无仓库只显名字；底部「已归因 X% · 其余未归因」；右上「在 web 查看项目」 | 链接打开正确 URL；未归因占比与 queue 残差行一致；无网络请求 |
 | 用量卡收敛 | 顶部三格改两格（今日 / 近 7 天）；「待上传」并入同步卡（数据已有） | 400 / 340 宽无横向滚动；同步卡信息不重复 |
 | 深链 | `lib/links.ts` 统一拼 `${dashboardUrl}` + `/`、`/projects`、`/sessions`、`/achievements`；项目卡 footer 与设置「网页」组提供入口；未配对时隐藏入口 | 未配对无入口；已配对点击正确 |
 | 数据新鲜度 | 同步卡加「更新于 HH:mm:ss」+ 手动刷新图标（复用现有 refresh） | 轮询后时间更新；失败态可见 |
 
 验收补充：`pnpm verify` 全绿；`read_tracker_file` 白名单未放宽；断网时除点击链接外功能不变。
+
+**第一轮验收反馈（2026-11-10，操作者，8 条）**：① 周期切换未选中段与卡片底色融为
+一体 → 去掉 `variant="ghost"`，用 HeroUI 默认填充态 + `ToggleButtonGroup.Separator`；
+② 主要模型卡补 vendor Logo（移植 web `modelLogoFile` 前缀表，`components/model-icon.tsx`
++ 共用 `components/brand-logo.tsx`）；③ 项目卡同一仓库出现 basename 与 `owner/name`
+两行、且 basename 行无链接 → 别名索引 + 按仓库合并（见 §12.2）；④ 手动刷新太快看不见
+→ 图标钮改 `Spinner`，且 `refreshNow` 至少保持 400 ms；⑤ 托盘「立即同步 / 暂停·恢复」
+不动窗口 → Rust 在派生 CLI 前后发 `tray-cli-start/done` 事件，`use-monitor` 据此置
+pending、退出后重读文件；⑥ 设置「网页」四钮太散 → `fullWidth`；⑦ CLI 版本从说明行改为
+页头右侧 `Chip`（与标题垂直居中）；⑧ 页头主题钮旁加 GitHub 仓库图标钮（`lib/links.ts`
+的 `REPO_URL`，配对向导页头同源）。
 
 ### 12.4 D7（desktop v0.3.0，约 1.5 天）：使用节奏
 

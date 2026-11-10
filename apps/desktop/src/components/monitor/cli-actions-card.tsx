@@ -2,7 +2,7 @@ import type { CliRunOutcome } from "@/hooks/use-monitor";
 import type { MonitorSnapshot } from "@/lib/monitor";
 
 import { ArrowRotateRight, CirclePause, CirclePlay } from "@gravity-ui/icons";
-import { Alert, Card, Typography } from "@heroui/react";
+import { Alert, Card, Chip, Typography } from "@heroui/react";
 
 import { PendingButton } from "@/components/pending-button";
 
@@ -37,13 +37,18 @@ export function CliActionsCard({
 
   return (
     <Card className="border-border">
-      <Card.Header>
+      <Card.Header className="flex-row! items-center justify-between gap-2">
         <Card.Title>采集操作</Card.Title>
-        <Card.Description>
+        <Chip
+          className="shrink-0"
+          color={snapshot.cli.available ? "default" : "danger"}
+          size="sm"
+          variant="soft"
+        >
           {snapshot.cli.available
-            ? `tokenusage-cli${snapshot.cli.version ? ` ${snapshot.cli.version}` : ""}`
-            : "未检测到 tokenusage-cli"}
-        </Card.Description>
+            ? `tokenusage-cli${snapshot.cli.version ? ` v${snapshot.cli.version}` : ""}`
+            : "未检测到 CLI"}
+        </Chip>
       </Card.Header>
       <Card.Content className="gap-3">
         <div className="flex flex-wrap gap-2">

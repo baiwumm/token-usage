@@ -1,11 +1,7 @@
 import { useMemo } from "react";
 
-import {
-  darkLogoFile,
-  logoNeedsBackdrop,
-  sourceLogoFile,
-  tileColorFor,
-} from "@/lib/source-logos";
+import { BrandLogo } from "@/components/brand-logo";
+import { sourceLogoFile, tileColorFor } from "@/lib/source-logos";
 
 /**
  * Source brand icon: shipped logo first (public/brand-logos, MIT assets
@@ -20,57 +16,8 @@ export function SourceIcon({
   size?: number;
 }) {
   const logo = useMemo(() => sourceLogoFile(source), [source]);
-  const darkLogo = useMemo(() => (logo ? darkLogoFile(logo) : null), [logo]);
-  const initial = (source.trim() || "?").charAt(0).toUpperCase();
 
-  if (logo) {
-    const img = darkLogo ? (
-      <span
-        aria-hidden="true"
-        className="grid shrink-0 select-none"
-        style={{ height: size, width: size }}
-      >
-        <img
-          alt=""
-          className="col-start-1 row-start-1 object-contain dark:hidden"
-          height={size}
-          src={logo}
-          width={size}
-        />
-        <img
-          alt=""
-          className="col-start-1 row-start-1 hidden object-contain dark:block"
-          height={size}
-          src={darkLogo}
-          width={size}
-        />
-      </span>
-    ) : (
-      <img
-        alt=""
-        aria-hidden="true"
-        className="shrink-0 object-contain select-none"
-        height={size}
-        src={logo}
-        width={size}
-      />
-    );
-
-    // White marks vanish on light cards — give them a quiet backdrop.
-    if (logoNeedsBackdrop(logo)) {
-      return (
-        <span
-          aria-hidden="true"
-          className="bg-default ring-border/60 inline-flex shrink-0 items-center justify-center rounded-[4px] ring-1 select-none"
-          style={{ height: size, width: size }}
-        >
-          {img}
-        </span>
-      );
-    }
-
-    return img;
-  }
+  if (logo) return <BrandLogo file={logo} size={size} />;
 
   return (
     <span
@@ -83,7 +30,7 @@ export function SourceIcon({
         width: size,
       }}
     >
-      {initial}
+      {(source.trim() || "?").charAt(0).toUpperCase()}
     </span>
   );
 }

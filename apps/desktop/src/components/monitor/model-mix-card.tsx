@@ -3,6 +3,7 @@ import type { ModelUsage } from "@/lib/queue-lines";
 import { Card, Typography } from "@heroui/react";
 import { useMemo } from "react";
 
+import { ModelIcon } from "@/components/model-icon";
 import { formatTokens } from "@/lib/format-tokens";
 
 interface ModelMixCardProps {
@@ -45,11 +46,14 @@ export function ModelMixCard({ models, periodLabel }: ModelMixCardProps) {
             {top.map((model) => (
               <li key={model.model} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span
-                    className="min-w-0 truncate text-xs text-foreground"
-                    title={model.model}
-                  >
-                    {model.model}
+                  <span className="flex min-w-0 items-center gap-2">
+                    <ModelIcon model={model.model} size={16} />
+                    <span
+                      className="truncate text-xs text-foreground"
+                      title={model.model}
+                    >
+                      {model.model}
+                    </span>
                   </span>
                   <span className="shrink-0 text-xs text-muted tabular-nums">
                     {formatTokens(model.tokens)} ·{" "}

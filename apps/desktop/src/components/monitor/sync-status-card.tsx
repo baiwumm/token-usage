@@ -1,7 +1,7 @@
 import type { MonitorSnapshot } from "@/lib/monitor";
 
 import { ArrowRotateRight } from "@gravity-ui/icons";
-import { Button, Card, Typography } from "@heroui/react";
+import { Button, Card, Spinner, Typography } from "@heroui/react";
 
 import { formatBytes, formatDuration, formatTokens } from "@/lib/format-tokens";
 
@@ -15,7 +15,9 @@ interface SyncStatusCardProps {
  * Upload health: last sync outcome, any error after it, and the queue backlog
  * (moved here from the usage tiles). The header carries the snapshot's
  * "updated at" stamp plus the manual refresh control; the poller keeps it
- * fresh every 10 s otherwise.
+ * fresh every 10 s otherwise. The button swaps in a Spinner while the read is
+ * in flight (the hook also holds it visible for a beat — a local refresh
+ * finishes faster than the eye can catch, operator review 2026-11-10).
  */
 export function SyncStatusCard({
   snapshot,
@@ -45,9 +47,11 @@ export function SyncStatusCard({
           variant="ghost"
           onPress={onRefresh}
         >
-          <ArrowRotateRight
-            className={refreshing ? "animate-spin" : undefined}
-          />
+          {refreshing ? (
+            <Spinner aria-hidden="true" color="current" size="sm" />
+          ) : (
+            <ArrowRotateRight aria-hidden="true" className="size-4" />
+          )}
         </Button>
       </Card.Header>
       <Card.Content className="gap-1">

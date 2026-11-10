@@ -109,10 +109,29 @@ describe("buildMonitorSnapshot", () => {
     expect(snapshot.repoUrls).toEqual({});
   });
 
-  it("maps confirmed repositories onto project keys", () => {
+  it("merges project rows per confirmed repository and links them", () => {
+    const rows = [
+      { project_key: "token-usage", total_tokens: 300, conversation_count: 2 },
+      {
+        project_key: "baiwumm/token-usage",
+        total_tokens: 100,
+        conversation_count: 1,
+      },
+      { project_key: "local-only", total_tokens: 100, conversation_count: 1 },
+    ]
+      .map((row) =>
+        JSON.stringify({
+          source: "codex",
+          model: "deepseek-v4-flash",
+          hour_start: "2026-11-08T01:00:00.000Z",
+          ...row,
+        }),
+      )
+      .join("\n");
     const snapshot = buildMonitorSnapshot(
       {
         ...BASE_FILES,
+        queue: `${rows}\n`,
         projectRepos: JSON.stringify({
           version: 1,
           confirmed: {
@@ -129,5 +148,22 @@ describe("buildMonitorSnapshot", () => {
     expect(snapshot.repoUrls).toEqual({
       "baiwumm/token-usage": "https://github.com/baiwumm/token-usage",
     });
+    expect(snapshot.week.projects).toEqual([
+      {
+        projectKey: "token-usage",
+        tokens: 400,
+        conversations: 3,
+        share: 0.8,
+        repoUrl: "https://github.com/baiwumm/token-usage",
+      },
+      {
+        projectKey: "local-only",
+        tokens: 100,
+        conversations: 1,
+        share: 0.2,
+        repoUrl: null,
+      },
+    ]);
+    expect(snapshot.week.attributedTokens).toBe(500);
   });
 });

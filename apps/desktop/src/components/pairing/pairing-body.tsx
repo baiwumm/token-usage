@@ -14,6 +14,7 @@ interface PairingBodyProps {
   paused: boolean;
   theme: ThemeMode;
   onChangeTheme: (mode: ThemeMode) => void;
+  onOpenRepo: () => void;
   onOpenSettings: () => void;
   cli: CliStatus;
   /** CLI probe or `status --json` re-check in flight. */
@@ -41,6 +42,7 @@ export function PairingBody({
   paused,
   theme,
   onChangeTheme,
+  onOpenRepo,
   onOpenSettings,
   cli,
   checking,
@@ -68,6 +70,7 @@ export function PairingBody({
         paused={paused}
         theme={theme}
         onChangeTheme={onChangeTheme}
+        onOpenRepo={onOpenRepo}
         onOpenSettings={onOpenSettings}
       />
       <div className="flex flex-col gap-1">

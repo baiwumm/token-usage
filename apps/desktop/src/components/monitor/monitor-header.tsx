@@ -1,20 +1,22 @@
 import type { ThemeMode } from "@/lib/preferences";
 
-import { Gear } from "@gravity-ui/icons";
+import { Gear, LogoGithub } from "@gravity-ui/icons";
 import { Button, Tooltip, Typography } from "@heroui/react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
-/** Window header: brand lockup, pause chip, theme cycle and settings entry. */
+/** Window header: brand lockup, pause chip, repo entry, theme cycle, settings. */
 export function MonitorHeader({
   paused,
   theme,
   onChangeTheme,
+  onOpenRepo,
   onOpenSettings,
 }: {
   paused: boolean;
   theme: ThemeMode;
   onChangeTheme: (mode: ThemeMode) => void;
+  onOpenRepo: () => void;
   onOpenSettings: () => void;
 }) {
   return (
@@ -46,6 +48,22 @@ export function MonitorHeader({
             采集已暂停
           </span>
         ) : null}
+        <Tooltip delay={0}>
+          <Button
+            isIconOnly
+            aria-label="GitHub 仓库"
+            className="text-muted hover:text-foreground size-8 min-w-8 shrink-0"
+            size="sm"
+            variant="ghost"
+            onPress={onOpenRepo}
+          >
+            <LogoGithub aria-hidden="true" className="size-4" />
+          </Button>
+          <Tooltip.Content showArrow placement="bottom">
+            <Tooltip.Arrow />
+            <Typography type="body-xs">GitHub 仓库</Typography>
+          </Tooltip.Content>
+        </Tooltip>
         <ThemeToggle mode={theme} onChange={onChangeTheme} />
         <Tooltip delay={0}>
           <Button

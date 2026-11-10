@@ -4,6 +4,7 @@ import {
   canonicalSource,
   darkLogoFile,
   groupSourceUsage,
+  modelLogoFile,
   sourceDisplayLabel,
   sourceLogoFile,
   tileColorFor,
@@ -35,6 +36,23 @@ describe("sourceDisplayLabel / sourceLogoFile", () => {
     );
     expect(darkLogoFile("/brand-logos/gemini.svg")).toBe(null);
     expect(darkLogoFile("/brand-logos/missing.svg")).toBe(null);
+  });
+});
+
+describe("modelLogoFile", () => {
+  it("picks the vendor mark by model prefix", () => {
+    expect(modelLogoFile("claude-sonnet-4")).toBe(
+      "/brand-logos/claude-code.svg",
+    );
+    expect(modelLogoFile("DeepSeek-V4")).toBe("/brand-logos/deepseek.svg");
+    expect(modelLogoFile("glm-5")).toBe("/brand-logos/zcode.svg");
+    expect(modelLogoFile("k3-256k")).toBe("/brand-logos/kimi.svg");
+    expect(modelLogoFile("doubao-seed")).toBe("/brand-logos/volcano-ark.svg");
+  });
+
+  it("returns null for unknown or empty model ids", () => {
+    expect(modelLogoFile("mystery-model")).toBe(null);
+    expect(modelLogoFile("")).toBe(null);
   });
 });
 

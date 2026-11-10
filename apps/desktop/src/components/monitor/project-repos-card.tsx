@@ -1,4 +1,4 @@
-import type { ProjectUsage } from "@/lib/queue-lines";
+import type { ProjectRepoUsage } from "@/lib/project-repos";
 
 import { ArrowUpRightFromSquare, LogoGithub } from "@gravity-ui/icons";
 import { Button, Card, Typography } from "@heroui/react";
@@ -7,10 +7,9 @@ import { useMemo } from "react";
 import { formatTokens } from "@/lib/format-tokens";
 
 interface ProjectReposCardProps {
-  projects: ProjectUsage[];
+  projects: ProjectRepoUsage[];
   attributedTokens: number;
   totalTokens: number;
-  repoUrls: Record<string, string>;
   periodLabel: string;
   /** Paired web `/projects` URL, or null when the instance is unknown. */
   projectsUrl: string | null;
@@ -28,17 +27,18 @@ function attributionLabel(attributed: number, total: number): string {
 }
 
 /**
- * Top projects for the selected period. A project with a confirmed repository
- * becomes an external link (GitHub mark + key, opened in the OS browser); one
- * without stays plain text — the desktop never infers a URL (§12.2). The
- * footer shows attribution coverage so the list is not mistaken for the whole
- * window: rows without a project key remain in the residual.
+ * Top projects for the selected period. Rows arrive already merged per
+ * repository (a queue can hold both `token-usage` and `baiwumm/token-usage`
+ * for one work tree); a row with a confirmed repository becomes an external
+ * link (GitHub mark + name, opened in the OS browser), one without stays plain
+ * text — the desktop never infers a URL (§12.2). The footer shows attribution
+ * coverage so the list is not mistaken for the whole window: rows without a
+ * project key remain in the residual.
  */
 export function ProjectReposCard({
   projects,
   attributedTokens,
   totalTokens,
-  repoUrls,
   periodLabel,
   projectsUrl,
   onOpenUrl,
@@ -62,7 +62,7 @@ export function ProjectReposCard({
         ) : (
           <ul className="flex flex-col gap-2">
             {ranked.map((project) => {
-              const repoUrl = repoUrls[project.projectKey] ?? null;
+              const repoUrl = project.repoUrl;
 
               return (
                 <li key={project.projectKey} className="flex flex-col gap-1">
