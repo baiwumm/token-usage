@@ -59,7 +59,7 @@ jobs:
           TAG=${GITHUB_REF_NAME#desktop-v}
           PKG=$(node -p "require('./apps/desktop/package.json').version")
           CONF=$(node -p "JSON.parse(require('fs').readFileSync('./apps/desktop/src-tauri/tauri.conf.json','utf8')).version")
-          CARGO=$(node -p "require('fs').readFileSync('./apps/desktop/src-tauri/Cargo.toml','utf8').match(/^version = \"(.*)\"\/m)[1]")
+          CARGO=$(grep -m1 '^version = ' apps/desktop/src-tauri/Cargo.toml | cut -d'"' -f2)
           for pair in "package.json:$PKG" "tauri.conf.json:$CONF" "Cargo.toml:$CARGO"; do
             file=${pair%%:*}; got=${pair#*:}
             [ "$got" = "$TAG" ] || { echo "$file version $got != tag $TAG"; exit 1; }
