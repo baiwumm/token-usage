@@ -139,7 +139,62 @@ describe("aggregateQueue", () => {
       totalTokens: 0,
       conversations: 0,
       sources: [],
+      models: [],
+      projects: [],
+      attributedTokens: 0,
     });
+  });
+
+  it("breaks the window down by model with shares of the window total", () => {
+    const text = [ROW_A, ROW_B, ROW_PROJECT]
+      .map((r) => JSON.stringify(r))
+      .join("\n");
+    const usage = aggregateQueue(text, NOW - 24 * 3600e3, NOW);
+
+    expect(usage.models).toEqual([
+      {
+        model: "claude-opus-4",
+        tokens: 1000,
+        conversations: 1,
+        share: 1000 / 1550,
+      },
+      { model: "glm-5", tokens: 400, conversations: 3, share: 400 / 1550 },
+      {
+        model: "deepseek-v4-flash",
+        tokens: 150,
+        conversations: 2,
+        share: 150 / 1550,
+      },
+    ]);
+  });
+
+  it("lists only attributed projects and tracks the residual", () => {
+    const otherProject = {
+      ...ROW_PROJECT,
+      project_key: "other-app",
+      total_tokens: 100,
+    };
+    const text = [ROW_A, ROW_PROJECT, otherProject]
+      .map((r) => JSON.stringify(r))
+      .join("\n");
+    const usage = aggregateQueue(text, NOW - 24 * 3600e3, NOW);
+
+    expect(usage.totalTokens).toBe(650);
+    expect(usage.attributedTokens).toBe(500);
+    expect(usage.projects).toEqual([
+      {
+        projectKey: "token-usage",
+        tokens: 400,
+        conversations: 3,
+        share: 400 / 650,
+      },
+      {
+        projectKey: "other-app",
+        tokens: 100,
+        conversations: 3,
+        share: 100 / 650,
+      },
+    ]);
   });
 });
 

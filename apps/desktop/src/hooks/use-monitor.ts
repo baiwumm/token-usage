@@ -69,6 +69,7 @@ export function useMonitor() {
   const [cliResolved, setCliResolved] = useState(false);
   const [runningCommand, setRunningCommand] = useState<string | null>(null);
   const [lastOutcome, setLastOutcome] = useState<CliRunOutcome | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   // Snapshots embed the CLI status, so the ref is written in the same tick
   // as the probe resolves: a refresh() right after refreshCli() must not
   // compose a snapshot with the previous probe's answer.
@@ -89,17 +90,19 @@ export function useMonitor() {
 
   const refresh = useCallback(async () => {
     try {
-      const [queue, pause, queueState, syncLog, config] = await Promise.all([
-        readTrackerFile("queue.jsonl"),
-        readTrackerFile("pause.flag.json"),
-        readTrackerFile("queue.state.json"),
-        readTrackerFile("logs/sync.log"),
-        readInstanceConfig(),
-      ]);
+      const [queue, pause, queueState, syncLog, projectRepos, config] =
+        await Promise.all([
+          readTrackerFile("queue.jsonl"),
+          readTrackerFile("pause.flag.json"),
+          readTrackerFile("queue.state.json"),
+          readTrackerFile("logs/sync.log"),
+          readTrackerFile("project.repos.state.json"),
+          readInstanceConfig(),
+        ]);
       const dashboardUrl =
         config?.dashboardUrl ?? config?.baseUrl ?? DEFAULT_DASHBOARD_URL;
       const snapshot = buildMonitorSnapshot(
-        { queue, pause, queueState, syncLog },
+        { queue, pause, queueState, syncLog, projectRepos },
         cliRef.current,
         dashboardUrl,
         Date.now(),
@@ -115,6 +118,17 @@ export function useMonitor() {
       });
     }
   }, []);
+
+  /** User-initiated refresh: same read path, plus a spinner flag the sync card
+   * shows while the poller-triggered calls stay silent. */
+  const refreshNow = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
 
   const runCli = useCallback(
     async (command: string, args: string[] = []) => {
@@ -185,8 +199,10 @@ export function useMonitor() {
     cliResolved,
     runningCommand,
     lastOutcome,
+    refreshing,
     refresh,
     refreshCli,
+    refreshNow,
     runCli,
   };
 }

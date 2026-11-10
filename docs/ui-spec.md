@@ -931,18 +931,30 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 
 - **主窗口结构**（400×620，min 340×480，单页滚动无路由）：页头（品牌 lockup + 暂停
   chip）→（未配对且本次已跳过向导时：warning Alert「这台机器还没配对」+「去配对」）→
-  三张单值卡（今日 tokens / 近 7 天 / 待上传；与 web `SummaryCards` 同构——`Card.Header`
-  放 `text-xs` 标签、`Card.Content` 放数值 + 说明，`tabular-nums`；400 宽下标签须单行、
-  三格数值顶边对齐）→ 来源构成卡（标题 + 说明「近 7 天」，行 = `SourceIcon` 品牌 logo +
-  `sourceDisplayLabel` 规范名 + ranked bars：share 0–1，条宽下限 2%，最多 8 行；别名行先按
-  `lib/source-logos.ts` 的 `canonicalSource` 归并（trae-cn + trae → Trae，占比与 token 求和后
-  重算），窗口内 0 token 的纯 credits 来源如 qoder-cn 不进榜；logo 资产与暗色双图登记同 web
-  `lib/sources.ts`，桌面侧为移植件）→ 最近同步卡（`logs/sync.log` 的 `phase:"finished"` 行 +
-  更新的 `error` 行；体积一律 `formatBytes`）→ 采集操作卡（立即同步 = `sync --auto` / Doctor /
-  对账 7 天 / 暂停·恢复）→ 设备身份脚注（主机名 #machineId 前 8 ·
-  CLI 版本 · 实例 host；三段各自 `whitespace-nowrap`，只在 `·` 之间换行，域名不在连字符
-  处折断）。卡片一律走 `Card` 复合结构（Header / Title / Description + Content），
-  2026-11-09 起 D2 手写的带边框 div 卡片收编为 `Card`。
+  两张单值卡（今日 tokens / 近 7 天；与 web `SummaryCards` 同构——`Card.Header` 放
+  `text-xs` 标签、`Card.Content` 放数值 + 说明，`tabular-nums`；400 宽下标签须单行、
+  两格数值顶边对齐；待上传已移入采集与同步卡）→ 用量构成条（左「用量构成」小字，右
+  周期切换 `PeriodFilter`：连接的 `ToggleButtonGroup`「今日 / 近 7 天」，默认近 7 天、
+  写 preferences；只作用于下方三张构成卡，顶部单值卡口径固定）→ 来源构成卡（标题 +
+  说明 = 当前周期；行 = `SourceIcon` 品牌 logo + `sourceDisplayLabel` 规范名 + ranked
+  bars：share 0–1，条宽下限 2%，最多 8 行；别名行先按 `lib/source-logos.ts` 的
+  `canonicalSource` 归并（trae-cn + trae → Trae，占比与 token 求和后重算），窗口内
+  0 token 的纯 credits 来源如 qoder-cn 不进榜；logo 资产与暗色双图登记同 web
+  `lib/sources.ts`，桌面侧为移植件）→ 主要模型卡（同来源卡解剖：原始模型名截断 +
+  `title` 提示、tokens · 占比、ranked bars；Top 5，超出以「其余 N 个模型」一行收尾；
+  占比按窗口总量算，故 Top 5 不必凑满 100%）→ 项目与仓库卡（Top 5 项目按
+  `project_key`；`project.repos.state.json` 的 `confirmed` 有映射时渲染 GitHub mark +
+  项目名按钮，点击走 `open_in_browser`，无映射只显示名字、**不推断 URL**；底部左 =
+  归因覆盖「已归因 X% · 其余未归因」或「已全部归因」（残差 = 无 project_key 的行），
+  右 = 「在 web 查看」→ `${dashboardUrl}/projects`，未配对隐藏）→ 采集与同步卡
+  （Header 左 = 标题「采集与同步」+「更新于 HH:mm:ss」，右 = `ArrowRotateRight` 刷新钮，
+  手动刷新时 `animate-spin`；Content = 待上传 / 队列体积（`formatBytes`）+
+  `logs/sync.log` 的 `phase:"finished"` 行 + 更新的 `error` 行）→ 采集操作卡（立即
+  同步 = `sync --auto` / Doctor / 对账 7 天 / 暂停·恢复）→ 设备身份脚注（主机名
+  #machineId 前 8 · CLI 版本 · 实例 host；三段各自 `whitespace-nowrap`，只在 `·` 之间
+  换行，域名不在连字符处折断）。卡片一律走 `Card` 复合结构（Header / Title /
+  Description + Content / Footer），2026-11-09 起 D2 手写的带边框 div 卡片收编为
+  `Card`。
 - **采集操作卡交互**（2026-11-09 操作者要求）：① 四个按钮一律 `PendingButton`——被点的那个
   按钮内渲染 current-color `Spinner`（`size="sm"`，`aria-hidden`），其余按钮 `isDisabled`；
   有前置图标的按钮（立即同步 / 暂停·恢复）pending 时 **Spinner 顶替图标位**，不与图标并排
@@ -995,7 +1007,9 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   Container / Dialog / Header / Heading / Body`），宽 `calc(100vw-1.5rem)`、最高 85vh、内部
   滚动；副标题「仅保存在本机，不随账号同步」。分组：通知（每日汇总 + 汇总时间 / 同步连败 +
   连续次数 / 队列积压 + 阀值，均开关 + 按开关联动显示的下拉）→ 免打扰（开关 + 起止整点）→
-  启动（开机自启）→ 更新（当前版本行 + 「检查更新」`PendingButton`，D5：启动期静默检查只
+  启动（开机自启）→ 网页（已配对时四枚 secondary 按钮：仪表盘 `/` / 项目 `/projects` /
+  会话 `/sessions` / 成就 `/achievements`，由 `lib/links.ts` 拼 `dashboardUrl` 后经
+  `open_in_browser` 打开；未配对整组隐藏）→ 更新（当前版本行 + 「检查更新」`PendingButton`，D5：启动期静默检查只
   播报中性 toast，安装永远走手动确认——点击即同意 下载→安装→自动重启，检测/下载期
   Spinner，失败 danger toast）。开关一律 HeroUI `Switch` 复合结构（`Switch.Content / Control / Thumb` +
   `Label`），说明用 `Description` 小字；数值/时段用 `Select` + `ListBox`（小时 00:00–23:00），
@@ -1009,8 +1023,10 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   立即同步（`sync --auto`，写 sync.log、尊重暂停旗标）+ 暂停/恢复采集 + 打开主窗口 +
   打开 Web 仪表盘 + 退出；菜单文案由 webview 每 10s 轮询推送（`update_tray`）。
 - **数据边界**：窗口内容只读 `~/.tokenusage/tracker`（单文件 8 MiB 上限、canonicalize
-  前缀校验防穿越）；动作一律子进程调 CLI（`cmd /C tokenusage`，`CREATE_NO_WINDOW` 防
+  前缀校验防穿越；另读 `project.repos.state.json` 只取 `confirmed` 的 http(s) 映射，
+  缺失 / 损坏按无链接降级）；动作一律子进程调 CLI（`cmd /C tokenusage`，`CREATE_NO_WINDOW` 防
   闪黑窗）；本地聚合口径 = queue.jsonl last-wins（与 AGENTS 约束 8 同源）；设备令牌与
   anon key 永不出 Rust（config.json 只白名单返回 baseUrl / dashboardUrl / machineId）；
   配对只经 Rust 托管的 `device-login --json` 子进程（`device_code` 不出 Rust，取消与退出
-  杀整棵进程树）；成本不在桌面计算。
+  杀整棵进程树）；成本不在桌面计算。web 深链与仓库链接只在用户点击时交给系统浏览器，
+  应用自身零网络请求。

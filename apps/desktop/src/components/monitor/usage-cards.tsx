@@ -1,22 +1,22 @@
 import type { MonitorSnapshot } from "@/lib/monitor";
 
-import { Card, Typography, cn } from "@heroui/react";
+import { Card, Typography } from "@heroui/react";
 
-import { formatBytes, formatTokens } from "@/lib/format-tokens";
+import { formatTokens } from "@/lib/format-tokens";
 
 interface UsageCardsProps {
   snapshot: MonitorSnapshot;
 }
 
 /**
- * Three single-value tiles: today, rolling 7 days, and queue backlog. Same
- * anatomy as the web's SummaryCards (label in Card.Header, value + caption in
- * Card.Content); labels stay text-xs so they hold one line at 400 px and the
- * three values line up.
+ * Two single-value tiles: today and rolling 7 days. Same anatomy as the web's
+ * SummaryCards (label in Card.Header, value + caption in Card.Content); the
+ * queue backlog moved into the sync card because it describes upload health,
+ * not usage (desktop-plan §12.3).
  */
 export function UsageCards({ snapshot }: UsageCardsProps) {
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 gap-3">
       <UsageTile
         label="今日 tokens"
         sub={`${formatTokens(snapshot.today.conversations)} 会话`}
@@ -27,12 +27,6 @@ export function UsageCards({ snapshot }: UsageCardsProps) {
         sub={`${formatTokens(snapshot.week.conversations)} 会话`}
         value={formatTokens(snapshot.week.totalTokens)}
       />
-      <UsageTile
-        label="待上传"
-        sub={`队列 ${formatBytes(snapshot.queueBytes)}`}
-        tone={snapshot.pendingBytes > 0 ? "accent" : "default"}
-        value={formatBytes(snapshot.pendingBytes)}
-      />
     </div>
   );
 }
@@ -41,12 +35,10 @@ function UsageTile({
   label,
   value,
   sub,
-  tone = "default",
 }: {
   label: string;
   value: string;
   sub: string;
-  tone?: "default" | "accent";
 }) {
   return (
     <Card className="gap-1 border-border p-3">
@@ -57,10 +49,7 @@ function UsageTile({
       </Card.Header>
       <Card.Content className="gap-0.5">
         <Typography
-          className={cn(
-            "tabular-nums",
-            tone === "accent" ? "text-accent" : "text-foreground",
-          )}
+          className="text-foreground tabular-nums"
           type="h6"
           weight="semibold"
         >

@@ -2,6 +2,7 @@
 // (read by the Rust layer, never written) into the numbers the UI and the
 // tray show. Pure and synchronous — the polling hook only does IO.
 
+import { parseProjectRepoMap, type RepoUrls } from "@/lib/project-repos";
 import {
   SEVEN_DAY_MS,
   aggregateQueue,
@@ -23,6 +24,8 @@ export interface TrackerFileTexts {
   queueState: string | null;
   /** logs/sync.log — rolling JSONL written by `tokenusage sync`. */
   syncLog: string | null;
+  /** project.repos.state.json — confirmed `project_key → URL` map. */
+  projectRepos: string | null;
 }
 
 export interface CliStatus {
@@ -47,6 +50,10 @@ export interface MonitorSnapshot {
   failureMessage: string | null;
   /** Paired instance dashboard URL (from CLI config, read-only). */
   dashboardUrl: string | null;
+  /** Confirmed `project_key → repository URL` map (may be empty). */
+  repoUrls: RepoUrls;
+  /** When this snapshot was composed (ms) — the "更新于" stamp. */
+  updatedAt: number;
   cli: CliStatus;
 }
 
@@ -82,6 +89,8 @@ export function buildMonitorSnapshot(
     failureStreak: failure.streak,
     failureMessage: failure.message,
     dashboardUrl,
+    repoUrls: parseProjectRepoMap(files.projectRepos),
+    updatedAt: nowMs,
     cli,
   };
 }

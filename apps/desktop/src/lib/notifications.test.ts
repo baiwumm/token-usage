@@ -28,8 +28,22 @@ const ERROR = (msg = "Upload error: 401") =>
 
 function snapshot(patch: Partial<MonitorSnapshot> = {}): MonitorSnapshot {
   return {
-    today: { totalTokens: 1_234_000, conversations: 7, sources: [] },
-    week: { totalTokens: 9_000_000, conversations: 40, sources: [] },
+    today: {
+      totalTokens: 1_234_000,
+      conversations: 7,
+      sources: [],
+      models: [],
+      projects: [],
+      attributedTokens: 0,
+    },
+    week: {
+      totalTokens: 9_000_000,
+      conversations: 40,
+      sources: [],
+      models: [],
+      projects: [],
+      attributedTokens: 0,
+    },
     pendingBytes: 0,
     queueBytes: 0,
     paused: false,
@@ -39,6 +53,8 @@ function snapshot(patch: Partial<MonitorSnapshot> = {}): MonitorSnapshot {
     failureStreak: 0,
     failureMessage: null,
     dashboardUrl: null,
+    repoUrls: {},
+    updatedAt: 0,
     cli: { available: true, version: "0.5.4" },
     ...patch,
   };

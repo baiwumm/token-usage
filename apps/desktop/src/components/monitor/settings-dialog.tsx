@@ -6,6 +6,7 @@
 import type { UpdaterState } from "@/hooks/use-updater";
 
 import {
+  Button,
   Description,
   Label,
   ListBox,
@@ -19,6 +20,7 @@ import {
 } from "@heroui/react";
 
 import { PendingButton } from "@/components/pending-button";
+import { webUrl, type WebPage } from "@/lib/links";
 import {
   BACKLOG_BYTES_OPTIONS,
   FAILURE_THRESHOLD_OPTIONS,
@@ -28,6 +30,13 @@ import {
 import { formatBytes } from "@/lib/format-tokens";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+
+const WEB_LINKS: Array<{ page: WebPage; label: string }> = [
+  { page: "dashboard", label: "仪表盘" },
+  { page: "projects", label: "项目" },
+  { page: "sessions", label: "会话" },
+  { page: "achievements", label: "成就" },
+];
 
 /**
  * Autostart writes HKCU\…\Run, which a process of lower integrity than the
@@ -173,21 +182,32 @@ function ToggleRow({
 export function SettingsDialog({
   open,
   prefs,
+  dashboardUrl,
   onChange,
   onOpenChange,
+  onOpenUrl,
   onToggleAutostart,
   updater,
   onCheckUpdate,
 }: {
   open: boolean;
   prefs: Preferences;
+  /** Paired instance base URL; null hides the web deep links. */
+  dashboardUrl: string | null;
   onChange: (patch: Partial<Preferences>) => void;
   onOpenChange: (open: boolean) => void;
+  onOpenUrl: (url: string) => void;
   onToggleAutostart: (enabled: boolean) => Promise<void>;
   /** D5 updater state; checked silently at startup, installed on click. */
   updater: UpdaterState;
   onCheckUpdate: () => void;
 }) {
+  const webLinks = WEB_LINKS.flatMap((link) => {
+    const url = webUrl(dashboardUrl, link.page);
+
+    return url === null ? [] : [{ ...link, url }];
+  });
+
   return (
     <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
       <Modal.Container>
@@ -296,6 +316,33 @@ export function SettingsDialog({
                 }}
               />
             </section>
+
+            {webLinks.length > 0 ? (
+              <>
+                <Separator />
+
+                <section className="flex flex-col gap-3">
+                  <Typography type="body-sm" weight="semibold">
+                    网页
+                  </Typography>
+                  <div className="grid grid-cols-2 gap-2">
+                    {webLinks.map((link) => (
+                      <Button
+                        key={link.page}
+                        size="sm"
+                        variant="secondary"
+                        onPress={() => onOpenUrl(link.url)}
+                      >
+                        {link.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <Description className="text-xs">
+                    在浏览器打开已配对实例的页面
+                  </Description>
+                </section>
+              </>
+            ) : null}
 
             <Separator />
 

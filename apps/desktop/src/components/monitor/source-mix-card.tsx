@@ -9,14 +9,15 @@ import { groupSourceUsage, sourceDisplayLabel } from "@/lib/source-logos";
 
 interface SourceMixCardProps {
   sources: SourceUsage[];
+  periodLabel: string;
 }
 
 /**
- * Source mix for the window (近 7 天): canonical groups (trae-cn → Trae, …)
+ * Source mix for the selected period: canonical groups (trae-cn → Trae, …)
  * with brand logos, ranked bars driven by each group's share of the window
  * total. Read-only view over the queue baseline.
  */
-export function SourceMixCard({ sources }: SourceMixCardProps) {
+export function SourceMixCard({ sources, periodLabel }: SourceMixCardProps) {
   const grouped = useMemo(() => groupSourceUsage(sources), [sources]);
   // Credits-only sources (e.g. qoder-cn) carry zero tokens in the window; a
   // token mix would only show them as "0 · 0%" with the 2% minimum bar.
@@ -29,7 +30,7 @@ export function SourceMixCard({ sources }: SourceMixCardProps) {
     <Card className="border-border">
       <Card.Header>
         <Card.Title>来源构成</Card.Title>
-        <Card.Description>近 7 天</Card.Description>
+        <Card.Description>{periodLabel}</Card.Description>
       </Card.Header>
       <Card.Content>
         {ranked.length === 0 ? (

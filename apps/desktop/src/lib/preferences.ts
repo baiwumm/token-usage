@@ -8,8 +8,13 @@
 
 export type ThemeMode = "system" | "light" | "dark";
 
+/** Window used by the mix cards (source / model / project). */
+export type UsagePeriod = "today" | "7d";
+
 export interface Preferences {
   theme: ThemeMode;
+  /** Mix-card period; the summary tiles stay today / 7 days regardless. */
+  period: UsagePeriod;
   /** Daily summary notification (today's local tokens). */
   dailySummary: boolean;
   /** Local hour 0–23 at which the daily summary fires. */
@@ -37,6 +42,7 @@ export const BACKLOG_BYTES_OPTIONS = [10 * MIB, 20 * MIB, 50 * MIB, 100 * MIB];
 
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: "system",
+  period: "7d",
   dailySummary: true,
   dailySummaryHour: 21,
   failureAlerts: true,
@@ -50,6 +56,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
 };
 
 const THEMES: readonly ThemeMode[] = ["system", "light", "dark"];
+const PERIODS: readonly UsagePeriod[] = ["today", "7d"];
 
 function asBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
@@ -89,9 +96,13 @@ export function normalizePreferences(raw: unknown): Preferences {
   const theme = THEMES.includes(source.theme as ThemeMode)
     ? (source.theme as ThemeMode)
     : DEFAULT_PREFERENCES.theme;
+  const period = PERIODS.includes(source.period as UsagePeriod)
+    ? (source.period as UsagePeriod)
+    : DEFAULT_PREFERENCES.period;
 
   return {
     theme,
+    period,
     dailySummary: asBoolean(
       source.dailySummary,
       DEFAULT_PREFERENCES.dailySummary,
@@ -118,6 +129,11 @@ export function normalizePreferences(raw: unknown): Preferences {
     quietEndHour: asHour(source.quietEndHour, DEFAULT_PREFERENCES.quietEndHour),
     autostart: asBoolean(source.autostart, DEFAULT_PREFERENCES.autostart),
   };
+}
+
+/** Mix-card period label shared by the filter and the card descriptions. */
+export function periodLabel(period: UsagePeriod): string {
+  return period === "today" ? "今日" : "近 7 天";
 }
 
 /** `21` → `21:00` for the hour selects and notification copy. */

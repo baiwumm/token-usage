@@ -1,14 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
+import { Typography } from "@heroui/react";
 import { useCallback, useState } from "react";
 
 import { CliActionsCard } from "@/components/monitor/cli-actions-card";
 import { DeviceRow } from "@/components/monitor/device-row";
+import { ModelMixCard } from "@/components/monitor/model-mix-card";
 import { MonitorHeader } from "@/components/monitor/monitor-header";
 import {
   MonitorEmptyState,
   MonitorErrorState,
   MonitorSkeleton,
 } from "@/components/monitor/monitor-states";
+import { PeriodFilter } from "@/components/monitor/period-filter";
+import { ProjectReposCard } from "@/components/monitor/project-repos-card";
 import { SourceMixCard } from "@/components/monitor/source-mix-card";
 import { SettingsDialog } from "@/components/monitor/settings-dialog";
 import { SyncStatusCard } from "@/components/monitor/sync-status-card";
@@ -24,6 +28,8 @@ import { usePreferences } from "@/hooks/use-preferences";
 import { useTheme } from "@/hooks/use-theme";
 import { useTrayAvailable } from "@/hooks/use-tray";
 import { useUpdater } from "@/hooks/use-updater";
+import { webUrl } from "@/lib/links";
+import { periodLabel } from "@/lib/preferences";
 
 const GUIDE_URL = "https://github.com/baiwumm/token-usage#readme";
 
@@ -41,8 +47,10 @@ export function MonitorBody() {
     cliResolved,
     runningCommand,
     lastOutcome,
+    refreshing,
     refresh,
     refreshCli,
+    refreshNow,
     runCli,
   } = useMonitor();
 
@@ -71,6 +79,10 @@ export function MonitorBody() {
     void invoke("open_in_browser", { url: GUIDE_URL }).catch(() => undefined);
   }, []);
 
+  const openUrl = useCallback((url: string) => {
+    void invoke("open_in_browser", { url }).catch(() => undefined);
+  }, []);
+
   const recheckCli = useCallback(async () => {
     setProbing(true);
     try {
@@ -96,15 +108,25 @@ export function MonitorBody() {
   }
 
   const snapshot = phase.snapshot;
+  const period = prefs.period;
+  const activeWindow = period === "today" ? snapshot.today : snapshot.week;
+  const activeLabel = periodLabel(period);
+  // The CLI config falls back to the public instance; only a paired machine
+  // gets deep links (an unpaired one must not point at someone else's host).
+  const pairedUrl =
+    pairing.gate.kind === "paired" ? snapshot.dashboardUrl : null;
+  const projectsUrl = webUrl(pairedUrl, "projects");
 
   const settingsDialog = (
     <SettingsDialog
+      dashboardUrl={pairedUrl}
       open={settingsOpen}
       prefs={prefs}
       updater={updater}
       onChange={update}
       onCheckUpdate={() => void updater.checkForUpdates(true)}
       onOpenChange={setSettingsOpen}
+      onOpenUrl={openUrl}
       onToggleAutostart={setAutostart}
     />
   );
@@ -155,8 +177,37 @@ export function MonitorBody() {
         {hasAnyData ? (
           <>
             <UsageCards snapshot={snapshot} />
-            <SourceMixCard sources={snapshot.week.sources} />
-            <SyncStatusCard snapshot={snapshot} />
+            <div className="flex items-center justify-between gap-3">
+              <Typography className="text-muted" type="body-xs">
+                用量构成
+              </Typography>
+              <PeriodFilter
+                period={period}
+                onChange={(next) => update({ period: next })}
+              />
+            </div>
+            <SourceMixCard
+              periodLabel={activeLabel}
+              sources={activeWindow.sources}
+            />
+            <ModelMixCard
+              models={activeWindow.models}
+              periodLabel={activeLabel}
+            />
+            <ProjectReposCard
+              attributedTokens={activeWindow.attributedTokens}
+              periodLabel={activeLabel}
+              projects={activeWindow.projects}
+              projectsUrl={projectsUrl}
+              repoUrls={snapshot.repoUrls}
+              totalTokens={activeWindow.totalTokens}
+              onOpenUrl={openUrl}
+            />
+            <SyncStatusCard
+              refreshing={refreshing}
+              snapshot={snapshot}
+              onRefresh={() => void refreshNow()}
+            />
           </>
         ) : (
           <MonitorEmptyState cliAvailable={cli.available} />
@@ -169,7 +220,7 @@ export function MonitorBody() {
         />
         <DeviceRow
           cliVersion={cli.available ? cli.version : null}
-          dashboardUrl={snapshot.dashboardUrl}
+          dashboardUrl={pairedUrl}
           hostname={hostname}
           machineId={machineId}
         />

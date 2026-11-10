@@ -32,6 +32,7 @@ const BASE_FILES = {
   pause: null,
   queueState: null,
   syncLog: null,
+  projectRepos: null,
 };
 
 describe("buildMonitorSnapshot", () => {
@@ -53,6 +54,7 @@ describe("buildMonitorSnapshot", () => {
     expect(snapshot.cli).toEqual({ available: true, version: "0.5.2" });
     expect(snapshot.dashboardUrl).toBe("https://example.selfhost.test");
     expect(snapshot.paused).toBe(false);
+    expect(snapshot.updatedAt).toBe(NOW);
   });
 
   it("computes pending bytes from the upload offset", () => {
@@ -88,7 +90,13 @@ describe("buildMonitorSnapshot", () => {
 
   it("handles a machine without any CLI data yet", () => {
     const snapshot = buildMonitorSnapshot(
-      { queue: null, pause: null, queueState: null, syncLog: null },
+      {
+        queue: null,
+        pause: null,
+        queueState: null,
+        syncLog: null,
+        projectRepos: null,
+      },
       { available: false, version: null },
       null,
       NOW,
@@ -98,5 +106,28 @@ describe("buildMonitorSnapshot", () => {
     expect(snapshot.pendingBytes).toBe(0);
     expect(snapshot.lastRun).toBeNull();
     expect(snapshot.cli.available).toBe(false);
+    expect(snapshot.repoUrls).toEqual({});
+  });
+
+  it("maps confirmed repositories onto project keys", () => {
+    const snapshot = buildMonitorSnapshot(
+      {
+        ...BASE_FILES,
+        projectRepos: JSON.stringify({
+          version: 1,
+          confirmed: {
+            "baiwumm/token-usage": "https://github.com/baiwumm/token-usage",
+            "baiwumm/bad": "file:///etc/passwd",
+          },
+        }),
+      },
+      { available: true, version: null },
+      null,
+      NOW,
+    );
+
+    expect(snapshot.repoUrls).toEqual({
+      "baiwumm/token-usage": "https://github.com/baiwumm/token-usage",
+    });
   });
 });

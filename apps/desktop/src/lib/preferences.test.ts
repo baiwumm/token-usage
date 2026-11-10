@@ -9,6 +9,7 @@ import {
   loadPreferences,
   nextTheme,
   normalizePreferences,
+  periodLabel,
   savePreferences,
   type Preferences,
 } from "@/lib/preferences";
@@ -38,6 +39,7 @@ describe("normalizePreferences", () => {
   it("keeps valid values and rejects out-of-range ones", () => {
     const prefs = normalizePreferences({
       theme: "dark",
+      period: "today",
       dailySummary: false,
       dailySummaryHour: 7,
       failureThreshold: 5,
@@ -49,6 +51,7 @@ describe("normalizePreferences", () => {
     });
 
     expect(prefs.theme).toBe("dark");
+    expect(prefs.period).toBe("today");
     expect(prefs.dailySummary).toBe(false);
     expect(prefs.dailySummaryHour).toBe(7);
     expect(prefs.failureThreshold).toBe(5);
@@ -60,6 +63,7 @@ describe("normalizePreferences", () => {
 
     const clamped = normalizePreferences({
       theme: "sepia",
+      period: "30d",
       dailySummaryHour: 42,
       failureThreshold: 1,
       backlogBytes: 12,
@@ -67,6 +71,7 @@ describe("normalizePreferences", () => {
     });
 
     expect(clamped.theme).toBe(DEFAULT_PREFERENCES.theme);
+    expect(clamped.period).toBe(DEFAULT_PREFERENCES.period);
     expect(clamped.dailySummaryHour).toBe(DEFAULT_PREFERENCES.dailySummaryHour);
     expect(clamped.failureThreshold).toBe(DEFAULT_PREFERENCES.failureThreshold);
     expect(clamped.backlogBytes).toBe(DEFAULT_PREFERENCES.backlogBytes);
@@ -93,6 +98,11 @@ describe("theme cycle", () => {
     expect(formatHour(0)).toBe("00:00");
     expect(formatHour(9)).toBe("09:00");
     expect(formatHour(21)).toBe("21:00");
+  });
+
+  it("labels the usage periods", () => {
+    expect(periodLabel("today")).toBe("今日");
+    expect(periodLabel("7d")).toBe("近 7 天");
   });
 });
 

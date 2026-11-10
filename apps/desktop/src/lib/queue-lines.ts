@@ -27,10 +27,33 @@ export interface SourceUsage {
   share: number;
 }
 
+/** Model mix row (raw collector-reported model string, never canonicalized). */
+export interface ModelUsage {
+  model: string;
+  tokens: number;
+  conversations: number;
+  /** Share of the window total (not of the model subtotal). */
+  share: number;
+}
+
+/** Project mix row; `projectKey` is `""` filtered out of the list. */
+export interface ProjectUsage {
+  projectKey: string;
+  tokens: number;
+  conversations: number;
+  /** Share of the window total (not of the attributed subtotal). */
+  share: number;
+}
+
 export interface UsageWindow {
   totalTokens: number;
   conversations: number;
   sources: SourceUsage[];
+  models: ModelUsage[];
+  /** Only rows with a non-empty `project_key`. */
+  projects: ProjectUsage[];
+  /** Tokens carrying a project key (the rest is the unattributed residual). */
+  attributedTokens: number;
 }
 
 function asNumber(value: unknown): number {
@@ -98,7 +121,10 @@ export function aggregateQueue(
 
   let totalTokens = 0;
   let conversations = 0;
-  const bySource = new Map<string, { tokens: number; conversations: number }>();
+  let attributedTokens = 0;
+  const bySource = new Map<string, TokenEntry>();
+  const byModel = new Map<string, TokenEntry>();
+  const byProject = new Map<string, TokenEntry>();
 
   for (const row of buckets.values()) {
     const startMs = Date.parse(row.hourStart);
@@ -112,26 +138,74 @@ export function aggregateQueue(
     }
     totalTokens += row.totalTokens;
     conversations += row.conversationCount;
-    const entry = bySource.get(row.source) ?? { tokens: 0, conversations: 0 };
-
-    entry.tokens += row.totalTokens;
-    entry.conversations += row.conversationCount;
-    bySource.set(row.source, entry);
+    accumulate(bySource, row.source, row);
+    accumulate(byModel, row.model, row);
+    if (row.projectKey) {
+      accumulate(byProject, row.projectKey, row);
+      attributedTokens += row.totalTokens;
+    }
   }
 
-  const sources: SourceUsage[] = [...bySource.entries()]
-    .map(([source, entry]) => ({
+  const sources: SourceUsage[] = rankByTokens(bySource).map(
+    ([source, entry]) => ({
       source,
       tokens: entry.tokens,
       conversations: entry.conversations,
-      share:
-        totalTokens > 0
-          ? Math.min(1, Math.max(0, entry.tokens / totalTokens))
-          : 0,
-    }))
-    .sort((a, b) => b.tokens - a.tokens || a.source.localeCompare(b.source));
+      share: shareOf(entry.tokens, totalTokens),
+    }),
+  );
+  const models: ModelUsage[] = rankByTokens(byModel).map(([model, entry]) => ({
+    model,
+    tokens: entry.tokens,
+    conversations: entry.conversations,
+    share: shareOf(entry.tokens, totalTokens),
+  }));
+  const projects: ProjectUsage[] = rankByTokens(byProject).map(
+    ([projectKey, entry]) => ({
+      projectKey,
+      tokens: entry.tokens,
+      conversations: entry.conversations,
+      share: shareOf(entry.tokens, totalTokens),
+    }),
+  );
 
-  return { totalTokens, conversations, sources };
+  return {
+    totalTokens,
+    conversations,
+    sources,
+    models,
+    projects,
+    attributedTokens,
+  };
+}
+
+interface TokenEntry {
+  tokens: number;
+  conversations: number;
+}
+
+function accumulate(
+  map: Map<string, TokenEntry>,
+  key: string,
+  row: QueueBucketRow,
+): void {
+  const entry = map.get(key) ?? { tokens: 0, conversations: 0 };
+
+  entry.tokens += row.totalTokens;
+  entry.conversations += row.conversationCount;
+  map.set(key, entry);
+}
+
+function shareOf(tokens: number, total: number): number {
+  return total > 0 ? Math.min(1, Math.max(0, tokens / total)) : 0;
+}
+
+function rankByTokens(
+  map: Map<string, TokenEntry>,
+): Array<[string, TokenEntry]> {
+  return [...map.entries()].sort(
+    ([aKey, a], [bKey, b]) => b.tokens - a.tokens || aKey.localeCompare(bKey),
+  );
 }
 
 function rowKey(row: QueueBucketRow): string {
