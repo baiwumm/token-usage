@@ -22,10 +22,11 @@ interface HeatmapSectionProps {
 /**
  * 12-week rhythm heatmap (desktop-plan §12.4): 12 columns × 7 local days,
  * Monday-aligned, last column ending on Sunday so weekday rows never drift.
- * Cells split the card width evenly and stay square, so the grid fills the
- * row instead of huddling in one corner. The grid carries one accessible
- * summary label instead of 84 tab stops; each cell keeps its own title for
- * hover. Levels reuse the accent token, so the scale follows the theme.
+ * Cells keep a fixed 20 px footprint and the 12×7 grid is centered, so a
+ * maximized window does not inflate it into a wall of squares (operator
+ * review 2026-11-10). The grid carries one accessible summary label instead
+ * of 84 tab stops; each cell keeps its own title for hover. Levels reuse the
+ * accent token, so the scale follows the theme.
  */
 export function HeatmapSection({
   days,
@@ -47,22 +48,27 @@ export function HeatmapSection({
           </Typography>
         ) : (
           <>
-            <div
-              aria-label={`近 12 周每日用量热力图，合计 ${formatTokens(totalTokens)} tokens`}
-              className="grid w-full grid-flow-col grid-cols-12 gap-1"
-              role="img"
-              style={{ gridTemplateRows: "repeat(7, auto)" }}
-            >
-              {days.map((day) => (
-                <span
-                  key={day.day}
-                  aria-hidden="true"
-                  className={`aspect-square w-full rounded-[4px] ${LEVEL_CLASSES[heatmapLevel(day.tokens, maxTokens)]}`}
-                  title={`${day.day} · ${formatTokens(day.tokens)} tokens · ${day.conversations} 会话`}
-                />
-              ))}
+            <div className="flex w-full justify-center">
+              <div
+                aria-label={`近 12 周每日用量热力图，合计 ${formatTokens(totalTokens)} tokens`}
+                className="grid grid-flow-col gap-1"
+                role="img"
+                style={{
+                  gridTemplateColumns: "repeat(12, 20px)",
+                  gridTemplateRows: "repeat(7, 20px)",
+                }}
+              >
+                {days.map((day) => (
+                  <span
+                    key={day.day}
+                    aria-hidden="true"
+                    className={`size-5 rounded-[4px] ${LEVEL_CLASSES[heatmapLevel(day.tokens, maxTokens)]}`}
+                    title={`${day.day} · ${formatTokens(day.tokens)} tokens · ${day.conversations} 会话`}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="flex items-center justify-end gap-1.5 text-xs text-muted">
+            <div className="flex items-center justify-center gap-1.5 text-xs text-muted">
               <span>少</span>
               {LEVEL_CLASSES.map((className) => (
                 <span
