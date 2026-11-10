@@ -367,10 +367,7 @@ fn for_each_lossy_line(stream: impl Read, mut on_line: impl FnMut(String)) {
             Ok(0) | Err(_) => break,
             Ok(_) => {
                 let text = String::from_utf8_lossy(&buf);
-                on_line(
-                    text.trim_end_matches(|c: char| c == '\r' || c == '\n')
-                        .to_string(),
-                );
+                on_line(text.trim_end_matches(['\r', '\n']).to_string());
             }
         }
     }
