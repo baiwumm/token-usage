@@ -107,6 +107,9 @@ function DetailTableImpl({
 
   // The credits column only appears when the window actually has credit-based
   // usage (docs/ui-spec.md: no cost data → no cost column, same pattern).
+  // The first-load skeleton always draws it (DetailTableSkeleton in
+  // dashboard-skeleton.tsx): whether the window carries credits is a data
+  // question the skeleton cannot answer, so it pays for the wider layout.
   const showCredits = useMemo(
     () => rows.some((row) => row.credits > 0),
     [rows],
@@ -308,6 +311,7 @@ function DetailTableImpl({
             </Tabs>
           </>
         }
+        loadingRows={DEFAULT_PAGE_SIZE}
         pagination={{
           labels: copy.detail,
           locale,

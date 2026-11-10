@@ -324,7 +324,7 @@ export function WrappedClient() {
         }}
       />
 
-      {showSkeleton && !showErrorCard ? <WrappedSkeleton /> : null}
+      {showSkeleton && !showErrorCard ? <WrappedSkeleton copy={copy} /> : null}
 
       {switchingYear ? (
         <Card className="flex-row items-center gap-3 p-4">

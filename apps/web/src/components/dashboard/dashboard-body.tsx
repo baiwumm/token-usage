@@ -127,8 +127,8 @@ export function DashboardBody({
     <>
       {summaryStatus === "loading" ? (
         // Mirrors the loaded card stack: hero, heatmap, trend, breakdown,
-        // devices and the detail table.
-        <DashboardSkeleton />
+        // credits, devices and the detail table.
+        <DashboardSkeleton copy={copy} />
       ) : null}
 
       {summaryStatus === "error" ? (

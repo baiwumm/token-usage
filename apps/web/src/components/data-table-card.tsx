@@ -199,7 +199,11 @@ export function DataTableCard<T>({
                               {columns.map((column, columnIndex) => (
                                 <Table.Cell key={column.id}>
                                   <Skeleton
-                                    className="h-4 rounded-3xl"
+                                    // h-5 matches the real cells (text-sm /
+                                    // sm Chip both sit on a 20px line box), so
+                                    // the loading rows land on the same row
+                                    // height the data will occupy.
+                                    className="h-5 rounded-3xl"
                                     style={{
                                       width: columnIndex === 0 ? "55%" : "78%",
                                     }}

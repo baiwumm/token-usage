@@ -5,9 +5,25 @@
 // model table — so swapping in real data does not shift the page. The header
 // (year select + share button) renders with the page, not here.
 
+import type { WrappedCopy } from "@/lib/copy/wrapped";
+
 import { Card, Skeleton } from "@heroui/react";
 
-export function WrappedSkeleton() {
+import {
+  DataTableCard,
+  type DataTableColumn,
+} from "@/components/data-table-card";
+
+export function WrappedSkeleton({ copy }: { copy: WrappedCopy }) {
+  // Column ids and headers mirror models-table.tsx; the loading rows must line
+  // up under the real columns (docs/ui-spec.md /wrapped 首载骨架).
+  const modelColumns: DataTableColumn<never>[] = [
+    { id: "model", header: copy.table.model, cell: () => null },
+    { id: "tokens", header: copy.table.tokens, cell: () => null },
+    { id: "cost", header: copy.table.cost, cell: () => null },
+    { id: "share", header: copy.table.share, cell: () => null },
+  ];
+
   return (
     <div aria-hidden="true" className="flex flex-col gap-6">
       {/* Four stat cards, same shell the loaded ones use. */}
@@ -75,17 +91,18 @@ export function WrappedSkeleton() {
         </Card.Content>
       </Card>
 
-      {/* Model table: header line plus row placeholders. */}
-      <Card className="p-6">
-        <Card.Header>
-          <Skeleton className="h-5 w-24 rounded-full" />
-        </Card.Header>
-        <Card.Content className="flex flex-col gap-3">
-          {[0, 1, 2, 3].map((index) => (
-            <Skeleton key={index} className="h-9 w-full rounded-xl" />
-          ))}
-        </Card.Content>
-      </Card>
+      {/* Model table: the real DataTableCard loading state — real title and
+          column headers over gray cells, the same shell /sessions draws. */}
+      <DataTableCard
+        columns={modelColumns}
+        empty={null}
+        loadingRows={5}
+        rowKey={() => ""}
+        rows={[]}
+        status="loading"
+        tableLabel={copy.modelsTitle}
+        title={copy.modelsTitle}
+      />
     </div>
   );
 }

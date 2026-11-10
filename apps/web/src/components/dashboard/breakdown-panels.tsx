@@ -7,18 +7,25 @@ import { useMemo } from "react";
 
 import { canonicalSourceRows } from "./aggregate";
 import { CreditsCard } from "./credits-card";
+import {
+  CreditsCardSkeleton,
+  ModelsCardSkeleton,
+  SourcesCardSkeleton,
+} from "./dashboard-skeleton";
 import { SourcePanel } from "./source-panel";
 import { TopModels } from "./top-models-panel";
 
 import { PanelOverlay } from "@/components/panel-overlay";
-import { SectionError, SectionSkeleton } from "@/components/section-states";
+import { SectionError } from "@/components/section-states";
 
 /**
- * Model/source breakdown row. Both cards ride the same breakdown slot: the
- * source card always keeps a skeleton placeholder (it never showed an error
- * card of its own), the model card falls back to the shared error block.
- * When credit-based usage exists in the window, the credits card appends
- * below the pair (docs/sources-capture-plan.md §3, C 方案).
+ * Model/source breakdown row. Both cards ride the same breakdown slot and
+ * share the three states: ready renders the real panel, loading renders the
+ * matching skeleton block from `dashboard-skeleton.tsx` (the same shell the
+ * first-load skeleton draws), anything else falls back to the shared error
+ * block. When credit-based usage exists in the window, the credits card
+ * appends below the pair (docs/sources-capture-plan.md §3, C 方案) — and is
+ * drawn as a skeleton while the slot loads, so its row does not pop in.
  */
 export function BreakdownPanels({
   copy,
@@ -59,28 +66,32 @@ export function BreakdownPanels({
       <PanelOverlay active={refreshing} />
       {status === "ready" ? (
         <TopModels copy={copy} sources={sources} onViewAll={onViewAll} />
+      ) : status === "loading" ? (
+        <ModelsCardSkeleton />
       ) : (
         <Card className="p-6">
           <Card.Content>
-            {status === "loading" ? (
-              <SectionSkeleton className="h-56 w-full" />
-            ) : (
-              <SectionError
-                message={copy.states.loadError}
-                retry={onRetry}
-                retryLabel={copy.states.retry}
-              />
-            )}
+            <SectionError
+              message={copy.states.loadError}
+              retry={onRetry}
+              retryLabel={copy.states.retry}
+            />
           </Card.Content>
         </Card>
       )}
 
       {status === "ready" ? (
         <SourcePanel copy={copy} sources={sources} />
+      ) : status === "loading" ? (
+        <SourcesCardSkeleton />
       ) : (
         <Card className="p-6">
           <Card.Content>
-            <SectionSkeleton className="h-44 w-full" />
+            <SectionError
+              message={copy.states.loadError}
+              retry={onRetry}
+              retryLabel={copy.states.retry}
+            />
           </Card.Content>
         </Card>
       )}
@@ -93,6 +104,10 @@ export function BreakdownPanels({
             rows={credits.rows}
             total={credits.total}
           />
+        </div>
+      ) : status === "loading" ? (
+        <div className="lg:col-span-2">
+          <CreditsCardSkeleton />
         </div>
       ) : null}
     </div>

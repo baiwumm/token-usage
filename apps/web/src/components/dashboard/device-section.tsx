@@ -5,9 +5,10 @@ import type { DashboardPayload } from "@/lib/dashboard/api";
 import { Card } from "@heroui/react";
 
 import { DevicePanel } from "./device-panel";
+import { DevicesCardSkeleton } from "./dashboard-skeleton";
 
 import { PanelOverlay } from "@/components/panel-overlay";
-import { SectionError, SectionSkeleton } from "@/components/section-states";
+import { SectionError } from "@/components/section-states";
 
 /** Device panel slot: per-device activity for the current window. */
 export function DeviceSection({
@@ -37,18 +38,16 @@ export function DeviceSection({
           selectedDeviceId={selectedDeviceId}
           onSelectDevice={onSelectDevice}
         />
+      ) : status === "loading" ? (
+        <DevicesCardSkeleton />
       ) : (
         <Card className="p-6">
           <Card.Content>
-            {status === "loading" ? (
-              <SectionSkeleton className="h-44 w-full" />
-            ) : (
-              <SectionError
-                message={copy.states.loadError}
-                retry={onRetry}
-                retryLabel={copy.states.retry}
-              />
-            )}
+            <SectionError
+              message={copy.states.loadError}
+              retry={onRetry}
+              retryLabel={copy.states.retry}
+            />
           </Card.Content>
         </Card>
       )}
