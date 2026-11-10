@@ -10,7 +10,6 @@ interface ProjectReposCardProps {
   projects: ProjectRepoUsage[];
   attributedTokens: number;
   totalTokens: number;
-  periodLabel: string;
   /** Paired web `/projects` URL, or null when the instance is unknown. */
   projectsUrl: string | null;
   onOpenUrl: (url: string) => void;
@@ -33,13 +32,13 @@ function attributionLabel(attributed: number, total: number): string {
  * link (GitHub mark + name, opened in the OS browser), one without stays plain
  * text — the desktop never infers a URL (§12.2). The footer shows attribution
  * coverage so the list is not mistaken for the whole window: rows without a
- * project key remain in the residual.
+ * project key remain in the residual. The period stays on the `PeriodFilter`
+ * above the cards (operator review 2026-11-10).
  */
 export function ProjectReposCard({
   projects,
   attributedTokens,
   totalTokens,
-  periodLabel,
   projectsUrl,
   onOpenUrl,
 }: ProjectReposCardProps) {
@@ -52,7 +51,6 @@ export function ProjectReposCard({
     <Card className="border-border">
       <Card.Header>
         <Card.Title>项目与仓库</Card.Title>
-        <Card.Description>{periodLabel}</Card.Description>
       </Card.Header>
       <Card.Content>
         {ranked.length === 0 ? (

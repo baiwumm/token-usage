@@ -937,8 +937,9 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   周期切换 `PeriodFilter`：连接的 `ToggleButtonGroup`「今日 / 近 7 天」，默认近 7 天、
   写 preferences；只作用于下方三张构成卡，顶部单值卡口径固定；按钮用 HeroUI **默认填充
   变体**（`variant="ghost"` 会让未选中段与卡片底色同色，退化成一行裸文字，2026-11-10
-  验收修正），第二段前置 `ToggleButtonGroup.Separator`）→ 来源构成卡（标题 +
-  说明 = 当前周期；行 = `SourceIcon` 品牌 logo + `sourceDisplayLabel` 规范名 + ranked
+  验收修正），第二段前置 `ToggleButtonGroup.Separator`）→ 来源构成卡（标题只写卡名——周期由上方
+  `PeriodFilter` 唯一表达，三张构成卡内不再重复「今日 / 近 7 天」，2026-11-10 验收修正；
+  行 = `SourceIcon` 品牌 logo + `sourceDisplayLabel` 规范名 + ranked
   bars：share 0–1，条宽下限 2%，最多 8 行；别名行先按 `lib/source-logos.ts` 的
   `canonicalSource` 归并（trae-cn + trae → Trae，占比与 token 求和后重算），窗口内
   0 token 的纯 credits 来源如 qoder-cn 不进榜；logo 资产与暗色双图登记同 web
@@ -954,10 +955,14 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   （Header 左 = 标题「采集与同步」+「更新于 HH:mm:ss」，右 = 刷新图标钮，读取期间图标位
   换成 `Spinner`，且手动刷新至少保持 400 ms 可见；Content = 待上传 / 队列体积
   （`formatBytes`）+ `logs/sync.log` 的 `phase:"finished"` 行 + 更新的 `error` 行）→
-  采集操作卡（Header = 标题 + 右侧 `Chip` 显示 `tokenusage-cli vX.Y.Z`（未检测到则 danger
-  配色「未检测到 CLI」），与标题垂直居中；Content = 立即同步 = `sync --auto` / Doctor /
-  对账 7 天 / 暂停·恢复）→ 设备身份脚注（主机名 #machineId 前 8 · CLI 版本 · 实例 host；
-  三段各自 `whitespace-nowrap`，只在 `·` 之间换行，域名不在连字符处折断）。页头右侧
+  采集操作卡（Header = 标题 + 右侧 `Chip` 显示 `tokenusage-cli vX.Y.Z`（版本串先经
+  `lib/version.ts` 的 `bareVersion` 去掉 CLI 自带的 `v` 再拼，避免 `vv0.5.4`；未检测到则
+  danger 配色「未检测到 CLI」），与标题垂直居中；该 Chip 同时是唯一的 updater 探针：**点击才**
+  请求 npm registry，结果以第二枚 Chip 落在旁边「检查中 / 最新 / 可更新 vX / 检查失败」，
+  失败不外抛（2026-11-10 验收追加）；Content = 立即同步 = `sync --auto` / Doctor /
+  对账 7 天 / 暂停·恢复）→ 设备身份脚注（主机名 #machineId 前 8 · © 2026 Token Usage；
+  两段各自 `whitespace-nowrap`，只在 `·` 处换行；CLI 版本与实例 host 不在此重复——
+  前者在采集操作卡 Chip，后者在设置「网页」组，2026-11-10 验收修正）。页头右侧
   顺序：暂停 chip（有则）→ GitHub 仓库图标钮（`lib/links.ts` 的 `REPO_URL`，tooltip
   「GitHub 仓库」）→ 主题钮 → 设置钮。卡片一律走 `Card` 复合结构（Header / Title /
   Description + Content / Footer），2026-11-09 起 D2 手写的带边框 div 卡片收编为
@@ -1017,7 +1022,8 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   启动（开机自启）→ 网页（已配对时四枚 `fullWidth` secondary 按钮 2×2 排布：仪表盘 `/` /
   项目 `/projects` / 会话 `/sessions` / 成就 `/achievements`，由 `lib/links.ts` 拼
   `dashboardUrl` 后经 `open_in_browser` 打开；未配对整组隐藏；按钮撑满网格单元，避免
-  400 宽下四枚小按钮浮在大片空白里，2026-11-10 验收修正）→ 更新（当前版本行 +
+  400 宽下四枚小按钮浮在大片空白里，2026-11-10 验收修正；按钮前置图标取 web 侧栏同组
+  `Display` / `Folder` / `ListUl` / `Medal`，`size-4`，2026-11-10 验收追加）→ 更新（当前版本行 +
   「检查更新」`PendingButton`，D5：启动期静默检查只
   播报中性 toast，安装永远走手动确认——点击即同意 下载→安装→自动重启，检测/下载期
   Spinner，失败 danger toast）。开关一律 HeroUI `Switch` 复合结构（`Switch.Content / Control / Thumb` +

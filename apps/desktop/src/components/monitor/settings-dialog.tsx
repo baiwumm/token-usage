@@ -5,6 +5,7 @@
 
 import type { UpdaterState } from "@/hooks/use-updater";
 
+import { Display, Folder, ListUl, Medal } from "@gravity-ui/icons";
 import {
   Button,
   Description,
@@ -31,11 +32,17 @@ import { formatBytes } from "@/lib/format-tokens";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
-const WEB_LINKS: Array<{ page: WebPage; label: string }> = [
-  { page: "dashboard", label: "仪表盘" },
-  { page: "projects", label: "项目" },
-  { page: "sessions", label: "会话" },
-  { page: "achievements", label: "成就" },
+// Icons mirror the web app shell's navigation (Display / Folder / ListUl /
+// Medal) so a page keeps the same mark in both surfaces.
+const WEB_LINKS: Array<{
+  page: WebPage;
+  label: string;
+  icon: typeof Display;
+}> = [
+  { page: "dashboard", label: "仪表盘", icon: Display },
+  { page: "projects", label: "项目", icon: Folder },
+  { page: "sessions", label: "会话", icon: ListUl },
+  { page: "achievements", label: "成就", icon: Medal },
 ];
 
 /**
@@ -326,17 +333,25 @@ export function SettingsDialog({
                     网页
                   </Typography>
                   <div className="grid grid-cols-2 gap-2">
-                    {webLinks.map((link) => (
-                      <Button
-                        key={link.page}
-                        fullWidth
-                        size="sm"
-                        variant="secondary"
-                        onPress={() => onOpenUrl(link.url)}
-                      >
-                        {link.label}
-                      </Button>
-                    ))}
+                    {webLinks.map((link) => {
+                      const Icon = link.icon;
+
+                      return (
+                        <Button
+                          key={link.page}
+                          fullWidth
+                          size="sm"
+                          variant="secondary"
+                          onPress={() => onOpenUrl(link.url)}
+                        >
+                          <Icon
+                            aria-hidden="true"
+                            className="size-4 shrink-0"
+                          />
+                          {link.label}
+                        </Button>
+                      );
+                    })}
                   </div>
                   <Description className="text-xs">
                     在浏览器打开已配对实例的页面

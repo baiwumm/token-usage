@@ -4,27 +4,19 @@ import { Fragment } from "react";
 interface DeviceRowProps {
   hostname: string | null;
   machineId: string | null;
-  cliVersion: string | null;
-  dashboardUrl: string | null;
 }
 
-/** Quiet footer: device identity + CLI version + paired instance. */
-export function DeviceRow({
-  hostname,
-  machineId,
-  cliVersion,
-  dashboardUrl,
-}: DeviceRowProps) {
+/**
+ * Quiet footer: device identity + copyright. The CLI version lives on the
+ * actions card chip and the paired instance on the web entries, so repeating
+ * either here only added noise (operator review 2026-11-10).
+ */
+export function DeviceRow({ hostname, machineId }: DeviceRowProps) {
   const identity =
     machineId && hostname
       ? `${hostname} #${machineId.slice(0, 8)}`
       : (hostname ?? "未知设备");
-  const instance = dashboardUrl ? safeHost(dashboardUrl) : "未配对";
-  const parts = [
-    identity,
-    `tokenusage-cli ${cliVersion ?? "未安装"}`,
-    instance,
-  ];
+  const parts = [identity, "© 2026 Token Usage"];
 
   // Each segment stays whole (a host like token-usage.baiwumm.com would
   // otherwise break at its hyphen in a 400 px window); the separators sit
@@ -39,12 +31,4 @@ export function DeviceRow({
       ))}
     </Typography>
   );
-}
-
-function safeHost(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
 }

@@ -507,7 +507,10 @@ D6 → D7 → D8 逐期由操作者验收后进入下一期。
 - 单列 400×620（min 340×480），所有卡片沿用 `Card` 复合结构、既有 tokens 与三态规范。
 - 数据只读：继续走 `read_tracker_file`（canonical + 8 MiB 上限）；新增 `read_tracker_tail`
   只读尾部、同样目录守卫，不写任何文件，CLI 仍是唯一写入方。
-- 零网络：除用户点击深链 / 仓库链接外不发请求；不请求 `/api/functions/*`、不直连 Supabase。
+- 零网络（默认）：除用户点击深链 / 仓库链接外不发请求；不请求 `/api/functions/*`、不直连 Supabase。
+  2026-11-10 操作者追加的例外：点击采集操作卡的 CLI 版本 Chip 时请求一次 npm registry 最新版
+  （`use-cli-latest`，8 s 超时、结果只存组件态、失败降级为「检查失败」）——仍不发请求给
+  自托管实例，页面加载也不自动探。
 - 零新运行时依赖：图表用手写 CSS / SVG；窗口尺寸记忆用 localStorage。
 - 成本与计价不进桌面（边界 4 不变，即便 `project.queue.jsonl` 自带 `total_cost_usd`）；
   账号成就只做深链。
@@ -553,6 +556,13 @@ basename（`token-usage`），`confirmed` 映射的键是 CLI 的仓库身份（
 pending、退出后重读文件；⑥ 设置「网页」四钮太散 → `fullWidth`；⑦ CLI 版本从说明行改为
 页头右侧 `Chip`（与标题垂直居中）；⑧ 页头主题钮旁加 GitHub 仓库图标钮（`lib/links.ts`
 的 `REPO_URL`，配对向导页头同源）。
+
+**第二轮验收反馈（2026-11-10，操作者，4 条）**：① 三张构成卡不再重复周期文案（周期只由
+`PeriodFilter` 表达）；② 设置「网页」组四钮补图标，取 web 侧栏同一组（Display / Folder /
+ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最新时旁边显示「最新」Chip
+（网络例外见 §12.1）；④ 底部脚注去掉 CLI 版本与实例 host，只留「主机名 #machineId 前 8 ·
+© 2026 Token Usage」。⑤ CLI 自报版本带 `v` 前缀时卡内拼成「vv0.5.4」→ 展示统一经
+`lib/version.ts` 的 `bareVersion` 去前缀后再加一个 `v`。
 
 ### 12.4 D7（desktop v0.3.0，约 1.5 天）：使用节奏
 

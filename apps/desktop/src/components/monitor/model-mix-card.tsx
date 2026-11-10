@@ -8,7 +8,6 @@ import { formatTokens } from "@/lib/format-tokens";
 
 interface ModelMixCardProps {
   models: ModelUsage[];
-  periodLabel: string;
 }
 
 const MAX_ROWS = 5;
@@ -18,9 +17,10 @@ const MAX_ROWS = 5;
  * tokens/share + ranked bar), but model names are raw collector strings, so a
  * long one truncates with a native title instead of wrapping the bar.
  * Shares are of the window total, so the top five do not have to add up to
- * 100% — the remainder belongs to models outside the list.
+ * 100% — the remainder belongs to models outside the list. The period itself
+ * stays on the `PeriodFilter` above the cards (operator review 2026-11-10).
  */
-export function ModelMixCard({ models, periodLabel }: ModelMixCardProps) {
+export function ModelMixCard({ models }: ModelMixCardProps) {
   const { top, restCount } = useMemo(() => {
     const ranked = models.filter((model) => model.tokens > 0);
 
@@ -34,7 +34,6 @@ export function ModelMixCard({ models, periodLabel }: ModelMixCardProps) {
     <Card className="border-border">
       <Card.Header>
         <Card.Title>主要模型</Card.Title>
-        <Card.Description>{periodLabel}</Card.Description>
       </Card.Header>
       <Card.Content>
         {top.length === 0 ? (

@@ -29,7 +29,6 @@ import { useTheme } from "@/hooks/use-theme";
 import { useTrayAvailable } from "@/hooks/use-tray";
 import { useUpdater } from "@/hooks/use-updater";
 import { webUrl, README_URL, REPO_URL } from "@/lib/links";
-import { periodLabel } from "@/lib/preferences";
 
 /**
  * Window orchestration: loading / error gates, the pairing gate (an unpaired
@@ -108,7 +107,6 @@ export function MonitorBody() {
   const snapshot = phase.snapshot;
   const period = prefs.period;
   const activeWindow = period === "today" ? snapshot.today : snapshot.week;
-  const activeLabel = periodLabel(period);
   // The CLI config falls back to the public instance; only a paired machine
   // gets deep links (an unpaired one must not point at someone else's host).
   const pairedUrl =
@@ -186,17 +184,10 @@ export function MonitorBody() {
                 onChange={(next) => update({ period: next })}
               />
             </div>
-            <SourceMixCard
-              periodLabel={activeLabel}
-              sources={activeWindow.sources}
-            />
-            <ModelMixCard
-              models={activeWindow.models}
-              periodLabel={activeLabel}
-            />
+            <SourceMixCard sources={activeWindow.sources} />
+            <ModelMixCard models={activeWindow.models} />
             <ProjectReposCard
               attributedTokens={activeWindow.attributedTokens}
-              periodLabel={activeLabel}
               projects={activeWindow.projects}
               projectsUrl={projectsUrl}
               totalTokens={activeWindow.totalTokens}
@@ -217,12 +208,7 @@ export function MonitorBody() {
           snapshot={snapshot}
           onRun={(command, args) => void runCli(command, args)}
         />
-        <DeviceRow
-          cliVersion={cli.available ? cli.version : null}
-          dashboardUrl={pairedUrl}
-          hostname={hostname}
-          machineId={machineId}
-        />
+        <DeviceRow hostname={hostname} machineId={machineId} />
       </main>
       {settingsDialog}
     </>

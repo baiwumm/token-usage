@@ -2,9 +2,11 @@ import type { CliRunOutcome } from "@/hooks/use-monitor";
 import type { MonitorSnapshot } from "@/lib/monitor";
 
 import { ArrowRotateRight, CirclePause, CirclePlay } from "@gravity-ui/icons";
-import { Alert, Card, Chip, Typography } from "@heroui/react";
+import { Alert, Button, Card, Chip, Tooltip, Typography } from "@heroui/react";
 
 import { PendingButton } from "@/components/pending-button";
+import { useCliLatest } from "@/hooks/use-cli-latest";
+import { bareVersion } from "@/lib/version";
 
 interface CliActionsCardProps {
   snapshot: MonitorSnapshot;
@@ -26,6 +28,11 @@ function outcomeFailed(outcome: CliRunOutcome): boolean {
  * The clicked button spins (PendingButton), its siblings disable while a run
  * is in flight, and a failed run surfaces as a danger Alert instead of a
  * bare exit-code line.
+ *
+ * The version chip doubles as the update probe: the registry request fires
+ * only on click (§12.1 keeps the desktop offline by default), and its answer
+ * appears as a chip beside the version —「最新」when the installed CLI matches
+ * npm, the published version when it is behind.
  */
 export function CliActionsCard({
   snapshot,
@@ -34,21 +41,63 @@ export function CliActionsCard({
   onRun,
 }: CliActionsCardProps) {
   const busy = runningCommand !== null;
+  // `tokenusage --version` may already carry the `v` (vv0.5.4 on screen).
+  const installed =
+    snapshot.cli.available && snapshot.cli.version !== null
+      ? bareVersion(snapshot.cli.version)
+      : null;
+  const { state, check } = useCliLatest(installed);
 
   return (
     <Card className="border-border">
       <Card.Header className="flex-row! items-center justify-between gap-2">
         <Card.Title>采集操作</Card.Title>
-        <Chip
-          className="shrink-0"
-          color={snapshot.cli.available ? "default" : "danger"}
-          size="sm"
-          variant="soft"
-        >
-          {snapshot.cli.available
-            ? `tokenusage-cli${snapshot.cli.version ? ` v${snapshot.cli.version}` : ""}`
-            : "未检测到 CLI"}
-        </Chip>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Tooltip delay={0}>
+            <Button
+              aria-label="检查 CLI 是否有新版本"
+              className="h-auto! min-h-0! w-auto gap-0 rounded-full p-0!"
+              isDisabled={installed === null}
+              size="sm"
+              variant="ghost"
+              onPress={() => void check()}
+            >
+              <Chip
+                color={snapshot.cli.available ? "default" : "danger"}
+                size="sm"
+                variant="soft"
+              >
+                {snapshot.cli.available
+                  ? `tokenusage-cli${installed ? ` v${installed}` : ""}`
+                  : "未检测到 CLI"}
+              </Chip>
+            </Button>
+            <Tooltip.Content showArrow placement="bottom">
+              <Tooltip.Arrow />
+              <Typography type="body-xs">点击检查 CLI 新版本</Typography>
+            </Tooltip.Content>
+          </Tooltip>
+          {state.kind === "checking" ? (
+            <Chip size="sm" variant="soft">
+              检查中
+            </Chip>
+          ) : null}
+          {state.kind === "latest" ? (
+            <Chip color="success" size="sm" variant="soft">
+              最新
+            </Chip>
+          ) : null}
+          {state.kind === "outdated" ? (
+            <Chip color="warning" size="sm" variant="soft">
+              可更新 v{state.version}
+            </Chip>
+          ) : null}
+          {state.kind === "error" ? (
+            <Chip size="sm" variant="soft">
+              检查失败
+            </Chip>
+          ) : null}
+        </div>
       </Card.Header>
       <Card.Content className="gap-3">
         <div className="flex flex-wrap gap-2">
