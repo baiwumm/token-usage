@@ -11,7 +11,7 @@ import { localDayKey } from "@/lib/queue-lines";
 const NOW = Date.parse("2026-11-10T12:00:00.000Z");
 
 describe("heatmap helpers", () => {
-  it("lays out 12 Monday-aligned weeks ending on Sunday", () => {
+  it("lays out 53 Monday-aligned weeks ending on Sunday", () => {
     const { days } = buildHeatmap("", NOW);
 
     expect(days).toHaveLength(HEATMAP_DAYS);
@@ -20,7 +20,7 @@ describe("heatmap helpers", () => {
     expect(new Date(`${days[days.length - 1]?.day}T00:00:00`).getDay()).toBe(0);
   });
 
-  it("starts 11 weeks before this week's Monday", () => {
+  it("starts 52 weeks before this week's Monday", () => {
     const today = new Date(NOW);
     const mondayThisWeek = new Date(NOW);
 
@@ -31,7 +31,24 @@ describe("heatmap helpers", () => {
       (mondayThisWeek.getTime() - heatmapStartMs(NOW)) / (24 * 3600e3),
     );
 
-    expect(daysApart).toBe(11 * 7);
+    expect(daysApart).toBe(52 * 7);
+  });
+
+  it("places one month marker per month on its week column", () => {
+    const { days, months } = buildHeatmap("", NOW);
+
+    expect(months[0]?.index).toBe(0);
+    expect(months.length).toBeGreaterThanOrEqual(12);
+    expect(months.length).toBeLessThanOrEqual(13);
+    for (const [position, month] of months.entries()) {
+      expect(month.label).toMatch(/^\d{1,2}月$/);
+      expect(month.index).toBeGreaterThanOrEqual(0);
+      expect(month.index).toBeLessThan(HEATMAP_DAYS / 7);
+      if (position > 0) {
+        expect(month.index).toBeGreaterThan(months[position - 1]!.index);
+      }
+    }
+    expect(days.length / 7).toBe(HEATMAP_DAYS / 7);
   });
 
   it("folds the queue into local days and leaves future cells empty", () => {

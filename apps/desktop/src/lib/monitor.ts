@@ -8,7 +8,11 @@ import {
   type ProjectRepoUsage,
   type RepoUrls,
 } from "@/lib/project-repos";
-import { buildHeatmap, type HeatmapDay } from "@/lib/heatmap-helpers";
+import {
+  buildHeatmap,
+  type HeatmapDay,
+  type HeatmapMonth,
+} from "@/lib/heatmap-helpers";
 import {
   SEVEN_DAY_MS,
   aggregateQueue,
@@ -66,8 +70,13 @@ export interface MonitorSnapshot {
   dashboardUrl: string | null;
   /** Confirmed `project_key → repository URL` map (may be empty). */
   repoUrls: RepoUrls;
-  /** 12-week local-day heatmap (Monday-aligned, future days empty). */
-  heatmap: { days: HeatmapDay[]; totalTokens: number; maxTokens: number };
+  /** Full-year local-day heatmap (Monday-aligned, month markers). */
+  heatmap: {
+    days: HeatmapDay[];
+    months: HeatmapMonth[];
+    totalTokens: number;
+    maxTokens: number;
+  };
   /** Newest sidecar sessions, metadata only (no title / prompt / path). */
   recentSessions: RecentSession[];
   /** When this snapshot was composed (ms) — the "更新于" stamp. */

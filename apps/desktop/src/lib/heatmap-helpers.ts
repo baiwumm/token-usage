@@ -1,11 +1,11 @@
-// 12-week activity heatmap (desktop-plan §12.4): local-day totals from the
-// same last-wins queue baseline the summary cards use, laid out as
-// Monday-aligned weeks. The last column always ends on Sunday, so days after
-// today exist as empty cells instead of shifting the weekday rows.
+// Full-year activity heatmap (desktop-plan §12.4; operator review 2026-11-10
+// asked for 近一年 and the web dashboard's presentation): local-day totals from
+// the same last-wins queue baseline the summary cards use, laid out as
+// Monday-aligned weeks with month markers and a weekday ruler.
 
 import { aggregateQueueDays, localDayKey } from "@/lib/queue-lines";
 
-export const HEATMAP_WEEKS = 12;
+export const HEATMAP_WEEKS = 53;
 export const HEATMAP_DAYS = HEATMAP_WEEKS * 7;
 
 export interface HeatmapDay {
@@ -15,13 +15,20 @@ export interface HeatmapDay {
   conversations: number;
 }
 
+/** Month label anchored to the week column that contains the 1st. */
+export interface HeatmapMonth {
+  index: number;
+  label: string;
+}
+
 export interface HeatmapData {
   days: HeatmapDay[];
+  months: HeatmapMonth[];
   totalTokens: number;
   maxTokens: number;
 }
 
-/** Local Monday 00:00 of the first of the 12 displayed weeks. */
+/** Local Monday 00:00 of the first of the 53 displayed weeks. */
 export function heatmapStartMs(nowMs: number): number {
   const today = new Date(nowMs);
 
@@ -33,6 +40,30 @@ export function heatmapStartMs(nowMs: number): number {
   start.setDate(today.getDate() - sinceMonday - (HEATMAP_WEEKS - 1) * 7);
 
   return start.getTime();
+}
+
+/**
+ * One marker per month present in the range, placed on the week column of its
+ * 1st. The first displayed day also gets a marker so a range that starts
+ * mid-month is not unlabeled (the web heatmap does the same).
+ */
+export function buildMonthMarkers(days: HeatmapDay[]): HeatmapMonth[] {
+  const markers: HeatmapMonth[] = [];
+  let previousColumn = -1;
+
+  days.forEach((entry, index) => {
+    if (index !== 0 && !entry.day.endsWith("-01")) return;
+    const column = Math.floor(index / 7);
+
+    if (column === previousColumn) return;
+    previousColumn = column;
+    markers.push({
+      index: column,
+      label: `${Number(entry.day.slice(5, 7))}月`,
+    });
+  });
+
+  return markers;
 }
 
 export function buildHeatmap(text: string, nowMs: number): HeatmapData {
@@ -57,6 +88,7 @@ export function buildHeatmap(text: string, nowMs: number): HeatmapData {
 
   return {
     days,
+    months: buildMonthMarkers(days),
     totalTokens: days.reduce((sum, day) => sum + day.tokens, 0),
     maxTokens: days.reduce((max, day) => Math.max(max, day.tokens), 0),
   };

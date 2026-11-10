@@ -183,6 +183,7 @@ export function MonitorBody() {
               <HeatmapSection
                 days={snapshot.heatmap.days}
                 maxTokens={snapshot.heatmap.maxTokens}
+                months={snapshot.heatmap.months}
                 totalTokens={snapshot.heatmap.totalTokens}
               />
             ) : null}
