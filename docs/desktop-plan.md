@@ -112,11 +112,11 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
 
 | 里程碑 | 内容 | 验收线 |
 |--------|------|--------|
-| **D1 立项与脚手架** | workspace 加 `apps/desktop`（Tauri 2 + Vite + React + HeroUI + Tailwind）；托盘（打开主窗口 / 退出）+ 主窗口骨架 + close-to-tray；`sync.log` 解析模块与测试（D2 数据面第一块）；图标生成脚本与资产；根 `pnpm verify` 并入 desktop lint/tsc/test/build；本文档 + AGENTS / rewrite-plan / requirements 回写 | 根 `pnpm verify` 全绿 + CI 绿；装好 Rust 后 `pnpm dev:desktop` 托盘可见、窗口关闭进托盘、托盘退出（真机项，待操作者） |
+| **D1 立项与脚手架** | workspace 加 `apps/desktop`（Tauri 2 + Vite + React + HeroUI + Tailwind）；托盘（打开主窗口 / 退出）+ 主窗口骨架 + close-to-tray；`sync.log` 解析模块与测试（D2 数据面第一块）；图标生成脚本与资产；根 `pnpm verify` 并入 desktop lint/tsc/test/build；本文档 + AGENTS / rewrite-plan / requirements 回写 | 根 `pnpm verify` 全绿 + CI 绿；`pnpm dev:desktop` 托盘可见、窗口关闭进托盘、托盘退出（**已真机验收 2026-11-09**） |
 | **D2 本地监控盘** | 托盘菜单补全（今日 tokens、采集状态、Sync now、暂停/恢复、打开 web 仪表盘）；主窗口三段（顶部 strip：今日/7 天 tokens + 最近 sync 结果 + 队列体积行数；来源构成 mini 条 + 设备身份行；操作条调 CLI 展示摘要）；三态齐全；ui-spec 回写「桌面端」节 | 本地聚合与 queue.jsonl last-wins 口径一致；无 CLI / 无数据 / 错误三态齐全；离线可用；窄窗不横向滚动 |
-| **D3 配对与引导** | 首启向导：检测 CLI → 引导安装 → `device-login` 开浏览器 `/device?user_code=` → 等待→已批准→首同步统计；复用 CLI 现有配对流，desktop 不碰令牌 | 新机器从装 desktop 到配对成功全程有引导。**已收尾**（2026-11-09 操作者验收：向导默认流程通过）；托盘菜单点击本机无法验（§10 六追记），随 D5 在 UAC 正常环境补验 |
-| **D4 通知与常驻** | 每日汇总通知、sync 连败/队列积压提醒（阈值可配）、自启动、单实例、ThemeToggle 三态循环与持久化 | 通知免打扰时段可配；reduced-motion 遵守。**已验收关闭**（2026-11-10 操作者验收，见 §10；toast 可见性与自启动成效随 D5 发版形态补验） |
-| **D5 发版** | Windows NSIS 安装包 + tauri updater（Ed25519 签名，密钥 Agent 代生成入 GitHub secret，见 §1 #7）；Rust 编译门禁进 CI（Windows runner）；发版流程见 §11。**已验收关闭**（2026-11-10 发布 `desktop-v0.1.0` 并操作者本机安装验收，M-desktop 收官，见 §10） | 从 Release 下载安装 → 应用启动 → D2–D4 功能真机全过；托盘/toast 本机（UAC 关）验不了，按 §11 兜底尝试并如实记录，仍不可验的挂遗留（操作者 2026-11-10 拍板「先发布、本机安装验收」） |
+| **D3 配对与引导** | 首启向导：检测 CLI → 引导安装 → `device-login` 开浏览器 `/device?user_code=` → 等待→已批准→首同步统计；复用 CLI 现有配对流，desktop 不碰令牌 | 新机器从装 desktop 到配对成功全程有引导。**已收尾**（2026-11-09 操作者验收：向导默认流程通过）；托盘菜单点击已随 D5 补验（2026-11-10，按 §11 对安装版 exe 打 High 标签后全项可用） |
+| **D4 通知与常驻** | 每日汇总通知、sync 连败/队列积压提醒（阈值可配）、自启动、单实例、ThemeToggle 三态循环与持久化 | 通知免打扰时段可配；reduced-motion 遵守。**已验收关闭**（2026-11-10 操作者验收，见 §10；自启随 D5 首次真正写入，重启周期待观察；toast 仍需系统通知被动观测，见 D5 遗留观察①） |
+| **D5 发版** | Windows NSIS 安装包 + tauri updater（Ed25519 签名，密钥 Agent 代生成入 GitHub secret，见 §1 #7）；Rust 编译门禁进 CI（Windows runner）；发版流程见 §11。**已验收关闭**（2026-11-10 发布 `desktop-v0.1.0` 并操作者本机安装验收，M-desktop 收官，见 §10） | 从 Release 下载安装 → 应用启动 → D2–D4 功能真机全过；托盘按 §11 兜底（High 标签）后本机补验成功；toast 仍待系统通知被动观测（操作者 2026-11-10 拍板「先发布、本机安装验收」） |
 
 工期参考：D1 约 1 天，D2 约 3–5 天，D3 约 2–3 天，D4 约 2 天，D5 约 2 天；全程 Agent
 开发，每个里程碑操作者验收后再进下一个。
@@ -154,7 +154,7 @@ requirements 边界表。
   （须配 `pnpm dev` 使用，`pnpm dev:desktop` 即完整开发流），release 构建内嵌 dist
   （D5 发版形态）；Win11 新托盘图标默认收进隐藏图标飞出层，操作者可在任务栏设置里
   手动常驻。
-- **D3（2026-11-09 交付，待操作者真机验收）**：首启配对向导落地。门控见 §4「配对状态」；
+- **D3（2026-11-09 交付并验收，见本节末「D3 收尾」）**：首启配对向导落地。门控见 §4「配对状态」；
   未配对时向导取代监控盘，三步卡——① 安装 CLI（复制安装命令 / 重新检测 / 安装指南）
   ② 配对设备：Rust 托管 `device-login --json` 子进程（`device_login_start/_poll/_cancel`），
   authorize 回包在 Rust 读线程里白名单出 user_code + 验证链接，**`device_code` 不出 Rust**
@@ -254,8 +254,8 @@ requirements 边界表。
   清理：删除化石包与 shim；bash 直起 / node 子进程 / pnpm 三种上下文复验均解析到新版。
   判断法：桌面端页脚或 `status` 的版本与 `tokenusage --version`（用户终端）不一致时，先查
   `pnpm --filter @token-usage/desktop exec where tokenusage`。详见 `docs/cli-release.md` §十二。
-  **遗留不变**：向导批准环节与托盘菜单点击仍待操作者；0xC0000409 的结论已出（见 ⑨，
-  非 CLI 问题、不在 CLI 侧兜底）。
+  **遗留项去向**：向导批准环节已随 D3 收尾（2026-11-09）验证通过；托盘菜单点击已随 D5
+  补验（2026-11-10，见 §11）。0xC0000409 的结论已出（见 ⑨，非 CLI 问题、不在 CLI 侧兜底）。
 - **D3 三追记（2026-11-09 傍晚，操作者复报 skip 标记 / pause 标志写入 EPERM）**：
   ① 现场证据：tracker 目录 ACL 正常（Administrator 继承 F），bash 与终端直跑
   `cmd /C tokenusage sync --auto` 均 exit 0；仅桌面端起的 CLI 子进程**创建新文件**被拒
@@ -336,9 +336,10 @@ requirements 边界表。
   任一 `true` 即判定可用，躲开「注册晚于查询」的误报）+ `components/monitor/tray-note.tsx`
   （`warning` Alert「托盘图标未注册」：任务栏权限更高，关闭窗口只最小化）。CDP 断言：本机
   监控盘顶部出现该说明块，与降级行为一致。
-  ③ **验收口径**：托盘菜单点击只能在「托盘可用」的环境验（UAC 正常的机器），本机以窗口上的
-  「立即同步 / 暂停·恢复」验同一批 `spawn_cli_detached` 路径（五追记已测）；D5 的「托盘出现」
-  验收项同理需要 UAC 正常的环境。
+  ③ **验收口径**：托盘菜单点击只能在「托盘可用」的环境验（原判：UAC 正常的机器），本机以
+  窗口上的「立即同步 / 暂停·恢复」验同一批 `spawn_cli_detached` 路径（五追记已测）。**D5 实测
+  修正**：本机无需 UAC 正常——对安装版 exe 打 High 标签后托盘注册成功，该验收项已在本机补验
+  （见 §11）。
   ④ **在已配对的机器上重走向导**（本次验收路径）：关掉桌面端 → 把
   `%USERPROFILE%\.tokenusage\tracker\cloud-device-token.json` 改名备份（`config.json` 里若有
   `deviceToken` 一并清掉）→ 重开桌面端，`status --json` 的 `device_token_set` 转假 → 向导出现
@@ -348,14 +349,17 @@ requirements 边界表。
   - 验收结论：向导默认流程通过（首次启动 → 检测 CLI → 配对码 + 自动开批准页 → 已批准 →
     首同步统计 → 进入监控台）；操作者原话「向导默认没问题」。向导不另加交互改动。
   - 遗留项去向：托盘菜单点击（立即同步 / 暂停·恢复 / 打开仪表盘 / 打开主窗口 / 退出）在本机
-    因 UAC 关闭而无图标可点（六追记），**随 D5 在 UAC 正常环境补验**；同一批 `spawn_cli_detached`
-    与窗口控制路径已由窗口按钮、托盘 quit / show 事件分发（D2）覆盖，不在 D3 挂账。
+    因 UAC 关闭而无图标可点（六追记），**已随 D5 补验**（2026-11-10，安装版 exe + §11 High
+    标签，五类菜单项全项可用）；同一批 `spawn_cli_detached` 与窗口控制路径已由窗口按钮、
+    托盘 quit / show 事件分发（D2）覆盖，不在 D3 挂账。
   - 环境相关事项不入库、继续有效：本机 `~/.tokenusage` 与 `src-tauri/target` 的 Low 完整性标签、
-    桌面端必须跑在 Low（四追记）、托盘不可用降级与说明块（六追记）。
+    dev 构建须跑在 Low（四追记）、托盘不可用降级与说明块（六追记）。**D5 修正**：以上只约束
+    `pnpm dev:desktop` 这类 Low 标签构建目录；安装版走 `%APPDATA%` Medium + 打 High 标签，
+    WebView2 与托盘均正常（见 §11）。
   - D3 范围外的已知问题：计划任务上下文里的 0xC0000409（再追记⑧，系统层、CLI 不兜底）。
   - 下一步：**D4 通知与常驻**（每日汇总通知、sync 连败/队列积压提醒 ±阈值、自启动、单实例、
     ThemeToggle 三态持久化）。
-- **D4（2026-11-09 交付，待操作者真机验收）**：通知与常驻四项 + 主题持久化全量落地。
+- **D4（2026-11-09 交付，2026-11-10 操作者验收）**：通知与常驻四项 + 主题持久化全量落地。
   ① **依赖与接线**（操作者批准"三个官方插件全上"，预算回写 §6 与 rewrite-plan §4）：
   `tauri-plugin-single-instance` 作为**第一个**注册的插件，第二次启动把 argv 交给已跑实例并
   退出（实测：再跑一次 exe → exit 0，进程数仍为 1）；`notification` + `autostart` 插件；
@@ -399,7 +403,7 @@ requirements 边界表。
   - 遗留三项随 D5 验收（本机结构性验不了，见 D4 交付记录 ④⑦）：toast 真实弹出与免打扰
     真实抑制（等 NSIS 安装包的 AUMID）、自启动成效（等 UAC 正常机器）。
   - 下一步：**D5 发版**（Windows NSIS 安装包 + tauri updater + Rust 编译门禁进 CI）。
-- **D5（2026-11-10 交付，发布待操作者放行）**：updater/发版链路全量落地。
+- **D5（2026-11-10 交付并发布）**：updater/发版链路全量落地。
   ① **密钥**：Ed25519 密钥对由 Agent 代生成（§1 #7 改判），secrets
   `TAURI_SIGNING_PRIVATE_KEY[_PASSWORD]` 已推 GitHub（值不落仓库与文档），公钥进
   `tauri.conf.json`。② **updater 接线**：`plugins.updater`（endpoint = Releases 的

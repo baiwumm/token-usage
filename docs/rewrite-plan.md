@@ -267,7 +267,7 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），
 其值从 publishable key 取——公开客户端值的语义不变。
 
-## 10. 当前状态与剩余事项（2026-11-06 复核；2026-11-08 增补 M-landing；2026-11-09 增补 M-desktop D3 与 CLI 0.5.4）
+## 10. 当前状态与剩余事项（2026-11-06 复核；2026-11-08 增补 M-landing；2026-11-09 增补 M-desktop D3 与 CLI 0.5.4；2026-11-10 收官 M-desktop）
 
 **里程碑**：M0–M7 全部交付；**M-landing（2026-11-08）**：官方落地页 `apps/landing`
 开发完成并推送（纯静态单页八段、暗色单主题、VERMILLION accent、真实数据快照
@@ -277,14 +277,12 @@ PNG 真导出、中文单语、零新依赖名、根 `pnpm verify` 已含 landin
 类名规范化（6b8deca / 361970a）。**操作者已验收**（2026-11-08，"落地页做完"），设计
 规范收编 `docs/ui-spec.md`「落地页」节；**EdgeOne Pages 实际接入由操作者执行**——
 实际托管为腾讯云 EdgeOne Pages（Makers，运营细节不对外提及，对外口径
-仍为 Vercel），接线见 `apps/landing/README.md`。**M-desktop（2026-11-08 立项）**：桌面端
-托盘伴生工具进入开发——D1 脚手架、D2 本地监控盘均已真机验收（2026-11-09），**D3 配对与
-引导已收尾**（2026-11-09 操作者验收：向导默认流程通过；同批交付采集操作卡、中文 Toast、
-`logo-dark` 图标与托盘不可用降级。托盘菜单点击在本机因 UAC 关闭无法验，随 D5 在 UAC 正常
-环境补验）；**D4 通知与常驻已交付待验收**（2026-11-09：每日汇总 / 连败 / 队列积压三类提醒
-+ 免打扰时段、开机自启、单实例、主题三态持久化与设置面板；toast 可见性与自启成效需在安装
-形态 / UAC 正常环境验，原因与验收路径见 `docs/desktop-plan.md` §10）（`apps/desktop`，拍板、
-技术栈与验收记录见 `docs/desktop-plan.md` §1 / §10）。生产实例
+仍为 Vercel），接线见 `apps/landing/README.md`。**M-desktop 已收官（2026-11-10）**：D1–D5 全部
+操作者验收，`desktop-v0.1.0` 已 publish 并在本机完成安装验收（安装版零 EPERM、开机自启首次
+真正写入、托盘在 §11 的 High 完整性标签兜底下注册成功且右键菜单全项可用、对账 258 桶逐键
+全对齐）。遗留观察（不阻塞）：系统通知 toast 待被动观测、自启的「重启后生效」待整周期验证；
+⚠ High 标签随升级/重装丢失需重打。过程、验收线与记录见 `docs/desktop-plan.md` §8 / §10 / §11
+（`apps/desktop`；拍板与技术栈见同文件 §1）。生产实例
 `token-usage.baiwumm.com` 自 2026-10-26 起承载
 两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.4`（2026-11-09 发布，tag `cli-v0.5.4`——tracker 写入被拒时
 的 tmp 重试与 `hint`、pause 标志改原子写、skip 标记写入失败不再致命；零契约变更）。
