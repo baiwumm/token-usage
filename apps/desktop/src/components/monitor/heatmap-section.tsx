@@ -60,15 +60,10 @@ function canonicalSourceTotals(
 /**
  * Width-driven cell sizing for the grid (web use-responsive-weeks.ts 同款):
  * at most `maxWeeks` columns, shrinking to the 15 px floor and then dropping
- * the oldest week columns when the card is narrow.
- *
- * `fitWeeks` is the full-year column count the cell size is measured against:
- * period-scoped windows render fewer columns, and fitting one or two weeks to
- * the card width would blow a cell up to hundreds of px (2026-11-11: the
- * 今日 grid turned into a mostly blank card). Cells therefore keep the year's
- * size; only the column count follows the period.
+ * the oldest week columns when the card is narrow. The grid is always the
+ * full year, so a period change never resizes the cells.
  */
-function useResponsiveWeeks(maxWeeks: number, fitWeeks: number) {
+function useResponsiveWeeks(maxWeeks: number) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [cellSize, setCellSize] = useState(MIN_CELL);
   const [visibleWeeks, setVisibleWeeks] = useState(maxWeeks);
@@ -86,12 +81,14 @@ function useResponsiveWeeks(maxWeeks: number, fitWeeks: number) {
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
-        const fit = fitHeatmapWidth(element.clientWidth, fitWeeks);
-        const weeks = Math.max(1, Math.min(maxWeeks, fit.weeks));
+        const { weeks, cellSize: nextCellSize } = fitHeatmapWidth(
+          element.clientWidth,
+          maxWeeks,
+        );
 
         setVisibleWeeks((previous) => (previous === weeks ? previous : weeks));
         setCellSize((previous) =>
-          previous === fit.cellSize ? previous : fit.cellSize,
+          previous === nextCellSize ? previous : nextCellSize,
         );
       });
     };
@@ -108,7 +105,7 @@ function useResponsiveWeeks(maxWeeks: number, fitWeeks: number) {
       if (frame) cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [fitWeeks, maxWeeks]);
+  }, [maxWeeks]);
 
   return { containerRef, cellSize, visibleWeeks };
 }
@@ -117,8 +114,8 @@ function useResponsiveWeeks(maxWeeks: number, fitWeeks: number) {
  * Year-wide activity heatmap, web 仪表盘活跃热力图同款移植（2026-11-11 D9
  * 修正：364 天锚定今天、未来日不渲染、alignWeeks 周一对齐首列补空；加入
  * web 的「全部平台」来源筛选，等级与合计按所选来源客户端重算）。2026-11-11
- * 验收第三轮：跟随页头周期——今日 / 近 7 天 / 近 30 天只保留对应日历日的格子，
- * 总计仍是整年；活跃日与合计按裁剪后的格子重算。共享 portal tooltip 显示当日
+ * 验收第三轮：跟随页头周期——网格仍固定整年 364 格，只把窗口外的日期清空
+ * （今日 / 近 7 天 / 近 30 天），活跃日与合计按剩余数据重算。共享 portal tooltip 显示当日
  * 来源明细。本机口径与 web 账号全设备口径数字不同，卡内以「仅本机数据」注明
  * （2026-11-11 操作者拍板）。
  */
@@ -138,7 +135,6 @@ export function HeatmapSection({
   const columns = scoped.weeks;
   const { containerRef, cellSize, visibleWeeks } = useResponsiveWeeks(
     columns.length || 1,
-    payload.weeks.length || 1,
   );
 
   const sourceTotals = useMemo(() => canonicalSourceTotals(columns), [columns]);

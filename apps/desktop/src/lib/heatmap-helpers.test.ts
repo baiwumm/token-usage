@@ -163,36 +163,49 @@ describe("heatmap helpers", () => {
     expect(narrow.weeks).toBeLessThan(HEATMAP_WEEKS + 1);
   });
 
-  it("follows the period filter: today keeps only today's cell", () => {
+  it("follows the period filter without changing the grid shape", () => {
     const hourStart = new Date(NOW - 60_000).toISOString();
     const data = buildHeatmap([row("codex", hourStart, 500)], NOW);
     const clipped = clipHeatmap(data, heatmapPeriodStartMs(NOW, "today"));
     const cells = clipped.weeks.flat().filter((cell) => cell !== null);
+    const lit = cells.filter((cell) => cell.totalTokens > 0);
 
-    expect(cells).toHaveLength(1);
-    expect(cells[0]?.day).toBe(localDayKey(NOW));
+    // Same 364 slots / week columns, only the window carries usage.
+    expect(clipped.weeks).toHaveLength(data.weeks.length);
+    expect(cells).toHaveLength(HEATMAP_DAYS);
+    expect(lit).toHaveLength(1);
+    expect(lit[0]?.day).toBe(localDayKey(NOW));
     expect(clipped.activeDays).toBe(1);
     expect(clipped.totalTokens).toBe(500);
-    expect(clipped.weeks).toHaveLength(1);
   });
 
-  it("clips 7d / 30d to their calendar days and keeps all unchanged", () => {
+  it("empties days before the 7d / 30d window and keeps 总计 unchanged", () => {
     const hourStart = new Date(NOW - 60_000).toISOString();
     const data = buildHeatmap([row("codex", hourStart, 500)], NOW);
     const week = clipHeatmap(data, heatmapPeriodStartMs(NOW, "7d"));
+    const from = localDayKey(heatmapPeriodStartMs(NOW, "7d"));
     const weekCells = week.weeks.flat().filter((cell) => cell !== null);
-    const month = clipHeatmap(data, heatmapPeriodStartMs(NOW, "30d"));
-    const monthCells = month.weeks.flat().filter((cell) => cell !== null);
 
-    expect(weekCells).toHaveLength(7);
-    expect(monthCells).toHaveLength(30);
+    expect(week.weeks).toHaveLength(data.weeks.length);
+    expect(weekCells).toHaveLength(HEATMAP_DAYS);
+    expect(weekCells.filter((cell) => cell.day >= from)).toHaveLength(7);
+    expect(
+      weekCells.filter((cell) => cell.day < from && cell.totalTokens > 0),
+    ).toHaveLength(0);
     expect(week.activeDays).toBe(1);
-    expect(month.totalTokens).toBe(500);
+    expect(week.totalTokens).toBe(500);
+
+    const month = clipHeatmap(data, heatmapPeriodStartMs(NOW, "30d"));
+    const monthFrom = localDayKey(heatmapPeriodStartMs(NOW, "30d"));
+
+    expect(month.weeks).toHaveLength(data.weeks.length);
+    expect(
+      month.weeks
+        .flat()
+        .filter((cell) => cell !== null && cell.day >= monthFrom),
+    ).toHaveLength(30);
     // 总计 has no start → the whole 364-day payload passes through.
     expect(clipHeatmap(data, heatmapPeriodStartMs(NOW, "all"))).toBe(data);
-    expect(data.weeks.flat().filter((cell) => cell !== null)).toHaveLength(
-      HEATMAP_DAYS,
-    );
   });
 
   it("alignWeeks pads around a mid-week start", () => {

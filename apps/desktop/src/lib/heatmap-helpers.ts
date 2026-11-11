@@ -96,13 +96,12 @@ export function heatmapPeriodStartMs(
   if (period === "today") return today;
 
   return today - (period === "7d" ? 6 : 29) * 86_400_000;
-}
-
-/**
- * Clip the year grid to a period start: days before `startMs` become null
- * slots, leading all-null columns are dropped, and totals / active days
- * recompute from what remains. `all` (start 0) is returned unchanged, so the
- * card keeps its full 52-week shape for 总计.
+} /**
+ * Scope the year grid to a period without changing its shape: the grid keeps
+ * all 364 day slots (and the same week columns), but days before `startMs`
+ * are emptied so only the selected window carries usage. Totals / active
+ * days recompute from the remaining cells. `all` (start 0) is returned
+ * unchanged.
  */
 export function clipHeatmap(
   payload: HeatmapPayload,
@@ -110,23 +109,21 @@ export function clipHeatmap(
 ): HeatmapPayload {
   if (startMs <= 0) return payload;
   const from = localDayKey(startMs);
-  const weeks = payload.weeks.map((column) =>
-    column.map((cell) => (cell && cell.day >= from ? cell : null)),
-  );
-  const firstKept = weeks.findIndex((column) =>
-    column.some((cell) => cell !== null),
-  );
-  const clipped = firstKept <= 0 ? weeks : weeks.slice(firstKept);
   let activeDays = 0;
   let totalTokens = 0;
+  const weeks = payload.weeks.map((column) =>
+    column.map((cell) => {
+      if (!cell) return null;
+      if (cell.day < from) return { ...cell, totalTokens: 0, sources: {} };
 
-  for (const cell of clipped.flat()) {
-    if (!cell) continue;
-    totalTokens += cell.totalTokens;
-    if (cell.totalTokens > 0) activeDays += 1;
-  }
+      totalTokens += cell.totalTokens;
+      if (cell.totalTokens > 0) activeDays += 1;
 
-  return { weeks: clipped, to: payload.to, activeDays, totalTokens };
+      return cell;
+    }),
+  );
+
+  return { weeks, to: payload.to, activeDays, totalTokens };
 }
 
 /** getUTCDay() of a `YYYY-MM-DD` key: 0 = Sunday … 6 = Saturday (web 同款). */

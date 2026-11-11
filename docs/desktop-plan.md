@@ -748,8 +748,9 @@ recharts 已随 D9 落地（§6）。**仍零契约变更**——成本列全部
    百分比作数字滚动，切周期时与卡值同步过渡。
 2. **热力图跟随周期**（`heatmap-helpers.ts` + `heatmap-section.tsx` + `monitor-body.tsx`）：
    新增纯函数 `heatmapPeriodStartMs`（今日 / 近 7 天 / 近 30 天按日历日，总计为 0）与
-   `clipHeatmap`（丢弃窗口前日格与前导空列，活跃日 / 合计重算）；卡片接收 `period`，标题后缀
-   显示 今日 / 近 7 天 / 近 30 天 / 近一年；总计仍为整年网格。新增 2 例单测。
+   `clipHeatmap`（**网格格数与列数不变**，窗口外日期置零、活跃日 / 合计重算；2026-11-11
+   验收第四轮按操作者口径修正：切周期只换数据、不换格子数）；卡片接收 `period`，标题后缀
+   显示 今日 / 近 7 天 / 近 30 天 / 近一年。新增 2 例单测。
 3. **项目 logo 仍不同步的根因**：`run_cli` 的 `CLI_COMMANDS` 白名单漏了 `project-profiles`
    （Rust 侧直接返回 `command not allowed`，前端 catch 后静默保留字母方块）；本机全局 CLI
    还是 npm 上的 v0.5.4（不含 §2.13 子命令）。修复：白名单补第 7 项（需重编译安装包）；

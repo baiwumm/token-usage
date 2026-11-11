@@ -826,14 +826,15 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 - **强调色 VERMILLION**：`--accent` 覆盖为 Broadsheet 朱红（`#c2402a` →
   `oklch(0.5543 0.17 32.08)`）；热力图 `--heatmap-1..4` 由 `--accent` 派生的机制自动跟随，
   主 CTA 用 `variant="primary"`（HeroUI 3 Button 无 color prop）。
-- **单页八段**：导航（logo + npm / GitHub / 公开页演示纯图标按钮，**无文字 CTA、无章节
+- **单页八段**：导航（logo + npm / GitHub / 公开页演示三枚纯图标 `outline` 按钮，公开页那枚
+  用 `Person` 图标——2026-11-11 由 `Globe` 换下；**无文字 CTA、无章节
   锚点**——「功能 / 自部署」与「立即部署」2026-11-11 移除，部署 CTA 只留在 Hero）→ Hero
   （真实数据快照计数器 + 364 格年热力图纹样，热力图与左侧文案垂直居中，热力图下方为
   16 枚来源 logo 双行反向循环；双 CTA =「立即部署」滚动到自部署段 +「Deploy to Vercel」
   一键链接）→ 三步 terminal →
   仪表盘静态重绘 + 后台实拍轮播 → 功能网格（成就币 / 四风格分享卡放大预览；来源 logo
   墙 2026-11-11 移到 Hero，本段不再挂来源图标）→ 数据自主 → 自部署（仅「部署指南」外链
-  + 文档图标，Vercel 一键与 GitHub 按钮 2026-11-11 移除）→ Footer（亮 / 暗双版实时徽章
+  + `BookOpen` 文档图标，Vercel 一键与 GitHub 按钮 2026-11-11 移除）→ Footer（亮 / 暗双版实时徽章
   并排 + ICP 备案号，公安网备接入位；文本链接 hover 主题色，npm 入口 2026-11-11 移除，
   顶栏已有）。分节 hairline + 大间距，不堆卡片。
 - **数据规则**：快照（`src/data/snapshot.json`）只含聚合数字与日桶等级，`fetchedAt` 标注
@@ -846,6 +847,10 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   淡入（`.landing-reveal`：CSS keyframes + inline `animation-delay`，reduced-motion 全局
   规则关停）；热力图下方来源 logo 循环为两行反向 CSS marquee（内容复制一份 + `-50%`
   位移无缝衔接，悬停暂停，reduced-motion 停用）。
+- **回到顶部**：`components/landing/back-to-top.tsx`（与 `apps/web` 同名组件同思路）固定右下
+  44px 圆盘，滚过 480px 浮出；滚动监听 rAF 节流，显隐 / 悬停上浮 4px / 按压 95% 缩放全走
+  CSS 过渡（`ease-[cubic-bezier(0.22,1,0.36,1)]`，300ms），`visibility` 同列过渡项以免淡出
+  被硬切，reduced-motion 下过渡关停、点击瞬时跳顶。
 - **类名**：Tailwind 任意值写法收敛到 canonical（`grid-cols-52`、`aspect-16/10`、
   `mask-[...]`）；圆角例外——`rounded-[2px]` 保留（canonical `rounded-sm` = 4px 会变值，
   同 AGENTS 约束 5）。
@@ -976,8 +981,9 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   取代旧「使用节奏」固定 12 px 横向滚动实现——该实现的 2026-11-10「不拉伸」验收修正
   随之作废）：**364 天（52×7）窗口锚定今天，未来日不渲染**（2026-11-11 D9 与 web 语义
   对齐，取代同日早先的 53 周整列实现）；**跟随页头周期**（2026-11-11 验收第三轮：
-  `clipHeatmap` 按 `heatmapPeriodStartMs` 裁剪——今日 1 列、近 7 / 30 天只保留对应日历日、
-  总计才保留整年，活跃日与合计按裁剪后重算，标题后缀同步显示周期名）；`alignWeeks`
+  `clipHeatmap` 按 `heatmapPeriodStartMs` 裁剪——**网格仍固定整年 364 格（列数不变）**，
+  只把窗口外的日期清空（今日 / 近 7 / 近 30 天），活跃日与合计按剩余数据重算，标题后缀
+  同步显示周期名）；`alignWeeks`
   周一对齐——首列周一前补 null、
   尾列 null 收口、null 占位防 auto-flow 漂移；格子随卡片宽度自适应（web `fitHeatmapWidth`
   同款：满年优先、15 px 下限、放不下再自左裁周），上方月份标尺与左侧周一–周日标尺同 web；
