@@ -47,14 +47,22 @@ function pick<T extends string>(
 const MAX_TOKEN_LENGTH = 128;
 const TOKEN_CHARS = /^[A-Za-z0-9_-]+$/;
 
-export function parseBadgeParams(search: URLSearchParams): ParsedBadgeParams {
-  const token = (search.get("token") ?? "").trim();
-  // This is a public, unauthenticated endpoint: reject oversized / junk
-  // tokens before hashing them and hitting the database.
-  const tokenValid =
+/**
+ * Shape check shared by §2.1 and the §2.4 snapshot endpoint. Both are public
+ * and unauthenticated, so junk / oversized tokens are rejected here before
+ * they are hashed and sent to the database.
+ */
+export function isValidBadgeToken(token: string): boolean {
+  return (
     token.length > 0 &&
     token.length <= MAX_TOKEN_LENGTH &&
-    TOKEN_CHARS.test(token);
+    TOKEN_CHARS.test(token)
+  );
+}
+
+export function parseBadgeParams(search: URLSearchParams): ParsedBadgeParams {
+  const token = (search.get("token") ?? "").trim();
+  const tokenValid = isValidBadgeToken(token);
   const style = pick(search, "style", STYLES, "panel");
   const theme = pick(search, "theme", THEMES, "dark");
   const range = pick(search, "range", RANGES, "all");

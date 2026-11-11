@@ -49,6 +49,9 @@ type BadgeAppRoute = {
 };
 
 const badgeRoute = await loadSpecModule<BadgeRoute>("../../src/app/api/badge/route");
+const badgeDataRoute = await loadSpecModule<BadgeRoute>(
+  "../../src/app/api/badge/data/route",
+);
 const badgeAppRoute = await loadSpecModule<BadgeAppRoute>(
   "../../src/app/api/app/badge/route",
 );
@@ -58,8 +61,11 @@ const fake = new FakeSupabase();
 const BADGE_TOKEN = `tu_badge_${"a".repeat(32)}`;
 const BADGE_HASH = createHash("sha256").update(BADGE_TOKEN).digest("hex");
 const BADGE_URL = "http://localhost/api/badge";
+const DATA_URL = "http://localhost/api/badge/data";
 const APP_URL = "http://localhost/api/app/badge";
 const SVG_SUCCESS_CACHE =
+  "public, max-age=300, s-maxage=600, stale-while-revalidate=1800";
+const JSON_SUCCESS_CACHE =
   "public, max-age=300, s-maxage=600, stale-while-revalidate=1800";
 
 function jsonPostPut(method: string, body: unknown): NextRequest {
@@ -353,6 +359,123 @@ describe.skipIf(!badgeRoute)("GET /api/badge (docs/badge.md §2)", () => {
     }
   });
 });
+
+describe.skipIf(!badgeDataRoute)(
+  "GET /api/badge/data aggregate snapshot (docs/badge.md §2.4)",
+  () => {
+    it("returns the documented JSON envelope and the shared aggregates (§2.4.2)", async () => {
+      const { GET } = unwrapSpecModule(
+        badgeDataRoute,
+        "app/api/badge/data/route",
+      );
+      const res = await GET(new Request(`${DATA_URL}?token=${BADGE_TOKEN}`));
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("application/json");
+      expect(res.headers.get("cache-control")).toBe(JSON_SUCCESS_CACHE);
+
+      const body = await res.json();
+
+      expect(body.schemaVersion).toBe(1);
+      // Same totals the SVG badge renders from BadgeData (18.48B + 0.2M).
+      expect(body.totals).toEqual({
+        tokens: 18480200000,
+        costUsd: expect.any(Number),
+        activeDays: 2,
+      });
+      // Money is capped at cents; shares at 4 decimals.
+      expect(Math.round(body.totals.costUsd * 100) / 100).toBe(
+        body.totals.costUsd,
+      );
+
+      expect(body.meta).toMatchObject({
+        firstDay: "2026-10-01",
+        lastDay: "2026-10-03",
+        sourceCount: 1,
+        modelCount: 1,
+        longestStreakDays: 1,
+      });
+      expect(body.meta.peakDay).toEqual({
+        day: "2026-10-01",
+        tokens: 18480000000,
+      });
+
+      // 52 weeks of [day, tokens, level] triples, week-major, ending today in
+      // the owner's timezone.
+      expect(body.heatmap.cells).toHaveLength(364);
+      expect(body.heatmap.activeDays).toBe(2);
+      expect(body.fetchedAt).toBe(body.heatmap.to);
+      for (const cell of body.heatmap.cells) {
+        expect(cell).toHaveLength(3);
+        expect(cell[2]).toBeGreaterThanOrEqual(0);
+        expect(cell[2]).toBeLessThanOrEqual(4);
+      }
+      const peak = body.heatmap.cells.find(
+        (cell: [string, number, number]) => cell[0] === "2026-10-01",
+      );
+      expect(peak?.[1]).toBe(18480000000);
+      expect(peak?.[2]).toBe(4);
+
+      expect(body.sources).toEqual([
+        { label: expect.any(String), tokens: 18480200000, share: 1 },
+      ]);
+      expect(body.models).toEqual([
+        { label: expect.any(String), tokens: 18480200000 },
+      ]);
+      expect(body.series).toHaveLength(30);
+    });
+
+    it("rejects junk tokens with 400 and hides unknown or disabled ones behind 404 (§2.4.3)", async () => {
+      const { GET } = unwrapSpecModule(
+        badgeDataRoute,
+        "app/api/badge/data/route",
+      );
+
+      const missing = await GET(new Request(DATA_URL));
+      expect(missing.status).toBe(400);
+      expect(await missing.json()).toEqual({ error: "bad request" });
+      expect(missing.headers.get("cache-control")).toBe("no-store");
+
+      const junk = await GET(new Request(`${DATA_URL}?token=${"x".repeat(200)}`));
+      expect(junk.status).toBe(400);
+
+      const unknown = await GET(
+        new Request(`${DATA_URL}?token=tu_badge_${"b".repeat(32)}`),
+      );
+      expect(unknown.status).toBe(404);
+      expect(await unknown.json()).toEqual({ error: "badge unavailable" });
+
+      (fake.table("token_public_badges")[0] as { enabled: boolean }).enabled =
+        false;
+      const disabled = await GET(
+        new Request(`${DATA_URL}?token=${BADGE_TOKEN}`),
+      );
+      expect(disabled.status).toBe(404);
+      expect(await disabled.json()).toEqual({ error: "badge unavailable" });
+    });
+
+    it("answers 405/204 and never echoes the token, hash or user id (§2.4.3-4)", async () => {
+      const { GET, POST, OPTIONS } = unwrapSpecModule(
+        badgeDataRoute,
+        "app/api/badge/data/route",
+      );
+
+      const post = await POST();
+      expect(post.status).toBe(405);
+      expect(await post.json()).toEqual({ error: "Method not allowed" });
+      expect((await OPTIONS()).status).toBe(204);
+
+      const body = await (
+        await GET(new Request(`${DATA_URL}?token=${BADGE_TOKEN}`))
+      ).text();
+
+      expect(body).not.toContain(BADGE_TOKEN);
+      expect(body).not.toContain(BADGE_HASH);
+      expect(body).not.toContain(USER_ID);
+      expect(body).not.toContain("data:image/");
+    });
+  },
+);
 
 describe.skipIf(!badgeAppRoute)("/api/app/badge config (docs/badge.md §7.1)", () => {
   it("requires the browser session", async () => {

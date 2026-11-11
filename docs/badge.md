@@ -1,7 +1,8 @@
 # docs/badge.md — 公开徽章与公开页规范
 
-> **文档地位**：本文件是公开徽章端点 `GET /api/badge`、配置端点 `GET/POST/PUT/DELETE
-> /api/app/badge` 与公开页 `/u/<token>` 的唯一规范。三者都**不属于** CLI 契约层
+> **文档地位**：本文件是公开徽章端点 `GET /api/badge`、聚合快照端点
+> `GET /api/badge/data`（§2.4）、配置端点 `GET/POST/PUT/DELETE
+> /api/app/badge` 与公开页 `/u/<token>` 的唯一规范。四者都**不属于** CLI 契约层
 > （`docs/cli-contract.md` 不约束，也不进 `next.config.mjs` 旧路径别名），但变更
 > 顺序沿用同一流程：先改本文档与 golden 测试 → 操作者确认 → 再改实现。
 >
@@ -28,12 +29,13 @@
 
 ## §1 定位与隐私立场
 
-三个组成面：
+四个组成面：
 
 | 面 | 载体 | 受众 |
 |---|---|---|
 | SVG 徽章 | `GET /api/badge`，嵌 README / 个人主页 | 公开 |
 | 公开页 | `/u/<token>`（徽章点击落地） | 公开 |
+| 聚合快照 JSON | `GET /api/badge/data`（静态营销站构建期拉取，§2.4） | 公开（同一令牌） |
 | 配置面 | Settings 页 `badge-card` + `/api/app/badge` | 登录用户本人 |
 
 隐私立场（与 `token_sessions` 表注释同源）：**只出聚合数字**。任何响应（SVG、HTML、
@@ -86,6 +88,85 @@ JSON）永不包含 session 明细、提示词、正文、绝对路径、email�
 
 注意：`scope=repo` 且白名单命中但该仓库暂无会话**不是降级**——正常渲染，计数为 0
 （见附录 A fixture B）。
+
+## §2.4 聚合快照 JSON `GET /api/badge/data`
+
+2026-11-11 操作者拍板：静态营销站（`apps/landing`）不再手工抄数字，构建期从本端点
+拉一份与 `/u/<token>` **同源同口径**的聚合快照。数据来自 `loadPublicPageData`（§4.7），
+因此同一时刻两处数字必然一致；本端点不新增任何查询路径。
+
+路由 `apps/web/src/app/api/badge/data/route.ts`（静态路由，`dynamic = "force-dynamic"`）。
+
+### §2.4.1 参数
+
+| 参数 | 必填 | 取值 | 说明 |
+|---|---|---|---|
+| `token` | 是 | 非空字符串 | 校验规则同 §2.1（≤128 字符、`[A-Za-z0-9_-]`），有效性同样交给哈希查库 |
+
+不接受 `project` / `style` / `theme` / `range`：本端点只出**账户级**快照。
+
+### §2.4.2 响应
+
+- 成功：`200`，`Content-Type: application/json`（JSON 恒为 UTF-8，不带 charset 参数），
+  `Cache-Control: public, max-age=300, s-maxage=600, stale-while-revalidate=1800`
+- 响应体（`schemaVersion` 固定 `1`；其余字段与落地页 `src/data/snapshot.json` 对齐）：
+
+```json
+{
+  "schemaVersion": 1,
+  "fetchedAt": "2026-11-11",
+  "updatedAt": "2026-11-11T08:12:00.000Z",
+  "totals": { "tokens": 24582974474, "costUsd": 1708.11, "activeDays": 106 },
+  "meta": {
+    "firstDay": "2025-07-20",
+    "lastDay": "2026-11-11",
+    "sourceCount": 17,
+    "modelCount": 59,
+    "longestStreakDays": 52,
+    "peakDay": { "day": "2026-09-01", "tokens": 882141104 }
+  },
+  "heatmap": {
+    "from": "2025-11-13",
+    "to": "2026-11-11",
+    "activeDays": 106,
+    "cells": [["2025-11-13", 0, 0]]
+  },
+  "sources": [{ "label": "ZCode", "tokens": 15767035267, "share": 0.6619 }],
+  "models": [{ "label": "GLM-5.3-Flash", "tokens": 14436724623 }],
+  "series": [0]
+}
+```
+
+字段口径：
+
+| 字段 | 来源 / 口径 |
+|---|---|
+| `fetchedAt` | 热力图窗口右端（所有者时区的今天），即 `heatmap.to` |
+| `updatedAt` | 用量行最新的 `updated_at`（UTC ISO），可为 `null` |
+| `totals` | 与 SVG 徽章同一份 `BadgeData.totals`；`costUsd` 取到分（2 位） |
+| `meta` | `/u` 页首同款全部事实；`peakDay` 无数据时为 `null` |
+| `heatmap.cells` | 近 52 周（364 格）周序 `[day, tokens, level]`，`level` 0–4，与仪表盘同一套「相对最大值 25/50/75%」分档 |
+| `sources` / `models` | 各前 5 行，`share` 取到 4 位小数（0–1） |
+| `series` | 最近 30 个自然日日用量（所有者时区，升序），与 sparkline 徽章同源 |
+
+### §2.4.3 错误
+
+| 情形 | 状态 | 响应体 |
+|---|---|---|
+| 缺 `token` / 格式非法 | `400` | `{"error":"bad request"}` |
+| 令牌查无 / 哈希不匹配 / `enabled=false` | `404` | `{"error":"badge unavailable"}` |
+| `POST`/`PUT`/`DELETE` | `405` | `{"error":"Method not allowed"}` |
+| 未预期异常 | `500` | `{"error":"Internal Server Error"}` |
+
+- 禁用与查无不区分（同 `/u/<token>` 的 404 语义），避免用本端点探测令牌是否存在；
+- `OPTIONS` → `204`（`Allow: GET, OPTIONS`）；
+- 错误响应一律 `Cache-Control: no-store`，不回栈。
+
+### §2.4.4 隐私
+
+只含 §1 的聚合口径：总量、来源 / 模型各前 5、近 52 周逐日用量等级、近 30 日序列。
+**不含**头像（`data:` URI 只在 SVG 与 `/u` 页面内联）、email、user_id、原始令牌、
+令牌哈希、会话明细、project_key。
 
 ## §3 令牌与配置存储
 
