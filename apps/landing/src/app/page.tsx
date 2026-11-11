@@ -28,14 +28,14 @@ export const metadata: Metadata = {
 // 单页八段（2026-11-08 设计定稿）：导航 → Hero → 三步 terminal → 仪表盘
 // 静态重绘 → 功能网格 → 数据自主 → 自部署 → Footer。
 export default function HomePage() {
-  // 公开页演示链接（README 解析，构建期固化）；解析失败则 Hero 隐藏该 CTA。
+  // 公开页演示链接（README 解析，构建期固化）；解析失败则顶栏隐藏演示图标。
   const demoUrl = badgeSource()?.publicPageUrl ?? null;
 
   return (
     <div className="flex min-h-screen flex-col">
-      <NavBar />
+      <NavBar demoUrl={demoUrl} />
       <main className="flex-1">
-        <Hero demoUrl={demoUrl} />
+        <Hero />
         <TerminalSteps />
         <DashboardPreview />
         <FeatureGrid />

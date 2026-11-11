@@ -1,15 +1,15 @@
 "use client";
 
-// 顶部导航：logo 锁定 + npm / GitHub 图标按钮 + 部署 CTA，hairline 底边。
+// 顶部导航：logo 锁定 + npm / GitHub / 公开页演示图标按钮，hairline 底边。
 // 恒为暗色，只引 logo-dark 变体。
 
-import { LogoGithub } from "@gravity-ui/icons";
+import { Eye, LogoGithub } from "@gravity-ui/icons";
 import { Button, Typography } from "@heroui/react";
 
 import { LANDING_COPY } from "@/lib/copy";
 import { NPM_CLI_URL, REPO_URL } from "@/lib/repo-links";
 
-export function NavBar() {
+export function NavBar({ demoUrl }: { demoUrl: string | null }) {
   const copy = LANDING_COPY.zh;
 
   return (
@@ -43,30 +43,40 @@ export function NavBar() {
           </span>
         </a>
 
-        <div className="ml-auto flex items-center gap-2 max-md:hidden">
-          <Button
-            isIconOnly
-            aria-label="npm · tokenusage-cli"
-            size="sm"
-            variant="outline"
-            onPress={() => openExternal(NPM_CLI_URL)}
-          >
-            <NpmIcon className="size-4" />
-          </Button>
-          <Button
-            isIconOnly
-            aria-label="GitHub"
-            size="sm"
-            variant="outline"
-            onPress={() => openExternal(REPO_URL)}
-          >
-            <LogoGithub className="size-4" />
-          </Button>
-        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="hidden items-center gap-2 md:flex">
+            <Button
+              isIconOnly
+              aria-label="npm · tokenusage-cli"
+              size="sm"
+              variant="outline"
+              onPress={() => openExternal(NPM_CLI_URL)}
+            >
+              <NpmIcon className="size-4" />
+            </Button>
+            <Button
+              isIconOnly
+              aria-label="GitHub"
+              size="sm"
+              variant="outline"
+              onPress={() => openExternal(REPO_URL)}
+            >
+              <LogoGithub className="size-4" />
+            </Button>
+          </div>
 
-        <Button size="sm" variant="primary" onPress={() => scrollToDeploy()}>
-          {copy.nav.cta}
-        </Button>
+          {demoUrl ? (
+            <Button
+              isIconOnly
+              aria-label={copy.nav.demo}
+              size="sm"
+              variant="primary"
+              onPress={() => openExternal(demoUrl)}
+            >
+              <Eye className="size-4" />
+            </Button>
+          ) : null}
+        </div>
       </div>
     </header>
   );
@@ -88,12 +98,4 @@ function NpmIcon({ className }: { className?: string }) {
 
 function openExternal(url: string): void {
   window.open(url, "_blank", "noopener,noreferrer");
-}
-
-function scrollToDeploy(): void {
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  document
-    .getElementById("deploy")
-    ?.scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
 }

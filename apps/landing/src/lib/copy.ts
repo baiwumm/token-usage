@@ -4,16 +4,14 @@
 export interface LandingCopy {
   nav: {
     tagline: string;
-    cta: string;
+    demo: string;
   };
   hero: {
     eyebrow: string;
     sloganMain: string;
     sloganSub: string;
-    primaryCta: string;
-    githubCta: string;
-    demoCta: string;
-    demoNote: string;
+    deployCta: string;
+    vercelCta: string;
     counters: {
       tokens: string;
       activeDays: string;
@@ -100,17 +98,15 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
   zh: {
     nav: {
       tagline: "自托管 AI 用量追踪",
-      cta: "立即部署",
+      demo: "查看公开页演示",
     },
     hero: {
       eyebrow: "开源 · 自托管 · MIT",
       sloganMain: "所有采集端的 AI 用量，一块仪表盘看完。",
       sloganSub:
         "一个邮箱、多台设备，用量与成本数据完全落在你自己的 Supabase 里。采集端只向配对实例上报，跨实例零共享。",
-      primaryCta: "Deploy to Vercel",
-      githubCta: "GitHub",
-      demoCta: "查看公开页演示",
-      demoNote: "真实实例的公开用量页",
+      deployCta: "立即部署",
+      vercelCta: "Deploy to Vercel",
       counters: {
         tokens: "累计 Tokens",
         activeDays: "活跃天数",
@@ -296,17 +292,15 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
   en: {
     nav: {
       tagline: "Self-hosted AI token tracking",
-      cta: "Deploy now",
+      demo: "View live demo",
     },
     hero: {
       eyebrow: "Open source · Self-hosted · MIT",
       sloganMain: "All your AI usage, one dashboard.",
       sloganSub:
         "One account, many devices — usage and cost data live entirely in your own Supabase. Captured locally, reported only to your instance, zero cross-instance sharing.",
-      primaryCta: "Deploy to Vercel",
-      githubCta: "GitHub",
-      demoCta: "View live demo",
-      demoNote: "Public usage page of a real instance",
+      deployCta: "Deploy now",
+      vercelCta: "Deploy to Vercel",
       counters: {
         tokens: "Total tokens",
         activeDays: "Active days",

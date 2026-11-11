@@ -2,18 +2,19 @@
 
 // Hero（设计拍板 2026-11-08）：暗底 + 真实数据。右侧一年热力图纹样用快照
 // 里 364 个真实日桶等级（数据即装饰），四个计数器滚入真实数字（no-JS 由
-// noscript 兜底），CTA 为 README 同款 Deploy to Vercel 一键链接。
+// noscript 兜底）；双 CTA = 立即部署（滚动到自部署段）+ README 同款
+// Deploy to Vercel 一键链接。
 
-import { ArrowUpRight, LogoGithub } from "@gravity-ui/icons";
+import { ArrowUpRight } from "@gravity-ui/icons";
 import { Button, Typography } from "@heroui/react";
 
 import { FlowNumber } from "./flow-number";
 
 import { LANDING_COPY } from "@/lib/copy";
-import { REPO_URL, VERCEL_DEPLOY_URL } from "@/lib/repo-links";
+import { VERCEL_DEPLOY_URL } from "@/lib/repo-links";
 import { formatCompactTokens, formatCost, SNAPSHOT } from "@/lib/snapshot";
 
-export function Hero({ demoUrl }: { demoUrl: string | null }) {
+export function Hero() {
   const copy = LANDING_COPY.zh;
   const { totals, meta } = SNAPSHOT;
 
@@ -93,6 +94,13 @@ export function Hero({ demoUrl }: { demoUrl: string | null }) {
               <Button
                 size="lg"
                 variant="primary"
+                onPress={() => scrollToDeploy()}
+              >
+                {copy.hero.deployCta}
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
                 onPress={() =>
                   window.open(
                     VERCEL_DEPLOY_URL,
@@ -101,35 +109,13 @@ export function Hero({ demoUrl }: { demoUrl: string | null }) {
                   )
                 }
               >
-                {copy.hero.primaryCta}
+                {copy.hero.vercelCta}
                 <ArrowUpRight className="size-4" />
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onPress={() =>
-                  window.open(REPO_URL, "_blank", "noopener,noreferrer")
-                }
-              >
-                <LogoGithub className="size-4" />
-                {copy.hero.githubCta}
-              </Button>
-              {demoUrl ? (
-                <Button
-                  size="lg"
-                  variant="ghost"
-                  onPress={() =>
-                    window.open(demoUrl, "_blank", "noopener,noreferrer")
-                  }
-                >
-                  {copy.hero.demoCta}
-                  <ArrowUpRight className="size-4" />
-                </Button>
-              ) : null}
             </div>
           </div>
 
-          <div className="relative min-w-0 flex-1 self-stretch">
+          <div className="relative min-w-0 flex-1">
             <HeroMotif />
           </div>
         </div>
@@ -185,6 +171,14 @@ export function Hero({ demoUrl }: { demoUrl: string | null }) {
       </div>
     </section>
   );
+}
+
+function scrollToDeploy(): void {
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  document
+    .getElementById("deploy")
+    ?.scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
 }
 
 // 真实的一年：364 个日桶等级来自快照（近 52 周），横排 52 列 × 7 行，
