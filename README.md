@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  🌐 <a href="https://token-usage.cc">token-usage.cc</a> ·
+  🌐 <a href="https://www.token-usage.cc">www.token-usage.cc</a> ·
   📖 <a href="docs/cli-contract.md">API 契约</a> ·
   📌 <a href="docs/requirements.md">需求真源</a> ·
   🧭 <a href="docs/rewrite-plan.md">计划</a> ·
