@@ -278,7 +278,7 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
         // 公安网备尚未提交，拿到备案号后填在这里（数字部分会自动进查询链接）。
         police: "",
       },
-      rights: "© 2026 Token Usage · www.token-usage.cc",
+      rights: "© 2026 Token Usage · token-usage.cc",
     },
   },
   en: {
@@ -468,7 +468,7 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
         icp: "",
         police: "",
       },
-      rights: "© 2026 Token Usage · www.token-usage.cc",
+      rights: "© 2026 Token Usage · token-usage.cc",
     },
   },
 };

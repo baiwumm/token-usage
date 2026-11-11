@@ -41,10 +41,9 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 
 ## 部署（腾讯云 EdgeOne Pages · Makers）
 
-实际托管：操作者使用**腾讯云 EdgeOne Pages（Makers 套餐）**部署本站，主域名
-**www.token-usage.cc**（apex `token-usage.cc` 由 `edgeone.json` 301 跳到 www；
-2026-11-08 立项、2026-11-11 定重定向方向）。仓库为 pnpm monorepo，接入方式固定为
-「Git 连接 + 根目录 `/`」：构建产物是静态导出目录 `apps/landing/out`，无需 Node 运行时。
+实际托管：操作者使用**腾讯云 EdgeOne Pages（Makers 套餐）**部署本站，域名绑定
+**token-usage.cc**（2026-11-08 拍板）。仓库为 pnpm monorepo，接入方式固定为「Git 连接
++ 根目录 `/`」：构建产物是静态导出目录 `apps/landing/out`，无需 Node 运行时。
 
 ### 首次建项目：控制台「配置项目」怎么填
 
@@ -73,11 +72,10 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 ### 仓库根 `edgeone.json`（重定向与缓存）
 
 - **重定向**：`$host` → `$wwwhost`（301），即 `token-usage.cc` → `www.token-usage.cc`。
-  www 是规范域名（`src/app/layout.tsx` 的 `metadataBase` 与 `alternates.canonical` 同步
-  指向 www，页脚落款也是 `www.token-usage.cc`）。`$host` / `$wwwhost` 只在自定义域名上
-  生效（平台分配的预览域名不受影响），且**apex 与 www 两个域名都要绑定到本项目**，否则
-  apex 请求到不了 EdgeOne，重定向无从触发。要改成 apex 规范，把 `source` /
-  `destination` 对调，并同步改 `metadataBase` / 页脚文案；
+  对外口径与代码里的域名（`metadataBase`、页脚落款）保持 `token-usage.cc`，跳转只在
+  边缘层发生，不改文案。`$host` / `$wwwhost` 只在自定义域名上生效（平台分配的预览域名
+  不受影响），且**apex 与 www 两个域名都要绑定到本项目**，否则 apex 请求到不了 EdgeOne，
+  301 无从触发；反方向（www → apex）只需对调 `source` / `destination`；
 - **缓存头**：`/_next/static/*` 一年 `immutable`（文件名带内容哈希，安全）；其余资源与
   HTML 不设长缓存，重新部署即时生效。`headers` / `redirects` 的 `source` 是 URL 路径
   通配符（`*` 不是文件 glob）；
@@ -91,8 +89,7 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 
 ### 域名与备案
 
-- 域名：`www.token-usage.cc` 为主域名，`token-usage.cc`（apex）一并绑定后由 301 跳到
-  www；两条都在腾讯云内侧 CNAME 接入 EdgeOne（只绑 www 时 apex 不会被 EdgeOne 接管）；
+- 域名 `token-usage.cc`（及可选 `www.`）在腾讯云内侧 CNAME 接入 EdgeOne；
 - 备案：域名已备案（粤ICP备2023007649号-5，2026-11-11 备案通过），页脚右下角展示
   ICP 号并链接工信部；文案在 `src/lib/copy.ts` 的 `footer.beian`（`icp` / `police`，
   空串隐藏对应条目）。公安网备待部署后提交，拿到号填 `beian.police` 即可（数字部分

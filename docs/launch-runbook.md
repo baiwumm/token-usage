@@ -60,7 +60,7 @@
   写动词应为 **405**（契约 §1.5）。这是有声失败，钉版旧 CLI 会在这里被挡住而不是静默丢数据；
   `apps/web/tests/contract/legacy-alias-removed.test.ts` 守护该行为。
 
-## 落地页部署（apps/landing → www.token-usage.cc）
+## 落地页部署（apps/landing → token-usage.cc）
 
 官方落地页与 web 部署**相互独立**：纯静态产物（`pnpm build:landing` 的 `out/`），实际
 托管腾讯云 EdgeOne Pages（Makers），无环境变量、无服务端；接线步骤、素材与快照更新

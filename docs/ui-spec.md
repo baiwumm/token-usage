@@ -814,13 +814,12 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 - 页面为 `max-w-xl` 居中单列审批流（非数据面）：不套 `DataTableCard` / 汇总卡 /
   `DeviceFilterSelect` / CSV 导出；`min-h` 居中、无页面级横向滚动。
 
-### 落地页（`apps/landing`，www.token-usage.cc）
+### 落地页（`apps/landing`，token-usage.cc）
 
 官方站落地页（2026-11-08 立项并交付，操作者验收）：仓库内独立纯静态 app，
 `output: "export"`，实际托管腾讯云 EdgeOne Pages（对外口径仍为 Vercel，见
-`apps/landing/README.md`）。**规范域名为 www.token-usage.cc**（2026-11-11 定）：
-`metadataBase` / `alternates.canonical` 指向 www，apex 由仓库根 `edgeone.json`
-301 跳转。本节记录其设计决策，写 landing UI 前先读本节与 `apps/landing/README.md`。
+`apps/landing/README.md`）。本节记录其设计决策，写 landing UI 前先读本节与
+`apps/landing/README.md`。
 
 - **暗色单主题**：`html class="dark"` 写死，不引 `next-themes`，无主题切换器；仅引
   `@heroui/styles` 默认主题，不引 `theme-palettes.css`。
