@@ -1,23 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Typography } from "@heroui/react";
 import { useCallback, useState } from "react";
 
-import { CliActionsCard } from "@/components/monitor/cli-actions-card";
 import { DeviceRow } from "@/components/monitor/device-row";
 import { HeatmapSection } from "@/components/monitor/heatmap-section";
-import { ModelMixCard } from "@/components/monitor/model-mix-card";
 import { MonitorHeader } from "@/components/monitor/monitor-header";
 import {
   MonitorEmptyState,
   MonitorErrorState,
   MonitorSkeleton,
 } from "@/components/monitor/monitor-states";
-import { PeriodFilter } from "@/components/monitor/period-filter";
 import { ProjectReposCard } from "@/components/monitor/project-repos-card";
 import { RecentSessionsCard } from "@/components/monitor/recent-sessions-card";
 import { SourceMixCard } from "@/components/monitor/source-mix-card";
 import { SettingsDialog } from "@/components/monitor/settings-dialog";
 import { SyncStatusCard } from "@/components/monitor/sync-status-card";
+import { TopModelsCard } from "@/components/monitor/top-models-card";
+import { TrendCard } from "@/components/monitor/trend-card";
 import { TrayNote } from "@/components/monitor/tray-note";
 import { UnpairedNote } from "@/components/monitor/unpaired-note";
 import { UsageCards } from "@/components/monitor/usage-cards";
@@ -31,11 +29,15 @@ import { useTheme } from "@/hooks/use-theme";
 import { useTrayAvailable } from "@/hooks/use-tray";
 import { useUpdater } from "@/hooks/use-updater";
 import { webUrl, README_URL, REPO_URL } from "@/lib/links";
+import { periodLabel } from "@/lib/preferences";
+import { periodStartMs } from "@/lib/monitor";
 
 /**
  * Window orchestration: loading / error gates, the pairing gate (an unpaired
  * machine gets the first-run wizard, skippable for the session), then the
- * usage + sync + actions stack for the normal case.
+ * usage stack for the normal case. Card order mirrors the web dashboard
+ * (D10): stat cards → heatmap → trend → Top models + sources (two columns on
+ * wide windows) → projects → recent sessions → collection health.
  */
 export function MonitorBody() {
   const {
@@ -47,6 +49,7 @@ export function MonitorBody() {
     runningCommand,
     lastOutcome,
     refreshing,
+    projectProfiles,
     refresh,
     refreshCli,
     refreshNow,
@@ -86,7 +89,7 @@ export function MonitorBody() {
     setProbing(true);
     try {
       await refreshCli();
-      // The actions card reads the snapshot's CLI status — rebuild it now
+      // The sync card reads the snapshot's CLI status — rebuild it now
       // instead of leaving it stale until the next 10 s poll.
       await refresh();
     } finally {
@@ -108,14 +111,26 @@ export function MonitorBody() {
 
   const snapshot = phase.snapshot;
   const period = prefs.period;
-  const activeWindow = period === "today" ? snapshot.today : snapshot.week;
+  const activeWindow =
+    period === "today"
+      ? snapshot.today
+      : period === "7d"
+        ? snapshot.week
+        : period === "30d"
+          ? snapshot.month
+          : snapshot.all;
+  const trend = snapshot.trend[period];
+  // The cost dialog's daily-cost area chart reads the same trend fold.
+  const dailyCost = trend.daily.map((point) => ({
+    label: point.key.slice(5),
+    cost: point.costUsd,
+  }));
   // The CLI config falls back to the public instance; only a paired machine
   // gets deep links (an unpaired one must not point at someone else's host).
   const pairedUrl =
     pairing.gate.kind === "paired" ? snapshot.dashboardUrl : null;
   const projectsUrl = webUrl(pairedUrl, "projects");
-  const mixCardsVisible =
-    prefs.showSources || prefs.showModels || prefs.showProjects;
+  const mixPanelsVisible = prefs.showSources || prefs.showModels;
 
   const settingsDialog = (
     <SettingsDialog
@@ -164,13 +179,18 @@ export function MonitorBody() {
 
   return (
     <>
-      <main className="flex min-h-screen flex-col gap-4 p-4">
+      <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 p-4">
         <MonitorHeader
+          cliAvailable={cli.available}
           paused={snapshot.paused}
+          period={period}
+          runningCommand={runningCommand}
           theme={prefs.theme}
           onChangeTheme={(mode) => update({ theme: mode })}
           onOpenRepo={() => openUrl(REPO_URL)}
           onOpenSettings={() => setSettingsOpen(true)}
+          onPeriodChange={(next) => update({ period: next })}
+          onRun={(command, args) => void runCli(command, args)}
         />
         {trayAvailable === false ? <TrayNote /> : null}
         {pairing.gate.kind === "unpaired" ? (
@@ -178,38 +198,40 @@ export function MonitorBody() {
         ) : null}
         {hasAnyData ? (
           <>
-            <UsageCards snapshot={snapshot} />
+            <UsageCards period={period} snapshot={snapshot} />
             {prefs.showHeatmap ? (
               <HeatmapSection
-                days={snapshot.heatmap.days}
-                maxTokens={snapshot.heatmap.maxTokens}
-                months={snapshot.heatmap.months}
-                totalTokens={snapshot.heatmap.totalTokens}
+                nowMs={snapshot.updatedAt}
+                payload={snapshot.heatmap}
+                period={period}
               />
             ) : null}
-            {mixCardsVisible ? (
-              <div className="flex items-center justify-between gap-3">
-                <Typography className="text-muted" type="body-xs">
-                  用量构成
-                </Typography>
-                <PeriodFilter
-                  period={period}
-                  onChange={(next) => update({ period: next })}
-                />
+            {prefs.showTrend ? <TrendCard trend={trend} /> : null}
+            {mixPanelsVisible ? (
+              <div className="grid gap-4 lg:grid-cols-2">
+                {prefs.showModels ? (
+                  <TopModelsCard
+                    dailyCost={dailyCost}
+                    models={activeWindow.models}
+                    sources={activeWindow.sources}
+                  />
+                ) : null}
+                {prefs.showSources ? (
+                  <SourceMixCard sources={activeWindow.sources} />
+                ) : null}
               </div>
-            ) : null}
-            {prefs.showSources ? (
-              <SourceMixCard sources={activeWindow.sources} />
-            ) : null}
-            {prefs.showModels ? (
-              <ModelMixCard models={activeWindow.models} />
             ) : null}
             {prefs.showProjects ? (
               <ProjectReposCard
                 attributedTokens={activeWindow.attributedTokens}
+                nowMs={snapshot.updatedAt}
+                periodLabel={periodLabel(period)}
+                profiles={projectProfiles}
                 projects={activeWindow.projects}
                 projectsUrl={projectsUrl}
+                rows={snapshot.rows}
                 totalTokens={activeWindow.totalTokens}
+                windowStartMs={periodStartMs(period, snapshot.updatedAt)}
                 onOpenUrl={openUrl}
               />
             ) : null}
@@ -220,20 +242,17 @@ export function MonitorBody() {
               />
             ) : null}
             <SyncStatusCard
+              lastOutcome={lastOutcome}
               refreshing={refreshing}
+              runningCommand={runningCommand}
               snapshot={snapshot}
               onRefresh={() => void refreshNow()}
+              onRun={(command, args) => void runCli(command, args)}
             />
           </>
         ) : (
           <MonitorEmptyState cliAvailable={cli.available} />
         )}
-        <CliActionsCard
-          lastOutcome={lastOutcome}
-          runningCommand={runningCommand}
-          snapshot={snapshot}
-          onRun={(command, args) => void runCli(command, args)}
-        />
         <DeviceRow hostname={hostname} machineId={machineId} />
       </main>
       {settingsDialog}

@@ -102,16 +102,19 @@ export function resolveProjectRepo(
 export interface ProjectRepoUsage extends ProjectUsage {
   /** Confirmed repository URL, or null when the project has no mapping. */
   repoUrl: string | null;
+  /** Raw queue keys folded into this row (drives the detail drill-down). */
+  memberKeys: string[];
 }
 
 /**
  * Fold queue project rows that point at the same confirmed repository into one
- * row — a window can hold both `token-usage` and `baiwumm/token-usage` for the
- * same work tree, and showing two rows for one repository reads like a bug.
+ * row — a window can hold both `token-usage` and `baiwumm/token-usage` for
+ * one work tree, and showing two rows for one repository reads like a bug.
  * Groups without a confirmed URL stay keyed by their raw project key. Display
  * names prefer the bare basename, then the repository name, then the raw key;
  * shares are recomputed against the window total so the card keeps its
- * "share of everything" scale.
+ * "share of everything" scale. Cost / newest bucket / per-source splits fold
+ * along (sums + max) so detail dialogs read the same numbers as the row.
  */
 export function mergeProjectsByRepo(
   projects: readonly ProjectUsage[],
@@ -124,6 +127,9 @@ export function mergeProjectsByRepo(
     {
       tokens: number;
       conversations: number;
+      costUsd: number;
+      lastActiveMs: number | null;
+      sourceTokens: Record<string, number>;
       repoUrl: string | null;
       keys: string[];
     }
@@ -137,11 +143,25 @@ export function mergeProjectsByRepo(
     if (group) {
       group.tokens += project.tokens;
       group.conversations += project.conversations;
+      group.costUsd += project.totalCostUsd;
+      if (
+        project.lastActiveMs !== null &&
+        (group.lastActiveMs === null ||
+          project.lastActiveMs > group.lastActiveMs)
+      ) {
+        group.lastActiveMs = project.lastActiveMs;
+      }
+      for (const [source, tokens] of Object.entries(project.sourceTokens)) {
+        group.sourceTokens[source] = (group.sourceTokens[source] ?? 0) + tokens;
+      }
       group.keys.push(project.projectKey);
     } else {
       groups.set(groupKey, {
         tokens: project.tokens,
         conversations: project.conversations,
+        costUsd: project.totalCostUsd,
+        lastActiveMs: project.lastActiveMs,
+        sourceTokens: { ...project.sourceTokens },
         repoUrl,
         keys: [project.projectKey],
       });
@@ -159,7 +179,11 @@ export function mergeProjectsByRepo(
         tokens: group.tokens,
         conversations: group.conversations,
         share: totalTokens > 0 ? Math.min(1, group.tokens / totalTokens) : 0,
+        totalCostUsd: group.costUsd,
+        lastActiveMs: group.lastActiveMs,
+        sourceTokens: group.sourceTokens,
         repoUrl: group.repoUrl,
+        memberKeys: group.keys,
       };
     })
     .sort(

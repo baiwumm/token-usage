@@ -154,14 +154,22 @@ describe("buildMonitorSnapshot", () => {
         tokens: 400,
         conversations: 3,
         share: 0.8,
+        totalCostUsd: 0,
+        lastActiveMs: expect.any(Number),
+        sourceTokens: { codex: 400 },
         repoUrl: "https://github.com/baiwumm/token-usage",
+        memberKeys: ["token-usage", "baiwumm/token-usage"],
       },
       {
         projectKey: "local-only",
         tokens: 100,
         conversations: 1,
         share: 0.2,
+        totalCostUsd: 0,
+        lastActiveMs: expect.any(Number),
+        sourceTokens: { codex: 100 },
         repoUrl: null,
+        memberKeys: ["local-only"],
       },
     ]);
     expect(snapshot.week.attributedTokens).toBe(500);

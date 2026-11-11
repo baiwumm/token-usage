@@ -21,6 +21,7 @@ const { cmdDoctor } = require("./commands/doctor");
 const { cmdUninstall } = require("./commands/uninstall");
 const { cmdDeviceLogin } = require("./commands/device-login");
 const { cmdSessions } = require("./commands/sessions");
+const { cmdProjectProfiles } = require("./commands/project-profiles");
 const { cmdPause, cmdResume } = require("./commands/pause");
 
 const DEFAULT_WATCH_INTERVAL_MS = 15 * 60_000;
@@ -221,6 +222,17 @@ const COMMANDS = [
       "  --out <file>                Write to a file (atomic, mode 0600) instead of stdout",
       "  --refresh                   Rebuild the analytics cache",
       "  --no-git                    Skip git outcome attribution",
+    ],
+  },
+  {
+    name: "project-profiles",
+    summary: "Print the web-edited project profiles (display name, logo, repo)",
+    run: (argv) => cmdProjectProfiles(argv),
+    usage: [
+      "tokenusage project-profiles",
+      "",
+      "Prints the account's project profiles as a single JSON line (contract",
+      "docs/cli-contract.md §2.13). No options.",
     ],
   },
 ];

@@ -65,8 +65,12 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
 - **命名登记制**：desktop 组件文件遵循与 web 同一登记制、同一后缀集合（`<页名>-body.tsx` /
   `-skeleton.tsx` / `-strip.tsx` / `-card.tsx` / `-cards.tsx` / `-section.tsx` / `-bar.tsx` /
   `-row.tsx` / `-dialog.tsx` / `-header.tsx` / `-states.tsx` / `-icon.tsx` / `-note.tsx` /
+  `-tooltip.tsx` / `-table.tsx` / `-filter.tsx` /
   纯计算 `-helpers.ts` / `-filters.ts` / 钩子 `use-*.ts`；D3 起用 `-icon`（向导步骤徽记
-  `step-icon.tsx`）与 `-note`（监控盘未配对说明块 `unpaired-note.tsx`），均属 AGENTS 共享集合）；
+  `step-icon.tsx`）与 `-note`（监控盘未配对说明块 `unpaired-note.tsx`），D6 起用 `-filter`
+  （`period-filter.tsx`），D7.1 起用 `-tooltip`（热力图共享悬浮说明
+  `heatmap-tooltip.tsx`），D10 起用 `-table`（`monitor/breakdown-table.tsx`），均属
+  AGENTS 共享集合）；
   新增后缀角色先回写本节再使用；跨页共享件放 `src/components/` 根；拆分目录用 `index.tsx`
   收口。D1 仅有入口件：`src/app.tsx`（根编排）与 `src/lib/` 纯逻辑、`src/styles/`。
 - 字体：复用 web 的 Maple Mono CN 自托管子集（woff2 直接复制到 `public/fonts/`，零新依赖）。
@@ -74,12 +78,17 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
 ## 6. 依赖清单（rewrite-plan §4 报批记录，2026-11-08 随技术栈拍板批准）
 
 - 运行时：web 依赖子集 `react` / `react-dom` / `@heroui/react` / `@heroui/styles` /
-  `@gravity-ui/icons` / `clsx` + 新增 `@tauri-apps/api`。
+  `@gravity-ui/icons` / `clsx` + 新增 `@tauri-apps/api`。**2026-11-11 追加报批（操作者已
+  批准）：`recharts` 3.10.1（web 同版本）**——D9 统计卡迷你图与 D10 趋势/环形图按操作者
+  拍板引入图表库（原「零图表依赖、手写 CSS/SVG」约束自当日起废止），lockfile 锁定，
+  安装包体积约 +100 kB。**2026-11-11 追加报批（操作者本轮指定 NumberFlow）：
+  `@number-flow/react` 0.6.2（web 同版本）**——统计卡数值滚动过渡，
+  `components/flow-number.tsx` 为 web 同名组件逐字移植，零新增依赖名。
 - devDeps：新增名 `vite` / `@vitejs/plugin-react` / `@tauri-apps/cli`；eslint / tailwind /
   prettier / typescript / vitest 组与 web 同版本；Tailwind 走 `@tailwindcss/postcss`
   （web 同款，不引 `@tailwindcss/vite`）。
-- 不引入：`next` / `next-themes` / `recharts` / `motion` / `zustand`（桌面用不到的 web
-  独有名一律不进）。
+- 不引入：`next` / `next-themes` / `motion` / `zustand`（桌面用不到的 web 独有名一律
+  不进）。
 - Rust crate 走 cargo、不进 pnpm lockfile：`tauri` 2（`tray-icon` feature）+ `tauri-build`；
   依赖树披露随 D5 发版文档。
 - **2026-11-09 D4 报批（操作者批准「三个官方插件全上」）**：前端增
@@ -511,9 +520,12 @@ D6 → D7 → D8 逐期由操作者验收后进入下一期。
   2026-11-10 操作者追加的例外：点击采集操作卡的 CLI 版本 Chip 时请求一次 npm registry 最新版
   （`use-cli-latest`，8 s 超时、结果只存组件态、失败降级为「检查失败」）——仍不发请求给
   自托管实例，页面加载也不自动探。
-- 零新运行时依赖：图表用手写 CSS / SVG；窗口尺寸记忆用 localStorage。
+- 零新运行时依赖：图表用手写 CSS / SVG；窗口尺寸记忆用 localStorage。（2026-11-11：
+  图表约束废止，见 §6 recharts 报批记录。）
 - 成本与计价不进桌面（边界 4 不变，即便 `project.queue.jsonl` 自带 `total_cost_usd`）；
-  账号成就只做深链。
+  账号成就只做深链。（2026-11-11 反转：统计卡「预计费用」随 D9 进入桌面，D10.1 起读时
+  计价——`lib/pricing.ts` 与 web 逐字同源、`rowCostUsd()` 同 `computeRowCost` 规则，
+  口径见 §12.12；账号成就边界不变。）
 
 ### 12.2 数据面增量
 
@@ -570,6 +582,7 @@ ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最�
    同 web 仪表盘活跃热力图（月份 / 星期标尺、5 档色阶、横向滚动并默认滚到最新），日聚合按本机
    时区；tooltip「日期 · tokens · 会话」；legend；`aria-label` 汇总。
    验收：日合计与「今日 / 近 7 天」卡边界一致；栅格自身横向滚动、页面不出横向滚动；reduced-motion 无动画。
+   **（2026-11-11 本项实现已被 D7.1 取代，见 §12.9；横向滚动与「不拉伸」验收随之作废。）**
 2. **最近会话** `recent-sessions-card.tsx`：最近 5 条（相对时间 + 模型 + 项目 + tokens），
    只读会话元数据，**不显示正文 / 标题 / 绝对路径**；Rust 加 `read_tracker_tail`，每 60 s
    或跟随主轮询但只读尾部。
@@ -590,7 +603,9 @@ ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最�
 ### 12.6 明确不做（本轮）
 
 成本 / 计价与费用弹窗、账号成就页与进度、Sessions / Projects 全页与筛选、wrapped / 分享卡 /
-公开徽章、云端服务探活、webview 登录态。
+公开徽章、云端服务探活、webview 登录态。（2026-11-11 操作者反转其中三项并立项 D9–D11，
+见 §12.10：成本进统计卡、会话/项目本地详情、分享卡完整移植；账号成就、公开徽章、
+云端探活、webview 登录态维持不做。）
 
 ### 12.7 规范与发版
 
@@ -606,4 +621,159 @@ ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最�
 
 **D6 已验收关闭（2026-11-10；两轮验收反馈分别随 desktop-v0.2.0 / v0.2.1 发布）**；
 **D7 已放行，2026-11-10 进入实施**（热力图 / 最近会话 / 卡片显隐已落地，待操作者验收）；
-D8 在 D7 验收后进入，范围可随验收反馈调整。
+**D7.1 已实施（2026-11-11，见 §12.9），随 D7 一并待验收**；
+**D9 已验收通过（2026-11-11 操作者验收）**；
+**D10 已实施（2026-11-11，见 §12.11），待验收**；
+D11（会话列表+详情 / 分享卡）在 D10 验收后实施；
+D8 原范围（维护折叠 / 复制按钮）被 D9–D11 吸收，仅窗口尺寸记忆仍待排期。
+
+### 12.10 D9（2026-11-11，操作者八点需求的第 1/2/3/7 项）：头部改造 + 四统计卡 + 热力图对齐
+
+口径拍板：热力图**本机口径**（web 是账号全设备口径，数字必然有差异，卡内注明「仅本机
+数据」）；热力图**恒近一年**锚定末日（web 同款）；图表渲染**引入 recharts**（§6 报批）；
+分享卡完整移植放 D11。**零契约变更**——cost/缓存拆分/credits 本就在 queue.jsonl 行内，
+仅桌面解析器此前丢弃。
+
+1. **头部改造**（`monitor-header.tsx`）：品牌 lockup 移除（窗口标题已表明身份），左侧改为
+   `PeriodFilter`（今日 / 7D / 30D / 总计，size sm，连接式 ToggleButtonGroup）；右侧按钮全部
+   `variant="tertiary"`；新增 4 个 CLI 图标按钮（立即同步 / 暂停·恢复 / Doctor / 对账，
+   ArrowRotateRight·CirclePause·CirclePlay·Stethoscope·ListCheck）置于 GitHub 左侧，
+   **<640px（sm 断点）隐藏**——400px 默认窗口头部放不下 7 个图标（宽度账见 §12.7 探查），
+   窄窗由「采集与同步」卡内按钮兜底。
+2. **采集操作卡溶解**：`cli-actions-card.tsx` 删除；版本 / 更新探针 chip、运行输出块
+   （danger Alert / 输出 tail）并入「采集与同步」卡（`sync-status-card.tsx`），四按钮在该卡
+   内以 `sm:hidden` 行保留窄窗兜底。
+3. **四统计卡**（`usage-cards.tsx` 重写）：总 Tokens / 预计费用（采集端 `total_cost_usd`
+   求和，口径注明「采集端估算」）/ 会话数 / 缓存率（`(cached + cache_creation) / total`），
+   全部跟随头部筛选；环比 = 与前一等长窗口对比（今日 vs 昨日、7D vs 前 7 天、30D vs 前
+   30 天、总计无基线隐藏），↑ accent / ↓ danger；迷你图 recharts `Sparkline`
+   （`mini-charts.tsx`，今日按小时 / 7D·30D 按日 / 总计按近 12 个月）；窗口无用量则
+   环比与迷你图都不显示（操作者规则）。数据面：`queue-lines.ts` 解析器补收 cost / 缓存
+   拆分 / input / output / reasoning / credits，`UsageWindow` 扩展对应字段与 `cacheRate`，
+   快照新增 `yesterday` / `prevWeek` / `prevMonth` 窗口与 `series`（时 / 日 / 月 fold，
+   单次 dedupe 复用）。
+4. **热力图对齐 web**（`heatmap-helpers.ts` + `heatmap-section.tsx`）：窗口改 **364 天
+   （52×7）锚定今天**（`from = to − weeks*7 + 1`），**未来日不再渲染**；移植 web
+   `alignWeeks`（首列周一前补 null、尾列 null 收口、null 占位防 auto-flow 漂移）；加入
+   web「全部平台」多选筛选（`heatmap-filter.tsx` 移植，全部 / 清空 / 已选计数，等级与
+   合计按所选来源客户端重算，筛选后合计入描述行）；常量 53→52 周。
+5. **设置弹窗**加宽 `max-w-md` → `max-w-2xl`（操作者要求；仅 ≥472px 窗口可见差异）。
+6. `app.css` 补 `--color-chart-1..8` 两组色板（web globals.css 同款），recharts 图表
+   上色与 web 一致。
+   验收：头部筛选四档切换全页联动、统计卡环比与迷你图随窗口出现/隐藏、热力图无未来
+   格且首列周一前补空、≥640px 头部出 4 图标按钮而窄窗按钮在同步卡、`verify` 全绿。
+
+### 12.11 D10（2026-11-11，操作者八点需求的第 4/5 项）：用量趋势 + 构成照搬 + 项目详情
+
+recharts 已随 D9 落地（§6）。**仍零契约变更**——成本列全部来自 queue.jsonl 行内
+`total_cost_usd` 求和（采集端估算口径，预计费用同理）。
+
+1. **用量趋势卡**（`trend-card.tsx` + `components/charts.tsx` + `lib/charts-theme.ts`，
+   web 趋势同款移植）：按日 / 按月 + Token / 成本双 Tabs；Token 视 = 堆叠柱 输入 / 缓存 /
+   输出（chart-1/3/2），成本视 = 单列 amber 柱；共享 tooltip 全指标；figure + sr-only
+   figcaption 文字摘要。数据 = 快照新增 `trend: Record<UsagePeriod, {daily, monthly}>`
+   （预设窗口日桶零填充，总计只保有数据的桶）；新 `showTrend` 偏好默认开，设置「卡片显示」
+   加第 6 个开关。UsagePoint / DailyUsage 扩 `inputTokens` / `outputTokens`。
+2. **Top 模型卡**（`top-models-card.tsx`，取代 `model-mix-card.tsx` 已删除）：前 8 行
+   `ModelIcon` + tokens · 占比 · **成本**（`ModelUsage.totalCostUsd`，`SourceUsage`
+   同步加成本列）+ `Meter` 条；「成本分析」按钮开 `cost-dialog.tsx`（总成本 / 总 Tokens
+   头部、每日成本 CostTrendChart 面积图、按模型 / 按来源两组表；无 web 的未定价提示——
+   桌面不做读时计价）。
+3. **来源构成卡重写**（`source-mix-card.tsx`）：web 来源面板同款——`DonutChart`
+   （`mini-charts.tsx` 补齐，内孔 64% / 外径 94% / 中心合计）+ 前 5 行点击隐藏/显示
+   （隐藏出分母、占比显示「—」）+「查看全部（N）」Modal（`monitor/breakdown-table.tsx`
+   新组件，web BreakdownTable 移植，`-table` 后缀经 §5 登记）+「恢复显示全部来源」。
+4. **项目与仓库卡重写**（`project-repos-card.tsx`）：web `/projects` 列表行同款——字母
+   方块 logo + 名称 + GitHub mark + 占窗口 caption + 来源 icon 条（≤5 +「+N」）、tokens +
+   相对 meter、底边「成本 · 会话条目 · 最近活跃」细线；行点击开
+   `project-detail-dialog.tsx`（6 KPI + 每日 Token 柱图 ≤60 天 + Token 构成条 + 逐来源
+   行 + 打开仓库），按需经 `lib/project-detail.ts` 从快照 `rows`（去重行随快照保留，供
+   drill-down）折叠；`ProjectUsage` / `ProjectRepoUsage` 扩 `totalCostUsd` /
+   `lastActiveMs` / `sourceTokens` / `memberKeys`（仓库合并折算 sum/max/merge）。
+5. **布局**：趋势卡插入热力图之后；Top 模型 + 来源构成 `lg:grid-cols-2` 双栏（web
+   breakdown 同款），单一可见时占满整行；原「用量构成」分组标签行删除（各卡自题）。
+   验收：趋势双 Tab / 双指标切换、双栏宽窗并排、成本分析弹窗三段、来源隐藏/显示与
+   环形图联动、项目行点击出详情且数字与行一致；`verify` 全绿。
+
+（D11 记录见 §12.13，实施后回写。）
+
+### 12.12 D10.1 验收修复（2026-11-11，操作者 D10 验收三点反馈）
+
+1. **费用全 0 的根因与修复**：采集端对每行写 `total_cost_usd: 0`——计价是 web 读时行为
+   （vendored LiteLLM 快照 + 匹配器）。桌面同步移植该引擎（`lib/pricing.ts` +
+   `pricing-matcher.ts` + 三份 JSON 快照，web 逐字同源），`queue-lines.ts` 的
+   `rowCostUsd()` 按 web `computeRowCost` 同规则计价（权威上报值优先、免费/订阅
+   源为 0、DeepSeek 时段价、长上下文与 priority 分层），WeakMap 按行缓存；**所有成本
+   口径（统计卡 / 趋势 / Top 模型 / 来源 / 成本分析 / 项目）随之切换为读时计价**。
+   实测本机 1150 行去重队列 = **$132.24**（此前恒 $0.00）。
+2. **项目详情对齐 web 版式**（`project-detail-dialog.tsx` 重写）：web 双栏结构——
+   左栏 identity（logo / 显示名 / 目录名 / 打开仓库）+「周期 · 口径：小时桶 · 仅本机
+   数据」行 + 六格 KPI + 三段脚注；右栏 其他字段（日峰值 / 最近活跃 / 积分）+ 每日
+   活跃柱图（≤60 天，悬停含成本与会话条目）+ Token 构成条（输入/缓存/输出 + 含推理）
+   + 按来源行（含「N 次对话」）。`buildProjectDetail` 增补 `peakDay` / `credits`。
+3. **同步 web 编辑的项目信息**（契约 §2.13 + CLI 子命令 + 桌面拉取，操作者拍板「CLI
+   中转完整方案」）：新增只读端点 `GET /api/functions/token-usage-account-project-profiles`
+   （§2.7 catch-all 第 9 个 series，`loadProjectProfiles` 同读取路径，golden 测试
+   `tests/contract/project-profiles-series.test.ts` 4 例）；CLI 新增
+   `tokenusage project-profiles`（无参、单行 JSON stdout；凭证解析同 sync：config →
+   cloud-device-token 文件、自定义 base 需配 anon key；未配对/HTTP 失败走 UsageError，
+   5 个单测）；桌面经 `run_cli` 拉取（`use-monitor.ts` `refreshProfiles`，挂载 +
+   5 分钟节流 + 窗口可见性触发，失败静默保留旧值），`lib/project-profiles.ts` 解析，
+   项目卡/详情按 `project_key`（含 `memberKeys` 兜底）取显示名 / logo（上传直链
+   优先）/ repo_url；编辑仍走 web，桌面无 profile 写入面。
+   验收：费用各卡非零且与 web 量级一致；详情双栏版式；web 改过显示名/logo 的项目在
+   桌面列表与详情同步；未配对机器静默降级为队列 key + 字母方块。
+
+### 12.12.1 D10.1 第二轮验收反馈（2026-11-11，三点）
+
+1. **费用显示统一美元窄符号**：`lib/format-tokens.ts` 的 `formatCost` 改
+   `currencyDisplay: "narrowSymbol"` + 两位小数（zh-CN 默认输出 `US$11.98`，现为
+   `$11.98`），与 web `formatCost` 同规则；不足 1 分同 web 记 `<$0.01`。所有费用口径
+   （统计卡 / 趋势 / Top 模型 / 来源 / 成本分析 / 项目行与详情）经此一处格式化。
+2. **统计卡数值动画 + 环比 Chip + 删说明行**（`usage-cards.tsx`）：数值改 `FlowNumber`
+   （`components/flow-number.tsx`，web 同名组件逐字移植，`@number-flow/react` 0.6.2，
+   依赖登记见 §6）——切周期时卡片保持挂载、数字滚动；环比徽章改 HeroUI `Chip`
+   （`size="sm" variant="soft"`，↑ `success` / ↓ `danger`）；删除第三行说明文案（原
+   「会话 N / tokens N / 缓存 N tokens / 采集端估算」与卡内信息重复）。
+3. **项目 logo 同步修正**（`lib/project-profiles.ts` + `monitor/project-logo.tsx`）：
+   候选顺序改为与 web 一致——`logo_url`（手工链接）→ `logo_upload_url`（上传直链）→
+   字母方块；`ProjectLogo` 对 `<img>` 加载失败逐级回落。此前上传优先，web 改成链接
+   logo 后（上传对象仍在库中）桌面一直显示旧上传图，即本轮反馈的「没同步」。
+   验收：`pnpm --filter @token-usage/desktop verify` 全绿（lint / tsc / 119 例测试 /
+   vite build）。
+
+### 12.12.2 D10.1 第三轮验收反馈（2026-11-11，三点）
+
+1. **环比数字也做动画**（`usage-cards.tsx`）：Chip 内容改 `FlowNumber`，箭头作为字符串前缀、
+   百分比作数字滚动，切周期时与卡值同步过渡。
+2. **热力图跟随周期**（`heatmap-helpers.ts` + `heatmap-section.tsx` + `monitor-body.tsx`）：
+   新增纯函数 `heatmapPeriodStartMs`（今日 / 近 7 天 / 近 30 天按日历日，总计为 0）与
+   `clipHeatmap`（丢弃窗口前日格与前导空列，活跃日 / 合计重算）；卡片接收 `period`，标题后缀
+   显示 今日 / 近 7 天 / 近 30 天 / 近一年；总计仍为整年网格。新增 2 例单测。
+3. **项目 logo 仍不同步的根因**：`run_cli` 的 `CLI_COMMANDS` 白名单漏了 `project-profiles`
+   （Rust 侧直接返回 `command not allowed`，前端 catch 后静默保留字母方块）；本机全局 CLI
+   还是 npm 上的 v0.5.4（不含 §2.13 子命令）。修复：白名单补第 7 项（需重编译安装包）；
+   本地验收环境用 `npm i -g ./packages/cli` 安装工作区 CLI（与 0.5.4 同版本号但含新子命令）。
+   **发行注意**：`project-profiles` 子命令尚未随 npm 发版，其他机器需先升级 `tokenusage-cli`
+   才能看到 web 编辑的显示名 / logo；旧 CLI 仍静默降级（设计如此）。
+   **服务端前提**：本机实测 CLI 已发出请求，但当前部署的 web 实例仍只认 8 个 series，
+   返回 `404 Unknown account series: project-profiles`——桌面拉取要生效，web 必须先部署
+   含 §2.13 端点的那版；未部署前沿用静默降级（字母方块）。
+
+### 12.9 D7.1 验收期追加轮（2026-11-11，操作者需求；无独立版本号，随下次发版带走）
+
+1. **定宽居中**：`monitor-body.tsx` 主内容列加 `mx-auto w-full max-w-6xl`（同 web 仪表盘
+   1152px），最大化窗口不再满宽拉伸；默认窗口 400×620 不变（尺寸记忆仍归 D8）。
+2. **活跃热力图 web 同款移植**：`heatmap-section.tsx` 重写为 web `heatmap-card.tsx` 移植件
+   ——`--heatmap-0..4` 色阶入 `app.css`、格子满年优先 15 px 下限、放不下自左裁周（与 web
+   现行预期一致，2026-11-11 复核裁定）、月份 / 星期标尺、共享 portal tooltip
+   `heatmap-tooltip.tsx`（日期 + 当日 tokens + 来源明细行；`-tooltip` 后缀经 §5 登记启用；
+   不设「全部平台」来源筛选，同 web 公开页形态）。数据面：`heatmap-helpers.ts` 产出 web
+   payload 形状（53 周一对其列、逐日 `canonicalSource` 归并来源、活跃日数、宽度适配纯函数），
+   `aggregateQueueDays` 增逐日 sources，快照单次 dedupe 复用今日 / 7 天 / 30 天 / 总计四窗口；
+   旧「使用节奏」固定 12 px 横向滚动实现连同其「不拉伸」验收修正作废（ui-spec 桌面端节已同步）。
+3. **四档周期**：`PeriodFilter` 扩为「今日 / 近 7 天 / 近 30 天 / 总计」，默认改为今日
+   （存量存储的「近 7 天」仍合法）；快照新增 `month`（滚动 30 天）与 `all`（全文件）窗口，
+   只驱动三张构成卡，顶部单值卡口径不变。
+   验收：最大化窗口满 52 周、悬浮格出 portal tooltip 来源明细；四档切换与默认今日生效；
+   顶部两张单值卡不随筛选变化；`pnpm --filter @token-usage/desktop verify` 全绿。

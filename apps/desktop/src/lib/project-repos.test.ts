@@ -1,3 +1,5 @@
+import type { ProjectUsage } from "@/lib/queue-lines";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -93,11 +95,18 @@ describe("repoName / repoAliasIndex / resolveProjectRepo", () => {
 });
 
 describe("mergeProjectsByRepo", () => {
-  const row = (projectKey: string, tokens: number, conversations = 1) => ({
+  const row = (
+    projectKey: string,
+    tokens: number,
+    conversations = 1,
+  ): ProjectUsage => ({
     projectKey,
     tokens,
     conversations,
     share: 0,
+    totalCostUsd: 0,
+    lastActiveMs: null,
+    sourceTokens: {},
   });
   const urls = {
     "baiwumm/token-usage": "https://github.com/baiwumm/token-usage",
@@ -122,21 +131,33 @@ describe("mergeProjectsByRepo", () => {
         tokens: 800,
         conversations: 4,
         share: 0.8,
+        totalCostUsd: 0,
+        lastActiveMs: null,
+        sourceTokens: {},
         repoUrl: urls["baiwumm/token-usage"],
+        memberKeys: ["token-usage", "baiwumm/token-usage"],
       },
       {
         projectKey: "margin",
         tokens: 100,
         conversations: 1,
         share: 0.1,
+        totalCostUsd: 0,
+        lastActiveMs: null,
+        sourceTokens: {},
         repoUrl: urls["baiwumm/margin"],
+        memberKeys: ["margin"],
       },
       {
         projectKey: "local-only",
         tokens: 50,
         conversations: 1,
         share: 0.05,
+        totalCostUsd: 0,
+        lastActiveMs: null,
+        sourceTokens: {},
         repoUrl: null,
+        memberKeys: ["local-only"],
       },
     ]);
   });

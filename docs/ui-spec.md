@@ -947,56 +947,107 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 2026-11-08 M-desktop 立项（`docs/desktop-plan.md`）。桌面端沿用本文 Design Tokens、组件
 规则（HeroUI 内置优先 / 复合结构 / 语义文本组件）、三态与数字格式，另有窗口级约定：
 
-- **主窗口结构**（400×620，min 340×480，单页滚动无路由）：页头（品牌 lockup + 暂停
-  chip）→（未配对且本次已跳过向导时：warning Alert「这台机器还没配对」+「去配对」）→
-  两张单值卡（今日 tokens / 近 7 天；与 web `SummaryCards` 同构——`Card.Header` 放
-  `text-xs` 标签、`Card.Content` 放数值 + 说明，`tabular-nums`；400 宽下标签须单行、
-  两格数值顶边对齐；待上传已移入采集与同步卡）→ 使用节奏卡（`HeatmapSection`，紧随单值卡
-  之下：近一年 = 53 列 × 7 行的本地日历格，周一起始、最后一列收在周日，今日之后的格
-  留空；格子固定 12 px、间距 4 px，53×7 整块**横向滚动**并默认滚到最右（最新），上方
-  月份标尺与左侧周一–周日标尺同 web 仪表盘活跃热力图，不随窗口宽度拉伸（最大化窗口也
-  不至于变成满屏方块，2026-11-10 验收修正）；5 档
-  色阶 `bg-default` → `bg-accent/25` / `/45` / `/70` → `bg-accent`；格 `title` =「日期 ·
-  tokens · 会话」，栅格 `role="img"` + 汇总 aria-label（不给 371 个格逐格设 Tab 焦点）；
-  底部左「本地时区」、右「少 → 多」图例；窗口内无用量显示空态。日聚合与顶部单值卡同一 last-wins
-  基线与本机时区）→ 用量构成条（左「用量构成」小字，右
-  周期切换 `PeriodFilter`：连接的 `ToggleButtonGroup`「今日 / 近 7 天」，默认近 7 天、
-  写 preferences；只作用于下方三张构成卡，顶部单值卡口径固定；按钮用 HeroUI **默认填充
-  变体**（`variant="ghost"` 会让未选中段与卡片底色同色，退化成一行裸文字，2026-11-10
-  验收修正），第二段前置 `ToggleButtonGroup.Separator`）→ 来源构成卡（标题只写卡名——周期由上方
-  `PeriodFilter` 唯一表达，三张构成卡内不再重复「今日 / 近 7 天」，2026-11-10 验收修正；
-  行 = `SourceIcon` 品牌 logo + `sourceDisplayLabel` 规范名 + ranked
-  bars：share 0–1，条宽下限 2%，最多 8 行；别名行先按 `lib/source-logos.ts` 的
-  `canonicalSource` 归并（trae-cn + trae → Trae，占比与 token 求和后重算），窗口内
-  0 token 的纯 credits 来源如 qoder-cn 不进榜；logo 资产与暗色双图登记同 web
-  `lib/sources.ts`，桌面侧为移植件，渲染统一走 `components/brand-logo.tsx`）→ 主要模型卡
-  （同来源卡解剖 + 行首 `ModelIcon`：按 `modelLogoFile` 的厂商前缀表取品牌 mark（与 web
-  仪表盘 Top 模型一致），无前缀回落同款字母方块；原始模型名截断 + `title` 提示、
-  tokens · 占比、ranked bars；Top 5，超出以「其余 N 个模型」一行收尾；占比按窗口总量算，
-  故 Top 5 不必凑满 100%）→ 项目与仓库卡（Top 5，且同一仓库的 `token-usage` 与
-  `baiwumm/token-usage` 已合并为一行，见 desktop-plan §12.2；`confirmed` 有映射时渲染
-  GitHub mark + 项目名按钮，点击走 `open_in_browser`，无映射只显示名字、**不推断 URL**；
-  底部左 = 归因覆盖「已归因 X% · 其余未归因」或「已全部归因」（残差 = 无 project_key 的
-  行），右 = 「在 web 查看」→ `${dashboardUrl}/projects`，未配对隐藏）→ 最近会话卡
+- **主窗口结构**（400×620，min 340×480，单页滚动无路由；主内容列 `mx-auto max-w-6xl`
+  定宽居中，同 web 仪表盘 1152px——2026-11-11 起，最大化窗口不再满宽拉伸，默认窗口
+  尺寸不变）：页头（左侧 = 周期筛选 `PeriodFilter`：连接的 `ToggleButtonGroup`
+  「今日 / 7D / 30D / 总计」，size sm、默认今日、写 preferences，2026-11-11 D9 自「用量
+  构成条」上移并取代品牌 lockup，短标签由操作者拍板；右侧 = 暂停 chip + CLI 四图标按钮
+  （立即同步 / 暂停·恢复 / Doctor / 对账，`hidden sm:inline-flex`——<640px 隐藏，窄窗由
+  采集与同步卡内按钮兜底，2026-11-11 宽度账裁定）+ GitHub / 主题 / 设置，图标按钮一律
+  `variant="tertiary"`）→（未配对且本次已跳过向导时：warning Alert「这台机器还没配对」+「去配对」；
+  向导页头部仅保留 repo / 主题 / 设置——筛选与 CLI 按钮均为可选 prop，接入流程不渲染）→
+  四张统计卡（总 Tokens / 预计费用 / 会话数 / 缓存率，2026-11-11 取代原「今日 tokens /
+  近 7 天」两张定值卡；全部跟随页头筛选；每卡 = 标签 + 环比 `Chip` + 数值 + recharts
+  `Sparkline` 迷你图（`mini-charts.tsx`；今日按小时、7D/30D 按日、总计按近 12 个月）；
+  数值经 `FlowNumber`（`components/flow-number.tsx`，`@number-flow/react` 0.6.2 与 web
+  同版本）滚动过渡——切周期时卡片不重挂、数字动画；**无第三行说明文案**（原「会话 N /
+  tokens N / 缓存 N tokens / 采集端估算」与卡内其他信息重复，2026-11-11 验收第二轮操作者
+  删除）；环比 = 前一等长窗口对比（今日 vs 昨日、7D vs 前 7 天、30D vs 前 30 天、总计无
+  基线隐藏），`Chip size="sm" variant="soft"`，↑ `success` / ↓ `danger`，徽章内的百分比同样
+  走 `FlowNumber`（箭头作前缀，切周期时数字滚动，2026-11-11 验收第三轮）；**窗口无用量则
+  环比与迷你图都不显示**（操作者规则）；预计费用 = **读时计价**（2026-11-11 D10.1：
+  采集端恒写 `total_cost_usd: 0`，桌面移植 web 计价引擎 `lib/pricing.ts` 同源快照，规则与
+  web `computeRowCost` 一致——权威上报值优先、免费/订阅源为 0、DeepSeek 时段价）；
+  **费用一律美元窄符号两位小数**（`formatCost` → `$11.98`，不写 `US$11.98`，与 web
+  `formatCost` 的 `currencyDisplay: "narrowSymbol"` 一致；不足 1 分显示 `<$0.01`，与
+  web 同规则）；缓存率 = `(cached + cache_creation) / total`；
+  `grid-cols-2 sm:grid-cols-4`，400 宽下标签单行、数值顶边对齐）→ 活跃热力图卡
+  （`HeatmapSection`，紧随统计卡之下，web 仪表盘活跃热力图**同款移植**（2026-11-11，
+  取代旧「使用节奏」固定 12 px 横向滚动实现——该实现的 2026-11-10「不拉伸」验收修正
+  随之作废）：**364 天（52×7）窗口锚定今天，未来日不渲染**（2026-11-11 D9 与 web 语义
+  对齐，取代同日早先的 53 周整列实现）；**跟随页头周期**（2026-11-11 验收第三轮：
+  `clipHeatmap` 按 `heatmapPeriodStartMs` 裁剪——今日 1 列、近 7 / 30 天只保留对应日历日、
+  总计才保留整年，活跃日与合计按裁剪后重算，标题后缀同步显示周期名）；`alignWeeks`
+  周一对齐——首列周一前补 null、
+  尾列 null 收口、null 占位防 auto-flow 漂移；格子随卡片宽度自适应（web `fitHeatmapWidth`
+  同款：满年优先、15 px 下限、放不下再自左裁周），上方月份标尺与左侧周一–周日标尺同 web；
+  5 档色阶 `--heatmap-0..4`（`app.css` 与 web `globals.css` 同款 accent 派生）；右上
+  「全部平台」多选筛选（`heatmap-filter.tsx`，全部 / 清空 / 已选 N 个平台，等级与合计按
+  所选来源客户端重算，筛选后合计入描述行）；共享 portal tooltip（`heatmap-tooltip.tsx`：
+  `createPortal` + fixed + clamp 定位、80 ms 延迟隐藏）显示日期、当日 tokens 与来源明细行
+  （`SourceIcon` + 规范名 + token · 占比 + 进度条，来源在折日时已按 `canonicalSource`
+  归并）；逐格 `role="img"` + aria-label（不给 364 个格逐格设 Tab 焦点）；底部左本机时区
+  （`UTC+08:00` 样式）、右「少 → 多」图例；窗口内无用量显示「近一年暂无数据」空态。
+  日聚合与统计卡同一 last-wins 基线与本机时区；**本机口径**——web 为账号全设备口径，
+  数字必然有差异，描述行以「仅本机数据」注明（2026-11-11 操作者拍板））→ **用量趋势卡**
+  （`trend-card.tsx`，2026-11-11 D10 web 趋势同款移植：Header 右两组 `Tabs`——「按日 /
+  按月」与「Token / 成本」；Token 视 = recharts 堆叠柱 `输入 / 缓存 / 输出`
+  （`--color-chart-1/3/2`，`lib/charts-theme.ts` 同 web theme），成本视图 = 单列 amber
+  柱；共享 tooltip 列 日期 / Token / 输入 / 缓存 / 输出 / 成本 / 会话数；图表包在
+  `figure` + sr-only figcaption 文字摘要里（web 无障碍同款）；数据 = 快照按周期折叠的
+  daily / monthly 序列（预设窗口零填充空日，总计只保有数据的桶；今日窗口日视图为
+  单柱，web 同款退化）；新 `showTrend` 偏好默认开）→ **Top 模型卡 + 来源构成卡双栏**
+  （`grid gap-4 lg:grid-cols-2`，2026-11-11 D10 取代原「主要模型卡 / 来源构成卡」纵向
+  排布：**Top 模型**（`top-models-card.tsx`）= 前 8 行 `ModelIcon` + 模型名（截断 +
+  title）+ `tokens · 占比 · 成本` 右对齐 + HeroUI `Meter` 条（h-1.5），Header 右
+  「成本分析」ghost 按钮开 `cost-dialog.tsx`——总成本 / 总 Tokens 头部、每日成本
+  `CostTrendChart` 面积图（amber 渐变）、按模型 / 按来源两组 `BreakdownTable`
+  （`monitor/breakdown-table.tsx`，web 同款移植：名称列截断、数字列定宽不换行、占比 /
+  成本 / 积分列按有值才出现）；**来源构成**（`source-mix-card.tsx` 重写）=
+  `DonutChart`（recharts PieChart，内孔 64% / 外径 94%，中心「总 Tokens + 可见合计」）
+  + 右侧前 5 行点击隐藏/显示（隐藏行 opacity-40 + 删除线、占比出分母重算、隐藏时显示
+  「—」）+「查看全部（N）」开同款表格 Modal +「恢复显示全部来源」；别名归并
+  （trae-cn → Trae）沿用 `groupSourceUsage`，0 token 纯 credits 来源不进榜；成本列 =
+  采集端估算求和）→ 项目与仓库卡（2026-11-11 D10 重写为 web `/projects` 列表行同款，
+  D10.1 验收再对齐）：高密度行 = logo（**web 编辑的上传/链接图**，无则字母方块）+
+  名称（**web 编辑的显示名**，队列 key 作副行）+ GitHub mark（profile `repo_url`，
+  无则 CLI confirmed 映射）+「占窗口 X%」caption + 来源 icon 条（规范名去重，最多
+  5 个 +「+N」），右侧 tokens + 相对最大项目的（logo 候选顺序同 web：链接 `logo_url` →
+  上传 `logo_upload_url` → 字母方块，`<img>` 加载失败逐级回落，2026-11-11 验收第二轮
+  修正——此前上传优先，web 改成链接 logo 后桌面仍显示旧上传图）
+  meter；底边细线 = 成本 · 会话条目 · 最近活跃（相对时间，小时精度）；**行点击开详情
+  dialog**（2026-11-11 D10.1 起 web 双栏版式：左栏 = identity（logo / 显示名 /
+  目录名 / 打开仓库）+「周期 · 口径：小时桶 · 仅本机数据」+ 六格 KPI（Token 总量 /
+  占窗口 / 费用（估算）/ 会话条目 / 活跃天数 / 日均（活跃日））+ 三段脚注（估算偏差 /
+  积分独立 / 隐私边界）；右栏 = 其他字段（日峰值 / 最近活跃 / 积分）+ 每日活跃柱图
+  （≤60 天，悬停含 tokens · 会话条目 · 成本）+ Token 构成条（输入/缓存/输出 +
+  含推理）+ 按来源行（icon + 规范名 +「N 次对话」+ tokens · 占比 · 成本）），按需从
+  同一去重行折叠（`lib/project-detail.ts`），数字与列表行同源；详情头部「打开仓库」=
+  `open_in_browser`；**不推断 URL**；编辑留 web。**profile 同步**（契约 §2.13，
+  D10.1）：`tokenusage project-profiles`（CLI 持令牌代读，桌面不碰设备令牌文件）→
+  `lib/project-profiles.ts` 解析 → hook 挂载 + 5 分钟节流拉取，未配对 / 旧 CLI
+  静默降级为队列 key + 字母方块；Top 5 + 归因覆盖脚注 + 「在 web 查看」沿用）→
+  最近会话卡
   （`RecentSessionsCard`：`read_tracker_tail` 只读 `session.queue.jsonl` 末尾 ≤512 KiB，
   最近 5 条；首行 = `ModelIcon` + 模型名（截断 + title），右侧一行放「tokens · 相对时间」；
   次行 = 项目 basename；**不显示标题、正文、绝对路径**）→ 采集与同步卡
-  （Header 左 = 标题「采集与同步」+「更新于 HH:mm:ss」，右 = 刷新图标钮，读取期间图标位
-  换成 `Spinner`，且手动刷新至少保持 400 ms 可见；Content = 待上传 / 队列体积
-  （`formatBytes`）+ `logs/sync.log` 的 `phase:"finished"` 行 + 更新的 `error` 行）→
-  采集操作卡（Header = 标题 + 右侧 `Chip` 显示 `tokenusage-cli vX.Y.Z`（版本串先经
-  `lib/version.ts` 的 `bareVersion` 去掉 CLI 自带的 `v` 再拼，避免 `vv0.5.4`；未检测到则
-  danger 配色「未检测到 CLI」），与标题垂直居中；该 Chip 同时是唯一的 updater 探针：**点击才**
-  请求 npm registry，结果以第二枚 Chip 落在旁边「检查中 / 最新 / 可更新 vX / 检查失败」，
-  失败不外抛（2026-11-10 验收追加）；Content = 立即同步 = `sync --auto` / Doctor /
-  对账 7 天 / 暂停·恢复）→ 设备身份脚注（主机名 #machineId 前 8 · © 2026 Token Usage；
+  （2026-11-11 D9 吸收原「采集操作卡」（`cli-actions-card.tsx` 已删除）：Header 左 = 标题
+  「采集与同步」+「更新于 HH:mm:ss」，右 = 版本 Chip 组（`tokenusage-cli vX.Y.Z`——版本串
+  先经 `lib/version.ts` 的 `bareVersion` 去 `v` 再拼，避免 `vv0.5.4`；未检测到则 danger
+  「未检测到 CLI」；该 Chip 同时是唯一的 updater 探针：**点击才**请求 npm registry，结果
+  以第二枚 Chip 落在旁边「检查中 / 最新 / 可更新 vX / 检查失败」，失败不外抛）+ 刷新图标
+  钮，读取期间图标位换成 `Spinner`，且手动刷新至少保持 400 ms 可见；Content = 待上传 /
+  队列体积（`formatBytes`）+ `logs/sync.log` 的 `phase:"finished"` 行 + 更新的 `error` 行 +
+  四按钮行（立即同步 = `sync --auto` / Doctor / 对账 7 天 / 暂停·恢复，`flex sm:hidden`
+  ——≥640px 由页头图标按钮接管，此处仅窄窗兜底）+ CLI 运行输出块）→ 设备身份脚注
+  （主机名 #machineId 前 8 · © 2026 Token Usage；
   两段各自 `whitespace-nowrap`，只在 `·` 处换行；CLI 版本与实例 host 不在此重复——
-  前者在采集操作卡 Chip，后者在设置「网页」组，2026-11-10 验收修正）。页头右侧
-  顺序：暂停 chip（有则）→ GitHub 仓库图标钮（`lib/links.ts` 的 `REPO_URL`，tooltip
-  「GitHub 仓库」）→ 主题钮 → 设置钮。卡片一律走 `Card` 复合结构（Header / Title /
+  前者在采集与同步卡 Chip，后者在设置「网页」组，2026-11-10 验收修正）。卡片一律走
+  `Card` 复合结构（Header / Title /
   Description + Content / Footer），2026-11-09 起 D2 手写的带边框 div 卡片收编为
   `Card`。
-- **采集操作卡交互**（2026-11-09 操作者要求）：① 四个按钮一律 `PendingButton`——被点的那个
+- **采集操作卡交互**（2026-11-09 操作者要求；2026-11-11 起按钮行与输出块并入采集与同步卡、
+  页头图标按钮同规则，下述约定不变）：① 四个按钮一律 `PendingButton`——被点的那个
   按钮内渲染 current-color `Spinner`（`size="sm"`，`aria-hidden`），其余按钮 `isDisabled`；
   有前置图标的按钮（立即同步 / 暂停·恢复）pending 时 **Spinner 顶替图标位**，不与图标并排
   （HeroUI 官方 pending pattern：同一槽位 `isPending ? <Spinner /> : <Icon />`），图标经

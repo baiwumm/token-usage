@@ -9,7 +9,7 @@
 export type ThemeMode = "system" | "light" | "dark";
 
 /** Window used by the mix cards (source / model / project). */
-export type UsagePeriod = "today" | "7d";
+export type UsagePeriod = "today" | "7d" | "30d" | "all";
 
 export interface Preferences {
   theme: ThemeMode;
@@ -32,6 +32,7 @@ export interface Preferences {
   /** Mirrors the OS autostart registration (plugin is the source of truth). */
   autostart: boolean;
   /** Card visibility (D7); the first three are on by default. */
+  showTrend: boolean;
   showSources: boolean;
   showModels: boolean;
   showProjects: boolean;
@@ -48,7 +49,7 @@ export const BACKLOG_BYTES_OPTIONS = [10 * MIB, 20 * MIB, 50 * MIB, 100 * MIB];
 
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: "system",
-  period: "7d",
+  period: "today",
   dailySummary: true,
   dailySummaryHour: 21,
   failureAlerts: true,
@@ -59,6 +60,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   quietStartHour: 22,
   quietEndHour: 8,
   autostart: false,
+  showTrend: true,
   showSources: true,
   showModels: true,
   showProjects: true,
@@ -67,7 +69,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
 };
 
 const THEMES: readonly ThemeMode[] = ["system", "light", "dark"];
-const PERIODS: readonly UsagePeriod[] = ["today", "7d"];
+const PERIODS: readonly UsagePeriod[] = ["today", "7d", "30d", "all"];
 
 function asBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
@@ -139,6 +141,7 @@ export function normalizePreferences(raw: unknown): Preferences {
     ),
     quietEndHour: asHour(source.quietEndHour, DEFAULT_PREFERENCES.quietEndHour),
     autostart: asBoolean(source.autostart, DEFAULT_PREFERENCES.autostart),
+    showTrend: asBoolean(source.showTrend, DEFAULT_PREFERENCES.showTrend),
     showSources: asBoolean(source.showSources, DEFAULT_PREFERENCES.showSources),
     showModels: asBoolean(source.showModels, DEFAULT_PREFERENCES.showModels),
     showProjects: asBoolean(
@@ -155,7 +158,11 @@ export function normalizePreferences(raw: unknown): Preferences {
 
 /** Mix-card period label shared by the filter and the card descriptions. */
 export function periodLabel(period: UsagePeriod): string {
-  return period === "today" ? "今日" : "近 7 天";
+  if (period === "today") return "今日";
+  if (period === "7d") return "近 7 天";
+  if (period === "30d") return "近 30 天";
+
+  return "总计";
 }
 
 /** `21` → `21:00` for the hour selects and notification copy. */

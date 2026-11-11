@@ -462,6 +462,51 @@ Query：`from`、`to`（ISO 瞬时，按 `hour_start ∈ [from,to)`）、`limit`
   （兜 reconcile / replay 这类不建 run 行的改数盲区）。payload 按
   `user(JWT sub) + range/tz/device` 键缓存在 sessionStorage（上限 4 组筛选键）。
 
+### 2.13 `GET /api/functions/token-usage-account-project-profiles`（设备令牌或 JWT｜CLI 面 + Dashboard 面）
+
+> 2026-11-11 新增（桌面 D10.1）：桌面「项目与仓库 / 项目详情」要显示 web 端编辑过的项目
+> profile（显示名 / logo / repo），而桌面永不读取设备令牌文件（桌面 §3 边界 1）——由
+> CLI 以自身持有的令牌代读：新增只读 CLI 子命令 `tokenusage project-profiles`
+> （见本节末），本端点是其读取面。挂在 §2.7 catch-all 的 **第 9 个 series**
+> （`token-usage-account-<series>`，不新增函数数目）。
+
+Query：无（账号级全集；profile 数量以项目数计，天然有界，无需分页）。
+
+- 鉴权：设备令牌（任意未吊销设备）或用户 JWT，经 `resolvePrincipal`；未带令牌、令牌
+  无效或**设备已吊销**一律 `401 {"error":"Unauthorized"}`（§1.4 主链，与 §2.7 各 series
+  一致）。
+- 响应（200）：
+
+```json
+{
+  "profiles": [
+    {
+      "project_key": "token-usage",
+      "display_name": "Token Usage",
+      "repo_url": "https://github.com/baiwumm/token-usage",
+      "repo_source": "manual",
+      "detected_repo_url": "https://github.com/baiwumm/token-usage",
+      "manual_repo_url": "https://github.com/baiwumm/token-usage",
+      "repo_hidden": false,
+      "logo_url": "https://…/logo.png",
+      "logo_upload_url": "https://…/storage/v1/object/public/avatars/….png"
+    }
+  ]
+}
+```
+
+- 字段语义与 `/api/app/projects` 的 profile 完全一致（`loadProjectProfiles(userId)`
+  同一读取路径）：`display_name` / `logo_url` 为 dashboard 手工编辑值；
+  `logo_upload_url` 为上传 logo 的公共存储直链（webview 可直接 `<img>`，加载失败回落
+  字母方块）；`repo_url` = `manual_repo_url ?? (repo_hidden ? null : detected_repo_url)`；
+  无手工记录且无探测 repo 的 project_key 不出现在列表中。
+- 只读：不写任何表；`Cache-Control: private, no-cache`（无 ETag 协商——profile 低频
+  变化，桌面侧自带内存缓存）。
+- **CLI 面**：`tokenusage project-profiles`（无参数；输出恒为单行 JSON 到 stdout，
+  即上列 payload 原样）。未配对 / 令牌缺失报 `UsageError`（exit 2，hint 提示先
+  `tokenusage device-login`）；HTTP 非 2xx 报 `UsageError`（携带状态码与响应体摘要）。
+  桌面经 `run_cli` 捕获 stdout 解析，字段以本节为准。
+
 ## 3. 冻结不变量清单（逐条对应契约测试）
 
 适用范围：涉及 §2.6–2.10 的条目（6、7 的字段形态与聚合规则，含 `sessions` series）属

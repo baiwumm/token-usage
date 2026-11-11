@@ -180,6 +180,11 @@ prettier / typescript 组同版本；不引 `next-themes`（暗色写死）、�
 `zustand` 等 web 独有名不进桌面。Rust crate（`tauri` 2 + `tauri-build`）走 cargo、不进
 pnpm lockfile，依赖树披露随发版文档（`docs/desktop-plan.md` §6）。
 
+2026-11-11 增量（M-desktop D9–D10.1，操作者随 UI 需求批准）：运行时装 `recharts` 3.10.1
+（web 同版本，统计卡迷你图与趋势/环形图）与 `@number-flow/react` 0.6.2（web 同版本，
+统计卡数值滚动过渡，`components/flow-number.tsx` 为 web 同名组件逐字移植）；均为已批准
+依赖名的子集新增，无新依赖名。
+
 2026-11-09 增量（M-desktop D4，操作者批准"三个官方插件全上"）：`apps/desktop` 运行时装
 `@tauri-apps/plugin-notification@2.8.0` 与 `@tauri-apps/plugin-autostart@2.7.0`；Rust crate
 增 `tauri-plugin-notification@2.8.0` / `tauri-plugin-autostart@2.7.0` /

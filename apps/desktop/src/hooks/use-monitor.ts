@@ -15,12 +15,18 @@ import {
   type CliStatus,
   type MonitorSnapshot,
 } from "@/lib/monitor";
+import {
+  parseProjectProfiles,
+  type ProjectProfile,
+} from "@/lib/project-profiles";
 
 const REFRESH_MS = 10_000;
 /** Tail window for the session sidecar (D7); the file itself is several MB. */
 const SESSION_TAIL_BYTES = 512 * 1024;
 /** How long the manual-refresh spinner stays visible at minimum (ms). */
 const MIN_REFRESH_MS = 400;
+/** Web-edited project profiles refresh cadence (CLI round-trip, D10.1). */
+const PROFILES_REFRESH_MS = 5 * 60_000;
 
 /** Tray menu runs the CLI detached; Rust brackets it with these two events so
  * the window's action buttons follow along (pending spinner, then a re-read). */
@@ -96,6 +102,11 @@ export function useMonitor() {
   const [runningCommand, setRunningCommand] = useState<string | null>(null);
   const [lastOutcome, setLastOutcome] = useState<CliRunOutcome | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  /** Web-edited project profiles (D10.1), keyed by project_key. Empty until
+   * the first successful CLI read; never blocks the usage stack. */
+  const [projectProfiles, setProjectProfiles] = useState<
+    Map<string, ProjectProfile>
+  >(() => new Map());
   // Snapshots embed the CLI status, so the ref is written in the same tick
   // as the probe resolves: a refresh() right after refreshCli() must not
   // compose a snapshot with the previous probe's answer.
@@ -221,26 +232,61 @@ export function useMonitor() {
     [refresh, refreshCli],
   );
 
+  /**
+   * Web-edited project profiles via the CLI bridge (contract §2.13): the CLI
+   * holds the pairing credential, the desktop never touches the token file.
+   * Runs on mount and every 5 minutes, silently degrades (unpaired, offline,
+   * malformed stdout all keep the previous map), and shares the run_cli
+   * allowlist's command string shape.
+   */
+  const refreshProfiles = useCallback(async () => {
+    try {
+      const result = await invoke<{
+        resolved: boolean;
+        exitCode: number | null;
+        stdout: string;
+        stderr: string;
+      }>("run_cli", { args: ["project-profiles"] });
+
+      if (result.resolved && result.exitCode === 0) {
+        const parsed = parseProjectProfiles(result.stdout);
+
+        if (parsed.size > 0) setProjectProfiles(parsed);
+      }
+    } catch {
+      // Unpaired machine, CLI missing, or an older CLI without the
+      // subcommand — profiles stay as-is (queue keys drive the UI).
+    }
+  }, []);
+
   useEffect(() => {
     void refreshCli();
     void refresh();
     void invoke<{ hostname: string | null }>("tracker_paths")
       .then((paths) => setHostname(paths.hostname))
       .catch(() => setHostname(null));
+    void refreshProfiles();
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, REFRESH_MS);
+    const profilesTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshProfiles();
+    }, PROFILES_REFRESH_MS);
     const onVisible = () => {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState === "visible") {
+        void refresh();
+        void refreshProfiles();
+      }
     };
 
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       window.clearInterval(timer);
+      window.clearInterval(profilesTimer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [refresh, refreshCli]);
+  }, [refresh, refreshCli, refreshProfiles]);
 
   // Tray action mirror: the menu spawns tokenusage in the Rust process, so the
   // window has no idea a run started — these events flip the action card into
@@ -288,6 +334,7 @@ export function useMonitor() {
     runningCommand,
     lastOutcome,
     refreshing,
+    projectProfiles,
     refresh,
     refreshCli,
     refreshNow,

@@ -10,6 +10,7 @@ import {
   loadSessionRows,
   loadSyncRunRows,
 } from "./account-data";
+import { loadProjectProfiles } from "./project-profiles";
 import { select } from "./supabase-rest";
 import { buildSessionsCsv, type SessionsCsvItem } from "./sessions-csv";
 
@@ -834,6 +835,14 @@ async function sessions({ url, principal }: SeriesArgs) {
   });
 }
 
+// §2.13 (2026-11-11): read-only profile mirror for the desktop — same merge
+// the /api/app/projects list uses, served to `tokenusage project-profiles`.
+async function projectProfiles({ principal }: SeriesArgs): Promise<Response> {
+  const profiles = await loadProjectProfiles(principal.userId);
+
+  return jsonResponse(200, { profiles });
+}
+
 export const SERIES: Record<string, (args: SeriesArgs) => Promise<Response>> = {
   daily,
   hourly,
@@ -843,4 +852,5 @@ export const SERIES: Record<string, (args: SeriesArgs) => Promise<Response>> = {
   devices,
   sessions,
   "sync-runs": syncRuns,
+  "project-profiles": projectProfiles,
 };

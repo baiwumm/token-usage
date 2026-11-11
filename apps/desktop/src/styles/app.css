@@ -22,3 +22,41 @@
 	--font-sans: "Maple Mono CN", system-ui, Avenir, Helvetica, Arial, sans-serif;
 	--font-mono: "Maple Mono CN", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+
+/*
+ * Activity heatmap level stops (web globals.css 同款, read via var(--heatmap-N)).
+ * Light theme: deeper accent = more usage; dark theme: brighter = more.
+ * Chart palette tokens match web's so ported recharts charts render alike
+ * (Tailwind only emits utilities for the --color-* namespace).
+ */
+:root {
+	--heatmap-0: var(--default);
+	--heatmap-1: oklch(from var(--accent) calc(l + 0.3) calc(c * 0.25) h);
+	--heatmap-2: oklch(from var(--accent) calc(l + 0.15) calc(c * 0.45) h);
+	--heatmap-3: oklch(from var(--accent) l calc(c * 0.7) h);
+	--heatmap-4: oklch(from var(--accent) calc(l - 0.12) c h);
+	--color-chart-1: #0485f7; /* blue — totals / primary series */
+	--color-chart-2: #4fbd91; /* green */
+	--color-chart-3: #f0a12b; /* amber — cost */
+	--color-chart-4: #8b6ee8; /* violet */
+	--color-chart-5: #e45b55; /* red */
+	--color-chart-6: #d65791; /* pink */
+	--color-chart-7: #20a5a5; /* teal */
+	--color-chart-8: #7e8797; /* gray */
+}
+
+.dark {
+	--heatmap-0: var(--default);
+	--heatmap-1: oklch(from var(--accent) calc(l - 0.25) calc(c * 0.35) h);
+	--heatmap-2: oklch(from var(--accent) calc(l - 0.12) calc(c * 0.6) h);
+	--heatmap-3: oklch(from var(--accent) l calc(c * 0.8) h);
+	--heatmap-4: oklch(from var(--accent) calc(l + 0.15) c h);
+	--color-chart-1: #48a7ff;
+	--color-chart-2: #62cfa4;
+	--color-chart-3: #f4b64c;
+	--color-chart-4: #aa91f2;
+	--color-chart-5: #f07872;
+	--color-chart-6: #e776aa;
+	--color-chart-7: #45bdbd;
+	--color-chart-8: #a0a8b6;
+}

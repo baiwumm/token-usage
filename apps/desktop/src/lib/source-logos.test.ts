@@ -69,6 +69,7 @@ describe("groupSourceUsage", () => {
     tokens,
     conversations,
     share: 0,
+    totalCostUsd: 0,
   });
 
   it("merges alias rows and recomputes shares against the window total", () => {

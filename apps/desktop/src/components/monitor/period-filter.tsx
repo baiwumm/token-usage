@@ -4,7 +4,9 @@ import { ToggleButton, ToggleButtonGroup } from "@heroui/react";
 
 const OPTIONS: Array<{ id: UsagePeriod; label: string }> = [
   { id: "today", label: "今日" },
-  { id: "7d", label: "近 7 天" },
+  { id: "7d", label: "7D" },
+  { id: "30d", label: "30D" },
+  { id: "all", label: "总计" },
 ];
 
 /**
@@ -14,6 +16,7 @@ const OPTIONS: Array<{ id: UsagePeriod; label: string }> = [
  * switch at 340 px. Buttons keep HeroUI's default (filled) variant: a ghost
  * unselected segment is the same color as the card behind it, so the control
  * reads as a bare label instead of a switch (operator review 2026-11-10).
+ * Defaults to 今日 (operator request 2026-11-11); a stored 近 7 天 stays.
  */
 export function PeriodFilter({
   period,
@@ -33,7 +36,14 @@ export function PeriodFilter({
       onSelectionChange={(keys) => {
         const next = typeof keys === "string" ? null : [...keys][0];
 
-        if (next === "today" || next === "7d") onChange(next);
+        if (
+          next === "today" ||
+          next === "7d" ||
+          next === "30d" ||
+          next === "all"
+        ) {
+          onChange(next);
+        }
       }}
     >
       {OPTIONS.map((option, index) => (

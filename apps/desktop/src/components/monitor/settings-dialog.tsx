@@ -218,7 +218,7 @@ export function SettingsDialog({
   return (
     <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
       <Modal.Container>
-        <Modal.Dialog className="max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-md">
+        <Modal.Dialog className="max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-2xl">
           <Modal.CloseTrigger aria-label="关闭设置" />
           <Modal.Header>
             <Modal.Heading>设置</Modal.Heading>
@@ -331,13 +331,18 @@ export function SettingsDialog({
                 卡片显示
               </Typography>
               <ToggleRow
+                isSelected={prefs.showTrend}
+                label="用量趋势"
+                onChange={(value) => onChange({ showTrend: value })}
+              />
+              <ToggleRow
                 isSelected={prefs.showSources}
                 label="来源构成"
                 onChange={(value) => onChange({ showSources: value })}
               />
               <ToggleRow
                 isSelected={prefs.showModels}
-                label="主要模型"
+                label="Top 模型"
                 onChange={(value) => onChange({ showModels: value })}
               />
               <ToggleRow
@@ -347,7 +352,7 @@ export function SettingsDialog({
               />
               <ToggleRow
                 isSelected={prefs.showHeatmap}
-                label="使用节奏"
+                label="活跃热力图"
                 onChange={(value) => onChange({ showHeatmap: value })}
               />
               <ToggleRow
@@ -356,7 +361,7 @@ export function SettingsDialog({
                 onChange={(value) => onChange({ showRecentSessions: value })}
               />
               <Description className="text-xs">
-                默认只展开用量构成三卡；开关即时生效
+                默认展开趋势与用量构成卡；开关即时生效
               </Description>
             </section>
 

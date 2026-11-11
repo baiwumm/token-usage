@@ -40,7 +40,16 @@ const TRAY_ID: &str = "main-tray";
 // managed device_login_* commands below — a plain run_cli call would block
 // on `.output()` for the whole 16-minute pairing window and a stray second
 // spawn would race the first one for config.json.
-const CLI_COMMANDS: [&str; 6] = ["sync", "status", "doctor", "reconcile", "pause", "resume"];
+const CLI_COMMANDS: [&str; 7] = [
+    "sync",
+    "status",
+    "doctor",
+    "reconcile",
+    "pause",
+    "resume",
+    // Read-only project profiles (docs/cli-contract.md §2.13).
+    "project-profiles",
+];
 const MAX_TRACKER_FILE_BYTES: u64 = 8 * 1024 * 1024;
 const DEFAULT_DASHBOARD_URL: &str = "https://token-usage.baiwumm.com";
 

@@ -63,7 +63,7 @@ describe("normalizePreferences", () => {
 
     const clamped = normalizePreferences({
       theme: "sepia",
-      period: "30d",
+      period: "90d",
       dailySummaryHour: 42,
       failureThreshold: 1,
       backlogBytes: 12,
@@ -127,6 +127,15 @@ describe("theme cycle", () => {
   it("labels the usage periods", () => {
     expect(periodLabel("today")).toBe("今日");
     expect(periodLabel("7d")).toBe("近 7 天");
+    expect(periodLabel("30d")).toBe("近 30 天");
+    expect(periodLabel("all")).toBe("总计");
+  });
+
+  it("defaults the period to today and keeps stored valid periods", () => {
+    expect(DEFAULT_PREFERENCES.period).toBe("today");
+    for (const period of ["today", "7d", "30d", "all"] as const) {
+      expect(normalizePreferences({ period }).period).toBe(period);
+    }
   });
 });
 

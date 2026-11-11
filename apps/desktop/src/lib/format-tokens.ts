@@ -11,6 +11,53 @@ export function formatTokens(tokens: number): string {
   return formatter.format(tokens);
 }
 
+const percentFormatter = new Intl.NumberFormat("zh-CN", {
+  style: "percent",
+  maximumFractionDigits: 1,
+});
+
+/** Share 0–1 → "40%" (one fraction digit), for the heatmap tooltip rows. */
+export function formatPercent(ratio: number): string {
+  return percentFormatter.format(ratio);
+}
+
+const costFormatter = new Intl.NumberFormat("zh-CN", {
+  style: "currency",
+  currency: "USD",
+  // zh-CN's default symbol is "US$"; the narrow symbol keeps every cost
+  // column to "$11.98" like the web's formatCost.
+  currencyDisplay: "narrowSymbol",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/**
+ * Read-time USD estimate → "$11.98" (stat cards, charts, dialogs). Same rules
+ * as the web's formatCost: two decimals, sub-cent values read "<$0.01" rather
+ * than rounding to $0.00.
+ */
+export function formatCost(valueUsd: number): string {
+  const abs = Math.abs(valueUsd);
+
+  if (abs === 0) return costFormatter.format(0);
+  if (abs < 0.01) {
+    const tiny = costFormatter.format(0.01);
+
+    return valueUsd < 0 ? `-${tiny}` : `<${tiny}`;
+  }
+
+  return costFormatter.format(valueUsd);
+}
+
+const numberFormatter = new Intl.NumberFormat("zh-CN", {
+  maximumFractionDigits: 0,
+});
+
+/** Grouped count ("5,477") for conversation counts in chart tooltips. */
+export function formatNumber(value: number): string {
+  return numberFormatter.format(value);
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB"];

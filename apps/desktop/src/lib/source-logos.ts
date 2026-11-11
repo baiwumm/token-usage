@@ -262,6 +262,7 @@ export function groupSourceUsage(
     if (agg) {
       agg.tokens += entry.tokens;
       agg.conversations += entry.conversations;
+      agg.totalCostUsd += entry.totalCostUsd;
     } else {
       byId.set(id, { ...entry, source: id });
     }

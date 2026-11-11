@@ -36,7 +36,7 @@ export function ThemeToggle({
         aria-label={`主题：${label}`}
         className="text-muted hover:text-foreground size-8 min-w-8 shrink-0"
         size="sm"
-        variant="ghost"
+        variant="tertiary"
         onPress={() => onChange(nextTheme(mode))}
       >
         <Icon aria-hidden="true" className="size-4" />
