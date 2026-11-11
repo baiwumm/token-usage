@@ -1,0 +1,42 @@
+# The production environment's auto-deploy is locked ON by EdgeOne Makers
+# (console: "生产环境默认开启"). Instead of disabling it, point that environment
+# at a dedicated release branch which is updated ONLY when apps/landing/**
+# changes. main pushes then never reach the watched branch, so no unrelated
+# commit can start a build.
+#
+# One-time setup (in this order):
+#   1. Commit & push this workflow + edgeone.json to main
+#      (this one deploy is intentional: it activates the new edgeone.json)
+#   2. git push origin main:refs/heads/landing-release
+#   3. Console > 环境管理 > 生产 > 编辑 > 关联分支 = landing-release > 保存
+#      (leave 自动部署 ON — it cannot be turned off)
+# After that, only apps/landing/** changes update landing-release.
+# The existing deploy hook stays as a manual fallback; the automatic path no
+# longer uses it (a hook + this branch would deploy twice for one change).
+
+name: Deploy landing (EdgeOne Makers)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/landing/**'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the triggering main commit
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Mirror main onto the watched release branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git push --force origin "HEAD:refs/heads/landing-release"
+          echo "landing-release updated; EdgeOne Makers will build it"

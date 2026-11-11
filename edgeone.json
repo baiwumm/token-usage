@@ -1,5 +1,5 @@
 {
-  "installCommand": "pnpm install --frozen-lockfile",
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile",
   "buildCommand": "pnpm build:landing:deploy",
   "outputDirectory": "apps/landing/out",
   "nodeVersion": "22.11.0",
