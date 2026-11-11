@@ -51,13 +51,14 @@ export function badgeSource(): BadgeSource | null {
   return cached;
 }
 
-/** sparkline 徽章直链（landing 恒为暗色）。 */
+/** sparkline 徽章直链；默认 dark（landing 恒为暗色，light 只作页脚成对展示）。 */
 export function badgeImageUrl(
   style: "sparkline" | "panel" = "sparkline",
+  theme: "dark" | "light" = "dark",
 ): string | null {
   const source = badgeSource();
 
   if (!source) return null;
 
-  return `${source.origin}/api/badge?token=${source.token}&style=${style}&theme=dark`;
+  return `${source.origin}/api/badge?token=${source.token}&style=${style}&theme=${theme}`;
 }

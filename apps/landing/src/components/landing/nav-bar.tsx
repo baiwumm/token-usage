@@ -70,7 +70,7 @@ export function NavBar({ demoUrl }: { demoUrl: string | null }) {
               isIconOnly
               aria-label={copy.nav.demo}
               size="sm"
-              variant="ghost"
+              variant="outline"
               onPress={() => openExternal(demoUrl)}
             >
               <Globe className="size-4" />

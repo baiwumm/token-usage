@@ -18,8 +18,10 @@ pnpm verify          # 根门禁（web + cli + landing 全量）
 应数字即可——热力图 cells 为 `[day, tokens, level]` 三元组（52 列 × 7 行，
 周序），series 为近 30 天日桶。
 
-页脚「实时公开徽章」与 Hero「公开页演示」链接在**构建期**从仓库根 `README.md`
-解析（`src/lib/badge-url.ts`），README 变更即跟随，不硬编码令牌。
+页脚「实时公开徽章」与顶栏「公开页演示」链接在**构建期**从仓库根 `README.md`
+解析（`src/lib/badge-url.ts`），README 变更即跟随，不硬编码令牌。页脚徽章渲染
+**light / dark 两版并排**（`badgeImageUrl(style, theme)`），暗色页上亮色版更醒目，
+成对展示填满右半区。
 
 ## 部署（腾讯云 EdgeOne Pages · Makers）
 

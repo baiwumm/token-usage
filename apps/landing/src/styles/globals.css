@@ -95,10 +95,43 @@
 	}
 }
 
+/* Source logo marquee under the hero heatmap: the track holds two identical
+   copies, so ±50% lands exactly on a copy boundary (seamless loop). */
+@keyframes landing-logo-left {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(-50%);
+	}
+}
+
+@keyframes landing-logo-right {
+	from {
+		transform: translateX(-50%);
+	}
+	to {
+		transform: translateX(0);
+	}
+}
+
 /* Hero entrance: blur → clear, staggered one block at a time (delays are
    inline animation-delay values in hero.tsx). */
 .landing-reveal {
 	animation: landing-reveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-logo-left {
+	animation: landing-logo-left 32s linear infinite;
+}
+
+.landing-logo-right {
+	animation: landing-logo-right 32s linear infinite;
+}
+
+.landing-logo-left:hover,
+.landing-logo-right:hover {
+	animation-play-state: paused;
 }
 
 .landing-heat-cell {
@@ -112,7 +145,9 @@
 @media (prefers-reduced-motion: reduce) {
 	.landing-reveal,
 	.landing-heat-cell,
-	.landing-breathe {
+	.landing-breathe,
+	.landing-logo-left,
+	.landing-logo-right {
 		animation: none;
 	}
 

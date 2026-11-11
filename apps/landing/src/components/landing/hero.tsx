@@ -9,6 +9,7 @@ import { ArrowUpRight } from "@gravity-ui/icons";
 import { Button, Typography } from "@heroui/react";
 
 import { FlowNumber } from "./flow-number";
+import { SourceLogoLoop } from "./source-logo-loop";
 
 import { LANDING_COPY } from "@/lib/copy";
 import { VERCEL_DEPLOY_URL } from "@/lib/repo-links";
@@ -121,8 +122,9 @@ export function Hero() {
             </div>
           </div>
 
-          <div className="relative min-w-0 flex-1">
+          <div className="relative flex min-w-0 flex-1 flex-col">
             <HeroMotif />
+            <SourceLogoLoop />
           </div>
         </div>
 

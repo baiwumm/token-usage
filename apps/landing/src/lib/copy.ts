@@ -71,9 +71,7 @@ export interface LandingCopy {
     title: string;
     sub: string;
     steps: Array<{ title: string; body: string }>;
-    primaryCta: string;
     guideCta: string;
-    githubCta: string;
   };
   footer: {
     badgeTitle: string;
@@ -234,9 +232,7 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
           body: "tokenusage init / device-login / sync，浏览器批准配对码即完成。",
         },
       ],
-      primaryCta: "Deploy to Vercel",
       guideCta: "阅读部署指南",
-      githubCta: "GitHub 仓库",
     },
     footer: {
       badgeTitle: "实时公开徽章",
@@ -263,10 +259,6 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
             {
               label: "CLI 契约",
               href: "https://github.com/baiwumm/token-usage/blob/main/docs/cli-contract.md",
-            },
-            {
-              label: "npm · tokenusage-cli",
-              href: "https://www.npmjs.com/package/tokenusage-cli",
             },
           ],
         },
@@ -431,9 +423,7 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
           body: "tokenusage init / device-login / sync; approve the pairing code in the browser.",
         },
       ],
-      primaryCta: "Deploy to Vercel",
       guideCta: "Read the deploy guide",
-      githubCta: "GitHub repository",
     },
     footer: {
       badgeTitle: "Live public badge",
@@ -460,10 +450,6 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
             {
               label: "CLI contract",
               href: "https://github.com/baiwumm/token-usage/blob/main/docs/cli-contract.md",
-            },
-            {
-              label: "npm · tokenusage-cli",
-              href: "https://www.npmjs.com/package/tokenusage-cli",
             },
           ],
         },

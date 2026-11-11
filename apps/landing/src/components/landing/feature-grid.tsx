@@ -1,8 +1,8 @@
 "use client";
 
 // 功能网格（设计定稿 04 段）：9 个功能项 hairline 分格，不堆卡片；
-// 来源项嵌 16 枚采集端 logo 墙，成就项嵌 3 枚真实成就币，下方四风格
-// 分享卡展示位（真实导出 PNG，点击放大预览——2026-11-08 操作者指令）。
+// 成就项嵌 3 枚真实成就币（来源 logo 墙 2026-11-11 移到 Hero 右侧循环），
+// 下方四风格分享卡展示位（真实导出 PNG，点击放大预览——2026-11-08 操作者指令）。
 
 import { useEffect, useState } from "react";
 import {
@@ -69,7 +69,6 @@ export function FeatureGrid() {
                 <Typography color="muted" type="body-xs">
                   {item.body}
                 </Typography>
-                {index === 6 ? <SourceLogoWall /> : null}
                 {index === 3 ? <AchievementCoins /> : null}
               </div>
             );
@@ -79,51 +78,6 @@ export function FeatureGrid() {
         <ShareCardShowcase />
       </div>
     </section>
-  );
-}
-
-// 16 枚采集端 logo（dark 变体优先），4×4 网格排布；文件已按暗色可用性挑选。
-const LOGOS: Array<{ file: string; label: string }> = [
-  { file: "/brand-logos/zcode-dark.svg", label: "ZCode" },
-  { file: "/brand-logos/claude-code.svg", label: "Claude Code" },
-  { file: "/brand-logos/codex-dark.svg", label: "Codex" },
-  { file: "/brand-logos/cursor-dark.svg", label: "Cursor" },
-  { file: "/brand-logos/opencode.svg", label: "OpenCode" },
-  { file: "/brand-logos/copilot-dark.svg", label: "Copilot" },
-  { file: "/brand-logos/gemini.svg", label: "Gemini" },
-  { file: "/brand-logos/grok-dark.svg", label: "Grok" },
-  { file: "/brand-logos/kimi.svg", label: "Kimi" },
-  { file: "/brand-logos/deepseek.svg", label: "DeepSeek" },
-  { file: "/brand-logos/minimax.svg", label: "MiniMax" },
-  { file: "/brand-logos/trae.svg", label: "Trae" },
-  { file: "/brand-logos/qoder-dark.svg", label: "Qoder" },
-  { file: "/brand-logos/kiro-dark.svg", label: "Kiro" },
-  { file: "/brand-logos/workbuddy.svg", label: "WorkBuddy" },
-  { file: "/brand-logos/zed-dark.svg", label: "Zed" },
-];
-
-function SourceLogoWall() {
-  return (
-    <div aria-label="采集端 logo 墙" className="mt-3 grid grid-cols-8 gap-2.5">
-      {LOGOS.map((logo) => (
-        <span
-          key={logo.file}
-          aria-hidden="true"
-          className="flex items-center justify-center"
-          title={logo.label}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            alt={logo.label}
-            className="size-6 opacity-80"
-            height={24}
-            loading="lazy"
-            src={logo.file}
-            width={24}
-          />
-        </span>
-      ))}
-    </div>
   );
 }
 

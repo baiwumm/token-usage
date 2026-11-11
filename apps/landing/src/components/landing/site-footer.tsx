@@ -19,8 +19,13 @@ const SENTINEL_HREFS: Record<string, string | null> = {
 
 export function SiteFooter() {
   const copy = LANDING_COPY.zh;
-  const badge = badgeImageUrl("sparkline");
   const demoUrl = badgeSource()?.publicPageUrl ?? null;
+  // 亮 / 暗两版徽章并排（2026-11-11 操作者要求）：暗色页上亮色版更醒目，
+  // 成对展示也填满右侧留白；任一解析失败则整块隐藏，不出现半截。
+  const badges = [
+    { src: badgeImageUrl("sparkline", "light"), label: "亮色" },
+    { src: badgeImageUrl("sparkline", "dark"), label: "暗色" },
+  ].filter((item): item is { src: string; label: string } => item.src !== null);
   const { icp, police } = copy.footer.beian;
   const policeCode = police.match(/\d+/)?.[0] ?? "";
   const hasBeian = Boolean(icp || (police && policeCode));
@@ -47,7 +52,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-default/50">
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
-        {badge ? (
+        {badges.length > 0 ? (
           <div className="flex flex-col gap-3 pb-12">
             <Typography type="body-sm" weight="semibold">
               {copy.footer.badgeTitle}
@@ -55,22 +60,28 @@ export function SiteFooter() {
             <Typography color="muted" type="body-xs">
               {copy.footer.badgeSub}
             </Typography>
-            <a
-              aria-label="Token Usage 公开页演示"
-              className="mt-2 inline-block w-fit"
-              href={demoUrl ?? undefined}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                alt="Token Usage 实时用量徽章"
-                className="rounded-md"
-                height={120}
-                src={badge}
-                width={600}
-              />
-            </a>
+            <div className="mt-2 grid gap-4 sm:grid-cols-2">
+              {badges.map((badge) => (
+                <a
+                  key={badge.label}
+                  aria-label={`Token Usage 公开页演示（${badge.label}徽章）`}
+                  className="block w-full"
+                  href={demoUrl ?? undefined}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    alt={`Token Usage 实时用量徽章（${badge.label}）`}
+                    className="h-auto w-full rounded-md"
+                    height={120}
+                    loading="lazy"
+                    src={badge.src}
+                    width={600}
+                  />
+                </a>
+              ))}
+            </div>
           </div>
         ) : null}
 
@@ -82,24 +93,28 @@ export function SiteFooter() {
               </Typography>
               {column.links.map((link) =>
                 link.href.startsWith("#") ? (
-                  <a
-                    key={link.label}
-                    className="text-muted transition-colors hover:text-foreground"
-                    href={link.href}
-                  >
-                    <Typography color="muted" type="body-xs">
+                  <a key={link.label} className="group w-fit" href={link.href}>
+                    <Typography
+                      className="transition-colors group-hover:text-accent"
+                      color="muted"
+                      type="body-xs"
+                    >
                       {link.label}
                     </Typography>
                   </a>
                 ) : (
                   <a
                     key={link.label}
-                    className="text-muted transition-colors hover:text-foreground"
+                    className="group w-fit"
                     href={link.href}
                     rel="noopener noreferrer"
                     target="_blank"
                   >
-                    <Typography color="muted" type="body-xs">
+                    <Typography
+                      className="transition-colors group-hover:text-accent"
+                      color="muted"
+                      type="body-xs"
+                    >
                       {link.label}
                     </Typography>
                   </a>
@@ -123,7 +138,7 @@ export function SiteFooter() {
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               {icp ? (
                 <a
-                  className="inline-flex items-center gap-1 text-muted transition-colors hover:text-foreground"
+                  className="group inline-flex items-center gap-1"
                   href="https://beian.miit.gov.cn/"
                   rel="noopener noreferrer"
                   target="_blank"
@@ -138,7 +153,11 @@ export function SiteFooter() {
                     src="/beian/icp.png"
                     width={14}
                   />
-                  <Typography color="muted" type="body-xs">
+                  <Typography
+                    className="transition-colors group-hover:text-accent"
+                    color="muted"
+                    type="body-xs"
+                  >
                     {icp}
                   </Typography>
                 </a>
@@ -146,7 +165,7 @@ export function SiteFooter() {
 
               {police && policeCode ? (
                 <a
-                  className="inline-flex items-center gap-1 text-muted transition-colors hover:text-foreground"
+                  className="group inline-flex items-center gap-1"
                   href={`https://beian.mps.gov.cn/#/query/webSearch?code=${policeCode}`}
                   rel="noopener noreferrer"
                   target="_blank"
@@ -161,7 +180,11 @@ export function SiteFooter() {
                     src="/beian/police.png"
                     width={14}
                   />
-                  <Typography color="muted" type="body-xs">
+                  <Typography
+                    className="transition-colors group-hover:text-accent"
+                    color="muted"
+                    type="body-xs"
+                  >
                     {police}
                   </Typography>
                 </a>
