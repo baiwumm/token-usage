@@ -6,6 +6,26 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.5.5
+
+2026-11-11。新增只读子命令 `tokenusage project-profiles`（契约 §2.13），供桌面端伴生工具
+读取 web 上编辑的项目显示名 / logo / 仓库。零破坏性变更：现有子命令行为、对账基线与队列
+格式均不变，服务端只需部署含该 series 的版本（否则 CLI 报 `Unknown account series`，
+桌面端静默降级）。
+
+- **新增 `tokenusage project-profiles`**：不带参数，凭证解析与 `sync` 同一条路径（运行时
+  配置 → `cloud-device-token` 文件，自定义 base 需配 anon key），把账号的项目档案以**单行
+  JSON** 打到 stdout（`{"profiles":[{project_key, display_name, repo_url, repo_source,
+  detected_repo_url, manual_repo_url, repo_hidden, logo_url, logo_upload_url}]}`）。诊断信息
+  一律走 stderr + `UsageError`（退出码 2），stdout 始终保持可解析。
+- **桌面端消费方式**：桌面经 `run_cli` 捕获该行并解析，挂载时与每 5 分钟刷新一次，用于把
+  项目列表 / 项目详情的显示名、logo、仓库链接对齐 web；未配对、HTTP 失败或旧 CLI 均静默
+  降级为队列 key + 字母方块，界面不空。
+
+升级说明：装完即生效（无迁移动作）。Volta 托管的机器升级要跑 `volta install
+ tokenusage-cli@0.5.5`（`npm i -g` 只更新 image-dir 副本，`volta run` 仍解析 packages
+副本，见 `docs/cli-release.md` §十三/§十四）。
+
 ## 0.5.4
 
 2026-11-09。tracker 目录写入被拒时的可诊断性与降级。零契约变更，服务端无需同步升级；对账
