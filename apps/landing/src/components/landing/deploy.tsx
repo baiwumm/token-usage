@@ -3,7 +3,7 @@
 // 自部署段（设计定稿 07 段）：三步摘要 + 部署指南外链（2026-11-11：
 // 移除 Vercel 一键与 GitHub 按钮，部署动作统一由指南承接）。
 
-import { FileText } from "@gravity-ui/icons";
+import { BookOpen } from "@gravity-ui/icons";
 import { Button, Typography } from "@heroui/react";
 
 import { SectionHeader } from "./section-header";
@@ -53,7 +53,7 @@ export function Deploy() {
               window.open(DEPLOY_GUIDE_URL, "_blank", "noopener,noreferrer")
             }
           >
-            <FileText className="size-4" />
+            <BookOpen className="size-4" />
             {copy.deploy.guideCta}
           </Button>
         </div>

@@ -3,7 +3,7 @@
 // 顶部导航：logo 锁定 + npm / GitHub / 公开页演示图标按钮，hairline 底边。
 // 恒为暗色，只引 logo-dark 变体。
 
-import { Globe, LogoGithub } from "@gravity-ui/icons";
+import { LogoGithub, Person } from "@gravity-ui/icons";
 import { Button, Typography } from "@heroui/react";
 
 import { LANDING_COPY } from "@/lib/copy";
@@ -73,7 +73,7 @@ export function NavBar({ demoUrl }: { demoUrl: string | null }) {
               variant="outline"
               onPress={() => openExternal(demoUrl)}
             >
-              <Globe className="size-4" />
+              <Person className="size-4" />
             </Button>
           ) : null}
         </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { BackToTop } from "@/components/landing/back-to-top";
 import { DashboardPreview } from "@/components/landing/dashboard-preview";
 import { Deploy } from "@/components/landing/deploy";
 import { FeatureGrid } from "@/components/landing/feature-grid";
@@ -43,6 +44,7 @@ export default function HomePage() {
         <Deploy />
       </main>
       <SiteFooter />
+      <BackToTop />
     </div>
   );
 }
