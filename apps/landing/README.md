@@ -82,10 +82,13 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 - 本项目一律走 Git 连接构建；「直接上传 `out/`」没有构建步骤，安装/构建/输出目录三项
   无意义，不作为部署路径。
 
-排障：若构建日志报 pnpm 版本相关错误（例如不认识 `pnpm-workspace.yaml` 里的
-`trustPolicy` / `minimumReleaseAgeExclude`），说明构建环境的 pnpm 低于仓库声明的
-`pnpm@12.11.2`，把安装命令换成 `corepack enable && pnpm install --frozen-lockfile`
-再重试。
+排障：平台构建容器以非 root 运行，**禁止用 `corepack enable`**——它要往
+`/usr/local/bin` 写全局符号链接，实测报 `EACCES: permission denied, symlink
+.../yarnpkg.js -> '/usr/local/bin/yarnpkg'`，安装 0.2 秒即失败。平台预装 pnpm 低于
+仓库声明的 `pnpm@12.11.2`（不认识 `pnpm-workspace.yaml` 的 `trustPolicy` /
+`minimumReleaseAgeExclude`，也读不动 pnpm 12 的多文档 lockfile），因此安装命令固定为
+`npx --yes pnpm@12.11.2 install --frozen-lockfile`：npx 只写用户缓存、不碰全局 bin，
+且显式锁定版本。升级根 `packageManager` 时需同步更新这里的版本号。
 
 ### 域名与备案
 
