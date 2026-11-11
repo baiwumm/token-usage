@@ -90,6 +90,14 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 `npx --yes pnpm@12.11.2 install --frozen-lockfile`：npx 只写用户缓存、不碰全局 bin，
 且显式锁定版本。升级根 `packageManager` 时需同步更新这里的版本号。
 
+构建期另有 **Node 版本坑**：平台 `nodeVersion: 22.11.0` 默认**不启用** `require(esm)`，
+而 `magic-string@1.4.3` 只发布 ESM（`dist/index.mjs`），`@tailwindcss/node@4.3.4` 以
+CJS `require()` 加载它 → Turbopack 在 `globals.css` 上报
+`ERR_REQUIRE_ESM: require() of ES Module ... not supported`。Node 22.12+ 才默认开启，
+本机 22.22.2 构建成功正是这个原因。因此 `buildCommand` 前置
+`NODE_OPTIONS=--experimental-require-module`（22.11.0 的 `node --help` 已确认该开关存在，
+实测加开关后 require 成功）。若日后把 `nodeVersion` 升到 ≥22.12，可去掉该前缀。
+
 ### 域名与备案
 
 - 域名 `token-usage.cc`（及可选 `www.`）在腾讯云内侧 CNAME 接入 EdgeOne；
