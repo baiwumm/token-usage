@@ -1019,3 +1019,41 @@ tokenusage-cli@0.5.4`（镜像/缓存绕过写法同 §四）。复验三处上�
 
 升级说明：无需任何动作，随下次计划任务自动生效；桌面端「立即同步 / 暂停」在这类写入
 拒绝下从裸崩溃改为可读错误 + 重试。
+
+## 十四、0.5.5 发版（2026-11-11）
+
+npm `tokenusage-cli@0.5.5`（`dist-tags.latest = 0.5.5`）；tag `cli-v0.5.5`（`269f87f`）；
+Release workflow run `43000804336` 全绿（verify → npm Trusted Publishing + provenance →
+GitHub Release，正文取 CHANGELOG）。**零破坏性变更**：现有子命令行为、对账基线与队列格式
+均不变；服务端需部署含该 series 的版本（`token-usage-account-project-profiles`，契约
+§2.13，2026-11-11 已上线）。
+
+| 批次 | 内容 | 影响面 |
+|---|---|---|
+| `feat(cli)` 新子命令 | `tokenusage project-profiles`：无参，凭证解析同 `sync`（运行时配置 → `cloud-device-token`，自定义 base 需 anon key），单行 JSON 打 stdout，诊断一律 stderr + `UsageError`（exit 2） | 桌面端伴生工具据此同步 web 编辑的项目显示名 / logo / 仓库 |
+| `chore(cli)` 发版 | 版本号 + CHANGELOG | — |
+
+发版前检查：
+
+- [x] `pnpm verify` 全绿（CLI 296 用例 / web 契约 255 / desktop 121 / landing）
+- [x] `pnpm audit --prod --registry=https://registry.npmjs.org` → No known vulnerabilities found
+- [x] tag `cli-v0.5.5` 与 `packages/cli/package.json` 一致、落在 `origin/main`（`269f87f`）
+- [x] release workflow 全绿；publish 步日志 `+ tokenusage-cli@0.5.5`（10:08:34Z，tag latest）
+
+公司机验收记录（2026-11-11 18:12，`PC-20260408RIKF #68e47b34`，Volta + npmmirror）：
+
+| 项 | 结果 |
+|---|---|
+| 安装（**两条都要跑**） | `volta install tokenusage-cli@0.5.5`（packages 权威副本）→ `npm i -g tokenusage-cli@0.5.5 --prefer-online --registry=https://registry.npmjs.org`（image-dir 副本，此前被 `npm i -g ./packages/cli` 换成了指向工作区的符号链接，本次复原为正式包）；`volta list` 与 `--version` 均为 0.5.5 |
+| 运行时副本 | `init --yes --no-integrations --no-open` 刷新：`.runtime-ready` = 0.5.5（`installedAt 10:12:39Z`）；首同步 3,913,494,786 tokens / 13 providers |
+| `doctor` | **17 项全 OK / 0 warn / 0 fail**；`schedule.registered` = enhanced definition |
+| `sync`（手动） | exit 0；parsed 6,366 文件、+0 新桶、上传 2 行 / 878,654 tokens、sessions 1/1、24 s（`Cursor sync: fetch failed` 为既有无害告警） |
+| `reconcile --days 1` | **OK — every local bucket matches the cloud row**（本地 47 桶 / 云端 47 行），退出码 0 |
+| `project-profiles` | 单行 JSON 正常返回 18 条 profile；桌面端重启后项目卡显示 web 上的 logo，页脚 `tokenusage-cli v0.5.5` |
+
+**镜像与缓存坑（本次实测，承接 §十三）**：① npmjs 已 `dist-tags.latest = 0.5.5` 时，
+`registry.npmmirror.com` 仍是 0.5.4，`volta install` 首跑 `ETARGET`（Volta 调 npm 用机器
+默认源，`--registry` / `npm_config_registry` 不生效）；等镜像同步后重跑即成功——今后发布
+后先 `curl https://registry.npmmirror.com/tokenusage-cli/latest` 确认镜像已同步。② 本机
+`curl https://registry.npmjs.org/...` 会被中间缓存命中（返回旧 packument，`/0.5.5` 误报
+404），核对 npm 是否真发出去要加 `--noproxy '*'` 或 `Cache-Control: no-cache`。

@@ -481,10 +481,11 @@ requirements 边界表。
   费用非零（本机 1150 行去重队列 $132.24，此前恒 $0.00）；项目详情双栏版式；web 编辑的
   logo 在桌面项目卡与详情同步（截图复验 `better-nav` / `free-for-dev-zh` / `margin`）。
   门禁：`pnpm --filter @token-usage/desktop verify` 全绿（lint / tsc / 121 例测试 / build），
-  web 契约 255 例、CLI 296 例全过。**遗留**：① `project-profiles` 子命令尚未随 npm 发版，
-  其他机器需升级 `tokenusage-cli` 才同步显示名 / logo（旧 CLI 静默降级，设计如此）；
-  ② 本机 Volta 化石副本已用 junction 指向工作区（备份 `tokenusage-cli.bak-20261111`），
-  后续 `volta install` 会覆盖该 junction，升级后需按 `docs/cli-release.md` §十三 重新对齐；
+  web 契约 255 例、CLI 296 例全过。**遗留（① 已于当日闭合）**：① `project-profiles`
+  子命令已随 `tokenusage-cli@0.5.5` 发版（2026-11-11，tag `cli-v0.5.5`），其他机器升级 CLI
+  即可同步显示名 / logo，旧 CLI 仍静默降级（设计如此）；② Volta 两份副本的坑已收尾：本机
+  `volta install tokenusage-cli@0.5.5` + image-dir 正式包重装，junction 与备份目录均已移除，
+  升级后两份都要跑（`docs/cli-release.md` §十四）；
   ③ `tauri build` 末步仍因缺 `TAURI_SIGNING_PRIVATE_KEY` 返回 1（NSIS 包完整，仅 updater
   `.sig` 未生成），发版走 CI 不受影响。下一步：D11（会话列表 + 详情、分享卡完整移植）。
 
@@ -770,8 +771,9 @@ recharts 已随 D9 落地（§6）。**仍零契约变更**——成本列全部
    （Rust 侧直接返回 `command not allowed`，前端 catch 后静默保留字母方块）；本机全局 CLI
    还是 npm 上的 v0.5.4（不含 §2.13 子命令）。修复：白名单补第 7 项（需重编译安装包）；
    本地验收环境用 `npm i -g ./packages/cli` 安装工作区 CLI（与 0.5.4 同版本号但含新子命令）。
-   **发行注意**：`project-profiles` 子命令尚未随 npm 发版，其他机器需先升级 `tokenusage-cli`
-   才能看到 web 编辑的显示名 / logo；旧 CLI 仍静默降级（设计如此）。
+   **发行注意**：当时 `project-profiles` 子命令尚未随 npm 发版，其他机器需先升级
+   `tokenusage-cli` 才能看到 web 编辑的显示名 / logo（已于 2026-11-11 随 0.5.5 发版解决，
+   见下段）；旧 CLI 仍静默降级（设计如此）。
    **服务端前提（已解除）**：当时部署的 web 实例仍只认 8 个 series，返回 `404 Unknown
    account series: project-profiles`；2026-11-11 该版部署上线后实测 200（18 条 profile，
    其中 9 条带 logo，`logo_url` 地址均可加载）。
@@ -782,14 +784,19 @@ recharts 已随 D9 落地（§6）。**仍零契约变更**——成本列全部
    副本**（不含 §2.13 子命令，`Unknown command` → exit 1 → 前端 catch 静默降级）；而
    `npm i -g ./packages/cli` 只改了 `tools/image/node/<ver>/node_modules/tokenusage-cli`
    （符号链接到工作区，终端里 `which tokenusage` 命中的是它，所以人工验证一直是好的）。
-   修复：把 packages 下那份旧副本改名为 `tokenusage-cli.bak-20261111`，同路径建 junction
-   指向 `packages/cli`；重启应用后项目卡正常显示 web 上的 logo（已截图复验，采集与同步行
-   显示 `tokenusage-cli v0.5.4`）。**判断法**：桌面端行为与终端 `tokenusage` 不一致时，先
+   临时修复：把 packages 下那份旧副本改名为 `tokenusage-cli.bak-20261111`，同路径建
+   junction 指向 `packages/cli`（重启应用后 logo 立即正常，截图复验）；0.5.5 发版后已改为
+   `volta install tokenusage-cli@0.5.5` 的正式副本，备份目录已删。**判断法**：桌面端行为
+   与终端 `tokenusage` 不一致时，先
    看 `volta list` 里 `tokenusage-cli` 的路径与 `grep -c project-profiles
    .../tools/image/packages/tokenusage-cli/node_modules/tokenusage-cli/src/cli.js`，两份副本
    都要是新代码；junction 会被后续 `volta install` 覆盖，升级后需重新对齐。
-   **发行注意**（仍成立）：`project-profiles` 子命令尚未随 npm 发版，其他机器需先升级
-   `tokenusage-cli` 才能看到 web 编辑的显示名 / logo；旧 CLI 仍静默降级（设计如此）。
+   **发行（2026-11-11 已完成，`tokenusage-cli@0.5.5`）**：`project-profiles` 子命令已随 npm
+   发版，其他机器升级 CLI 后即可同步；旧 CLI 仍静默降级（设计如此）。本机验收：Volta 两份
+   副本（packages 权威副本 + image-dir 副本）均为 0.5.5，`.runtime-ready` 0.5.5，`doctor`
+   17 OK，`sync` 6,366 文件 / 上传 2 行 / sessions 1-1，`reconcile --days 1` 47-47 桶全对齐，
+   桌面端重启后页脚 `tokenusage-cli v0.5.5` 且项目卡 logo 正常。发版与验收记录见
+   `docs/cli-release.md` §十四。
    另：服务端对 `token-usage` / `margin-app` / `TokenTracker` / `TokenTrackerSelfhost` /
    `baiwumm` 等尚未设置 logo 的项目返回 null，这些行在 web 与桌面都是字母方块。
 

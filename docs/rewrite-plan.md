@@ -292,11 +292,14 @@ PNG 真导出、中文单语、零新依赖名、根 `pnpm verify` 已含 landin
 详情、D10.1 三轮验收修复（费用美元符号与读时计价、NumberFlow + Chip 环比、热力图跟周期、
 项目 logo 经 `project-profiles` 端点 + CLI 子命令同步）全部关闭；**D11（会话列表与详情 /
 分享卡）待实施**，D8 原范围被 D9–D11 吸收（仅窗口尺寸记忆待排期）。成本与账号成就明确
-不进桌面，范围、验收线与记录见 `docs/desktop-plan.md` §8 / §10 / §12。⚠ `project-profiles`
-子命令尚未随 npm 发版，其他机器需先升级 `tokenusage-cli` 才会同步 web 编辑的显示名 / logo。生产实例
+不进桌面，范围、验收线与记录见 `docs/desktop-plan.md` §8 / §10 / §12。桌面端所依赖的
+`project-profiles` 子命令已随 `tokenusage-cli@0.5.5`（2026-11-11 发布）上线，其他机器升级
+CLI 后即可同步 web 编辑的显示名 / logo。生产实例
 `token-usage.baiwumm.com` 自 2026-10-26 起承载
-两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.4`（2026-11-09 发布，tag `cli-v0.5.4`——tracker 写入被拒时
-的 tmp 重试与 `hint`、pause 标志改原子写、skip 标记写入失败不再致命；零契约变更）。
+两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.5`（2026-11-11 发布，tag `cli-v0.5.5`——新增只读子命令
+`project-profiles`，供桌面端同步 web 编辑的项目显示名 / logo / 仓库；零破坏性变更）。
+`0.5.4`（2026-11-09）是 tracker 写入被拒时的 tmp 重试与 `hint`、pause 标志改原子写、
+skip 标记写入失败不再致命；零契约变更。
 `0.5.2` 是上传队列防线（白名单重组 / 字节预算 / 400·413 连败逃生阀）、`0.5.3` 是 sync.lock
 瞬时拒绝与上游命令名残留，均在 2026-11-08/09 发版；`0.5.0` / `0.5.1` 于 2026-11-06 发版。两台采集机的身份与状态（设备名即契约 §2.2 的 `<主机名> #<machine_id 前 8 位>`，
 对照表见 `docs/cli-release.md` 开头「机器称呼约定」与 `docs/launch-runbook.md` 的采集机清单）：
