@@ -12,7 +12,7 @@
     "dev:desktop": "pnpm --filter @token-usage/desktop tauri dev",
     "build": "pnpm --filter @token-usage/web build",
     "build:landing": "pnpm --filter @token-usage/landing build",
-  "build:landing:deploy": "pnpm --filter @token-usage/landing build:deploy",
+    "build:landing:deploy": "pnpm --filter @token-usage/landing build:deploy",
     "start": "pnpm --filter @token-usage/web start",
     "lint": "pnpm --filter @token-usage/web lint",
     "test": "pnpm -r test",
