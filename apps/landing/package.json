@@ -6,6 +6,8 @@
 	"scripts": {
 		"dev": "next dev",
 		"build": "next build",
+		"build:deploy": "pnpm sync:snapshot && next build",
+		"sync:snapshot": "node scripts/sync-snapshot.mjs",
 		"start": "next start",
 		"lint": "eslint --fix",
 		"clean:.next": "node -e \"require('node:fs').rmSync('.next', { recursive: true, force: true })\"",

@@ -837,9 +837,12 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   + `BookOpen` 文档图标，Vercel 一键与 GitHub 按钮 2026-11-11 移除）→ Footer（亮 / 暗双版实时徽章
   并排 + ICP 备案号，公安网备接入位；文本链接 hover 主题色，npm 入口 2026-11-11 移除，
   顶栏已有）。分节 hairline + 大间距，不堆卡片。
-- **数据规则**：快照（`src/data/snapshot.json`）只含聚合数字与日桶等级，`fetchedAt` 标注
-  提取日期；实拍截图不得出现操作者姓名与邮箱（顶栏问候、侧栏用户菜单均需处理）；
-  分享卡展示用 mock 数据导出的 PNG。
+- **数据规则**：快照（`src/data/snapshot.json`）只含聚合数字与日桶等级，由
+  `scripts/sync-snapshot.mjs` 在构建期从 `GET /api/badge/data?token=…`
+  （`docs/badge.md` §2.4，与公开页同一 service-role 加载器）拉取改写，`fetchedAt`
+  为窗口右端；拉取失败保留已提交快照、不阻塞构建，`pnpm verify` 的构建不联网；实拍截图
+  不得出现操作者姓名与邮箱（顶栏问候、侧栏用户菜单均需处理）；分享卡展示用 mock 数据
+  导出的 PNG。
 - **交互模式**：轮播 6s 自动前进（悬停暂停、reduced-motion 停用）、交叉淡入、16:10
   容器 + absolute 叠放；放大预览为 HeroUI Modal + 三条确定性关闭路径（CloseTrigger /
   window 级 Escape / backdrop 自身点击——RAC 内建 dismiss 在本页不可靠，见 47f4c58）；
