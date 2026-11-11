@@ -826,15 +826,21 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 - **强调色 VERMILLION**：`--accent` 覆盖为 Broadsheet 朱红（`#c2402a` →
   `oklch(0.5543 0.17 32.08)`）；热力图 `--heatmap-1..4` 由 `--accent` 派生的机制自动跟随，
   主 CTA 用 `variant="primary"`（HeroUI 3 Button 无 color prop）。
-- **单页八段**：导航 → Hero（真实数据快照计数器 + 364 格年热力图纹样）→ 三步 terminal →
+- **单页八段**：导航（logo + npm / GitHub / 公开页演示纯图标按钮，**无文字 CTA、无章节
+  锚点**——「功能 / 自部署」与「立即部署」2026-11-11 移除，部署 CTA 只留在 Hero）→ Hero
+  （真实数据快照计数器 + 364 格年热力图纹样，热力图与左侧文案垂直居中；双 CTA =「立即
+  部署」滚动到自部署段 +「Deploy to Vercel」一键链接）→ 三步 terminal →
   仪表盘静态重绘 + 后台实拍轮播 → 功能网格（来源 logo 墙 / 成就币 / 四风格分享卡放大
-  预览）→ 数据自主 → 自部署 → Footer（实时徽章直链）。分节 hairline + 大间距，不堆卡片。
+  预览）→ 数据自主 → 自部署 → Footer（实时徽章直链 + ICP 备案号，公安网备接入位）。分节 hairline + 大间距，不堆卡片。
 - **数据规则**：快照（`src/data/snapshot.json`）只含聚合数字与日桶等级，`fetchedAt` 标注
   提取日期；实拍截图不得出现操作者姓名与邮箱（顶栏问候、侧栏用户菜单均需处理）；
   分享卡展示用 mock 数据导出的 PNG。
 - **交互模式**：轮播 6s 自动前进（悬停暂停、reduced-motion 停用）、交叉淡入、16:10
   容器 + absolute 叠放；放大预览为 HeroUI Modal + 三条确定性关闭路径（CloseTrigger /
-  window 级 Escape / backdrop 自身点击——RAC 内建 dismiss 在本页不可靠，见 47f4c58）。
+  window 级 Escape / backdrop 自身点击——RAC 内建 dismiss 在本页不可靠，见 47f4c58）；
+  Hero 眉标 / 标题 / 副标 / 两枚 CTA / 统计条 / 事实条按 80ms 步进逐块 blur→clear
+  淡入（`.landing-reveal`：CSS keyframes + inline `animation-delay`，reduced-motion 全局
+  规则关停）。
 - **类名**：Tailwind 任意值写法收敛到 canonical（`grid-cols-52`、`aspect-16/10`、
   `mask-[...]`）；圆角例外——`rounded-[2px]` 保留（canonical `rounded-sm` = 4px 会变值，
   同 AGENTS 约束 5）。
