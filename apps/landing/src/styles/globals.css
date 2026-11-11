@@ -62,13 +62,15 @@
  * all decorative. Same recipe as apps/web (u-rise / login-breathe); renamed
  * to landing-* so the two stylesheets can't shadow each other.
  */
-@keyframes landing-rise {
+@keyframes landing-reveal {
 	from {
-		opacity: 0.35;
-		transform: translateY(8px);
+		opacity: 0;
+		filter: blur(10px);
+		transform: translateY(10px);
 	}
 	to {
 		opacity: 1;
+		filter: blur(0);
 		transform: none;
 	}
 }
@@ -93,8 +95,10 @@
 	}
 }
 
+/* Hero entrance: blur → clear, staggered one block at a time (delays are
+   inline animation-delay values in hero.tsx). */
 .landing-reveal {
-	animation: landing-rise 0.45s ease-out both;
+	animation: landing-reveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .landing-heat-cell {

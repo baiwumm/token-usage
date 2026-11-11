@@ -69,22 +69,24 @@ export function Hero() {
         <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
           <div className="flex min-w-0 flex-1 flex-col gap-6">
             <Typography
-              className="text-[11px] tracking-[0.2em] uppercase text-accent"
+              className="landing-reveal text-[11px] tracking-[0.2em] uppercase text-accent"
               type="body-xs"
               weight="semibold"
             >
               {copy.hero.eyebrow}
             </Typography>
             <Typography
-              className="max-w-xl text-balance text-4xl leading-tight sm:text-5xl"
+              className="landing-reveal max-w-xl text-balance text-4xl leading-tight sm:text-5xl"
+              style={{ animationDelay: "80ms" }}
               type="h1"
               weight="semibold"
             >
               {copy.hero.sloganMain}
             </Typography>
             <Typography
-              className="max-w-xl text-balance"
+              className="landing-reveal max-w-xl text-balance"
               color="muted"
+              style={{ animationDelay: "160ms" }}
               type="body-sm"
             >
               {copy.hero.sloganSub}
@@ -92,14 +94,18 @@ export function Hero() {
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Button
+                className="landing-reveal"
                 size="lg"
+                style={{ animationDelay: "240ms" }}
                 variant="primary"
                 onPress={() => scrollToDeploy()}
               >
                 {copy.hero.deployCta}
               </Button>
               <Button
+                className="landing-reveal"
                 size="lg"
+                style={{ animationDelay: "320ms" }}
                 variant="outline"
                 onPress={() =>
                   window.open(
@@ -121,7 +127,10 @@ export function Hero() {
         </div>
 
         <div className="mt-14 border-t border-default/50 pt-8">
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+          <div
+            className="landing-reveal grid grid-cols-2 gap-8 sm:grid-cols-4"
+            style={{ animationDelay: "400ms" }}
+          >
             {counters.map((counter) => (
               <div key={counter.label} className="flex min-w-0 flex-col gap-1">
                 <Typography color="muted" type="body-xs">
@@ -140,7 +149,10 @@ export function Hero() {
             ))}
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center gap-2.5">
+          <div
+            className="landing-reveal mt-8 flex flex-wrap items-center gap-2.5"
+            style={{ animationDelay: "480ms" }}
+          >
             {facts.map((fact) => (
               <span
                 key={fact.label}
