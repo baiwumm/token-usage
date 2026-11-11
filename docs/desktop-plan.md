@@ -131,9 +131,13 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
 | **D3 配对与引导** | 首启向导：检测 CLI → 引导安装 → `device-login` 开浏览器 `/device?user_code=` → 等待→已批准→首同步统计；复用 CLI 现有配对流，desktop 不碰令牌 | 新机器从装 desktop 到配对成功全程有引导。**已收尾**（2026-11-09 操作者验收：向导默认流程通过）；托盘菜单点击已随 D5 补验（2026-11-10，按 §11 对安装版 exe 打 High 标签后全项可用） |
 | **D4 通知与常驻** | 每日汇总通知、sync 连败/队列积压提醒（阈值可配）、自启动、单实例、ThemeToggle 三态循环与持久化 | 通知免打扰时段可配；reduced-motion 遵守。**已验收关闭**（2026-11-10 操作者验收，见 §10；自启随 D5 首次真正写入，重启周期待观察；toast 仍需系统通知被动观测，见 D5 遗留观察①） |
 | **D5 发版** | Windows NSIS 安装包 + tauri updater（Ed25519 签名，密钥 Agent 代生成入 GitHub secret，见 §1 #7）；Rust 编译门禁进 CI（Windows runner）；发版流程见 §11。**已验收关闭**（2026-11-10 发布 `desktop-v0.1.0` 并操作者本机安装验收，M-desktop 收官，见 §10） | 从 Release 下载安装 → 应用启动 → D2–D4 功能真机全过；托盘按 §11 兜底（High 标签）后本机补验成功；toast 仍待系统通知被动观测（操作者 2026-11-10 拍板「先发布、本机安装验收」） |
-| **D6 用量构成**（0.2 产品迭代，**实施中**，2026-11-10 操作者放行） | 周期切换 + 主要模型卡 + 项目与仓库卡 + 用量卡收敛 + web 深链 + 数据新鲜度；范围见 §12.3 | 模型/项目 Top 5 与 web 同设备同窗口人工一致；仓库链接正确；三卡联动；400 / 340 px 无横向滚动；`pnpm verify` 全绿 |
-| **D7 使用节奏**（0.3 产品迭代，待 D6 验收） | 热力图（近一年，展示同 web 活跃热力图）+ 最近会话（只读尾部）+ 卡片显隐；范围见 §12.4 | 日聚合计与单值卡边界一致；最近 5 条与 `session.queue.jsonl` 尾部一致且无正文；隐私字段不出现 |
-| **D8 交互打磨**（0.4 产品迭代，待 D7 验收） | 维护操作折叠 + 窗口尺寸记忆（localStorage）+ 失败复制 + GitHub 仓库入口 + 空态/窄窗/可达性；范围见 §12.5 | 重启保留窗口尺寸；默认折叠不挡主操作；无新增依赖 |
+| **D6 用量构成**（0.2 产品迭代，**已验收关闭** 2026-11-10 放行 → 两轮反馈随 `desktop-v0.2.0` / `v0.2.1`） | 周期切换 + 主要模型卡 + 项目与仓库卡 + 用量卡收敛 + web 深链 + 数据新鲜度；范围见 §12.3 | 模型/项目 Top 5 与 web 同设备同窗口人工一致；仓库链接正确；三卡联动；400 / 340 px 无横向滚动；`pnpm verify` 全绿 |
+| **D7 使用节奏**（0.3 产品迭代，**已验收关闭** 2026-11-11，D7.1 追加轮一并验收） | 热力图（近一年，展示同 web 活跃热力图）+ 最近会话（只读尾部）+ 卡片显隐；范围见 §12.4 / §12.9 | 日聚合计与单值卡边界一致；最近 5 条与 `session.queue.jsonl` 尾部一致且无正文；隐私字段不出现 |
+| **D8 交互打磨**（原范围已被 D9–D11 吸收） | 维护操作折叠 / 失败复制 / GitHub 入口 / 空态与可达性已随 D9–D10 落地；**仅窗口尺寸记忆仍待排期** | 重启保留窗口尺寸；无新增依赖 |
+| **D9 头部与统计卡**（2026-11-11 操作者八点需求第 1/2/3/7 项，**已验收关闭**） | 头部改周期筛选 + 图标按钮、采集操作卡并入采集与同步卡、四统计卡（NumberFlow 动画 + Chip 环比）、热力图 web 同款移植；范围见 §12.10 | 统计卡费用非零、口径与 web 同源；热力图格数与周期解耦；`pnpm verify` 全绿 |
+| **D10 趋势与构成**（同上第 4/5 项，**已验收关闭**） | 用量趋势照搬 web、来源构成 logo 榜 + 「查看全部」、项目与仓库卡重写 + 项目详情双栏；范围见 §12.11 | 图表与 web 同窗口人工一致；项目详情 KPI / 每日柱图 / 构成条齐全 |
+| **D10.1 验收修复**（2026-11-11 三轮验收反馈，**已验收关闭**） | 费用美元符号、读时计价（移植 web 计价引擎）、NumberFlow + Chip 环比、热力图跟周期（格数不变）、项目 logo 同步（`project-profiles` 端点 + CLI 子命令 + Volta 化石副本清理）；范围见 §12.12–§12.12.2 | 四卡与成本分析费用非零；web 编辑的 logo / 显示名在桌面同步；未配对机静默降级 |
+| **D11 会话与分享**（待实施，D10.1 验收后启动） | 会话列表与详情照搬 web、分享卡完整移植 | 与 web 同窗口一致；分享卡导出的 PNG 可用 |
 
 工期参考：D1 约 1 天，D2 约 3–5 天，D3 约 2–3 天，D4 约 2 天，D5 约 2 天；全程 Agent
 开发，每个里程碑操作者验收后再进下一个。
@@ -470,6 +474,20 @@ requirements 边界表。
     页脚即显示 v0.5.4。根因与「升级后必须补 `volta install`」的操作规则见
     `docs/cli-release.md` §十三「0.5.4 复验」。
 
+- **D6–D10.1 验收（2026-11-11 操作者）：0.2 产品迭代全部关闭**。D6 用量构成（两轮反馈随
+  `desktop-v0.2.0` / `v0.2.1`）、D7 使用节奏 + D7.1 追加轮、D9 头部与统计卡、D10 趋势与
+  构成、D10.1 三轮验收修复（费用美元符号 / 读时计价 / NumberFlow 与 Chip 环比 / 热力图
+  跟周期且格数不变 / 项目 logo 同步）逐项验收通过。验收要点与实测：四统计卡与成本分析
+  费用非零（本机 1150 行去重队列 $132.24，此前恒 $0.00）；项目详情双栏版式；web 编辑的
+  logo 在桌面项目卡与详情同步（截图复验 `better-nav` / `free-for-dev-zh` / `margin`）。
+  门禁：`pnpm --filter @token-usage/desktop verify` 全绿（lint / tsc / 121 例测试 / build），
+  web 契约 255 例、CLI 296 例全过。**遗留**：① `project-profiles` 子命令尚未随 npm 发版，
+  其他机器需升级 `tokenusage-cli` 才同步显示名 / logo（旧 CLI 静默降级，设计如此）；
+  ② 本机 Volta 化石副本已用 junction 指向工作区（备份 `tokenusage-cli.bak-20261111`），
+  后续 `volta install` 会覆盖该 junction，升级后需按 `docs/cli-release.md` §十三 重新对齐；
+  ③ `tauri build` 末步仍因缺 `TAURI_SIGNING_PRIVATE_KEY` 返回 1（NSIS 包完整，仅 updater
+  `.sig` 未生成），发版走 CI 不受影响。下一步：D11（会话列表 + 详情、分享卡完整移植）。
+
 ## 11. 发版流程（D5 起）
 
 发布流水线 `release-desktop.yml`，机制对齐 `release-cli.yml`：
@@ -619,12 +637,9 @@ ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最�
 
 ### 12.8 放行状态
 
-**D6 已验收关闭（2026-11-10；两轮验收反馈分别随 desktop-v0.2.0 / v0.2.1 发布）**；
-**D7 已放行，2026-11-10 进入实施**（热力图 / 最近会话 / 卡片显隐已落地，待操作者验收）；
-**D7.1 已实施（2026-11-11，见 §12.9），随 D7 一并待验收**；
-**D9 已验收通过（2026-11-11 操作者验收）**；
-**D10 已实施（2026-11-11，见 §12.11），待验收**；
-D11（会话列表+详情 / 分享卡）在 D10 验收后实施；
+**D6 / D7 / D7.1 / D9 / D10 / D10.1 均已验收关闭（2026-11-11 操作者验收，见 §10）**：
+0.2 产品迭代（含 D10.1 三轮验收修复）到此整体收尾；
+**D11（会话列表+详情 / 分享卡）待实施**，为下一个开项；
 D8 原范围（维护折叠 / 复制按钮）被 D9–D11 吸收，仅窗口尺寸记忆仍待排期。
 
 ### 12.10 D9（2026-11-11，操作者八点需求的第 1/2/3/7 项）：头部改造 + 四统计卡 + 热力图对齐
@@ -757,9 +772,26 @@ recharts 已随 D9 落地（§6）。**仍零契约变更**——成本列全部
    本地验收环境用 `npm i -g ./packages/cli` 安装工作区 CLI（与 0.5.4 同版本号但含新子命令）。
    **发行注意**：`project-profiles` 子命令尚未随 npm 发版，其他机器需先升级 `tokenusage-cli`
    才能看到 web 编辑的显示名 / logo；旧 CLI 仍静默降级（设计如此）。
-   **服务端前提**：本机实测 CLI 已发出请求，但当前部署的 web 实例仍只认 8 个 series，
-   返回 `404 Unknown account series: project-profiles`——桌面拉取要生效，web 必须先部署
-   含 §2.13 端点的那版；未部署前沿用静默降级（字母方块）。
+   **服务端前提（已解除）**：当时部署的 web 实例仍只认 8 个 series，返回 `404 Unknown
+   account series: project-profiles`；2026-11-11 该版部署上线后实测 200（18 条 profile，
+   其中 9 条带 logo，`logo_url` 地址均可加载）。
+   **真正的最后一环——Volta 化石副本**（§12.1 ⑩ 的反方向：那次是 image-dir 副本盖住了
+   packages 权威副本，这次是 packages 副本没跟上）：公司机 PATH 命中
+   `%LOCALAPPDATA%\Volta\bin\tokenusage.cmd` 垫片，垫片执行 `volta run tokenusage`，用的是
+   `tools/image/packages/tokenusage-cli/node_modules/tokenusage-cli` 这份 2026-11-10 的**旧
+   副本**（不含 §2.13 子命令，`Unknown command` → exit 1 → 前端 catch 静默降级）；而
+   `npm i -g ./packages/cli` 只改了 `tools/image/node/<ver>/node_modules/tokenusage-cli`
+   （符号链接到工作区，终端里 `which tokenusage` 命中的是它，所以人工验证一直是好的）。
+   修复：把 packages 下那份旧副本改名为 `tokenusage-cli.bak-20261111`，同路径建 junction
+   指向 `packages/cli`；重启应用后项目卡正常显示 web 上的 logo（已截图复验，采集与同步行
+   显示 `tokenusage-cli v0.5.4`）。**判断法**：桌面端行为与终端 `tokenusage` 不一致时，先
+   看 `volta list` 里 `tokenusage-cli` 的路径与 `grep -c project-profiles
+   .../tools/image/packages/tokenusage-cli/node_modules/tokenusage-cli/src/cli.js`，两份副本
+   都要是新代码；junction 会被后续 `volta install` 覆盖，升级后需重新对齐。
+   **发行注意**（仍成立）：`project-profiles` 子命令尚未随 npm 发版，其他机器需先升级
+   `tokenusage-cli` 才能看到 web 编辑的显示名 / logo；旧 CLI 仍静默降级（设计如此）。
+   另：服务端对 `token-usage` / `margin-app` / `TokenTracker` / `TokenTrackerSelfhost` /
+   `baiwumm` 等尚未设置 logo 的项目返回 null，这些行在 web 与桌面都是字母方块。
 
 ### 12.9 D7.1 验收期追加轮（2026-11-11，操作者需求；无独立版本号，随下次发版带走）
 
