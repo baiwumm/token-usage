@@ -1,13 +1,13 @@
 "use client";
 
-// 顶部导航：logo 锁定 + 章节锚点 + GitHub + 部署 CTA，hairline 底边。
+// 顶部导航：logo 锁定 + npm / GitHub 图标按钮 + 部署 CTA，hairline 底边。
 // 恒为暗色，只引 logo-dark 变体。
 
 import { LogoGithub } from "@gravity-ui/icons";
 import { Button, Typography } from "@heroui/react";
 
 import { LANDING_COPY } from "@/lib/copy";
-import { REPO_URL } from "@/lib/repo-links";
+import { NPM_CLI_URL, REPO_URL } from "@/lib/repo-links";
 
 export function NavBar() {
   const copy = LANDING_COPY.zh;
@@ -43,31 +43,26 @@ export function NavBar() {
           </span>
         </a>
 
-        <nav className="ml-auto hidden items-center gap-1 md:flex">
-          <a
-            className="rounded-full px-3 py-1.5 text-sm text-muted transition-colors hover:bg-default/60 hover:text-foreground"
-            href="#features"
+        <div className="ml-auto flex items-center gap-2 max-md:hidden">
+          <Button
+            isIconOnly
+            aria-label="npm · tokenusage-cli"
+            size="sm"
+            variant="outline"
+            onPress={() => openExternal(NPM_CLI_URL)}
           >
-            {copy.nav.features}
-          </a>
-          <a
-            className="rounded-full px-3 py-1.5 text-sm text-muted transition-colors hover:bg-default/60 hover:text-foreground"
-            href="#deploy"
+            <NpmIcon className="size-4" />
+          </Button>
+          <Button
+            isIconOnly
+            aria-label="GitHub"
+            size="sm"
+            variant="outline"
+            onPress={() => openExternal(REPO_URL)}
           >
-            {copy.nav.deploy}
-          </a>
-        </nav>
-
-        <Button
-          aria-label="GitHub"
-          className="max-md:hidden"
-          size="sm"
-          variant="outline"
-          onPress={() => window.open(REPO_URL, "_blank", "noopener,noreferrer")}
-        >
-          <LogoGithub className="size-4" />
-          <Typography type="body-xs">GitHub</Typography>
-        </Button>
+            <LogoGithub className="size-4" />
+          </Button>
+        </div>
 
         <Button size="sm" variant="primary" onPress={() => scrollToDeploy()}>
           {copy.nav.cta}
@@ -75,6 +70,24 @@ export function NavBar() {
       </div>
     </header>
   );
+}
+
+/** npm 官方 mark（simple-icons 路径，随 currentColor 走主题）。 */
+function NpmIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      fill="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.164H8.579l.01-10.367H5.136z" />
+    </svg>
+  );
+}
+
+function openExternal(url: string): void {
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 function scrollToDeploy(): void {

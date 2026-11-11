@@ -4,8 +4,6 @@
 export interface LandingCopy {
   nav: {
     tagline: string;
-    features: string;
-    deploy: string;
     cta: string;
   };
   hero: {
@@ -87,7 +85,13 @@ export interface LandingCopy {
       links: Array<{ label: string; href: string }>;
     }>;
     attribution: string;
-    icp: string;
+    /** 备案信息：展示在页脚右下角；空串隐藏对应条目。 */
+    beian: {
+      /** 工信部 ICP 备案号，链接固定指向 beian.miit.gov.cn。 */
+      icp: string;
+      /** 公安网安备号，链接由其中数字自动生成。 */
+      police: string;
+    };
     rights: string;
   };
 }
@@ -96,8 +100,6 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
   zh: {
     nav: {
       tagline: "自托管 AI 用量追踪",
-      features: "功能",
-      deploy: "自部署",
       cta: "立即部署",
     },
     hero: {
@@ -283,15 +285,17 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
         },
       ],
       attribution: "代码来源与第三方许可见 LICENSE 与 THIRD_PARTY_NOTICES。",
-      icp: "备案号占位",
+      beian: {
+        icp: "粤ICP备2023007649号-5",
+        // 公安网备尚未提交，拿到备案号后填在这里（数字部分会自动进查询链接）。
+        police: "",
+      },
       rights: "© 2026 Token Usage · token-usage.cc",
     },
   },
   en: {
     nav: {
       tagline: "Self-hosted AI token tracking",
-      features: "Features",
-      deploy: "Self-host",
       cta: "Deploy now",
     },
     hero: {
@@ -480,7 +484,10 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
       ],
       attribution:
         "Code provenance and third-party notices live in LICENSE and THIRD_PARTY_NOTICES.",
-      icp: "ICP placeholder",
+      beian: {
+        icp: "",
+        police: "",
+      },
       rights: "© 2026 Token Usage · token-usage.cc",
     },
   },

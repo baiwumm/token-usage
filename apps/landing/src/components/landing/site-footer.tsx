@@ -1,6 +1,7 @@
 // Footer（设计定稿 08 段）：实时徽章直链演示（<img> 零脚本，README 解析）
 // + 三列链接 + 署名指向（AGENTS 规则 10：只指向 LICENSE /
-// THIRD_PARTY_NOTICES）+ ICP 占位。
+// THIRD_PARTY_NOTICES）+ 备案信息（ICP 链接工信部；公安网备拿到号后填
+// `copy.footer.beian.police`，数字自动进查询链接）。
 
 import { Typography } from "@heroui/react";
 
@@ -20,6 +21,9 @@ export function SiteFooter() {
   const copy = LANDING_COPY.zh;
   const badge = badgeImageUrl("sparkline");
   const demoUrl = badgeSource()?.publicPageUrl ?? null;
+  const { icp, police } = copy.footer.beian;
+  const policeCode = police.match(/\d+/)?.[0] ?? "";
+  const hasBeian = Boolean(icp || (police && policeCode));
 
   const columns = copy.footer.columns.map((column) => ({
     ...column,
@@ -105,14 +109,65 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col gap-2 border-t border-default/50 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <Typography color="muted" type="body-xs">
-            {copy.footer.rights}
-          </Typography>
-          <Typography color="muted" type="body-xs">
-            {/* ICP 占位：.cc 域名可备案，备案号下来后填在这里。 */}
-            {copy.footer.icp} · {copy.footer.attribution}
-          </Typography>
+        <div className="mt-12 flex flex-col gap-3 border-t border-default/50 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <Typography color="muted" type="body-xs">
+              {copy.footer.rights}
+            </Typography>
+            <Typography color="muted" type="body-xs">
+              {copy.footer.attribution}
+            </Typography>
+          </div>
+
+          {hasBeian ? (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              {icp ? (
+                <a
+                  className="inline-flex items-center gap-1 text-muted transition-colors hover:text-foreground"
+                  href="https://beian.miit.gov.cn/"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    alt=""
+                    aria-hidden="true"
+                    className="size-3.5 shrink-0"
+                    height={14}
+                    loading="lazy"
+                    src="/beian/icp.png"
+                    width={14}
+                  />
+                  <Typography color="muted" type="body-xs">
+                    {icp}
+                  </Typography>
+                </a>
+              ) : null}
+
+              {police && policeCode ? (
+                <a
+                  className="inline-flex items-center gap-1 text-muted transition-colors hover:text-foreground"
+                  href={`https://beian.mps.gov.cn/#/query/webSearch?code=${policeCode}`}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    alt=""
+                    aria-hidden="true"
+                    className="size-3.5 shrink-0"
+                    height={14}
+                    loading="lazy"
+                    src="/beian/police.png"
+                    width={14}
+                  />
+                  <Typography color="muted" type="body-xs">
+                    {police}
+                  </Typography>
+                </a>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </footer>

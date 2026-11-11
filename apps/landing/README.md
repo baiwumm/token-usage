@@ -30,7 +30,10 @@ pnpm verify          # 根门禁（web + cli + landing 全量）
    站点接入（Git 连接或产物上传均可），无需 Node 运行时；
 2. 环境变量：无必填（快照已固化、徽章直链指向实例域名）；
 3. 域名 `token-usage.cc`（及可选 `www.`）在腾讯云内侧 CNAME 接入 EdgeOne；
-4. 备案（可选）：.cc 可备案，备案号填 `site-footer.tsx` 的 ICP 占位。
+4. 备案：域名已备案（粤ICP备2023007649号-5，2026-11-11 备案通过），页脚右下角展示
+   ICP 号并链接工信部；文案在 `src/lib/copy.ts` 的 `footer.beian`（`icp` / `police`，
+   空串隐藏对应条目）。公安网备待部署后提交，拿到号填 `beian.police` 即可（数字部分
+   自动拼进 `beian.mps.gov.cn` 查询链接）。
 
 **对外口径仍为 Vercel**：落地页上的 Deploy to Vercel 按钮与部署指南面向的是
 **自部署用户**（部署 `apps/web` 仪表盘），与本站的托管选择无关，保持不变；
@@ -44,3 +47,5 @@ pnpm verify          # 根门禁（web + cli + landing 全量）
   导出（四风格：特刊/小票/霓虹/唱片），非操作者真实数据。
 - `public/brand-logos/`、`public/achievements/`：从 apps/web public 复制的
   子集，更新时两边同步。
+- `public/beian/icp.png` / `public/beian/police.png`：页脚备案图标（14px 展示），
+  取自操作者站点通用素材；换号时只改 `src/lib/copy.ts` 的 `footer.beian` 文案。
