@@ -360,6 +360,7 @@ export function WrappedClient() {
             achievements={achievements}
             copy={copy}
             locale={locale}
+            year={year}
           />
 
           <MonthlyCard copy={copy} data={trendData} year={year} />

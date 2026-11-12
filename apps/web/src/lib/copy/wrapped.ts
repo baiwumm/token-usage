@@ -52,9 +52,9 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
       conversations: "全年会话",
       activeDays: "活跃天数",
     },
-    achievementsTitle: "已解锁成就",
+    achievementsTitle: "截至 {year} 年已解锁",
     achievementsCount: "共 {count} 枚",
-    achievementsEmpty: "还没有解锁成就。",
+    achievementsEmpty: "这一年还没有解锁成就。",
     monthlyTitle: "月度趋势",
     trend: {
       input: "输入",
@@ -89,9 +89,9 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
       conversations: "Conversations",
       activeDays: "Active days",
     },
-    achievementsTitle: "Achievements unlocked",
+    achievementsTitle: "Unlocked by {year}",
     achievementsCount: "{count} earned",
-    achievementsEmpty: "No achievements unlocked yet.",
+    achievementsEmpty: "No achievements unlocked by this year.",
     monthlyTitle: "Monthly trend",
     trend: {
       input: "Input",

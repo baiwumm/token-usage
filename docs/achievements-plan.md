@@ -268,7 +268,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - **分享卡（P3）**：已解锁的详情弹窗在正文最底部出现 `fullWidth` 的「分享成就」，先关详情再开分享弹窗（避免嵌套 Modal）；左侧预览、右侧「复制图片 / 下载 PNG」。卡片由 Canvas 2D 画出（1080×1350，`components/share-card/achievement.ts`），背景、段位色与金属外环取 `achievement-tiers.ts` 的原始色值；徽章位图走同源 `/achievements/<id>.png`（不污染 canvas），加载失败画金属盘 + 首字母占位，仍可导出。文件名 `token-usage-<id>-<tier>.png`；只含聚合数据（名称 / 描述 / 段位 / 当前值 / 达成日 / handle），不含行级信息
 - **3D 翻面硬币（P3）**：详情弹窗头部换成可翻面硬币（`achievement-coin.tsx`）；**物理用 `motion`**（`motion/react`，2026-11-01 随成就 P3 收尾实际引入，`apps/web/package.json` 的 `motion@^14.9.0`，见 `docs/rewrite-plan.md` §4）——`useMotionValue` 驱动旋转、`useReducedMotion` 做分级降级，纯 CSS 无法表达松手物理；原生 `button` + `aria-pressed`，Enter / Space 可翻，`Tooltip` 提示；背面为段位金属盘 + 段位名 + 达成日（未解锁显示「尚未解锁」与下一档阈值）；弹窗关闭或切换成就时复位正面，`prefers-reduced-motion` 下无入场/摆动、松手短 tween 落位
 - **入口**：`components/app-shell/nav-items.tsx` 增加「成就」（`@gravity-ui/icons` 的 `Medal` 图标）；`src/proxy.ts` 把 `/achievements` 纳入受保护页面（未登录跳 `/login?next=/achievements`）
-- **wrapped**：年度回顾顶部保持四张统计卡；成就单独做成占一行的卡（`components/wrapped/achievements-card.tsx`），列出当前已获得的全部成就（`tier ≥ 1`，段位降序）并带段位标签；请求失败整卡隐藏，零解锁显示空态（2026-10-30 操作者裁定，取代原「今年解锁 N 枚」第五卡）
+- **wrapped**：年度回顾顶部保持四张统计卡；成就单独做成占一行的卡（`components/wrapped/achievements-card.tsx`），列出**截至所选年份年末已解锁**的成就（每条取 `achieved_at ≤ 该年 12-31` 的最高段位，`tier ≥ 1`，段位降序）并带段位标签；成就请求与年份无关、全历史只拉一次，年份截断在展示层（`lib/achievements/annual.ts`，2026-11-12 操作者裁定，取代 2026-10-30「不按年份过滤」）；请求失败整卡隐藏，零解锁显示空态
 - **空数据**：未配对设备/无用量时展示锁定栅格 + 引导文案；仪表盘成就条整条隐藏、全局 toast 不弹
 
 ### 3.6 性能与安全
@@ -423,6 +423,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 2026-10-30 | P3.3–P3.4 分享卡 + 翻面 | ✅ | 4e2e086 | Canvas 1080×1350 分享卡（`share-card/achievement.ts` + `lib/achievements/share.ts` + 弹窗，零新依赖，断图回退金属盘）；详情硬币 CSS 3D 翻面（原生 button + `aria-pressed`，reduce 无过渡） |
 | 2026-10-30 | P3 验收 + 文档 | ✅ | 84f0ef6 | 文档回写完成（本文件 + requirements + rewrite-plan + deploy-guide + ui-spec）；`pnpm verify` 全绿（web 30 files / 418 tests + build，CLI 72；lint 0 error / 5 warning）；机器核对未登录跳转、GET/POST 401 + no-store、3D/reduce CSS 产物；迁移已用 `DATABASE_URL` 执行并核对（RLS 开启、0 policy、anon/authenticated 无权限、service_role 可读写）；操作者浏览器验收通过（2026-10-30） |
 | 2026-11-08 | 打磨轮 | ✅ | 本次提交 | 页头摘要改双口径（大号段位合计 x/100 + 细进度条，行尾附「已解锁 y/20」小字项；刷新按钮并入「段位进度」数字行右侧并与之垂直居中）；新增 `early_bird`（镜像 night_owl 3/10/30/60/120）与 `biggest_session`（1M/10M/50M/100M/500M），校准脚本扩展两指标并重跑真实实例（16 个月 / 23.72B tokens / 102 活跃日 / 699 会话 / 17 source）；`deep_thinker` 复核 31.4% 续冻；两张插画 PNG 生成入库（MiniMax 额度一度耗尽、key 重配后完成；`biggest_session` 首批主体跑题，收紧 subject 后重出合格），半径 0.750 入 art-fit 表；操作者验收通过（2026-11-08，含页头对齐与刷新按钮位置两轮微调） |
+| 2026-11-12 | wrapped 年度口径 | ✅ | 本次提交 | 操作者裁定成就卡跟随所选年份：改为「截至该年末已解锁」——每条取 `achieved_at ≤ {year}-12-31` 的最高段位（新增纯函数 `lib/achievements/annual.ts` + 单测），标题带年份、空态改为「这一年还没有解锁成就」；成就请求仍与年份无关、全历史只拉一次（展示层截断，无接口/计算改动）。取代 2026-10-30「不按年份过滤」口径 |
 
 > 每次阶段推进在此追加一行：日期、阶段、状态、commit hash、关键备注（校准结果、偏差、决策变更）。
 

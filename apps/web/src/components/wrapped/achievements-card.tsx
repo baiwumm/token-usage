@@ -1,10 +1,15 @@
 "use client";
 
-// Full-width achievements card for /wrapped: every achievement earned so far
-// (tier ≥ 1), highest tier first, each with its medallion and tier label. The
-// card is display-only — the detail dialog and the share card live on
-// /achievements. Hidden while the optional achievements request is unresolved
-// or failed, so a fetch failure never claims "nothing earned".
+// Full-width achievements card for /wrapped: achievements unlocked by the end
+// of the selected year (tier ≥ 1), highest tier first, each with its medallion
+// and tier label. The card is display-only — the detail dialog and the share
+// card live on /achievements. Hidden while the optional achievements request is
+// unresolved or failed, so a fetch failure never claims "nothing earned".
+//
+// The payload is a single all-history snapshot (tiers only ever go up), so the
+// year scoping happens here with lib/achievements/annual.ts: an earlier year
+// legitimately shows fewer rows and lower tiers (2026-11-12 operator call,
+// replacing the earlier all-time-only card).
 
 import type { AchievementsPayload } from "@/lib/achievements/types";
 import type { Locale } from "@/lib/copy/locale-config";
@@ -14,6 +19,7 @@ import { Card, Typography } from "@heroui/react";
 
 import { AchievementMedallion } from "@/components/achievement-medallion";
 import { TierBadge } from "@/components/achievement-tier-badge";
+import { achievementsAsOfYear } from "@/lib/achievements/annual";
 import { achievementById, TIERS } from "@/lib/achievements/catalog";
 import { achievementCopy } from "@/lib/copy/achievements";
 import { formatMessage } from "@/lib/copy/message";
@@ -22,23 +28,24 @@ export function AchievementsCard({
   achievements,
   copy,
   locale,
+  year,
 }: {
   achievements: AchievementsPayload | null;
   copy: WrappedCopy;
   locale: Locale;
+  /** Selected wrapped year — rows are scoped to this year's end. */
+  year: number;
 }) {
   if (!achievements) return null;
 
-  // Payload order is catalog order, so the stable sort keeps that order for
-  // achievements sharing a tier.
-  const earned = achievements.achievements
-    .filter((entry) => entry.tier >= 1)
-    .sort((a, b) => b.tier - a.tier);
+  const earned = achievementsAsOfYear(achievements.achievements, year);
 
   return (
     <Card className="gap-4 p-5">
       <Card.Header className="flex-row items-center justify-between gap-3">
-        <Card.Title>{copy.achievementsTitle}</Card.Title>
+        <Card.Title>
+          {formatMessage(copy.achievementsTitle, locale, { year })}
+        </Card.Title>
         <Typography className="tabular-nums" color="muted" type="body-xs">
           {formatMessage(copy.achievementsCount, locale, {
             count: earned.length,
@@ -52,9 +59,9 @@ export function AchievementsCard({
           </Typography>
         ) : (
           <ul className="grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
-            {earned.map((progress) => {
+            {earned.map(({ progress, tier: earnedTier }) => {
               const catalogEntry = achievementById(progress.id);
-              const tier = TIERS.find((entry) => entry.tier === progress.tier);
+              const tier = TIERS.find((entry) => entry.tier === earnedTier);
               const name = achievementCopy(
                 locale,
                 catalogEntry?.copyKey ?? `achievements.${progress.id}.name`,
@@ -70,14 +77,14 @@ export function AchievementsCard({
                     className="w-10"
                     icon={catalogEntry?.icon ?? "tokens"}
                     id={progress.id}
-                    tier={progress.tier}
+                    tier={earnedTier}
                   />
                   <span className="flex min-w-0 flex-col gap-1">
                     <span className="truncate text-sm font-medium">{name}</span>
                     <TierBadge
                       className="self-start"
                       label={achievementCopy(locale, tier?.copyKey ?? "")}
-                      tier={progress.tier}
+                      tier={earnedTier}
                     />
                   </span>
                 </li>
