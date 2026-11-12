@@ -1,12 +1,14 @@
 "use client";
 
-// Filter row for /sessions (docs/ui-spec.md 筛选条): time window + presets,
-// device, source, "clear filters" and the refresh button that doubles as the
+// Filter row for /sessions (docs/ui-spec.md 筛选条): the shared preset-only
+// time toolbar, device and source selects (「全部…」placeholders with
+// `Select.ClearButton`), and the CSV / refresh icon cluster doubling as the
 // last-updated tooltip. Everything is controlled by the page's URL filters.
 
 import type { Locale } from "@/lib/copy/locale";
 import type { SessionsCopy } from "@/lib/copy/sessions";
 import type { SessionsPayload } from "@/lib/dashboard/api";
+import type { Filters } from "./filters";
 
 import { ArrowDownToLine, Layers } from "@gravity-ui/icons";
 import {
@@ -18,28 +20,17 @@ import {
   Tooltip,
   Typography,
 } from "@heroui/react";
-import { parseDate } from "@internationalized/date";
-import { useMemo, type Key } from "react";
 
-import {
-  SESSION_RANGE_PRESETS,
-  type Filters,
-  type SessionRange,
-} from "./filters";
-
-import { DateRangeFilter } from "@/components/date-range-filter";
 import { DeviceFilterSelect } from "@/components/device-filter-select";
+import { RangePresetToolbar } from "@/components/range-preset-toolbar";
 import { RefreshButton } from "@/components/refresh-button";
 import { SourceIcon } from "@/components/source-icon";
 import { sourceDisplayLabel } from "@/lib/sources";
-import { dayKeyInTz, type DashboardRange } from "@/lib/dashboard/ranges";
 
 export function SessionsFilterBar({
   copy,
   locale,
   filters,
-  range,
-  timezone,
   deviceOptions,
   sourceOptions,
   loading,
@@ -47,19 +38,13 @@ export function SessionsFilterBar({
   canExport,
   exporting,
   lastUpdatedAt,
-  hasNarrowingFilters,
   onApply,
-  onClear,
   onExport,
   onRetry,
 }: {
   copy: SessionsCopy;
   locale: Locale;
   filters: Filters;
-  /** Window the URL filters resolve to, ending today. */
-  range: DashboardRange;
-  /** Zone the range picker caps days at. */
-  timezone: string;
   deviceOptions: SessionsPayload["facets"]["devices"];
   sourceOptions: SessionsPayload["facets"]["sources"];
   loading: boolean;
@@ -67,46 +52,21 @@ export function SessionsFilterBar({
   canExport: boolean;
   exporting: boolean;
   lastUpdatedAt: number | null;
-  hasNarrowingFilters: boolean;
   onApply: (patch: Partial<Filters>) => void;
-  onClear: () => void;
   onExport: () => void;
   onRetry: () => void;
 }) {
-  // Range picker state: rangeForSelection resolves the URL day keys — valid
-  // custom pairs pass through, presets resolve to their relative window
-  // ending today — so the picker always shows a well-formed window.
-  const rangePickerValue = useMemo(
-    () => ({ start: parseDate(range.fromDay), end: parseDate(range.toDay) }),
-    [range],
-  );
-  const rangePickerMax = useMemo(
-    () => parseDate(dayKeyInTz(new Date(), timezone)),
-    [timezone],
-  );
-
   return (
-    <div className="flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1">
-        <Typography color="muted" type="body-xs">
-          {copy.rangeLabel}
-        </Typography>
-        <DateRangeFilter
-          ariaLabel={copy.rangeLabel}
-          labels={copy.ranges}
-          locale={locale}
-          maxValue={rangePickerMax}
-          presets={SESSION_RANGE_PRESETS}
-          selectedPreset={filters.range}
-          value={rangePickerValue}
-          onChange={({ from, to }) => onApply({ range: "custom", from, to })}
-          onPresetSelect={(preset) =>
-            onApply({ range: preset as SessionRange, from: "", to: "" })
-          }
-        />
-      </label>
+    <div className="flex flex-wrap items-center gap-3">
+      <RangePresetToolbar
+        ariaLabel={copy.rangeLabel}
+        labels={copy.ranges}
+        selected={filters.range}
+        onSelect={(range) => onApply({ range, from: "", to: "" })}
+      />
 
       <DeviceFilterSelect
+        placeholderMode
         allLabel={copy.allDevices}
         devices={deviceOptions}
         label={copy.deviceLabel}
@@ -115,75 +75,61 @@ export function SessionsFilterBar({
         onChange={(deviceId) => onApply({ deviceId })}
       />
 
-      <label className="flex flex-col gap-1">
-        <Typography color="muted" type="body-xs">
-          {copy.sourceLabel}
-        </Typography>
-        <Select
-          aria-label={copy.sourceLabel}
-          className="w-44"
-          value={filters.source || "__all"}
-          onChange={(key: Key | null) => {
-            if (key == null) return;
-            const value = String(key);
+      <Select
+        aria-label={copy.sourceLabel}
+        className="w-44"
+        placeholder={copy.allSources}
+        value={filters.source || null}
+        onChange={(key) => {
+          if (key == null) return;
 
-            onApply({ source: value === "__all" ? "" : value });
-          }}
-        >
-          <Select.Trigger>
-            <Select.Value>
-              {({ selectedText }) => (
-                <span className="flex min-w-0 items-center gap-2">
-                  {filters.source ? (
-                    <SourceIcon label={filters.source} size={14} />
-                  ) : (
-                    <Layers
-                      aria-hidden="true"
-                      className="text-muted size-4 shrink-0"
-                    />
-                  )}
-                  <span className="truncate">{selectedText}</span>
+          onApply({ source: String(key) });
+        }}
+        onClear={() => onApply({ source: "" })}
+      >
+        <Select.Trigger>
+          <Select.Value>
+            {({ isPlaceholder, selectedText }) => (
+              <span className="flex min-w-0 items-center gap-2">
+                {filters.source ? (
+                  <SourceIcon label={filters.source} size={14} />
+                ) : (
+                  <Layers
+                    aria-hidden="true"
+                    className="text-muted size-4 shrink-0"
+                  />
+                )}
+                <span className="truncate">
+                  {isPlaceholder ? copy.allSources : selectedText}
                 </span>
-              )}
-            </Select.Value>
-            {loading ? (
-              <Select.Indicator>
-                <Spinner size="sm" />
-              </Select.Indicator>
-            ) : (
-              <Select.Indicator />
+              </span>
             )}
-          </Select.Trigger>
-          <Select.Popover>
-            <Popover.Arrow />
-            <ListBox>
-              <ListBox.Item id="__all" textValue={copy.allSources}>
-                <Layers
-                  aria-hidden="true"
-                  className="text-muted size-4 shrink-0"
-                />
-                {copy.allSources}
+          </Select.Value>
+          <Select.ClearButton />
+          {loading ? (
+            <Select.Indicator>
+              <Spinner size="sm" />
+            </Select.Indicator>
+          ) : (
+            <Select.Indicator />
+          )}
+        </Select.Trigger>
+        <Select.Popover>
+          <Popover.Arrow />
+          <ListBox>
+            {sourceOptions.map((entry) => (
+              <ListBox.Item
+                key={entry.source}
+                id={entry.source}
+                textValue={sourceDisplayLabel(entry.source)}
+              >
+                <SourceIcon label={entry.source} size={14} />
+                {sourceDisplayLabel(entry.source)}
               </ListBox.Item>
-              {sourceOptions.map((entry) => (
-                <ListBox.Item
-                  key={entry.source}
-                  id={entry.source}
-                  textValue={sourceDisplayLabel(entry.source)}
-                >
-                  <SourceIcon label={entry.source} size={14} />
-                  {sourceDisplayLabel(entry.source)}
-                </ListBox.Item>
-              ))}
-            </ListBox>
-          </Select.Popover>
-        </Select>
-      </label>
-
-      {hasNarrowingFilters ? (
-        <Button size="sm" variant="ghost" onPress={onClear}>
-          {copy.clearFilters}
-        </Button>
-      ) : null}
+            ))}
+          </ListBox>
+        </Select.Popover>
+      </Select>
 
       <div className="ml-auto flex items-center gap-1.5">
         <Tooltip delay={0}>

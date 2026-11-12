@@ -23,6 +23,9 @@ export const RANGE_PRESETS = [
   "30d",
 ] as const satisfies readonly RangePreset[];
 
+/** The four quick presets the dashboard and Sessions bars share. */
+export type RangePresetChoice = (typeof RANGE_PRESETS)[number];
+
 export const PRESET_DAYS: Record<
   Exclude<RangePreset, "all" | "today">,
   number

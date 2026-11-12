@@ -10,23 +10,13 @@ import type { ShareCardData } from "@/components/share-card";
 import type { DashboardDevice } from "@/lib/dashboard/api";
 import type { Filters } from "./filters";
 
-import {
-  ListBox,
-  Popover,
-  Select,
-  ToggleButton,
-  ToggleButtonGroup,
-  Toolbar,
-} from "@heroui/react";
+import { ListBox, Popover, Select } from "@heroui/react";
 
 import { DeviceFilterSelect } from "@/components/device-filter-select";
+import { RangePresetToolbar } from "@/components/range-preset-toolbar";
 import { RefreshButton } from "@/components/refresh-button";
 import { ShareCardButton } from "@/components/share-card-button";
-import {
-  browserTimezone,
-  RANGE_PRESETS,
-  TIMEZONE_OPTIONS,
-} from "@/lib/dashboard/ranges";
+import { browserTimezone, TIMEZONE_OPTIONS } from "@/lib/dashboard/ranges";
 
 export function DashboardFilterBar({
   activeDevices,
@@ -54,32 +44,12 @@ export function DashboardFilterBar({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Toolbar isAttached aria-label={copy.rangeLabel}>
-        <ToggleButtonGroup
-          disallowEmptySelection
-          aria-label={copy.rangeLabel}
-          selectedKeys={[filters.range]}
-          selectionMode="single"
-          size="sm"
-          onSelectionChange={(keys) => {
-            const next = [...keys][0];
-            const preset = RANGE_PRESETS.find(
-              (candidate) => candidate === next,
-            );
-
-            if (!preset || preset === filters.range) return;
-
-            onApply({ range: preset, from: "", to: "" });
-          }}
-        >
-          {RANGE_PRESETS.map((preset, index) => (
-            <ToggleButton key={preset} id={preset}>
-              {index > 0 ? <ToggleButtonGroup.Separator /> : null}
-              {copy.ranges[preset]}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-      </Toolbar>
+      <RangePresetToolbar
+        ariaLabel={copy.rangeLabel}
+        labels={copy.ranges}
+        selected={filters.range}
+        onSelect={(range) => onApply({ range, from: "", to: "" })}
+      />
 
       <Select
         aria-label={copy.tzLabel}

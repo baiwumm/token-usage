@@ -227,7 +227,7 @@ export function SessionsClient() {
   ]);
 
   const hasNarrowingFilters =
-    filters.range !== "30d" ||
+    filters.range !== "all" ||
     Boolean(filters.from) ||
     Boolean(filters.to) ||
     Boolean(filters.deviceId) ||
@@ -235,7 +235,7 @@ export function SessionsClient() {
 
   const clearFilters = useCallback(() => {
     applyFilters({
-      range: "30d",
+      range: "all",
       from: "",
       to: "",
       deviceId: "",
@@ -283,16 +283,12 @@ export function SessionsClient() {
         deviceOptions={deviceOptions}
         exporting={exporting}
         filters={filters}
-        hasNarrowingFilters={hasNarrowingFilters}
         lastUpdatedAt={lastUpdatedAt}
         loading={state.status === "loading"}
         locale={locale}
-        range={range}
         refreshing={refreshing}
         sourceOptions={sourceOptions}
-        timezone={timezone}
         onApply={applyFilters}
-        onClear={clearFilters}
         onExport={() => void exportCsv()}
         onRetry={retry}
       />

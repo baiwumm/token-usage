@@ -2,17 +2,15 @@
 // filters, page offset and a custom time window live in the URL; preset ranges
 // stay session-only.
 
+import type { RangeKey } from "@/lib/dashboard/ranges";
+
 import { isValidDayKey } from "@/lib/dashboard/ranges";
 import { PAGE_SIZE_OPTIONS } from "@/lib/ui/pagination";
 
 export const DEFAULT_PAGE_SIZE = 20;
 
-export const SESSION_RANGE_PRESETS = ["today", "7d", "30d", "90d"] as const;
-
-export type SessionRange = (typeof SESSION_RANGE_PRESETS)[number] | "custom";
-
 export interface Filters {
-  range: SessionRange;
+  range: RangeKey;
   from: string;
   to: string;
   deviceId: string;
@@ -37,7 +35,7 @@ export function parseFilters(params: {
   const hasWindow = isValidDayKey(from) && isValidDayKey(to) && from <= to;
 
   return {
-    range: hasWindow ? "custom" : "30d",
+    range: hasWindow ? "custom" : "all",
     from: hasWindow ? from : "",
     to: hasWindow ? to : "",
     deviceId: params.get("device_id") ?? "",

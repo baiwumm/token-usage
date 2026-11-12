@@ -267,21 +267,25 @@
 ### Sessions（`/sessions`，B）
 
 - 导航：侧边栏与抽屉在仪表盘后新增“Sessions”（`ListUl` 图标），页面标题取菜单名。
-- 数据源：`account-sessions`。筛选条：时间范围为单一 `DateRangePicker`（弹层内置
-  今天 / 7D / 30D / 90D 快捷按钮，活动预设高亮，点选关层；日历手动选取写 `custom`；
-  控件形态与仪表盘一致，设备下拉同样复用 `DeviceFilterSelect`）、设备、来源；筛选条最
+- 数据源：`account-sessions`。筛选条（2026-11-12 操作者裁定：与仪表盘同形态）：时间范围
+  为共享 `RangePresetToolbar`（`Toolbar isAttached` + 单选 `ToggleButtonGroup`，
+  总计 / 今天 / 7D / 30D，总计在前、`size="sm"`，不再有日历与自定义入口）、设备（复用
+  `DeviceFilterSelect` 的 `placeholderMode`）、来源（「全部来源」占位 + `Select.ClearButton`，
+  触发器复显 `SourceIcon` 与显示名）；控件不带顶部 Label，一律以 `aria-label` 供屏幕阅读器，
+  筛选条不再有「清除筛选」按钮（仅表格无结果态保留引导按钮）。筛选条最
   右侧依次是 CSV 导出图标按钮（`ArrowDownToLine`，导出当前筛选全集，2026-11-01 增量）与
   采集记录同款的刷新图标按钮（`ArrowsRotateRight`，刷新时图标 `animate-spin`，
-  `Tooltip` 显示上次更新时间）；导出按钮在无结果或加载中禁用，导出中显示 `Spinner`；设备/来源选项来自响应的 `facets`，来源选项与触发器复显 `SourceIcon`
-  品牌图标及 `sourceDisplayLabel`（与列表 `Chip` 同源，全部来源用 `Layers`）；设备/来源与分页偏移（`offset`）
-  写入 URL；时间范围的预设（今天 / 7D / 30D / 90D）不写入 URL、加载不回显（2026-10-26
-  裁定），自定义窗口——日历手选或热力格子跳转带来的 `from` / `to`——写入并回显，刷新与
-  分享保持同一窗口（2026-10-28 裁定）；非法或顺序颠倒的 `from` / `to` 首帧清出地址栏；
-  默认近 30 天、全部设备、全部来源；分页
+  `Tooltip` 显示上次更新时间）；导出按钮在无结果或加载中禁用，导出中显示 `Spinner`；设备/来源选项来自响应的 `facets`，来源选项复显 `SourceIcon`
+  品牌图标及 `sourceDisplayLabel`（与列表 `Chip` 同源，占位用 `Layers`）；设备/来源与分页偏移（`offset`）
+  写入 URL；时间范围的预设（总计 / 今天 / 7D / 30D）不写入 URL、加载不回显（2026-10-26
+  裁定），自定义窗口——仅剩热力格子跳转带来的 `from` / `to`——写入并回显，刷新与分享保持
+  同一窗口（2026-10-28 裁定；此时工具栏不亮任何预设，点任一预设即回到预设窗口）；非法或
+  顺序颠倒的 `from` / `to` 首帧清出地址栏；
+  默认总计、全部设备、全部来源；分页
   默认 20/页，可选 10 / 20 / 50 / 100（`page_size` 入 URL，切页大小保持当前页）。
   范围含
   今天（`to` 为明日 00:00 本地），按浏览器本地时区换算为 ISO 瞬时，服务端窗口为
-  `[from, to)`；日期上限为浏览器时区的今天，日历与日期输入均不接受未来日期。
+  `[from, to)`。
 - 汇总卡：会话数、总 Token、成本、平均时长（`totals.duration_ms / totals.sessions`，
   0 会话显示 `—`）。首载时四张卡保留真实标题与图标，只有数字位是骨架（不整块闪骨架）；
   刷新时汇总卡不遮罩，数值变化由 `FlowNumber` 滚动过渡（2026-10-28 操作者裁定）。
