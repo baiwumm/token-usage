@@ -494,15 +494,14 @@ requirements 边界表。
   （§12.13.1 / §12.13.2）后本机安装验收通过：详情列不再截断、CSV 导出弹原生保存对话框
   （默认桌面、可改目录、取消不弹提示）、总计口径说明改为「总 Tokens」标签旁 Tooltip、
   检查更新不再报失败。门禁：`pnpm --filter @token-usage/desktop verify` 全绿（lint / tsc /
-  131 例 / build）。**遗留**：更新链路要等 `desktop-v0.3.0` 发版并由 CI 建出 `desktop-latest`
-  滚动清单后才真正可用（无清单时按「尚未发布更新清单」提示）；本地 NSIS 包无 `.sig`
-  （CI 签名），安装后照例按 §11 重打 High 标签以恢复托盘图标。
-  **发版（2026-11-12）**：tag `desktop-v0.3.0` → CI 出 draft → 当日 publish（`--latest=false`，
-  不抢 CLI 的 latest 标记）→ 新工作流 `release-desktop-latest.yml` 首次建出 `desktop-latest`
-  滚动 Release 并上传 `latest.json`，updater 端点自此可用。发布的同一轮里 CI 报了两处
-  Rust 门禁问题（`cargo fmt --check` 导入顺序、`clippy::single_match` 看门狗写成 `match`），
-  均属格式/风格、不影响出包，已随 main 修复。（发版流水线不跑 fmt/clippy，只有 ci.yml
-  的 rust-gate 跑——本地发版前应补跑 `cargo fmt --check` + `cargo clippy`。）
+  131 例 / build）。**发版与安装验收（2026-11-12）**：tag `desktop-v0.3.0` → CI 出 draft →
+  当日 publish（`--latest=false`，不抢 CLI 的 latest 标记）→ 新工作流
+  `release-desktop-latest.yml` 首次建出 `desktop-latest` 滚动 Release 并上传 `latest.json`
+  （端点实测返回 0.3.0）→ 操作者从 Release 下载安装，**打开与功能均正常，D11 全项关闭**。
+  发版同轮 CI 暴露两处 Rust 门禁问题（`cargo fmt --check` 导入顺序、`clippy::single_match`
+  看门狗写成 `match`），均属格式/风格、不影响出包，已随 main 修复；发版流水线不跑
+  fmt/clippy（只有 ci.yml 的 rust-gate 跑），本地发版前应补跑两者。遗留：安装/升级后仍需按
+  §11 给 exe 重打 High 标签，托盘图标才恢复。
 
 ## 11. 发版流程（D5 起）
 
@@ -980,5 +979,6 @@ vite build）；本地重建 NSIS 安装包（无签名密钥，`.sig` 仍由 CI
 第三轮（同日，操作者点名「总 Tokens 旁图标 + Tooltip，不要额外一行」）：第 3 条的说明行
 改挂到标签旁的 `CircleInfo` + `Tooltip`，`local-data-note.tsx` 删除；重建安装包。
 
-**验收结论（2026-11-12 操作者）**：四项全部通过，D11 关闭。检查更新在当前无
-`desktop-latest` 清单时显示「尚未发布更新清单，暂无更新可安装」（属预期，tag 发版后生效）。
+**验收结论（2026-11-12 操作者）**：四项全部通过，D11 关闭。发版后（`desktop-v0.3.0`
+已 publish，`desktop-latest/latest.json` 实测返回 0.3.0）操作者从 GitHub Release 下载安装，
+打开与功能均正常。
