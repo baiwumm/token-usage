@@ -90,10 +90,10 @@
 
 桌面自上而下；移动端单列：
 
-1. **筛选条**：时间范围为 `Toolbar isAttached` 包裹的单一 `ToggleButtonGroup`
+1. **筛选条**：时间范围为单一 `ToggleButtonGroup`
    （2026-11-12 操作者裁定：去掉 `DateRangePicker` 的日历与自定义区间，只留
    总计 / 今天 / 7D / 30D 四个快捷预设（总计在前）；单选、`disallowEmptySelection`、
-   活动预设高亮、按钮间以 `ToggleButtonGroup.Separator` 分隔；2026-11-01 操作者裁定：
+   活动预设高亮、`size="sm"`，裸分组不加外壳容器；2026-11-01 操作者裁定：
    去掉 90D）、
    时区、设备。设备下拉与 Sessions 共用 `DeviceFilterSelect`，选项前置
    `Display` 图标，“全部设备”用 `Layers`；触发器复显同一图标，名称单行省略不换行。
@@ -268,8 +268,8 @@
 
 - 导航：侧边栏与抽屉在仪表盘后新增“Sessions”（`ListUl` 图标），页面标题取菜单名。
 - 数据源：`account-sessions`。筛选条（2026-11-12 操作者裁定：与仪表盘同形态）：时间范围
-  为共享 `RangePresetToolbar`（`Toolbar isAttached` + 单选 `ToggleButtonGroup`，
-  总计 / 今天 / 7D / 30D，总计在前、`size="sm"`，不再有日历与自定义入口）、设备（复用
+  为共享 `RangePresetToolbar`（裸 `ToggleButtonGroup`，单选、`size="sm"`，
+  总计 / 今天 / 7D / 30D，总计在前，不再有日历与自定义入口）、设备（复用
   `DeviceFilterSelect` 的 `placeholderMode`）、来源（「全部来源」占位 + `Select.ClearButton`，
   触发器复显 `SourceIcon` 与显示名）；控件不带顶部 Label，一律以 `aria-label` 供屏幕阅读器，
   筛选条不再有「清除筛选」按钮（仅表格无结果态保留引导按钮）。筛选条最
@@ -320,8 +320,12 @@
   用量桶聚合），由构建期环境变量 `NEXT_PUBLIC_PROJECTS_CALIBER=hourly` 切换
   （`lib/dashboard/api.ts` `projectsCaliber()`；未设置或任何其他值一律回落 sessions）。
   这是部署级动作，回退 = 删环境变量后重新部署。
-- 筛选条：数量（全部 / 前 3 / 5 / 10）、排序（按 Token / 按费用）、展示形态（列表 / 卡片）
-  + 刷新按钮。**无时间范围、无设备、无来源筛选**——时间恒为「全部」（服务端夹到 3 年上限）。
+- 筛选条：数量（「全部项目」占位 + `Select.ClearButton`，列表项只有前 3 / 5 / 10，清除即回
+  全部）、排序（按 Token / 按费用）、展示形态（列表 / 卡片）+ 刷新按钮。控件不带顶部 Label，
+  一律以 `aria-label` 供屏幕阅读器；筛选条不再有「清除筛选」按钮（2026-11-12 操作者裁定，
+  与仪表盘 / Sessions / 采集记录同形态）；排序与展示形态同样用裸
+  `ToggleButtonGroup`（单选、`size="sm"`，与时间预设一致）。**无时间范围、
+  无设备、无来源筛选**——时间恒为「全部」（服务端夹到 3 年上限）。
   `sort` 与 `limit` 写 URL（`history.replaceState`），默认 `sort=tokens`、`limit=all`。
 - 摘要卡四格：总 Token（已归因）/ 总费用（同一口径，只算已归因）/ 项目数（取 `attributed_projects`，
   不含未归因）/ 未归因 Token；副标题「全部时间 · {from} – {to}」。
@@ -767,8 +771,8 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 差异清单（相对 Sessions）：
 
 - **trigger / result 筛选**：筛选条与仪表盘 / Sessions 同形态（2026-11-12 操作者裁定）：时间范围
-  为共享 `RangePresetToolbar`（`Toolbar isAttached` + 单选 `ToggleButtonGroup`，
-  总计 / 今天 / 7D / 30D，总计在前、`size="sm"`，不再有日历与自定义入口）、设备（复用
+  为共享 `RangePresetToolbar`（裸 `ToggleButtonGroup`，单选、`size="sm"`，
+  总计 / 今天 / 7D / 30D，总计在前，不再有日历与自定义入口）、设备（复用
   `DeviceFilterSelect` 的 `placeholderMode`），另有 **trigger**（scheduled / manual / watch /
   notify，「全部方式」占位）与 **result**（ok / partial / error，「全部结果」占位）两个
   `Select`，两者均以 `Select.ClearButton` 清除；控件不带顶部 Label，一律 `aria-label`，

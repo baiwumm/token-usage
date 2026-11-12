@@ -17,14 +17,12 @@ import type { SimulatedState } from "./projects-review-panel";
 import type { ProjectView } from "./projects-row";
 
 import {
-  Button,
   Chip,
   ListBox,
   Popover,
   Select,
   ToggleButton,
   ToggleButtonGroup,
-  Typography,
 } from "@heroui/react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
@@ -244,14 +242,6 @@ export function ProjectsClient() {
     void load();
     if (!demoMode) void loadProfiles();
   }, [demoMode, load, loadProfiles]);
-
-  // Same affordance as Sessions / Sync-runs / Dashboard: one press returns
-  // sort / limit to their defaults (URL round-trips through applyFilters) and
-  // the list/card switch back to its initial state.
-  const clearFilters = useCallback(() => {
-    applyFilters({ sort: "tokens", limit: "all" });
-    setView("list");
-  }, [applyFilters]);
 
   const updateProfile = useCallback((profile: ProjectProfile) => {
     setProfiles((previous) =>
@@ -480,8 +470,6 @@ export function ProjectsClient() {
     setEffects((previous) => ({ ...previous, [id]: !previous[id] }));
   }, []);
 
-  const hasNarrowingFilters =
-    filters.sort !== "tokens" || filters.limit !== "all" || view !== "list";
   const sortLabel = filters.sort === "cost" ? copy.sortCost : copy.sortTokens;
   // Hourly buckets count conversations, not sessions: the row/card meta has to
   // say the same thing the column header and the detail dialog do.
@@ -490,96 +478,71 @@ export function ProjectsClient() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 md:px-8">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1">
-          <Typography color="muted" type="body-xs">
-            {copy.list.limitLabel}
-          </Typography>
-          <Select
-            aria-label={copy.list.limitLabel}
-            className="w-40"
-            value={filters.limit}
-            onChange={(key) => {
-              if (key == null) return;
-              applyFilters({ limit: String(key) as ProjectLimit });
-            }}
-          >
-            <Select.Trigger>
-              <Select.Value>
-                {({ selectedText }) => (
-                  <span className="truncate">{selectedText}</span>
-                )}
-              </Select.Value>
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <Popover.Arrow />
-              <ListBox>
-                <ListBox.Item id="all" textValue={copy.list.limitAll}>
-                  {copy.list.limitAll}
-                </ListBox.Item>
-                {(["3", "5", "10"] as const).map((count) => {
-                  const label = formatMessage(copy.list.limitTop, locale, {
-                    count,
-                  });
+      <div className="flex flex-wrap items-center gap-3">
+        <Select
+          aria-label={copy.list.limitLabel}
+          className="w-40"
+          placeholder={copy.list.limitAll}
+          value={filters.limit === "all" ? null : filters.limit}
+          onChange={(key) => {
+            if (key == null) return;
+            applyFilters({ limit: String(key) as ProjectLimit });
+          }}
+          onClear={() => applyFilters({ limit: "all" })}
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.ClearButton />
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Popover>
+            <Popover.Arrow />
+            <ListBox>
+              {(["3", "5", "10"] as const).map((count) => {
+                const label = formatMessage(copy.list.limitTop, locale, {
+                  count,
+                });
 
-                  return (
-                    <ListBox.Item key={count} id={count} textValue={label}>
-                      {label}
-                    </ListBox.Item>
-                  );
-                })}
-              </ListBox>
-            </Select.Popover>
-          </Select>
-        </div>
+                return (
+                  <ListBox.Item key={count} id={count} textValue={label}>
+                    {label}
+                  </ListBox.Item>
+                );
+              })}
+            </ListBox>
+          </Select.Popover>
+        </Select>
 
-        <div className="flex flex-col gap-1">
-          <Typography color="muted" type="body-xs">
-            {copy.sortLabel}
-          </Typography>
-          <ToggleButtonGroup
-            disallowEmptySelection
-            aria-label={copy.sortLabel}
-            selectedKeys={[filters.sort]}
-            size="sm"
-            onSelectionChange={(keys) => {
-              const key = [...keys][0];
+        <ToggleButtonGroup
+          disallowEmptySelection
+          aria-label={copy.sortLabel}
+          selectedKeys={[filters.sort]}
+          size="sm"
+          onSelectionChange={(keys) => {
+            const key = [...keys][0];
 
-              if (typeof key !== "string" || key === filters.sort) return;
-              applyFilters({ sort: key as ProjectSort });
-            }}
-          >
-            <ToggleButton id="tokens">{copy.sortTokens}</ToggleButton>
-            <ToggleButton id="cost">{copy.sortCost}</ToggleButton>
-          </ToggleButtonGroup>
-        </div>
+            if (typeof key !== "string" || key === filters.sort) return;
+            applyFilters({ sort: key as ProjectSort });
+          }}
+        >
+          <ToggleButton id="tokens">{copy.sortTokens}</ToggleButton>
+          <ToggleButton id="cost">{copy.sortCost}</ToggleButton>
+        </ToggleButtonGroup>
 
-        <div className="flex flex-col gap-1">
-          <Typography color="muted" type="body-xs">
-            {copy.list.viewLabel}
-          </Typography>
-          <ToggleButtonGroup
-            disallowEmptySelection
-            aria-label={copy.list.viewLabel}
-            selectedKeys={[view]}
-            size="sm"
-            onSelectionChange={(keys) => {
-              const key = [...keys][0];
+        <ToggleButtonGroup
+          disallowEmptySelection
+          aria-label={copy.list.viewLabel}
+          selectedKeys={[view]}
+          size="sm"
+          onSelectionChange={(keys) => {
+            const key = [...keys][0];
 
-              if (key === "list" || key === "cards") setView(key);
-            }}
-          >
-            <ToggleButton id="list">{copy.list.viewList}</ToggleButton>
-            <ToggleButton id="cards">{copy.list.viewCards}</ToggleButton>
-          </ToggleButtonGroup>
-        </div>
-
-        {hasNarrowingFilters ? (
-          <Button size="sm" variant="ghost" onPress={clearFilters}>
-            {copy.clearFilters}
-          </Button>
-        ) : null}
+            if (key === "list" || key === "cards") setView(key);
+          }}
+        >
+          <ToggleButton id="list">{copy.list.viewList}</ToggleButton>
+          <ToggleButton id="cards">{copy.list.viewCards}</ToggleButton>
+        </ToggleButtonGroup>
 
         <div className="ml-auto flex items-center gap-1.5">
           <RefreshButton
