@@ -29,12 +29,12 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
-use tauri_plugin_dialog::DialogExt;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, State, WindowEvent,
 };
+use tauri_plugin_dialog::DialogExt;
 
 const TRAY_ID: &str = "main-tray";
 // `device-login` is deliberately absent: the wizard drives it through the
@@ -425,8 +425,7 @@ fn save_to_downloads(
         candidate = dir.join(format!("{stem}-{counter}.{ext}"));
         counter += 1;
     }
-    std::fs::write(&candidate, contents)
-        .map_err(|e| format!("write failed: {e}"))?;
+    std::fs::write(&candidate, contents).map_err(|e| format!("write failed: {e}"))?;
 
     Ok(candidate.to_string_lossy().into_owned())
 }
