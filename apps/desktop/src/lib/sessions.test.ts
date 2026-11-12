@@ -7,6 +7,8 @@ import {
   filterSessions,
   pageSessions,
   parseSessionRows,
+  sessionModelFacets,
+  sessionProjectFacets,
   sessionRangeWindow,
   sessionSourceFacets,
 } from "@/lib/sessions";
@@ -241,11 +243,91 @@ describe("session windows, filters and aggregation", () => {
       ]),
     );
     const { fromMs, toMs } = sessionRangeWindow("7d", NOW);
-    const filtered = filterSessions(rows, fromMs, toMs, "zcode");
+    const filtered = filterSessions(rows, fromMs, toMs, { source: "zcode" });
 
     expect(filtered.map((session) => session.id)).toEqual([
       "edge-in",
       "in-window",
+    ]);
+  });
+
+  it("filters by project and by a model the session touched", () => {
+    const rows = parseSessionRows(
+      text([
+        row({ session_id: "p-app", project_key: "app" }),
+        row({
+          session_id: "p-docs",
+          project_key: "docs",
+          model_usage: [
+            {
+              model: "gpt-5",
+              input_tokens: 800,
+              cached_input_tokens: 200,
+              cache_creation_input_tokens: 100,
+              output_tokens: 100,
+              total_tokens: 1200,
+            },
+          ],
+        }),
+        row({ session_id: "no-project", project_key: null, project_ref: "" }),
+      ]),
+    );
+    const { fromMs, toMs } = sessionRangeWindow("today", NOW);
+
+    expect(
+      filterSessions(rows, fromMs, toMs, { project: "app" }).map((s) => s.id),
+    ).toEqual(["p-app"]);
+    // Model matching rides the per-model usage rows, not the row's `model`.
+    expect(
+      filterSessions(rows, fromMs, toMs, { model: "gpt-5" }).map((s) => s.id),
+    ).toEqual(["p-docs"]);
+    expect(
+      filterSessions(rows, fromMs, toMs, { model: "gpt-5", project: "app" })
+        .length,
+    ).toBe(0);
+  });
+
+  it("builds project and model facets, counting a model once per session", () => {
+    const rows = parseSessionRows(
+      text([
+        row({ session_id: "a", project_key: "app" }),
+        row({ session_id: "b", project_key: "app" }),
+        row({ session_id: "c", project_key: "docs", project_ref: "" }),
+        row({
+          session_id: "multi",
+          project_key: null,
+          project_ref: "",
+          model_usage: [
+            {
+              model: "glm-5.3",
+              input_tokens: 600,
+              cached_input_tokens: 0,
+              cache_creation_input_tokens: 0,
+              output_tokens: 0,
+              total_tokens: 600,
+            },
+            {
+              model: "glm-5.3-air",
+              input_tokens: 600,
+              cached_input_tokens: 0,
+              cache_creation_input_tokens: 0,
+              output_tokens: 0,
+              total_tokens: 600,
+            },
+          ],
+          total_tokens: 1200,
+        }),
+      ]),
+    );
+
+    expect(sessionProjectFacets(rows)).toEqual([
+      { key: "app", sessions: 2 },
+      { key: "docs", sessions: 1 },
+    ]);
+    // 4 sessions use glm-5.3 (one of them twice), 1 uses glm-5.3-air.
+    expect(sessionModelFacets(rows)).toEqual([
+      { key: "glm-5.3", sessions: 4 },
+      { key: "glm-5.3-air", sessions: 1 },
     ]);
   });
 
@@ -276,8 +358,8 @@ describe("session windows, filters and aggregation", () => {
     expect(totals.credits).toBe(42);
     expect(totals.durationMs).toBe(7_200_000);
     expect(sessionSourceFacets(rows)).toEqual([
-      { source: "qoder", sessions: 1 },
-      { source: "zcode", sessions: 1 },
+      { key: "qoder", sessions: 1 },
+      { key: "zcode", sessions: 1 },
     ]);
   });
 

@@ -5,7 +5,15 @@
 
 import type { UpdaterState } from "@/hooks/use-updater";
 
-import { Display, Folder, Globe, ListUl, Medal } from "@gravity-ui/icons";
+import { invoke } from "@tauri-apps/api/core";
+import {
+  Display,
+  FileText,
+  Folder,
+  Globe,
+  ListUl,
+  Medal,
+} from "@gravity-ui/icons";
 import {
   Button,
   Description,
@@ -215,6 +223,20 @@ export function SettingsDialog({
     return url === null ? [] : [{ ...link, url }];
   });
 
+  // Reveal the CLI's own folders (read-only debugging aid, desktop-plan
+  // §12.14). Rust whitelists the two targets and reports a missing folder.
+  const openTrackerDir = (which: "tracker" | "logs") => {
+    void invoke("open_tracker_dir", { which }).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+
+      toast.danger(
+        message.includes("directory missing")
+          ? "目录还不存在：先让采集器跑一次（立即同步）"
+          : `打开目录失败：${message}`,
+      );
+    });
+  };
+
   return (
     <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
       <Modal.Container>
@@ -399,6 +421,37 @@ export function SettingsDialog({
                 {webLinks.length > 0
                   ? "在浏览器打开项目官网与已配对实例的页面"
                   : "在浏览器打开项目官网"}
+              </Description>
+            </section>
+
+            <Separator />
+
+            <section className="flex flex-col gap-3">
+              <Typography type="body-sm" weight="semibold">
+                本机数据
+              </Typography>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  fullWidth
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => openTrackerDir("tracker")}
+                >
+                  <Folder aria-hidden="true" className="size-4 shrink-0" />
+                  数据目录
+                </Button>
+                <Button
+                  fullWidth
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => openTrackerDir("logs")}
+                >
+                  <FileText aria-hidden="true" className="size-4 shrink-0" />
+                  日志目录
+                </Button>
+              </div>
+              <Description className="text-xs">
+                在文件管理器中打开采集器的数据与日志目录（只读查看，改动不会被采纳）
               </Description>
             </section>
 

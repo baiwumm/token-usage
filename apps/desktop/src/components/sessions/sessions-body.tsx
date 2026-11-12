@@ -52,14 +52,20 @@ export function SessionsBody({
     <div className="flex flex-col gap-4">
       <SessionsBar
         exporting={exporting}
-        facets={sessions.facets}
         hasNarrowingFilters={sessions.hasNarrowingFilters}
+        model={sessions.model}
+        modelFacets={sessions.modelFacets}
+        project={sessions.project}
+        projectFacets={sessions.projectFacets}
         range={sessions.range}
         refreshing={sessions.refreshing}
         source={sessions.source}
+        sourceFacets={sessions.sourceFacets}
         updatedAt={sessions.updatedAt}
         onClearFilters={sessions.clearFilters}
         onExportCsv={handleExportCsv}
+        onModelChange={sessions.setModel}
+        onProjectChange={sessions.setProject}
         onRangeChange={sessions.setRange}
         onRefresh={() => void sessions.refresh()}
         onSourceChange={sessions.setSource}

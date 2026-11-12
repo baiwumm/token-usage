@@ -319,19 +319,36 @@ export interface SessionsTotals {
   durationMs: number;
 }
 
+/** Facet filters of the sessions bar; empty string = "全部". */
+export interface SessionFilters {
+  source?: string;
+  project?: string;
+  model?: string;
+}
+
 /** Inclusive `from`, exclusive `to` — the wire's half-open `[from, to)` window. */
 export function filterSessions(
   rows: SessionRow[],
   fromMs: number,
   toMs: number,
-  source: string,
+  filters: SessionFilters = {},
 ): SessionRow[] {
-  return rows.filter(
-    (row) =>
-      Date.parse(row.endedAt) >= fromMs &&
-      Date.parse(row.endedAt) < toMs &&
-      (source === "" || row.source === source),
-  );
+  const source = filters.source ?? "";
+  const project = filters.project ?? "";
+  const model = filters.model ?? "";
+
+  return rows.filter((row) => {
+    const endedMs = Date.parse(row.endedAt);
+
+    if (endedMs < fromMs || endedMs >= toMs) return false;
+    if (source !== "" && row.source !== source) return false;
+    if (project !== "" && row.projectKey !== project) return false;
+    if (model !== "" && !row.models.some((entry) => entry.model === model)) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 /** Day-granular preset windows like the web: `[startOfDay(today−N+1), tomorrow)`. */
@@ -374,23 +391,56 @@ export function aggregateSessions(rows: SessionRow[]): SessionsTotals {
   };
 }
 
+/** One select option: the facet key plus how many sessions it covers. */
+export interface SessionFacet {
+  key: string;
+  sessions: number;
+}
+
+function sortFacets(counts: Map<string, number>): SessionFacet[] {
+  return [...counts.entries()]
+    .map(([key, sessions]) => ({ key, sessions }))
+    .sort(
+      (first, second) =>
+        second.sessions - first.sessions || first.key.localeCompare(second.key),
+    );
+}
+
 /** Distinct sources of the window, `sessions` desc then id (facet order). */
-export function sessionSourceFacets(
-  rows: SessionRow[],
-): Array<{ source: string; sessions: number }> {
+export function sessionSourceFacets(rows: SessionRow[]): SessionFacet[] {
   const counts = new Map<string, number>();
 
   for (const row of rows) {
     counts.set(row.source, (counts.get(row.source) ?? 0) + 1);
   }
 
-  return [...counts.entries()]
-    .map(([source, sessions]) => ({ source, sessions }))
-    .sort(
-      (first, second) =>
-        second.sessions - first.sessions ||
-        first.source.localeCompare(second.source),
-    );
+  return sortFacets(counts);
+}
+
+/** Distinct project basenames (rows without a project never facet). */
+export function sessionProjectFacets(rows: SessionRow[]): SessionFacet[] {
+  const counts = new Map<string, number>();
+
+  for (const row of rows) {
+    if (row.projectKey === "") continue;
+    counts.set(row.projectKey, (counts.get(row.projectKey) ?? 0) + 1);
+  }
+
+  return sortFacets(counts);
+}
+
+/** Models the window touched; a session counts once per model it used. */
+export function sessionModelFacets(rows: SessionRow[]): SessionFacet[] {
+  const counts = new Map<string, number>();
+
+  for (const row of rows) {
+    for (const model of new Set(row.models.map((entry) => entry.model))) {
+      if (model === "") continue;
+      counts.set(model, (counts.get(model) ?? 0) + 1);
+    }
+  }
+
+  return sortFacets(counts);
 }
 
 export interface SessionsPage {

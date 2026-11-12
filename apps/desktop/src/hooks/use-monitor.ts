@@ -15,6 +15,7 @@ import {
   type CliStatus,
   type MonitorSnapshot,
 } from "@/lib/monitor";
+import { periodLabel, type UsagePeriod } from "@/lib/preferences";
 import {
   parseProjectProfiles,
   type ProjectProfile,
@@ -70,7 +71,12 @@ async function readInstanceConfig(): Promise<InstanceConfig | null> {
   }
 }
 
-export function useMonitor() {
+/**
+ * `period` only feeds the tray's usage line (今日 / 近 7 天 / 近 30 天 / 总计),
+ * which follows the same preference the header filter writes — the menu can
+ * switch it without the window.
+ */
+export function useMonitor(period: UsagePeriod) {
   const [phase, setPhase] = useState<MonitorPhase>({ kind: "loading" });
   const [machineId, setMachineId] = useState<string | null>(null);
   const [hostname, setHostname] = useState<string | null>(null);
@@ -93,6 +99,8 @@ export function useMonitor() {
   // as the probe resolves: a refresh() right after refreshCli() must not
   // compose a snapshot with the previous probe's answer.
   const cliRef = useRef<CliStatus>(cli);
+  /** Last successful snapshot, for the immediate tray push on a period switch. */
+  const snapshotRef = useRef<MonitorSnapshot | null>(null);
 
   const refreshCli = useCallback(async () => {
     let info: CliStatus;
@@ -134,15 +142,16 @@ export function useMonitor() {
       );
 
       setMachineId(config?.machineId ?? null);
+      snapshotRef.current = snapshot;
       setPhase({ kind: "ready", snapshot });
-      await pushTrayLabels(snapshot);
+      await pushTrayLabels(snapshot, period);
     } catch (error) {
       setPhase({
         kind: "error",
         message: error instanceof Error ? error.message : String(error),
       });
     }
-  }, []);
+  }, [period]);
 
   /** User-initiated refresh: same read path, plus a spinner flag the sync card
    * shows while the poller-triggered calls stay silent. A local read finishes
@@ -261,6 +270,14 @@ export function useMonitor() {
     };
   }, [refresh, refreshCli, refreshProfiles]);
 
+  // A tray period switch must land on the tray immediately instead of waiting
+  // for the next poll (the menu may be reopened right away).
+  useEffect(() => {
+    const snapshot = snapshotRef.current;
+
+    if (snapshot !== null) void pushTrayLabels(snapshot, period);
+  }, [period]);
+
   // Tray action mirror: the menu spawns tokenusage in the Rust process, so the
   // window has no idea a run started — these events flip the action card into
   // its pending state and re-read the tracker files when the child exits.
@@ -315,11 +332,24 @@ export function useMonitor() {
   };
 }
 
-async function pushTrayLabels(snapshot: MonitorSnapshot): Promise<void> {
+function periodWindow(snapshot: MonitorSnapshot, period: UsagePeriod) {
+  if (period === "today") return snapshot.today;
+  if (period === "7d") return snapshot.week;
+  if (period === "30d") return snapshot.month;
+
+  return snapshot.all;
+}
+
+async function pushTrayLabels(
+  snapshot: MonitorSnapshot,
+  period: UsagePeriod,
+): Promise<void> {
+  const window = periodWindow(snapshot, period);
+
   try {
     await invoke("update_tray", {
       labels: {
-        today: `今日 tokens：${formatTokens(snapshot.today.totalTokens)}`,
+        metric: `${periodLabel(period)} tokens：${formatTokens(window.totalTokens)}`,
         status: `采集：${snapshot.paused ? "已暂停" : "正常"}（${formatTokens(snapshot.week.totalTokens)} / 7 天）`,
         pauseAction: snapshot.paused ? "恢复采集" : "暂停采集",
         paused: snapshot.paused,

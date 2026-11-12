@@ -1069,8 +1069,10 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   `model-chips.tsx`（`-chips` 登记后缀），数据面 `lib/sessions.ts` + `hooks/use-sessions.ts`。
   筛选条 = 周期预设连接式 `ToggleButtonGroup`（今天 / 7D / 30D / 90D，**默认今天**
   ——2026-11-12 D11 验收修正：与顶部周期默认今日同口径；web 预设语义——相对今天、日粒度
-  半开窗口）+ 来源 `Select`（本地 facets，`SourceIcon` + 显示名）+
-  「清除筛选」（有收窄条件才出现，回默认今天）+ CSV / 刷新图标簇（tooltip「上次更新 …」）；
+  半开窗口）+ **三个 facet `Select`：来源 / 项目 / 模型**（2026-11-12 §12.14 追加后两项；
+  每张选项表都按「时间窗 + 另外两个筛选」重算——选项目不会把自己的选项收窄；来源带
+  `SourceIcon`，项目 / 模型为纯文本 + 会话数，模型匹配走行的 `model_usage`）+「清除筛选」
+  （有收窄条件才出现，回默认今天）+ CSV / 刷新图标簇（tooltip「上次更新 …」）；
   **设备筛选与设备列不做**（本机单设备，2026-11-12 操作者拍板）。四汇总卡 = 会话数 / 总
   Tokens / 成本 / 平均时长（`每会话`），首载保留真标签、只数字骨架。列表固定 `ended_at`
   倒序、无列排序；**≥md 表格**（结束时间 / 来源 `Chip` / 项目 / 时长 / Token / 积分列
@@ -1188,7 +1190,10 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   `/achievements`，由 `lib/links.ts` 拼 `dashboardUrl` 后经 `open_in_browser` 打开
   （`LANDING_URL` 同通道）；按钮撑满网格单元，避免 400 宽下小按钮浮在大片空白里
   （2026-11-10 验收修正）；实例按钮前置图标取 web 侧栏同组 `Display` / `Folder` /
-  `ListUl` / `Medal`，`size-4`，2026-11-10 验收追加）→ 更新（当前版本行 +
+  `ListUl` / `Medal`，`size-4`，2026-11-10 验收追加）→ 本机数据（2 列网格：数据目录 /
+  日志目录，`Folder` / `FileText`；走 Rust 命令 `open_tracker_dir`，白名单只允许
+  `tracker` 与 `logs` 两个目标，目录不存在时 toast 提示先让采集器跑一次；2026-11-12
+  §12.14）→ 更新（当前版本行 +
   「检查更新」`PendingButton`，D5：启动期静默检查只
   播报中性 toast，安装永远走手动确认——点击即同意 下载→安装→自动重启，检测/下载期
   Spinner，失败 danger toast）。开关一律 HeroUI `Switch` 复合结构（`Switch.Content / Control / Thumb` +
@@ -1199,8 +1204,11 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   轮次，上传失败也计；达阀值报一次，恢复后重新武装）、队列积压（待上传超阀报一次，回落才
   重新武装）。免打扰时段只**抑制发送**、不标记已发（到期未发的顺延到时段结束后）。通知正文
   只用中文摘要（tokens / 会话 / 体积），不嵌 CLI 英文原文。
-- **托盘**（D2）：左键唤起主窗口；右键菜单 = 今日 tokens 与采集状态两行只读信息 +
-  立即同步（`sync --auto`，写 sync.log、尊重暂停旗标）+ 暂停/恢复采集 + 打开主窗口 +
+- **托盘**（D2；周期切换 2026-11-12 §12.14）：左键唤起主窗口；右键菜单 = 用量行（**文案跟随
+  当前周期**：今日 / 近 7 天 / 近 30 天 / 总计 tokens）+ 采集状态行两行只读信息 + 周期四项
+  （今日 / 7D / 30D / 总计；点击只在 Rust 发 `tray-period`，webview 写 preferences 并即时
+  重推用量行，头部的周期筛选随之同步）+ 立即同步（`sync --auto`，写 sync.log、尊重暂停旗标）+
+  暂停/恢复采集 + 打开主窗口 +
   打开 Web 仪表盘 + 退出；菜单文案由 webview 每 10s 轮询推送（`update_tray`）。
   托盘动作与窗口联动（2026-11-10 验收追加）：Rust 在派生 CLI 前发 `tray-cli-start`、
   子进程退出后发 `tray-cli-done`（`{command, exitCode}`），`use-monitor` 收到 start

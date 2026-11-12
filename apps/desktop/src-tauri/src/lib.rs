@@ -15,6 +15,8 @@
 //   cli_info            — `tokenusage --version` presence probe
 //   run_cli             — allowlisted CLI subcommand runner (cmd /C)
 //   open_in_browser     — http(s)-validated default-browser open
+//   open_tracker_dir    — reveal the tracker data / logs folder in Explorer
+//                         (whitelisted to those two, never an arbitrary path)
 //   update_tray         — JS pushes tray label texts + pause state
 //   device_login_start / _poll / _cancel — managed `device-login --json`
 //                         child for the pairing wizard (D3); the CLI owns the
@@ -383,6 +385,52 @@ async fn run_cli(args: Vec<String>) -> Result<CliRunResult, String> {
 #[tauri::command]
 fn open_in_browser(url: String) -> Result<(), String> {
     open_url(&url)
+}
+
+/// Reveal one of the tracker's own folders in the OS file manager (settings
+/// "数据目录 / 日志目录"). The whitelist keeps this from becoming an arbitrary
+/// path opener exposed to the webview, and a missing folder is reported rather
+/// than silently doing nothing (a fresh machine has no `logs/` until the CLI
+/// runs once).
+#[tauri::command]
+fn open_tracker_dir(app: AppHandle, which: String) -> Result<(), String> {
+    let base = tracker_dir(&app)?;
+    let target = match which.as_str() {
+        "tracker" => base,
+        "logs" => base.join("logs"),
+        other => return Err(format!("unknown directory: {other}")),
+    };
+    if !target.is_dir() {
+        return Err(format!("directory missing: {}", target.display()));
+    }
+    open_path(&target)
+}
+
+#[cfg(windows)]
+fn open_path(path: &std::path::Path) -> Result<(), String> {
+    Command::new("explorer")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("open failed: {e}"))
+}
+
+#[cfg(target_os = "macos")]
+fn open_path(path: &std::path::Path) -> Result<(), String> {
+    Command::new("open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("open failed: {e}"))
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn open_path(path: &std::path::Path) -> Result<(), String> {
+    Command::new("xdg-open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("open failed: {e}"))
 }
 
 /// Filename guard shared by the export commands: a strict whitelist (our call
@@ -775,7 +823,7 @@ async fn device_login_cancel(state: State<'_, DeviceLoginState>) -> Result<(), S
 /// updates; the tray's pause action reads the mirrored flag to decide
 /// between `pause` and `resume`.
 struct TrayHandles {
-    today: MenuItem<tauri::Wry>,
+    metric: MenuItem<tauri::Wry>,
     status: MenuItem<tauri::Wry>,
     pause: MenuItem<tauri::Wry>,
     paused: Mutex<bool>,
@@ -784,7 +832,8 @@ struct TrayHandles {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct TrayLabels {
-    today: String,
+    /// Period-aware usage line ("近 7 天 tokens：…"), set from the webview.
+    metric: String,
     status: String,
     pause_action: String,
     paused: bool,
@@ -793,8 +842,8 @@ struct TrayLabels {
 #[tauri::command]
 fn update_tray(handles: State<TrayHandles>, labels: TrayLabels) -> Result<(), String> {
     handles
-        .today
-        .set_text(&labels.today)
+        .metric
+        .set_text(&labels.metric)
         .map_err(|e| e.to_string())?;
     handles
         .status
@@ -846,8 +895,14 @@ fn tray_status(app: AppHandle) -> bool {
 }
 
 fn create_tray(app: &tauri::App) -> tauri::Result<()> {
-    let today = MenuItem::with_id(app, "tray-today", "今日 tokens：…", false, None::<&str>)?;
+    let metric = MenuItem::with_id(app, "tray-metric", "今日 tokens：…", false, None::<&str>)?;
     let status = MenuItem::with_id(app, "tray-status", "采集：正常", false, None::<&str>)?;
+    // Period switch (desktop-plan §12.14): the menu mirrors the header's
+    // 今日 / 7D / 30D / 总计 filter and writes the same preference.
+    let period_today = MenuItem::with_id(app, "period-today", "今日", true, None::<&str>)?;
+    let period_week = MenuItem::with_id(app, "period-7d", "7D", true, None::<&str>)?;
+    let period_month = MenuItem::with_id(app, "period-30d", "30D", true, None::<&str>)?;
+    let period_all = MenuItem::with_id(app, "period-all", "总计", true, None::<&str>)?;
     let sync_now = MenuItem::with_id(app, "sync-now", "立即同步", true, None::<&str>)?;
     let pause = MenuItem::with_id(app, "pause-toggle", "暂停采集", true, None::<&str>)?;
     let show = MenuItem::with_id(app, "show", "打开主窗口", true, None::<&str>)?;
@@ -856,10 +911,24 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
+    let sep3 = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(
         app,
         &[
-            &today, &status, &sep1, &sync_now, &pause, &sep2, &show, &dashboard, &quit,
+            &metric,
+            &status,
+            &sep1,
+            &period_today,
+            &period_week,
+            &period_month,
+            &period_all,
+            &sep2,
+            &sync_now,
+            &pause,
+            &sep3,
+            &show,
+            &dashboard,
+            &quit,
         ],
     )?;
 
@@ -873,6 +942,14 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
+            // Period switch: the webview owns the preference and the labels,
+            // so the menu only forwards the choice.
+            "period-today" | "period-7d" | "period-30d" | "period-all" => {
+                let period = event.id.as_ref().trim_start_matches("period-");
+                if let Err(err) = app.emit("tray-period", period) {
+                    eprintln!("tray period emit failed: {err}");
+                }
+            }
             "sync-now" => {
                 let args = vec!["sync".to_string(), "--auto".to_string()];
                 if let Err(err) = spawn_cli_watched(app, args) {
@@ -923,7 +1000,7 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
         .build(app)?;
 
     app.manage(TrayHandles {
-        today,
+        metric,
         status,
         pause,
         paused: Mutex::new(false),
@@ -961,6 +1038,7 @@ pub fn run() {
             cli_info,
             run_cli,
             open_in_browser,
+            open_tracker_dir,
             save_to_downloads,
             save_file_as,
             update_tray,

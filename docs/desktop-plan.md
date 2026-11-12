@@ -664,7 +664,8 @@ ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最�
 成本 / 计价与费用弹窗、账号成就页与进度、Sessions / Projects 全页与筛选、wrapped / 分享卡 /
 公开徽章、云端服务探活、webview 登录态。（2026-11-11 操作者反转其中三项并立项 D9–D11，
 见 §12.10：成本进统计卡、会话/项目本地详情、分享卡完整移植；账号成就、公开徽章、
-云端探活、webview 登录态维持不做。）
+云端探活、webview 登录态维持不做。）**2026-11-12 再反转一项**：会话视图的项目 / 模型
+筛选已随 §12.14 落地（仅会话视图内，Projects 页与全库筛选仍不做）。
 
 ### 12.7 规范与发版
 
@@ -683,6 +684,8 @@ ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最�
 **D11（会话视图 / 分享卡 / 窗口尺寸记忆）已于 2026-11-12 交付并验收关闭**（§12.13，两轮操作者反馈修正后本机安装验收）；
 D8 原范围（维护折叠 / 复制按钮）被 D9–D11 吸收，**窗口尺寸记忆已随 D11 落地**（操作者
 2026-11-12 拍板「一起做」）。
+**§12.14 三项（会话项目 / 模型筛选、设置目录入口、托盘周期切换）已于 2026-11-12 交付，
+待操作者安装验收**。
 
 ### 12.10 D9（2026-11-11，操作者八点需求的第 1/2/3/7 项）：头部改造 + 四统计卡 + 热力图对齐
 
@@ -999,3 +1002,28 @@ vite build）；本地重建 NSIS 安装包（无签名密钥，`.sig` 仍由 CI
 **验收结论（2026-11-12 操作者）**：四项全部通过，D11 关闭。发版后（`desktop-v0.3.0`
 已 publish，`desktop-latest/latest.json` 实测返回 0.3.0）操作者从 GitHub Release 下载安装，
 打开与功能均正常。
+
+### 12.14 0.4 迭代：会话 facet 筛选 / 目录入口 / 托盘周期（2026-11-12 立项）
+
+操作者从候选里点名的三项，均在本机口径内、零新依赖：
+
+1. **会话视图项目 / 模型筛选**：数据层 `filterSessions` 改收 `SessionFilters`（source /
+   project / model，空串 = 全部；模型命中看行的 `model_usage`），新增
+   `sessionProjectFacets` / `sessionModelFacets`（统一 `SessionFacet { key, sessions }`，
+   按会话数降序 + 键名升序）。hook 里三张 facet 各按「时间窗 + 另外两个筛选」重算
+   （faceted search：选项目不会把自己的选项收窄），任一筛选变更重置分页；
+   `sessions-bar.tsx` 在来源 `Select` 后追加项目 / 模型两个 `Select`（纯文本 + 会话数，
+   无新文件——`FacetSelect` 留在同文件）。CSV 导出跟随筛选结果，行为不变。
+2. **设置「本机数据」**：Rust 新增 `open_tracker_dir {which: "tracker" | "logs"}`，白名单两
+   目标 + 目录不存在时返回错误；`open_path` 按平台分派（Windows `explorer` / macOS `open`
+   / 其他 `xdg-open`）。UI 为 2 列 secondary 按钮（`Folder` / `FileText`），失败 toast 区分
+   「目录还不存在」与一般错误。
+3. **托盘周期切换**：托盘菜单在用量行 / 状态行后插入 今日 / 7D / 30D / 总计 四项，点击由
+   Rust 发 `tray-period`（payload `today|7d|30d|all`）；`monitor-body` 监听后写 preferences，
+   `useMonitor(period)` 把用量行改成「今日 / 近 7 天 / 近 30 天 / 总计 tokens：…」，并在周期
+   变更时立即重推（不等 10 s 轮询）。`TrayLabels.today` 更名 `metric`（Rust 结构 + JS payload
+   同步）——这行已不再是「今日」专属。
+
+测试：`lib/sessions.test.ts` 14 例（新增项目 / 模型筛选与两张 facet；来源 facet 返回形状
+改为 `{key, sessions}`）。门禁：`pnpm --filter @token-usage/desktop verify` 全绿；
+`cargo fmt --check` 与 `cargo clippy --release --all-targets -- -D warnings` 本地通过。

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useMemo, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ShareCardDialog } from "@/components/share-card-dialog";
 import { DeviceRow } from "@/components/monitor/device-row";
@@ -37,6 +38,9 @@ import { buildShareInput } from "@/lib/share-input";
 import { periodLabel } from "@/lib/preferences";
 import { periodStartMs } from "@/lib/monitor";
 
+/** Rust forwards the tray's 今日 / 7D / 30D / 总计 choice on this event. */
+const TRAY_PERIOD_EVENT = "tray-period";
+
 /**
  * Window orchestration: loading / error gates, the pairing gate (an unpaired
  * machine gets the first-run wizard, skippable for the session), then the
@@ -45,6 +49,9 @@ import { periodStartMs } from "@/lib/monitor";
  * wide windows) → projects → recent sessions → collection health.
  */
 export function MonitorBody() {
+  // Preferences come first: the monitor needs the active period for the tray
+  // line, and the header filter writes the same field.
+  const { prefs, update, setAutostart } = usePreferences();
   const {
     phase,
     machineId,
@@ -59,11 +66,38 @@ export function MonitorBody() {
     refreshCli,
     refreshNow,
     runCli,
-  } = useMonitor();
+  } = useMonitor(prefs.period);
 
   useMonitorToasts({ cli, cliResolved, lastOutcome });
   const trayAvailable = useTrayAvailable();
-  const { prefs, update, setAutostart } = usePreferences();
+
+  // Tray period switch (desktop-plan §12.14): pick 今日 / 7D / 30D / 总计 from
+  // the tray menu and the header filter + tray usage line follow.
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | null = null;
+
+    void listen<string>(TRAY_PERIOD_EVENT, (event) => {
+      const next = event.payload;
+
+      if (
+        next === "today" ||
+        next === "7d" ||
+        next === "30d" ||
+        next === "all"
+      ) {
+        update({ period: next });
+      }
+    }).then((stop) => {
+      if (disposed) stop();
+      else unlisten = stop;
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [update]);
   const updater = useUpdater();
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Top-level view switch (D11): the usage stack ⇄ the sessions list.

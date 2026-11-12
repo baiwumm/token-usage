@@ -16,8 +16,11 @@ import {
   filterSessions,
   pageSessions,
   parseSessionRows,
+  sessionModelFacets,
+  sessionProjectFacets,
   sessionRangeWindow,
   sessionSourceFacets,
+  type SessionFacet,
   type SessionRange,
   type SessionRow,
 } from "@/lib/sessions";
@@ -62,9 +65,14 @@ export interface SessionsState {
   partial: boolean;
   rows: SessionRow[];
   totals: ReturnType<typeof aggregateSessions>;
-  facets: ReturnType<typeof sessionSourceFacets>;
+  /** Each facet list is computed with the *other* filters applied. */
+  sourceFacets: SessionFacet[];
+  projectFacets: SessionFacet[];
+  modelFacets: SessionFacet[];
   range: SessionRange;
   source: string;
+  project: string;
+  model: string;
   offset: number;
   pageSize: number;
   page: ReturnType<typeof pageSessions>;
@@ -72,6 +80,8 @@ export interface SessionsState {
   updatedAt: number | null;
   setRange: (range: SessionRange) => void;
   setSource: (source: string) => void;
+  setProject: (project: string) => void;
+  setModel: (model: string) => void;
   setOffset: (offset: number) => void;
   setPageSize: (pageSize: number) => void;
   clearFilters: () => void;
@@ -87,6 +97,8 @@ export function useSessions(): SessionsState {
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [range, setRange] = useState<SessionRange>("today");
   const [source, setSource] = useState("");
+  const [project, setProject] = useState("");
+  const [model, setModel] = useState("");
   const [offset, setOffset] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
@@ -107,11 +119,39 @@ export function useSessions(): SessionsState {
 
   const window = useMemo(() => sessionRangeWindow(range), [range]);
   const filtered = useMemo(
-    () => filterSessions(rows, window.fromMs, window.toMs, source),
-    [rows, window.fromMs, window.toMs, source],
+    () =>
+      filterSessions(rows, window.fromMs, window.toMs, {
+        source,
+        project,
+        model,
+      }),
+    [rows, window.fromMs, window.toMs, source, project, model],
   );
   const totals = useMemo(() => aggregateSessions(filtered), [filtered]);
-  const facets = useMemo(() => sessionSourceFacets(filtered), [filtered]);
+  // Faceted search: every option list sees the window plus the *other* two
+  // filters, so picking a project never collapses the project list itself.
+  const { fromMs, toMs } = window;
+  const sourceFacets = useMemo(
+    () =>
+      sessionSourceFacets(
+        filterSessions(rows, fromMs, toMs, { project, model }),
+      ),
+    [rows, fromMs, toMs, project, model],
+  );
+  const projectFacets = useMemo(
+    () =>
+      sessionProjectFacets(
+        filterSessions(rows, fromMs, toMs, { source, model }),
+      ),
+    [rows, fromMs, toMs, source, model],
+  );
+  const modelFacets = useMemo(
+    () =>
+      sessionModelFacets(
+        filterSessions(rows, fromMs, toMs, { source, project }),
+      ),
+    [rows, fromMs, toMs, source, project],
+  );
   // Any filter change restarts paging unless the patch is the page itself.
   const page = useMemo(
     () => pageSessions(filtered, offset, pageSize),
@@ -126,6 +166,14 @@ export function useSessions(): SessionsState {
     setSource(next);
     setOffset(0);
   }, []);
+  const changeProject = useCallback((next: string) => {
+    setProject(next);
+    setOffset(0);
+  }, []);
+  const changeModel = useCallback((next: string) => {
+    setModel(next);
+    setOffset(0);
+  }, []);
   const changePageSize = useCallback((next: number) => {
     if (!PAGE_SIZE_OPTIONS.includes(next)) return;
     setPageSize(next);
@@ -134,6 +182,8 @@ export function useSessions(): SessionsState {
   const clearFilters = useCallback(() => {
     setRange("today");
     setSource("");
+    setProject("");
+    setModel("");
     setOffset(0);
   }, []);
 
@@ -158,16 +208,23 @@ export function useSessions(): SessionsState {
     partial,
     rows,
     totals,
-    facets,
+    sourceFacets,
+    projectFacets,
+    modelFacets,
     range,
     source,
+    project,
+    model,
     offset,
     pageSize,
     page,
-    hasNarrowingFilters: range !== "today" || source !== "",
+    hasNarrowingFilters:
+      range !== "today" || source !== "" || project !== "" || model !== "",
     updatedAt,
     setRange: changeRange,
     setSource: changeSource,
+    setProject: changeProject,
+    setModel: changeModel,
     setOffset,
     setPageSize: changePageSize,
     clearFilters,

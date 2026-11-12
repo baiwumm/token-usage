@@ -1,4 +1,4 @@
-import type { SessionRange } from "@/lib/sessions";
+import type { SessionFacet, SessionRange } from "@/lib/sessions";
 
 import { ArrowDownToLine, ArrowRotateRight } from "@gravity-ui/icons";
 import {
@@ -26,35 +26,48 @@ const RANGE_OPTIONS: Array<{ id: SessionRange; label: string }> = [
 
 /**
  * Sessions filter row (web filter-bar 移植, single-machine cut): range presets
- * (今天 / 7D / 30D / 90D, default 30D — web presets resolve against today, no
- * custom calendar on the desktop), the source select fed by local facets,
- * then 清除筛选 when narrowing, and the CSV / refresh icon cluster. The web's
- * device filter is dropped — the local sidecar is this machine only
- * (desktop-plan §12.13).
+ * (今天 / 7D / 30D / 90D, default 今天 — web presets resolve against today, no
+ * custom calendar on the desktop), then the three facet selects (来源 / 项目 /
+ * 模型, each fed by the window with the other filters applied), 清除筛选 when
+ * narrowing, and the CSV / refresh icon cluster. The web's device filter is
+ * dropped — the local sidecar is this machine only (desktop-plan §12.13 /
+ * §12.14).
  */
 export function SessionsBar({
   range,
   source,
-  facets,
+  project,
+  model,
+  sourceFacets,
+  projectFacets,
+  modelFacets,
   hasNarrowingFilters,
   refreshing,
   exporting,
   updatedAt,
   onRangeChange,
   onSourceChange,
+  onProjectChange,
+  onModelChange,
   onClearFilters,
   onExportCsv,
   onRefresh,
 }: {
   range: SessionRange;
   source: string;
-  facets: Array<{ source: string; sessions: number }>;
+  project: string;
+  model: string;
+  sourceFacets: SessionFacet[];
+  projectFacets: SessionFacet[];
+  modelFacets: SessionFacet[];
   hasNarrowingFilters: boolean;
   refreshing: boolean;
   exporting: boolean;
   updatedAt: number | null;
   onRangeChange: (range: SessionRange) => void;
   onSourceChange: (source: string) => void;
+  onProjectChange: (project: string) => void;
+  onModelChange: (model: string) => void;
   onClearFilters: () => void;
   onExportCsv: () => void;
   onRefresh: () => void;
@@ -89,7 +102,27 @@ export function SessionsBar({
         ))}
       </ToggleButtonGroup>
 
-      <SourceSelect facets={facets} source={source} onChange={onSourceChange} />
+      <SourceSelect
+        facets={sourceFacets}
+        source={source}
+        onChange={onSourceChange}
+      />
+      <FacetSelect
+        allLabel="全部项目"
+        ariaLabel="项目"
+        className="w-36 shrink-0"
+        facets={projectFacets}
+        value={project}
+        onChange={onProjectChange}
+      />
+      <FacetSelect
+        allLabel="全部模型"
+        ariaLabel="模型"
+        className="w-40 shrink-0"
+        facets={modelFacets}
+        value={model}
+        onChange={onModelChange}
+      />
 
       {hasNarrowingFilters ? (
         <Button size="sm" variant="outline" onPress={onClearFilters}>
@@ -154,7 +187,7 @@ function SourceSelect({
   source,
   onChange,
 }: {
-  facets: Array<{ source: string; sessions: number }>;
+  facets: SessionFacet[];
   source: string;
   onChange: (source: string) => void;
 }) {
@@ -181,13 +214,66 @@ function SourceSelect({
           </ListBox.Item>
           {facets.map((facet) => (
             <ListBox.Item
-              key={facet.source}
-              id={facet.source}
-              textValue={sourceDisplayLabel(facet.source)}
+              key={facet.key}
+              id={facet.key}
+              textValue={sourceDisplayLabel(facet.key)}
             >
               <span className="flex items-center gap-1.5">
-                <SourceIcon size={12} source={facet.source} />
-                {sourceDisplayLabel(facet.source)}
+                <SourceIcon size={12} source={facet.key} />
+                {sourceDisplayLabel(facet.key)}
+              </span>
+            </ListBox.Item>
+          ))}
+        </ListBox>
+      </Select.Popover>
+    </Select>
+  );
+}
+
+/** Plain facet select for 项目 / 模型 (the source one carries a logo). */
+function FacetSelect({
+  allLabel,
+  ariaLabel,
+  className,
+  facets,
+  value,
+  onChange,
+}: {
+  allLabel: string;
+  ariaLabel: string;
+  className: string;
+  facets: SessionFacet[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select
+      aria-label={ariaLabel}
+      className={className}
+      value={value || "__all"}
+      variant="secondary"
+      onChange={(key) => {
+        if (key == null) return;
+        onChange(key === "__all" ? "" : String(key));
+      }}
+    >
+      <Select.Trigger>
+        <Select.Value />
+        <Select.Indicator />
+      </Select.Trigger>
+      <Select.Popover>
+        <Popover.Arrow />
+        <ListBox>
+          <ListBox.Item id="__all" textValue={allLabel}>
+            {allLabel}
+          </ListBox.Item>
+          {facets.map((facet) => (
+            <ListBox.Item key={facet.key} id={facet.key} textValue={facet.key}>
+              <span className="flex items-center justify-between gap-3">
+                <span className="truncate">{facet.key}</span>
+                <span className="text-muted tabular-nums">
+                  {facet.sessions}
+                </span>
               </span>
             </ListBox.Item>
           ))}
