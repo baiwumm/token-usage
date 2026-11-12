@@ -698,8 +698,6 @@ export function DashboardClient() {
         filters={filters}
         lastUpdatedAt={lastUpdatedAt}
         locale={locale}
-        range={range}
-        rangePickerMax={rangePickerMax}
         refreshing={refreshing}
         shareInput={shareInput}
         onApply={applyFilters}

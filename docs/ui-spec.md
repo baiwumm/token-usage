@@ -90,11 +90,12 @@
 
 桌面自上而下；移动端单列：
 
-1. **筛选条**：时间范围为单一 `DateRangePicker`（弹层日历上方内置
-   今天 / 7D / 30D / 总计 快捷按钮（`ToggleButtonGroup`，单选、
-   `min-w-14` 最小宽度，活动预设高亮，点选关层；2026-11-01 操作者裁定：去掉 90D）；
-   在日历手动选取则写 `range=custom`
-   + 具体日键）、时区、设备。设备下拉与 Sessions 共用 `DeviceFilterSelect`，选项前置
+1. **筛选条**：时间范围为 `Toolbar isAttached` 包裹的单一 `ToggleButtonGroup`
+   （2026-11-12 操作者裁定：去掉 `DateRangePicker` 的日历与自定义区间，只留
+   总计 / 今天 / 7D / 30D 四个快捷预设（总计在前）；单选、`disallowEmptySelection`、
+   活动预设高亮、按钮间以 `ToggleButtonGroup.Separator` 分隔；2026-11-01 操作者裁定：
+   去掉 90D）、
+   时区、设备。设备下拉与 Sessions 共用 `DeviceFilterSelect`，选项前置
    `Display` 图标，“全部设备”用 `Layers`；触发器复显同一图标，名称单行省略不换行。
    （2026-11-12 操作者裁定：筛选条去掉各控件顶部 Label 与「清除筛选」按钮，控件一律以
    `aria-label` 供屏幕阅读器；设备下拉改用「全部设备」占位、不再作为列表项，选中即筛选，
@@ -102,8 +103,8 @@
    时间范围筛选仅存组件内状态（2026-10-26 操作者裁定）：不写入 URL、加载时不回显，
    首帧把旧链接里的 `range` / `from` / `to` 清出地址栏，刷新回到默认「总计」
    （2026-11-01 操作者裁定，原默认近 30 天；清空筛选同样回到「总计」）；
-   URL 仅保留 `tz` / `device_id`；日期上限为仪表盘时区（`tz`）的今天，日历与日期输入
-   均不接受未来日期；变更只重取数据，
+   URL 仅保留 `tz` / `device_id`；小时明细的日期输入上限为仪表盘时区（`tz`）的今天，
+   不接受未来日期；变更只重取数据，
    不整页刷新——各卡片保留旧内容并叠加模糊遮罩 + `Spinner`（仅首载无数据时出骨架屏，
    骨架屏圆角与卡片一致：`min(32px, var(--radius-3xl))`）。筛选条右侧固定「分享」
    （共享 `ShareCardButton`：`NodesRight` 图标 + `Tooltip`，打开分享卡 Modal）与「刷新」两个

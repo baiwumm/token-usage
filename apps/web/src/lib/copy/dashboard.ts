@@ -13,7 +13,7 @@ export interface DashboardCopy {
   refresh: string;
   lastUpdated: string;
   lastUpdatedNone: string;
-  ranges: Record<"today" | "7d" | "30d" | "all" | "custom", string>;
+  ranges: Record<"today" | "7d" | "30d" | "all", string>;
   cards: {
     totalTokens: string;
     billableTokens: string;
@@ -150,10 +150,9 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     lastUpdatedNone: "尚未加载数据",
     ranges: {
       today: "今天",
-      "7d": "7 天",
-      "30d": "30 天",
+      "7d": "7D",
+      "30d": "30D",
       all: "总计",
-      custom: "自定义",
     },
     cards: {
       totalTokens: "总 Tokens",
@@ -292,10 +291,9 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
     lastUpdatedNone: "No data loaded yet",
     ranges: {
       today: "Today",
-      "7d": "7d",
-      "30d": "30d",
+      "7d": "7D",
+      "30d": "30D",
       all: "All time",
-      custom: "Custom",
     },
     cards: {
       totalTokens: "Total tokens",

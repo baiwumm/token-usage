@@ -2,8 +2,10 @@
 
 // Shared date-range control (docs/ui-spec.md 筛选条). The DateRangePicker
 // anatomy, preset buttons and range calendar were duplicated across the
-// dashboard, Sessions and Sync runs filter bars. Data, presets and copy stay
-// with the caller; the picker's open state and the max-value guard live here.
+// Sessions and Sync runs filter bars. Data, presets and copy stay with the
+// caller; the picker's open state and the max-value guard live here. (The
+// dashboard dropped the calendar/custom window on 2026-11-12 and uses a
+// preset-only toolbar.)
 
 import type { Locale } from "@/lib/copy/locale";
 import type { CalendarDate } from "@internationalized/date";

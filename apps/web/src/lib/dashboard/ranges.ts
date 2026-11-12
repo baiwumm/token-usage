@@ -11,11 +11,17 @@ export type RangePreset = "today" | "7d" | "30d" | "90d" | "all";
 export type RangeKey = RangePreset | "custom";
 
 /**
- * Dashboard picker presets. 90d stays in the shared preset math (Sessions and
- * Sync runs still offer it) but the dashboard no longer lists it
- * (2026-11-01 operator call).
+ * Range presets. The dashboard renders these four directly in its preset-only
+ * toolbar (2026-11-12); 90d stays in the shared preset math for Sessions and
+ * Sync runs, which still list it in their popover presets (the dashboard
+ * dropped it on 2026-11-01).
  */
-export const RANGE_PRESETS: RangePreset[] = ["today", "7d", "30d", "all"];
+export const RANGE_PRESETS = [
+  "all",
+  "today",
+  "7d",
+  "30d",
+] as const satisfies readonly RangePreset[];
 
 export const PRESET_DAYS: Record<
   Exclude<RangePreset, "all" | "today">,

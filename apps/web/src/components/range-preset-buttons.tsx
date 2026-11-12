@@ -1,9 +1,9 @@
 "use client";
 
 // Preset quick buttons inside the DateRangePicker popover, shared by the
-// dashboard and Sessions filter bars (dashboard adds the all-time entry).
-// Single-select group: the active preset is highlighted; re-picking it is a
-// no-op so a redundant refetch never fires.
+// Sessions and Sync runs filter bars (the dashboard uses a preset-only toolbar
+// instead, 2026-11-12). Single-select group: the active preset is highlighted;
+// re-picking it is a no-op so a redundant refetch never fires.
 
 import { ToggleButton, ToggleButtonGroup } from "@heroui/react";
 

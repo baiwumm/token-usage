@@ -4,6 +4,8 @@
 import type { RangeKey } from "@/lib/dashboard/ranges";
 
 export interface Filters {
+  /** The dashboard UI offers presets only (no custom window since
+   * 2026-11-12); the key type stays shared with the cache/range helpers. */
   range: RangeKey;
   from: string;
   to: string;
