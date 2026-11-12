@@ -234,7 +234,7 @@ export function SyncRunsClient() {
   }, [accessToken, load]);
 
   const hasNarrowingFilters =
-    filters.range !== "30d" ||
+    filters.range !== "all" ||
     Boolean(filters.from) ||
     Boolean(filters.to) ||
     Boolean(filters.deviceId) ||
@@ -243,7 +243,7 @@ export function SyncRunsClient() {
 
   const clearFilters = useCallback(() => {
     applyFilters({
-      range: "30d",
+      range: "all",
       from: "",
       to: "",
       deviceId: "",
@@ -295,15 +295,11 @@ export function SyncRunsClient() {
         copy={copy}
         deviceOptions={deviceOptions}
         filters={filters}
-        hasNarrowingFilters={hasNarrowingFilters}
         lastUpdatedAt={lastUpdatedAt}
         loading={state.status === "loading"}
         locale={locale}
-        range={range}
         refreshing={refreshing}
-        timezone={timezone}
         onApply={applyFilters}
-        onClear={clearFilters}
         onRetry={retry}
       />
 

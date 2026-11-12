@@ -1,10 +1,11 @@
 "use client";
 
-// Preset-only time-range toolbar shared by the dashboard and Sessions filter
-// bars (2026-11-12): an attached HeroUI Toolbar around one single-select
+// Preset-only time-range toolbar shared by the dashboard, Sessions and Sync runs
+// filter bars (2026-11-12): an attached HeroUI Toolbar around one single-select
 // ToggleButtonGroup, listing 总计 / 今天 / 7D / 30D. `selected` may sit on
-// "custom" for legacy /sessions?from&to deep links — no preset lights up then,
-// and picking one drops the custom window back to that preset.
+// "custom" for legacy deep links (e.g. the dashboard heatmap cell or an old
+// date-picker bookmark) — no preset lights up then, and picking one drops the
+// custom window back to that preset.
 
 import type { RangeKey, RangePresetChoice } from "@/lib/dashboard/ranges";
 

@@ -766,13 +766,18 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 
 差异清单（相对 Sessions）：
 
-- **trigger / result 筛选**：筛选条在时间范围（`DateRangePicker` + 今天 / 7D / 30D / 90D 预设；
-  预设不写 URL、自定义 `from` / `to` 写并回显，窗口按浏览器本地时区换算 ISO `[from, to)`）
-  与设备（`DeviceFilterSelect`，复用）之外，另有 **trigger**（scheduled / manual / watch / notify）
-  与 **result**（ok / partial / error）两个 `Select`；`device_id` / `trigger` / `result` / `offset` /
-  `page_size` 写 URL，默认近 30 天、20/页（可选 10/20/50/100）；任一非分页筛选变化把 `offset`
-  归零，结果集缩到当前页以下时回跳到最后一页，「清除筛选」回到默认。无来源 / 项目筛选、
-  无 CSV 导出、无详情弹窗。
+- **trigger / result 筛选**：筛选条与仪表盘 / Sessions 同形态（2026-11-12 操作者裁定）：时间范围
+  为共享 `RangePresetToolbar`（`Toolbar isAttached` + 单选 `ToggleButtonGroup`，
+  总计 / 今天 / 7D / 30D，总计在前、`size="sm"`，不再有日历与自定义入口）、设备（复用
+  `DeviceFilterSelect` 的 `placeholderMode`），另有 **trigger**（scheduled / manual / watch /
+  notify，「全部方式」占位）与 **result**（ok / partial / error，「全部结果」占位）两个
+  `Select`，两者均以 `Select.ClearButton` 清除；控件不带顶部 Label，一律 `aria-label`，
+  筛选条不再有「清除筛选」按钮（仅表格无结果态保留引导按钮）。
+  预设不写 URL（2026-10-26 裁定），旧日期书签带来的 `from` / `to` 仍解析为 custom 窗口并
+  回显（此时工具栏不亮任何预设，点任一预设即回预设窗口），窗口按浏览器本地时区换算 ISO
+  `[from, to)`；`device_id` / `trigger` / `result` / `offset` / `page_size` 写 URL，
+  默认总计、20/页（可选 10/20/50/100）；任一非分页筛选变化把 `offset` 归零，结果集缩到当前页
+  以下时回跳到最后一页，「清除筛选」回到默认总计。无来源 / 项目筛选、无 CSV 导出、无详情弹窗。
 - **汇总卡**：仅两张（今日运行数 / 最近一次运行），取当天窗口；当天无运行则回溯近 7 天最近
   一轮探针，今日空轮给提示，最近运行时间显示绝对 + 相对时间。首载保留真实标题与图标、只有
   数字/文本位骨架（同 Sessions），但**不是** Sessions 的四张（会话数 / 总 Token / 成本 / 平均时长）。

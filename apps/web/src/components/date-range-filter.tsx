@@ -1,11 +1,11 @@
 "use client";
 
 // Shared date-range control (docs/ui-spec.md 筛选条). The DateRangePicker
-// anatomy, preset buttons and range calendar live here for the Sync runs filter
-// bar. Data, presets and copy stay with the caller; the picker's open state and
-// the max-value guard live here. (The dashboard dropped the calendar/custom
-// window on 2026-11-12 and Sessions followed with the preset-only
-// `RangePresetToolbar`.)
+// anatomy, preset buttons and range calendar live here. Data, presets and copy
+// stay with the caller; the picker's open state and the max-value guard live
+// here. Currently unused: the dashboard (2026-11-12) and then Sessions and Sync
+// runs all moved to the preset-only `RangePresetToolbar`; kept for a future
+// page that needs a real calendar window.
 
 import type { Locale } from "@/lib/copy/locale";
 import type { CalendarDate } from "@internationalized/date";

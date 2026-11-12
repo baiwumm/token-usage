@@ -1,7 +1,7 @@
 "use client";
 
-// Preset quick buttons inside the DateRangePicker popover used by the Sync
-// runs filter bar (the dashboard and Sessions use the preset-only
+// Preset quick buttons inside the DateRangePicker popover (used by
+// `DateRangeFilter`; the dashboard, Sessions and Sync runs use the preset-only
 // `RangePresetToolbar` instead, 2026-11-12). Single-select group: the active
 // preset is highlighted; re-picking it is a no-op so a redundant refetch never
 // fires.

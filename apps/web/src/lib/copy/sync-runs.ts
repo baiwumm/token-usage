@@ -3,7 +3,7 @@
 
 export interface SyncRunsCopy {
   rangeLabel: string;
-  ranges: Record<"today" | "7d" | "30d" | "90d" | "custom", string>;
+  ranges: Record<"today" | "7d" | "30d" | "all", string>;
   deviceLabel: string;
   allDevices: string;
   triggerLabel: string;
@@ -73,8 +73,7 @@ export const SYNC_RUNS_COPY: Record<"zh" | "en", SyncRunsCopy> = {
       today: "今天",
       "7d": "7D",
       "30d": "30D",
-      "90d": "90D",
-      custom: "自定义",
+      all: "总计",
     },
     deviceLabel: "设备",
     allDevices: "全部设备",
@@ -153,8 +152,7 @@ export const SYNC_RUNS_COPY: Record<"zh" | "en", SyncRunsCopy> = {
       today: "Today",
       "7d": "7D",
       "30d": "30D",
-      "90d": "90D",
-      custom: "Custom",
+      all: "All time",
     },
     deviceLabel: "Device",
     allDevices: "All devices",

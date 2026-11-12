@@ -11,10 +11,11 @@ export type RangePreset = "today" | "7d" | "30d" | "90d" | "all";
 export type RangeKey = RangePreset | "custom";
 
 /**
- * Range presets. The dashboard renders these four directly in its preset-only
- * toolbar (2026-11-12); 90d stays in the shared preset math for Sessions and
- * Sync runs, which still list it in their popover presets (the dashboard
- * dropped it on 2026-11-01).
+ * Range presets. The dashboard, Sessions and Sync runs render these four
+ * directly in the shared preset-only `RangePresetToolbar` (2026-11-12); 90d
+ * stays in the shared preset math (and `DateRangeFilter`) for any future
+ * calendar-based page, but no bar lists it today (the dashboard dropped it on
+ * 2026-11-01).
  */
 export const RANGE_PRESETS = [
   "all",
@@ -23,7 +24,7 @@ export const RANGE_PRESETS = [
   "30d",
 ] as const satisfies readonly RangePreset[];
 
-/** The four quick presets the dashboard and Sessions bars share. */
+/** The four quick presets every filter bar shares. */
 export type RangePresetChoice = (typeof RANGE_PRESETS)[number];
 
 export const PRESET_DAYS: Record<

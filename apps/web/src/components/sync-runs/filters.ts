@@ -2,14 +2,12 @@
 // result, paging and an explicit custom window live in the URL; preset ranges
 // never do.
 
+import type { RangeKey } from "@/lib/dashboard/ranges";
+
 import { isValidDayKey } from "@/lib/dashboard/ranges";
 import { PAGE_SIZE_OPTIONS } from "@/lib/ui/pagination";
 
 export const DEFAULT_PAGE_SIZE = 20;
-
-export const SYNC_RANGE_PRESETS = ["today", "7d", "30d", "90d"] as const;
-
-export type SyncRunRange = (typeof SYNC_RANGE_PRESETS)[number] | "custom";
 
 export const TRIGGER_OPTIONS = [
   "scheduled",
@@ -20,7 +18,7 @@ export const TRIGGER_OPTIONS = [
 export const RESULT_OPTIONS = ["ok", "partial", "error"] as const;
 
 export interface Filters {
-  range: SyncRunRange;
+  range: RangeKey;
   from: string;
   to: string;
   deviceId: string;
@@ -32,10 +30,10 @@ export interface Filters {
 
 // Preset ranges never round-trip the URL (operator call 2026-10-26): a stale
 // ?range=30d link must not pin the list to old dates, so every load starts at
-// the default preset window. A custom window is explicit data from the date
-// picker and must persist — parseFilters already restores it, and dropping it
-// here silently reverted the list to the default window on the next
-// navigation.
+// the default preset window (总计 since 2026-11-12). A custom window only
+// survives in old date-picker bookmarks and must persist — parseFilters
+// already restores it, and dropping it here silently reverted the list to the
+// default window on the next navigation.
 export function parseFilters(params: {
   get(name: string): string | null;
 }): Filters {
@@ -46,7 +44,7 @@ export function parseFilters(params: {
   const hasWindow = isValidDayKey(from) && isValidDayKey(to) && from <= to;
 
   return {
-    range: hasWindow ? "custom" : "30d",
+    range: hasWindow ? "custom" : "all",
     from: hasWindow ? from : "",
     to: hasWindow ? to : "",
     deviceId: params.get("device_id") ?? "",
