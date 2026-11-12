@@ -2,7 +2,10 @@
 
 // Header for /wrapped: the year selector (only years that carry usage) on the
 // left and the shared share-card button (same trigger and dialog as the
-// dashboard) on the right.
+// dashboard) on the right. While the selected year has no payload yet — first
+// load or a year switch — the year select's own indicator renders as a Spinner
+// (same pattern as DeviceFilterSelect), and falls back to the chevron once the
+// year is ready.
 
 import type { WrappedCopy } from "@/lib/copy/wrapped";
 import type { ShareCardData } from "@/components/share-card";
@@ -15,14 +18,15 @@ export function WrappedHeader({
   copy,
   year,
   yearOptions,
-  refreshing,
+  loading,
   shareInput,
   onYearChange,
 }: {
   copy: WrappedCopy;
   year: number;
   yearOptions: number[];
-  refreshing: boolean;
+  /** No payload for the selected year yet — the indicator renders as a spinner. */
+  loading: boolean;
   /** Null until the year payload lands — the share action is disabled then. */
   shareInput: ShareCardData | null;
   onYearChange: (year: number) => void;
@@ -40,9 +44,7 @@ export function WrappedHeader({
       >
         <Select.Trigger>
           <Select.Value />
-          {/* Options are still loading: the indicator becomes a spinner;
-              otherwise it falls back to the chevron. */}
-          {refreshing ? (
+          {loading ? (
             <Select.Indicator>
               <Spinner size="sm" />
             </Select.Indicator>

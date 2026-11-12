@@ -39,8 +39,6 @@ export interface WrappedCopy {
   emptyBody: string;
   loadError: string;
   retry: string;
-  /** Shown above the previous year's content while a year switch loads. */
-  switchingYear: string;
 }
 
 export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
@@ -80,7 +78,6 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
     emptyBody: "完成配对并同步用量后，年度回顾会在这里生成。",
     loadError: "年度回顾加载失败。",
     retry: "重试",
-    switchingYear: "正在加载 {year} 年的数据，当前仍显示上一年内容…",
   },
   en: {
     pageTitle: "Wrapped",
@@ -118,6 +115,5 @@ export const WRAPPED_COPY: Record<"zh" | "en", WrappedCopy> = {
     emptyBody: "Pair a collector and sync — your wrapped will show up here.",
     loadError: "Failed to load your wrapped.",
     retry: "Retry",
-    switchingYear: "Loading {year} — showing the previous year for now…",
   },
 };

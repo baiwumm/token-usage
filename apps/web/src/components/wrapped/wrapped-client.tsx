@@ -14,7 +14,7 @@
 import type { TrendPoint } from "@/components/charts";
 import type { AchievementsPayload } from "@/lib/achievements/types";
 
-import { Button, Card, Spinner, Typography, cn } from "@heroui/react";
+import { Button, Card, Typography } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AchievementsCard } from "./achievements-card";
@@ -45,7 +45,6 @@ import {
   type MonthlyPoint,
 } from "@/lib/dashboard/api";
 import { useLocale } from "@/lib/copy/locale";
-import { formatMessage } from "@/lib/copy/message";
 import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { WRAPPED_COPY } from "@/lib/copy/wrapped";
 import { StaleDataBanner } from "@/components/stale-data-banner";
@@ -225,19 +224,16 @@ export function WrappedClient() {
   }, [historyYears, year]);
 
   // Share-card input stays gated on yearReady: never mint a card for the new
-  // year out of the previous year's numbers. The visible content keeps the
-  // last payload mounted while a year switch is in flight (no whole-page
-  // skeleton flash); a banner + dimming make the stale state explicit and
-  // non-interactive (docs/ui-spec.md 年度回顾).
+  // year out of the previous year's numbers. A year switch repaints the page as
+  // its initial skeleton (no stale-year content under the new heading,
+  // docs/ui-spec.md 年度回顾) while the header shows the loading spinner.
   const yearReady = payloadYear === year;
   const yearPayload = yearReady ? payload : null;
   const yearHeatmap = yearReady ? heatmap : null;
-  const visiblePayload = payload;
-  const switchingYear = payload != null && !yearReady && refreshing;
-  const totals = visiblePayload?.totals;
+  const totals = yearPayload?.totals;
   const hasData = (totals?.total_tokens ?? 0) > 0;
-  const models = visiblePayload?.models ?? [];
-  const sources = visiblePayload?.sources ?? [];
+  const models = yearPayload?.models ?? [];
+  const sources = yearPayload?.sources ?? [];
 
   // Month buckets are UTC-fixed (docs/cli-contract.md §2.7) while the totals
   // above ride the browser tz; only rows near a year boundary can differ.
@@ -301,20 +297,21 @@ export function WrappedClient() {
     allTimeRef.current = null;
     void loadAll(accessToken);
   };
-  // Skeleton is for the first load only. Once a payload exists, a year switch
-  // keeps it on screen (dimmed + banner) instead of blanking the whole page.
-  const showSkeleton = status === "loading" && !payload;
   // No usable payload for this year → the full error card. With a payload for
   // the selected year, a failed refresh instead keeps the content and shows
   // the banner below, so the page never blanks on a transient error.
   const showErrorCard =
     !yearReady && (status === "error" || Boolean(loadError));
+  // Skeleton is the initial-load UI and doubles as the year-switch state: the
+  // previous year's cards are never left on screen under the new year. The year
+  // select's own indicator carries the spinner meanwhile.
+  const showSkeleton = !yearReady && !showErrorCard;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-8">
       <WrappedHeader
         copy={copy}
-        refreshing={refreshing}
+        loading={showSkeleton}
         shareInput={yearReady && hasData ? shareInput : null}
         year={year}
         yearOptions={yearOptions}
@@ -324,16 +321,7 @@ export function WrappedClient() {
         }}
       />
 
-      {showSkeleton && !showErrorCard ? <WrappedSkeleton copy={copy} /> : null}
-
-      {switchingYear ? (
-        <Card className="flex-row items-center gap-3 p-4">
-          <Spinner size="sm" />
-          <Typography type="body-sm">
-            {formatMessage(copy.switchingYear, locale, { year })}
-          </Typography>
-        </Card>
-      ) : null}
+      {showSkeleton ? <WrappedSkeleton copy={copy} /> : null}
 
       {showErrorCard ? (
         <Card className="flex-col gap-3 p-6">
@@ -364,13 +352,8 @@ export function WrappedClient() {
         </Card>
       ) : null}
 
-      {visiblePayload && hasData && totals ? (
-        <div
-          className={cn(
-            "relative flex w-full flex-col gap-6",
-            switchingYear && "pointer-events-none opacity-60",
-          )}
-        >
+      {yearReady && yearPayload && hasData && totals ? (
+        <div className="flex w-full flex-col gap-6">
           <StatCards copy={copy} totals={totals} />
 
           <AchievementsCard
