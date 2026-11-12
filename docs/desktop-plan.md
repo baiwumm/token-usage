@@ -497,6 +497,12 @@ requirements 边界表。
   131 例 / build）。**遗留**：更新链路要等 `desktop-v0.3.0` 发版并由 CI 建出 `desktop-latest`
   滚动清单后才真正可用（无清单时按「尚未发布更新清单」提示）；本地 NSIS 包无 `.sig`
   （CI 签名），安装后照例按 §11 重打 High 标签以恢复托盘图标。
+  **发版（2026-11-12）**：tag `desktop-v0.3.0` → CI 出 draft → 当日 publish（`--latest=false`，
+  不抢 CLI 的 latest 标记）→ 新工作流 `release-desktop-latest.yml` 首次建出 `desktop-latest`
+  滚动 Release 并上传 `latest.json`，updater 端点自此可用。发布的同一轮里 CI 报了两处
+  Rust 门禁问题（`cargo fmt --check` 导入顺序、`clippy::single_match` 看门狗写成 `match`），
+  均属格式/风格、不影响出包，已随 main 修复。（发版流水线不跑 fmt/clippy，只有 ci.yml
+  的 rust-gate 跑——本地发版前应补跑 `cargo fmt --check` + `cargo clippy`。）
 
 ## 11. 发版流程（D5 起）
 

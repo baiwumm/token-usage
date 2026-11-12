@@ -978,11 +978,8 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 std::thread::spawn(move || {
                     std::thread::sleep(Duration::from_secs(3));
-                    match window.is_visible() {
-                        Ok(false) => {
-                            let _ = window.show();
-                        }
-                        _ => {}
+                    if let Ok(false) = window.is_visible() {
+                        let _ = window.show();
                     }
                 });
             }
