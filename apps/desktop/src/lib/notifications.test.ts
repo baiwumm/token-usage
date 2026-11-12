@@ -79,7 +79,6 @@ function snapshot(patch: Partial<MonitorSnapshot> = {}): MonitorSnapshot {
     dashboardUrl: null,
     repoUrls: {},
     heatmap: { weeks: [], to: "2026-11-09", activeDays: 0, totalTokens: 0 },
-    recentSessions: [],
     updatedAt: 0,
     cli: { available: true, version: "0.5.4" },
     ...patch,

@@ -133,11 +133,11 @@ status；CLI 暂缺于 PATH 时由缓存决定，只有 CLI 的回答能把它�
 | **D5 发版** | Windows NSIS 安装包 + tauri updater（Ed25519 签名，密钥 Agent 代生成入 GitHub secret，见 §1 #7）；Rust 编译门禁进 CI（Windows runner）；发版流程见 §11。**已验收关闭**（2026-11-10 发布 `desktop-v0.1.0` 并操作者本机安装验收，M-desktop 收官，见 §10） | 从 Release 下载安装 → 应用启动 → D2–D4 功能真机全过；托盘按 §11 兜底（High 标签）后本机补验成功；toast 仍待系统通知被动观测（操作者 2026-11-10 拍板「先发布、本机安装验收」） |
 | **D6 用量构成**（0.2 产品迭代，**已验收关闭** 2026-11-10 放行 → 两轮反馈随 `desktop-v0.2.0` / `v0.2.1`） | 周期切换 + 主要模型卡 + 项目与仓库卡 + 用量卡收敛 + web 深链 + 数据新鲜度；范围见 §12.3 | 模型/项目 Top 5 与 web 同设备同窗口人工一致；仓库链接正确；三卡联动；400 / 340 px 无横向滚动；`pnpm verify` 全绿 |
 | **D7 使用节奏**（0.3 产品迭代，**已验收关闭** 2026-11-11，D7.1 追加轮一并验收） | 热力图（近一年，展示同 web 活跃热力图）+ 最近会话（只读尾部）+ 卡片显隐；范围见 §12.4 / §12.9 | 日聚合计与单值卡边界一致；最近 5 条与 `session.queue.jsonl` 尾部一致且无正文；隐私字段不出现 |
-| **D8 交互打磨**（原范围已被 D9–D11 吸收） | 维护操作折叠 / 失败复制 / GitHub 入口 / 空态与可达性已随 D9–D10 落地；**仅窗口尺寸记忆仍待排期** | 重启保留窗口尺寸；无新增依赖 |
+| **D8 交互打磨**（原范围已被 D9–D11 全部吸收） | 维护操作折叠 / 失败复制 / GitHub 入口 / 空态与可达性随 D9–D10 落地，窗口尺寸记忆随 D11 落地；**已验收关闭**（2026-11-12） | 重启保留窗口尺寸；无新增依赖 |
 | **D9 头部与统计卡**（2026-11-11 操作者八点需求第 1/2/3/7 项，**已验收关闭**） | 头部改周期筛选 + 图标按钮、采集操作卡并入采集与同步卡、四统计卡（NumberFlow 动画 + Chip 环比）、热力图 web 同款移植；范围见 §12.10 | 统计卡费用非零、口径与 web 同源；热力图格数与周期解耦；`pnpm verify` 全绿 |
 | **D10 趋势与构成**（同上第 4/5 项，**已验收关闭**） | 用量趋势照搬 web、来源构成 logo 榜 + 「查看全部」、项目与仓库卡重写 + 项目详情双栏；范围见 §12.11 | 图表与 web 同窗口人工一致；项目详情 KPI / 每日柱图 / 构成条齐全 |
 | **D10.1 验收修复**（2026-11-11 三轮验收反馈，**已验收关闭**） | 费用美元符号、读时计价（移植 web 计价引擎）、NumberFlow + Chip 环比、热力图跟周期（格数不变）、项目 logo 同步（`project-profiles` 端点 + CLI 子命令 + Volta 化石副本清理）；范围见 §12.12–§12.12.2 | 四卡与成本分析费用非零；web 编辑的 logo / 显示名在桌面同步；未配对机静默降级 |
-| **D11 会话与分享**（待实施，D10.1 验收后启动） | 会话列表与详情照搬 web、分享卡完整移植 | 与 web 同窗口一致；分享卡导出的 PNG 可用 |
+| **D11 会话与分享**（2026-11-12 交付并验收，含窗口尺寸记忆） | 会话视图照搬 web /sessions（列表 + 汇总卡 + 筛选 + 详情弹窗 + CSV，单机口径裁掉设备列 / 设备筛选）、分享卡四变体完整移植（本地投影 + Downloads 保存）、窗口尺寸记忆（localStorage + `visible:false` 恢复 + Rust 看门狗）；范围见 §12.13 | 会话列表与 web 同窗口人工一致（成本为 sessions 峰值价口径）；分享卡四变体渲染正确、复制 / 保存 PNG 可用、关闭态不重绘；重启保留窗口尺寸 / 位置 / 最大化，看门狗兜底不丟窗口；400 / 340 px 无横向滚动；`pnpm verify` 全绿 |
 
 工期参考：D1 约 1 天，D2 约 3–5 天，D3 约 2–3 天，D4 约 2 天，D5 约 2 天；全程 Agent
 开发，每个里程碑操作者验收后再进下一个。
@@ -489,6 +489,15 @@ requirements 边界表。
   ③ `tauri build` 末步仍因缺 `TAURI_SIGNING_PRIVATE_KEY` 返回 1（NSIS 包完整，仅 updater
   `.sig` 未生成），发版走 CI 不受影响。下一步：D11（会话列表 + 详情、分享卡完整移植）。
 
+- **D11 验收（2026-11-12 操作者）：D11 关闭，0.3.0 交付**。会话视图（列表 / 汇总卡 /
+  筛选 / 详情弹窗 / CSV 导出）、分享卡四变体、窗口尺寸记忆三块交付，经两轮操作者反馈修正
+  （§12.13.1 / §12.13.2）后本机安装验收通过：详情列不再截断、CSV 导出弹原生保存对话框
+  （默认桌面、可改目录、取消不弹提示）、总计口径说明改为「总 Tokens」标签旁 Tooltip、
+  检查更新不再报失败。门禁：`pnpm --filter @token-usage/desktop verify` 全绿（lint / tsc /
+  131 例 / build）。**遗留**：更新链路要等 `desktop-v0.3.0` 发版并由 CI 建出 `desktop-latest`
+  滚动清单后才真正可用（无清单时按「尚未发布更新清单」提示）；本地 NSIS 包无 `.sig`
+  （CI 签名），安装后照例按 §11 重打 High 标签以恢复托盘图标。
+
 ## 11. 发版流程（D5 起）
 
 发布流水线 `release-desktop.yml`，机制对齐 `release-cli.yml`：
@@ -504,15 +513,24 @@ requirements 边界表。
 - **发布**：`scripts/admin/desktop-release/assemble-updater-manifest.mjs` 组装
   `latest.json`（安装包改名 `token-usage-desktop_<ver>_x64-setup.exe` 免 URL 空格编码，
   签名内联进 manifest），Release 以 **draft** 创建、正文取 `apps/desktop/CHANGELOG.md`
-  对应段。**updater 端点只解析已发布 Release**（`/releases/latest/download/latest.json`
-  不含 draft），操作者 publish 前已装用户不会收到更新提示——publish 即人工放行闸门。
+  对应段。**updater 端点读专用滚动 Release**：`releases/download/desktop-latest/latest.json`
+  （不是 `/releases/latest/download/latest.json`——本仓库同时发 CLI 与桌面端，CLI 发版会
+  占据 `releases/latest`，该 Release 没有 latest.json，已装客户端「检查更新」因此报
+  `Could not fetch a valid release JSON`，2026-11-12 实测 `cli-v0.5.5` 即触发）。滚动清单由
+  `.github/workflows/release-desktop-latest.yml` 维护：`release: published`（仅 `desktop-v*`）
+  时下载该版 `latest.json` 并覆盖上传到 `desktop-latest` Release（`--latest=false`，不抢
+  GitHub 的 latest 标记）。draft 不含可下载的清单，操作者 publish 前已装用户不会收到更新
+  提示——publish 即人工放行闸门。同时 `hooks/use-updater.ts` 把清单缺失（404 / invalid
+  release JSON）降级为「尚未发布更新清单」，不再当作失败报错。
 - **日常步骤**：bump 三处 version + CHANGELOG 顶部补节 → push main（CI 全绿）→
   `git tag desktop-v0.x.y && git push origin desktop-v0.x.y` → CI 出 draft → 操作者
   Release 页 publish。
 - **Rust 依赖披露**（§6 承诺）：Rust 侧直接依赖 = `tauri 2`（tray-icon feature）+
   `tauri-build 2` + D4 三插件（notification / autostart / single-instance）+ D5 两插件
-  （updater / process）；传递依赖以入库的 `src-tauri/Cargo.lock` 为准（lockfile 入库 +
-  CI `--locked` 锁死，防漂移）。
+  （updater / process）+ 2026-11-12 操作者要求「导出自己选保存位置」引入的 `dialog 2.8.4`
+  （官方件，只在 Rust 侧驱动保存对话框，webview 不开 `dialog:*` 权限；传递依赖 rfd /
+  tauri-plugin-fs 以 Cargo.lock 为准）；其余传递依赖以入库的 `src-tauri/Cargo.lock` 为准
+  （lockfile 入库 + CI `--locked` 锁死，防漂移）。
 - **本机（公司机）验收注记**：UAC 关闭 + 任务栏 High ⇒ 安装版托盘注册不上，可尝试对
   安装后的 exe 打 **High** 完整性标签兜底（六追记证明 High 可注册；Medium 的 WebView2
   拒绝仅出现在 Low 标签的构建目录 profile 下，安装版数据目录在 `%APPDATA%` 继承
@@ -640,8 +658,9 @@ ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最�
 
 **D6 / D7 / D7.1 / D9 / D10 / D10.1 均已验收关闭（2026-11-11 操作者验收，见 §10）**：
 0.2 产品迭代（含 D10.1 三轮验收修复）到此整体收尾；
-**D11（会话列表+详情 / 分享卡）待实施**，为下一个开项；
-D8 原范围（维护折叠 / 复制按钮）被 D9–D11 吸收，仅窗口尺寸记忆仍待排期。
+**D11（会话视图 / 分享卡 / 窗口尺寸记忆）已于 2026-11-12 交付并验收关闭**（§12.13，两轮操作者反馈修正后本机安装验收）；
+D8 原范围（维护折叠 / 复制按钮）被 D9–D11 吸收，**窗口尺寸记忆已随 D11 落地**（操作者
+2026-11-12 拍板「一起做」）。
 
 ### 12.10 D9（2026-11-11，操作者八点需求的第 1/2/3/7 项）：头部改造 + 四统计卡 + 热力图对齐
 
@@ -710,8 +729,6 @@ recharts 已随 D9 落地（§6）。**仍零契约变更**——成本列全部
    breakdown 同款），单一可见时占满整行；原「用量构成」分组标签行删除（各卡自题）。
    验收：趋势双 Tab / 双指标切换、双栏宽窗并排、成本分析弹窗三段、来源隐藏/显示与
    环形图联动、项目行点击出详情且数字与行一致；`verify` 全绿。
-
-（D11 记录见 §12.13，实施后回写。）
 
 ### 12.12 D10.1 验收修复（2026-11-11，操作者 D10 验收三点反馈）
 
@@ -817,3 +834,145 @@ recharts 已随 D9 落地（§6）。**仍零契约变更**——成本列全部
    只驱动三张构成卡，顶部单值卡口径不变。
    验收：最大化窗口满 52 周、悬浮格出 portal tooltip 来源明细；四档切换与默认今日生效；
    顶部两张单值卡不随筛选变化；`pnpm --filter @token-usage/desktop verify` 全绿。
+
+### 12.13 D11 会话与分享 + 窗口尺寸记忆（2026-11-12 交付并验收）
+
+操作者四点拍板（2026-11-12）：① 会话视图 = 头部图标切换的独立视图（非弹窗）；② PNG 保存 =
+Rust 命令写系统 Downloads（首版零新 crate；2026-11-12 第二轮操作者要求 CSV 导出自己选
+保存位置，故新增对话框命令，见 §12.13.2）；③ 设备列 / 设备筛选
+去掉（本机单设备数据，列恒为本机名无信息量）；④ 会话周期预设跟 web（今天 / 7D / 30D /
+90D，默认 30D）。窗口尺寸记忆并入 D11，方案按 §12.1 既定裁定走 localStorage。
+
+**数据面（`lib/sessions.ts`，全部只读）**：整读 `session.queue.jsonl`（复用
+`read_tracker_file` 8 MiB 上限；超限报错含 "too large" 时降级 `read_tracker_tail` 512 KiB
+并在视图顶部出「仅显示最新部分」提示条）；解析规则逐字对齐 CLI 上传映射
+（`session-upload.js mapSessionRow`）：`session_id` 优先、`session_hash` 兜底，账户级来源
+（cursor / trae-cn）整条剔除，token 计数会话级取嵌套 `tokens.*`、模型级取扁平字段（零值
+省略补 0），zcode / opencode 的「reasoning 在 output 之外」按 CLI 同款 fold（仅当
+`total ≠ identity 且 total = identity + reasoning` 时把 reasoning 吸进 output，total 不动），
+恒等校验不过整行丢弃；`duration_ms` 按 `ended_at − started_at` 墙钟（wire 口径，非采集端
+active-ms）；credits 仅收正值（四舍五入 6 位）。**成本 = web sessions 口径**：逐
+`model_usage` 行以移植的计价引擎按峰值价读时计算（会话行无 `hour_start`，
+`isDeepSeekOffPeak` 得 NaN → 不走峰谷价，同契约 §2.11 计价口径注记），会话成本 = 模型行
+求和；CSV / 详情的每模型成本按 token 占比从会话成本等比拆分，列间永不打架。
+排序 = `ended_at` 倒序、同刻按 `source`、`session_id` 升序（契约 §2.11）。
+CSV 导出 = wire `format=csv` 形态：同列名（`device_name` = 本机 hostname）、UTF-8 BOM +
+CRLF + RFC4180 引号 + `= + - @` 制表前缀 `'` 防公式注入、10,000 行上限、文件名
+`token-usage-sessions-<from>-<to>.csv`。**隐私**：title / `project_ref`（绝对路径）/
+cache key 在解析层丢弃，永不进 UI；`project_key` 只取 basename。
+
+**会话视图（`components/sessions/`）**：头部新增视图切换图标钮（`ListUl` ⇄ `ChartColumn`，
+tooltip「会话」/「用量监控」，恒显——4 图标组下宽度账仍成立），监控盘 ⇄ 会话两视图互斥；
+会话视图下头部周期筛选隐藏（其驱动构成卡，与会话无关）。筛选条（`sessions-bar.tsx`）：
+周期预设连接式 `ToggleButtonGroup` + 来源 `Select`（本地 facets，`SourceIcon` + 显示名）+
+「清除筛选」（有收窄条件才出现）+ CSV / 刷新图标簇（tooltip 带「上次更新」）。四张汇总卡
+（`sessions-summary-cards.tsx`）：会话数 / 总 Tokens / 成本 / 平均时长（`每会话` 副标），
+首载保留真标签、只对数字出骨架。列表（`sessions-table.tsx`）：**≥md 表格列 = 结束时间 /
+来源 Chip / 项目 / 时长 / Token / 积分（窗口内 credits>0 才出现）/ 成本 / 模型（前 3 Chip
++ `+N`）/ 详情**，整行 `onAction` 开详情；**<md 堆叠 Card 行**（web 移动端同款）——400px
+默认窗走堆叠形态，最大化走表格；分页默认 20/页（10/20/50/100，切页大小锚定当前页），
+页脚「第 x-y 条，共 n 条」+ 上一页 / 下一页 / 页码。详情弹窗（`sessions-detail-dialog.tsx`）：
+来源 / 项目双 Chip（无设备 Chip）、meta 两列（结束时间含相对时间 + 时长）、Token 拆分
+（输入 / 缓存读取 / 缓存写入 / 输出 / 推理 / 总计 / 计费[=总计] + 积分卡）、模型拆分
+`BreakdownTable`（`ModelIcon` + Token / 占比 / 成本）、隐私与成本双脚注；`session_id`
+只在内部作 key。空态两分（无数据 → 等待新版采集器 + 升级文档；筛选无结果 → 清除筛选）。
+模型 Chip 组 `model-chips.tsx`（`-chips` 已登记后缀）。数据钩子 `use-sessions.ts`：挂载 +
+手动刷新读文件（不进 10 s 轮询，切视图即重挂载拿新数据）。
+
+**分享卡（`components/share-card/` 拆分目录 + `share-card-dialog.tsx`）**：web 引擎逐字
+移植——`broadsheet.ts` / `receipt.ts` / `neon.ts` / `vinyl.ts` 四画师、`helpers.ts`（去
+`loadShareImage`，桌面无成就卡）、`palette.ts` 固定印刷色、`types.ts` 输入契约、`copy.ts`
+（web zh 块逐字 + 桌面新增「已保存到下载目录」两条）、`share-hook-helpers.ts`（去 locale
+形参，桌面单语）、`index.ts`（VARIANTS + 2x `drawShareCard` + ClipboardItem 复制）。
+字体零新增：Maple Mono CN 已随桌面打包（`app.css` @font-face，THIRD_PARTY_NOTICES 已
+登记），衬线走 Windows 系统栈。**本地投影（`lib/share-input.ts`）**：hero / 成本（读时
+计价窗口合计）/ 来源榜 / 模型榜 / 峰值日（trend daily argmax）/ 会话数取自头部周期对应
+用量窗；热力图按 D9 既定口径——本机、跟随周期裁剪（`clipHeatmap` 同思路），格级 = 窗口
+内最大日四分位（与热力图卡同阈值），`streakDays` = 窗口内最长连续活跃日；`handle` =
+hostname（缺省 "Token Usage"）；`periodLabel` = 预设日期区间（`M月d日 — M月d日`），总计 =
+年份；`tickLabel` = 本机 UTC 偏移。窗口无用量 → 投影 null，头部按钮禁用。
+**对话框**：左右两栏（预览 = 导出 PNG 本身，`<img>`；右 = 显示名称 TextField（不持久化，
+`useDeferredValue` 防连击）+ 2×2 风格磁贴（特刊 / 小票 / 霓虹 / 唱片）+ 复制图片 / 保存
+PNG + 隐私说明；切换交叉淡入淡出、`prefers-reduced-motion` 直接切换、**关闭态不重绘**
+（最后一帧留在状态里过退场动画）。**入口**：头部 `NodesRight` 图标钮（`hidden
+sm:inline-flex`，与 CLI 四钮同规则——400px 默认窗放不下，最大化/宽窗可用）。**导出**：
+复制走 WebView2 原生 ClipboardItem（安全上下文可用），失败 toast 引导保存；保存走新增
+Rust 命令 **`save_to_downloads`**（文件名字符白名单 `[A-Za-z0-9._-]` + 必须带扩展名 +
+120 长度帽，Downloads 目录内撞名自动 `-2`/`-3`，返回落盘完整路径由 toast 播报）；
+`lib/save-file.ts` 封装（dataURL → bytes / 文本 → bytes）。CSV 同走该命令。零新 Rust
+crate（`download_dir` 是 tauri 核心 path API）。
+
+**窗口尺寸记忆（`hooks/use-window-geometry.ts`）**：localStorage 键
+`tokenusage.desktop.window`（width / height / x / y / maximized）；`onMoved` / `onResized` /
+`onCloseRequested` / `visibilitychange→hidden` 四路防抖 300 ms 保存；尺寸存 CSS 逻辑 px
+（跨 DPI 不变形）、位置存物理 px。恢复：窗口配置改 **`visible: false`**，挂载时读档 →
+校验位置落在任一可用显示器范围内（否则放弃位置保居中）→ `LogicalSize` + `PhysicalPosition`
+（或 `maximize()`）→ `show()`，无启动跳窗；lib.rs 加 **3 s 看门狗**（setup 后单次：届时仍
+不可见则按默认几何 show），webview 异常不再丟窗口。capabilities 新增四条窗口 setter 权限
+（`allow-set-size` / `allow-set-position` / `allow-show` / `allow-maximize`，仅 main 窗——
+§12.1「窗口管理在 Rust」的既定例外，恢复本身必须在 webview 侧完成）。
+
+**测试**：`lib/sessions.test.ts`（12 项：映射 / 隐私剔除 / 账户级剔除 / 恒等门 / fold /
+models 求和门 / credits 与 last-wins / 排序 / 窗口 / 筛选聚合 facets / 分页 / CSV 形态）、
+`lib/share-input.test.ts`（3 项：投影 / 周期标签与 handle 兜底 / 空窗口 null）。
+`pnpm verify` 全绿（desktop 136 tests）。发版：三处 bump **0.3.0** + CHANGELOG，tag
+`desktop-v0.3.0`；安装后照例 §11 重打 High 标签。
+
+#### 12.13.1 D11 第一轮验收修正（2026-11-12，操作者六条反馈）
+
+1. **分页换行 / 形态**：手写分页（`w-28` 每页条数触发器换行 + 「上一页 n/m 下一页」
+   挤一行）废弃；新增共享 **`components/table-pagination.tsx`**（web `TablePagination`
+   单语移植，桌面统一表尾）——左范围摘要 / 中页码 `Pagination`（省略号窗口，内置
+   `pageItems`）/ 右固定 `w-36` 每页条数；三栏 `md:grid-cols-[1fr_auto_1fr]` 同 web。
+   页码组件 + 固定宽 Select 触发器同时根治换行。
+2. **CSV 导出 toast 带路径**：成功播报改「已导出 N 条会话：<落盘完整路径>」，与分享卡
+   保存同规则（回答「存哪了」）。
+3. **分享卡排版塌**：移植时漏抄 web 弹窗的 **`max-w-none`**——HeroUI 默认 `max-w-md`
+   把双栏压成 28rem，预览缩成一条；补上即复现 web 当年的同一修复（web 源码注释即化石
+   证据）。
+4. **默认今日 + 删最近会话卡**：会话视图周期默认与清除筛选目标改「今天」（原 30D）；
+   **最近会话卡整体退役**（`recent-sessions.ts` / 卡组件 / 测试删除，`MonitorSnapshot`
+   去 `recentSessions`，`use-monitor` 去尾部读取——`read_tracker_tail` Rust 命令保留，
+   会话视图超限降级仍用），设置「卡片显示」五开关收为四开关，存量 localStorage 的
+   `showRecentSessions` 键 normalize 掉不楔面板；ui-spec 桌面端节同步。
+5. **刷新遮罩**：会话列表行区加 web `DataTableCard` 同款刷新遮罩（`bg-surface/60` +
+   `backdrop-blur-[2px]` + 居中 `Spinner`，有行才盖）——此前只有刷新图标自转，快速点击
+   肉眼无感。
+6. **落地页入口**：设置「网页」组改**恒显**，首枚「落地页」（`Globe`，
+   `LANDING_URL = https://token-usage.cc`，不依赖配对）；配对后追加原四枚实例深链，
+   描述文案按配对态切换。落地页 2026-11-12 已上线（EdgeOne，`apps/landing`）。
+
+修正后 `pnpm verify` 全绿（desktop 131 tests——recent-sessions 五测试随卡退役），安装包
+重建 `Token Usage_0.3.0_x64-setup.exe`（本地无签名密钥，`.sig` 仍由 CI 发版生成）。
+
+#### 12.13.2 D11 第二轮验收修正（2026-11-12，操作者四条反馈；**验收通过**）
+
+1. **会话列表「详情」列被裁**：首版 `Table.Content` 用 `table-fixed` 把列宽钉死，「详情」
+   `w-16`（4rem，减去单元格 `px-4` 只剩 2rem 内容宽）容不下「查看」按钮——按钮溢出
+   单元格、越过表右缘，表现为被裁一截 + 横向滚动条。改自动布局（去 `table-fixed`，
+   `min-w` 40rem），「详情」列给 `w-24`；列宽只剩偏好值，真实最小宽度由内容决定。
+2. **CSV 导出可选保存位置**：新增 Rust 命令 `save_file_as`，用 `tauri-plugin-dialog`
+   原生保存对话框（默认目录 = 桌面，文件名仍走同一白名单校验函数），对话框在 Rust 侧
+   驱动，webview 只拿到落盘结果、不获得任意路径写权限。`lib/save-file.ts` 增
+   `saveTextAs` 返回 `saved / cancelled / failed` 三态：取消不弹 toast，失败提示重试，
+   成功播报完整路径。分享卡 PNG 仍走 `save_to_downloads`（不改动）。
+3. **总计 vs web 数字不一致（39.92 亿 vs 156 亿）**：确认是口径差异——桌面只读本机
+   `queue.jsonl`（本机开始采集起、含未上传部分），web 聚合账号全部设备与更早的服务器侧
+   记录。说明挂在统计卡上：`period = 总计` 时「总 Tokens」标签旁一个 `CircleInfo` 图标 +
+   HeroUI `Tooltip`（悬停/聚焦展开，其余周期不渲染）。首版是卡下一行
+   `components/monitor/local-data-note.tsx`，操作者当日第二轮否决（说明行顶破卡片布局），
+   该文件已删——仍保留 2026-11-11 「统计卡不长说明行」的裁定。
+4. **手动检查更新恒失败**：根因不是网络——同仓库 CLI 发版（`cli-v0.5.5`）占据了
+   `/releases/latest`，该 Release 没有 `latest.json`，插件报 `Could not fetch a valid
+   release JSON from the remote`。端点改 `releases/download/desktop-latest/latest.json`
+   （滚动清单，CI 在 `release: published` 时覆盖上传，见 §11）；`use-updater` 把清单缺失
+   降级为「尚未发布更新清单，暂无更新可安装」，不再显示「检查更新失败」。
+
+修正后门禁：`pnpm --filter @token-usage/desktop verify` 全绿（lint / tsc / 131 tests /
+vite build）；本地重建 NSIS 安装包（无签名密钥，`.sig` 仍由 CI 生成）。
+
+第三轮（同日，操作者点名「总 Tokens 旁图标 + Tooltip，不要额外一行」）：第 3 条的说明行
+改挂到标签旁的 `CircleInfo` + `Tooltip`，`local-data-note.tsx` 删除；重建安装包。
+
+**验收结论（2026-11-12 操作者）**：四项全部通过，D11 关闭。检查更新在当前无
+`desktop-latest` 清单时显示「尚未发布更新清单，暂无更新可安装」（属预期，tag 发版后生效）。

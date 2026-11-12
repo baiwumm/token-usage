@@ -1,16 +1,19 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
+import { ShareCardDialog } from "@/components/share-card-dialog";
 import { DeviceRow } from "@/components/monitor/device-row";
 import { HeatmapSection } from "@/components/monitor/heatmap-section";
-import { MonitorHeader } from "@/components/monitor/monitor-header";
+import {
+  MonitorHeader,
+  type MonitorView,
+} from "@/components/monitor/monitor-header";
 import {
   MonitorEmptyState,
   MonitorErrorState,
   MonitorSkeleton,
 } from "@/components/monitor/monitor-states";
 import { ProjectReposCard } from "@/components/monitor/project-repos-card";
-import { RecentSessionsCard } from "@/components/monitor/recent-sessions-card";
 import { SourceMixCard } from "@/components/monitor/source-mix-card";
 import { SettingsDialog } from "@/components/monitor/settings-dialog";
 import { SyncStatusCard } from "@/components/monitor/sync-status-card";
@@ -20,6 +23,7 @@ import { TrayNote } from "@/components/monitor/tray-note";
 import { UnpairedNote } from "@/components/monitor/unpaired-note";
 import { UsageCards } from "@/components/monitor/usage-cards";
 import { PairingBody } from "@/components/pairing/pairing-body";
+import { SessionsBody } from "@/components/sessions/sessions-body";
 import { useDesktopNotifications } from "@/hooks/use-notifications";
 import { useMonitor } from "@/hooks/use-monitor";
 import { useMonitorToasts } from "@/hooks/use-monitor-toasts";
@@ -29,6 +33,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useTrayAvailable } from "@/hooks/use-tray";
 import { useUpdater } from "@/hooks/use-updater";
 import { webUrl, README_URL, REPO_URL } from "@/lib/links";
+import { buildShareInput } from "@/lib/share-input";
 import { periodLabel } from "@/lib/preferences";
 import { periodStartMs } from "@/lib/monitor";
 
@@ -61,6 +66,9 @@ export function MonitorBody() {
   const { prefs, update, setAutostart } = usePreferences();
   const updater = useUpdater();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Top-level view switch (D11): the usage stack ⇄ the sessions list.
+  const [view, setView] = useState<MonitorView>("monitor");
+  const [shareOpen, setShareOpen] = useState(false);
 
   useTheme(prefs.theme);
   useDesktopNotifications({
@@ -96,6 +104,21 @@ export function MonitorBody() {
       setProbing(false);
     }
   }, [refresh, refreshCli]);
+
+  // Share-card input follows the header period (D11); null until a snapshot
+  // exists / when the active window is empty (the header button disables).
+  // Hook order: above the phase early-returns below.
+  const shareInput = useMemo(
+    () =>
+      phase.kind === "ready"
+        ? buildShareInput({
+            hostname,
+            period: prefs.period,
+            snapshot: phase.snapshot,
+          })
+        : null,
+    [hostname, phase, prefs.period],
+  );
 
   if (phase.kind === "error") {
     return (
@@ -185,77 +208,86 @@ export function MonitorBody() {
           paused={snapshot.paused}
           period={period}
           runningCommand={runningCommand}
+          shareAvailable={shareInput !== null}
           theme={prefs.theme}
+          view={view}
           onChangeTheme={(mode) => update({ theme: mode })}
           onOpenRepo={() => openUrl(REPO_URL)}
           onOpenSettings={() => setSettingsOpen(true)}
+          onOpenShare={() => setShareOpen(true)}
           onPeriodChange={(next) => update({ period: next })}
           onRun={(command, args) => void runCli(command, args)}
+          onToggleView={setView}
         />
-        {trayAvailable === false ? <TrayNote /> : null}
-        {pairing.gate.kind === "unpaired" ? (
-          <UnpairedNote onPair={() => setSkipped(false)} />
-        ) : null}
-        {hasAnyData ? (
+        {view === "sessions" ? (
+          <SessionsBody deviceName={hostname ?? "本机"} onOpenUrl={openUrl} />
+        ) : (
           <>
-            <UsageCards period={period} snapshot={snapshot} />
-            {prefs.showHeatmap ? (
-              <HeatmapSection
-                nowMs={snapshot.updatedAt}
-                payload={snapshot.heatmap}
-                period={period}
-              />
+            {trayAvailable === false ? <TrayNote /> : null}
+            {pairing.gate.kind === "unpaired" ? (
+              <UnpairedNote onPair={() => setSkipped(false)} />
             ) : null}
-            {prefs.showTrend ? <TrendCard trend={trend} /> : null}
-            {mixPanelsVisible ? (
-              <div className="grid gap-4 lg:grid-cols-2">
-                {prefs.showModels ? (
-                  <TopModelsCard
-                    dailyCost={dailyCost}
-                    models={activeWindow.models}
-                    sources={activeWindow.sources}
+            {hasAnyData ? (
+              <>
+                <UsageCards period={period} snapshot={snapshot} />
+                {prefs.showHeatmap ? (
+                  <HeatmapSection
+                    nowMs={snapshot.updatedAt}
+                    payload={snapshot.heatmap}
+                    period={period}
                   />
                 ) : null}
-                {prefs.showSources ? (
-                  <SourceMixCard sources={activeWindow.sources} />
+                {prefs.showTrend ? <TrendCard trend={trend} /> : null}
+                {mixPanelsVisible ? (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {prefs.showModels ? (
+                      <TopModelsCard
+                        dailyCost={dailyCost}
+                        models={activeWindow.models}
+                        sources={activeWindow.sources}
+                      />
+                    ) : null}
+                    {prefs.showSources ? (
+                      <SourceMixCard sources={activeWindow.sources} />
+                    ) : null}
+                  </div>
                 ) : null}
-              </div>
-            ) : null}
-            {prefs.showProjects ? (
-              <ProjectReposCard
-                attributedTokens={activeWindow.attributedTokens}
-                nowMs={snapshot.updatedAt}
-                periodLabel={periodLabel(period)}
-                profiles={projectProfiles}
-                projects={activeWindow.projects}
-                projectsUrl={projectsUrl}
-                rows={snapshot.rows}
-                totalTokens={activeWindow.totalTokens}
-                windowStartMs={periodStartMs(period, snapshot.updatedAt)}
-                onOpenUrl={openUrl}
-              />
-            ) : null}
-            {prefs.showRecentSessions ? (
-              <RecentSessionsCard
-                nowMs={snapshot.updatedAt}
-                sessions={snapshot.recentSessions}
-              />
-            ) : null}
-            <SyncStatusCard
-              lastOutcome={lastOutcome}
-              refreshing={refreshing}
-              runningCommand={runningCommand}
-              snapshot={snapshot}
-              onRefresh={() => void refreshNow()}
-              onRun={(command, args) => void runCli(command, args)}
-            />
+                {prefs.showProjects ? (
+                  <ProjectReposCard
+                    attributedTokens={activeWindow.attributedTokens}
+                    nowMs={snapshot.updatedAt}
+                    periodLabel={periodLabel(period)}
+                    profiles={projectProfiles}
+                    projects={activeWindow.projects}
+                    projectsUrl={projectsUrl}
+                    rows={snapshot.rows}
+                    totalTokens={activeWindow.totalTokens}
+                    windowStartMs={periodStartMs(period, snapshot.updatedAt)}
+                    onOpenUrl={openUrl}
+                  />
+                ) : null}
+                <SyncStatusCard
+                  lastOutcome={lastOutcome}
+                  refreshing={refreshing}
+                  runningCommand={runningCommand}
+                  snapshot={snapshot}
+                  onRefresh={() => void refreshNow()}
+                  onRun={(command, args) => void runCli(command, args)}
+                />
+              </>
+            ) : (
+              <MonitorEmptyState cliAvailable={cli.available} />
+            )}
           </>
-        ) : (
-          <MonitorEmptyState cliAvailable={cli.available} />
         )}
         <DeviceRow hostname={hostname} machineId={machineId} />
       </main>
       {settingsDialog}
+      <ShareCardDialog
+        input={shareInput}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
     </>
   );
 }

@@ -1,12 +1,16 @@
 {
   "identifier": "default",
-  "description": "Default capability for the monitor window: core defaults plus the notification (D4 daily summary / alerts), autostart (D4 launch-at-login switch), updater and process (D5 check-for-updates → download → relaunch) command sets. Tray and window management stay in Rust.",
+  "description": "Default capability for the monitor window: core defaults plus the notification (D4 daily summary / alerts), autostart (D4 launch-at-login switch), updater and process (D5 check-for-updates → download → relaunch) command sets, and the window setters the D11 geometry restore needs (size / position / show / maximize on the main window only — it owns the localStorage-driven restore-then-show). Tray and every other window management stay in Rust.",
   "windows": ["main"],
   "permissions": [
     "core:default",
     "notification:default",
     "autostart:default",
     "process:default",
-    "updater:default"
+    "updater:default",
+    "core:window:allow-set-size",
+    "core:window:allow-set-position",
+    "core:window:allow-show",
+    "core:window:allow-maximize"
   ]
 }

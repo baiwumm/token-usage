@@ -58,6 +58,27 @@ export function formatNumber(value: number): string {
   return numberFormatter.format(value);
 }
 
+const creditsFormatter = new Intl.NumberFormat("zh-CN", {
+  maximumFractionDigits: 2,
+});
+
+/** Vendor credits (e.g. Qoder) — display-only, ≤2 decimals, grouped. */
+export function formatCredits(value: number): string {
+  return creditsFormatter.format(value);
+}
+
+const dateTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+/** "2026/11/12 09:20" — the sessions list / detail stamps (web formatDateTime). */
+export function formatDateTime(iso: string): string {
+  const ms = Date.parse(iso);
+
+  return Number.isFinite(ms) ? dateTimeFormatter.format(ms) : "—";
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB"];

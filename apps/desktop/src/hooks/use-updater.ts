@@ -28,6 +28,19 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * A missing manifest is not a failure: the endpoint 404s until a desktop
+ * release publishes `latest.json` (2026-11-12 acceptance: the CLI and desktop
+ * releases share one repo, so the manifest is served from a dedicated
+ * `desktop-latest` release — before the first one exists every check 404s).
+ * The plugin reports it as "Could not fetch a valid release JSON".
+ */
+function isManifestMissing(error: unknown): boolean {
+  return /valid release JSON|404|not found|empty response/i.test(
+    errorText(error),
+  );
+}
+
 export function useUpdater(): UpdaterState & {
   /** `install: false` only reports; `install: true` downloads and relaunches. */
   checkForUpdates: (install: boolean) => Promise<void>;
@@ -91,7 +104,15 @@ export function useUpdater(): UpdaterState & {
         }
       } catch (error) {
         if (install) {
-          toast.danger(`检查更新失败：${errorText(error)}`);
+          if (isManifestMissing(error)) {
+            toast(
+              `尚未发布更新清单，暂无更新可安装（当前 v${
+                currentVersion ?? "—"
+              }）`,
+            );
+          } else {
+            toast.danger(`检查更新失败：${errorText(error)}`);
+          }
         }
       } finally {
         busy.current = false;

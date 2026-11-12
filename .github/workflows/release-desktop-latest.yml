@@ -1,0 +1,56 @@
+name: Refresh Desktop Updater Manifest
+
+# updater 端点是 `releases/download/desktop-latest/latest.json`——一个滚动的
+# Release，永远只放最新的桌面端清单。原因：本仓库同时发 CLI 与桌面端，CLI 发版会
+# 占据 `/releases/latest`，而该 Release 没有 latest.json，已装桌面端点「检查更新」
+# 会报 `Could not fetch a valid release JSON`（2026-11-12 实测，cli-v0.5.5）。
+#
+# 触发时机是「Release 已发布」：draft 阶段清单不上线，操作者 publish 仍是人工放行
+# 闸门（desktop-plan §11）。滚动 Release 用 `--latest=false` 创建，不抢 GitHub 的
+# latest 标记，CLI 的 `/releases/latest` 行为不变。
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-latest-manifest
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Mirror latest.json to desktop-latest
+    if: startsWith(github.event.release.tag_name, 'desktop-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download the published manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern latest.json \
+            --dir "$RUNNER_TEMP/updater"
+          test -s "$RUNNER_TEMP/updater/latest.json" \
+            || { echo "::error::发布里没有 latest.json，updater 端点会继续 404"; exit 1; }
+
+      - name: Publish the rolling manifest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh release view desktop-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create desktop-latest \
+              --repo "$GITHUB_REPOSITORY" \
+              --latest=false \
+              --title "Desktop updater manifest" \
+              --notes "滚动更新清单（由 CI 在每次 desktop-v* 发布后覆盖，勿手改）。已安装客户端的 updater 端点读取此处的 latest.json。"
+          fi
+          gh release upload desktop-latest "$RUNNER_TEMP/updater/latest.json" \
+            --repo "$GITHUB_REPOSITORY" --clobber
+          echo "::notice::desktop-latest/latest.json 已更新（来源 $GITHUB_REF_NAME）"

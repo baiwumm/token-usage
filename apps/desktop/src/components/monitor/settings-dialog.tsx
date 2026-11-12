@@ -5,7 +5,7 @@
 
 import type { UpdaterState } from "@/hooks/use-updater";
 
-import { Display, Folder, ListUl, Medal } from "@gravity-ui/icons";
+import { Display, Folder, Globe, ListUl, Medal } from "@gravity-ui/icons";
 import {
   Button,
   Description,
@@ -21,7 +21,7 @@ import {
 } from "@heroui/react";
 
 import { PendingButton } from "@/components/pending-button";
-import { webUrl, type WebPage } from "@/lib/links";
+import { LANDING_URL, webUrl, type WebPage } from "@/lib/links";
 import {
   BACKLOG_BYTES_OPTIONS,
   FAILURE_THRESHOLD_OPTIONS,
@@ -355,51 +355,52 @@ export function SettingsDialog({
                 label="活跃热力图"
                 onChange={(value) => onChange({ showHeatmap: value })}
               />
-              <ToggleRow
-                isSelected={prefs.showRecentSessions}
-                label="最近会话"
-                onChange={(value) => onChange({ showRecentSessions: value })}
-              />
               <Description className="text-xs">
                 默认展开趋势与用量构成卡；开关即时生效
               </Description>
             </section>
 
-            {webLinks.length > 0 ? (
-              <>
-                <Separator />
+            <Separator />
 
-                <section className="flex flex-col gap-3">
-                  <Typography type="body-sm" weight="semibold">
-                    网页
-                  </Typography>
-                  <div className="grid grid-cols-2 gap-2">
-                    {webLinks.map((link) => {
-                      const Icon = link.icon;
+            <section className="flex flex-col gap-3">
+              <Typography type="body-sm" weight="semibold">
+                网页
+              </Typography>
+              <div className="grid grid-cols-2 gap-2">
+                {/* The landing page is this project's own site — reachable
+                    without a pairing (D11 acceptance round 1). */}
+                <Button
+                  fullWidth
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => onOpenUrl(LANDING_URL)}
+                >
+                  <Globe aria-hidden="true" className="size-4 shrink-0" />
+                  落地页
+                </Button>
+                {webLinks.map((link) => {
+                  const Icon = link.icon;
 
-                      return (
-                        <Button
-                          key={link.page}
-                          fullWidth
-                          size="sm"
-                          variant="secondary"
-                          onPress={() => onOpenUrl(link.url)}
-                        >
-                          <Icon
-                            aria-hidden="true"
-                            className="size-4 shrink-0"
-                          />
-                          {link.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                  <Description className="text-xs">
-                    在浏览器打开已配对实例的页面
-                  </Description>
-                </section>
-              </>
-            ) : null}
+                  return (
+                    <Button
+                      key={link.page}
+                      fullWidth
+                      size="sm"
+                      variant="secondary"
+                      onPress={() => onOpenUrl(link.url)}
+                    >
+                      <Icon aria-hidden="true" className="size-4 shrink-0" />
+                      {link.label}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Description className="text-xs">
+                {webLinks.length > 0
+                  ? "在浏览器打开项目官网与已配对实例的页面"
+                  : "在浏览器打开项目官网"}
+              </Description>
+            </section>
 
             <Separator />
 

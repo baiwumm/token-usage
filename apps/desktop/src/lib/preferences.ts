@@ -31,13 +31,13 @@ export interface Preferences {
   quietEndHour: number;
   /** Mirrors the OS autostart registration (plugin is the source of truth). */
   autostart: boolean;
-  /** Card visibility (D7); the first three are on by default. */
+  /** Card visibility (D7); the first three are on by default. The recent-
+   *  sessions card retired with D11 (the sessions view replaces it). */
   showTrend: boolean;
   showSources: boolean;
   showModels: boolean;
   showProjects: boolean;
   showHeatmap: boolean;
-  showRecentSessions: boolean;
 }
 
 export const STORAGE_KEY = "tokenusage.desktop.preferences";
@@ -65,7 +65,6 @@ export const DEFAULT_PREFERENCES: Preferences = {
   showModels: true,
   showProjects: true,
   showHeatmap: false,
-  showRecentSessions: false,
 };
 
 const THEMES: readonly ThemeMode[] = ["system", "light", "dark"];
@@ -149,10 +148,6 @@ export function normalizePreferences(raw: unknown): Preferences {
       DEFAULT_PREFERENCES.showProjects,
     ),
     showHeatmap: asBoolean(source.showHeatmap, DEFAULT_PREFERENCES.showHeatmap),
-    showRecentSessions: asBoolean(
-      source.showRecentSessions,
-      DEFAULT_PREFERENCES.showRecentSessions,
-    ),
   };
 }
 

@@ -26,7 +26,6 @@ import {
   type ProjectRepoUsage,
   type RepoUrls,
 } from "@/lib/project-repos";
-import { parseRecentSessions, type RecentSession } from "@/lib/recent-sessions";
 import {
   summarizeSyncLog,
   syncFailureStreak,
@@ -44,8 +43,6 @@ export interface TrackerFileTexts {
   syncLog: string | null;
   /** project.repos.state.json — confirmed `project_key → URL` map. */
   projectRepos: string | null;
-  /** session.queue.jsonl tail (read_tracker_tail) — recent session metadata. */
-  sessionQueue?: string | null;
 }
 
 export interface CliStatus {
@@ -126,8 +123,6 @@ export interface MonitorSnapshot {
   repoUrls: RepoUrls;
   /** Full-year activity heatmap (web 活跃热力图 payload shape). */
   heatmap: HeatmapPayload;
-  /** Newest sidecar sessions, metadata only (no title / prompt / path). */
-  recentSessions: RecentSession[];
   /** When this snapshot was composed (ms) — the "更新于" stamp. */
   updatedAt: number;
   cli: CliStatus;
@@ -187,7 +182,6 @@ export function buildMonitorSnapshot(
   const { lastRun, lastError } = summarizeSyncLog(files.syncLog ?? "");
   const failure = syncFailureStreak(files.syncLog ?? "");
   const heatmap = buildHeatmap(rows, nowMs);
-  const recentSessions = parseRecentSessions(files.sessionQueue ?? null);
 
   return {
     today,
@@ -211,7 +205,6 @@ export function buildMonitorSnapshot(
     dashboardUrl,
     repoUrls,
     heatmap,
-    recentSessions,
     updatedAt: nowMs,
     cli,
   };

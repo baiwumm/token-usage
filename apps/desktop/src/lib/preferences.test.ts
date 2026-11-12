@@ -93,21 +93,20 @@ describe("card visibility", () => {
     expect(DEFAULT_PREFERENCES.showModels).toBe(true);
     expect(DEFAULT_PREFERENCES.showProjects).toBe(true);
     expect(DEFAULT_PREFERENCES.showHeatmap).toBe(false);
-    expect(DEFAULT_PREFERENCES.showRecentSessions).toBe(false);
   });
 
-  it("keeps booleans, falls back for junk", () => {
+  it("keeps booleans, falls back for junk, and drops retired keys", () => {
     const prefs = normalizePreferences({
       showSources: false,
       showHeatmap: true,
+      // The recent-sessions card retired with D11; the stored key is gone
+      // from the shape and must normalize away, not wedge the panel.
       showRecentSessions: "yes",
     });
 
     expect(prefs.showSources).toBe(false);
     expect(prefs.showHeatmap).toBe(true);
-    expect(prefs.showRecentSessions).toBe(
-      DEFAULT_PREFERENCES.showRecentSessions,
-    );
+    expect("showRecentSessions" in prefs).toBe(false);
   });
 });
 

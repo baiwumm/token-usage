@@ -979,7 +979,12 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   **费用一律美元窄符号两位小数**（`formatCost` → `$11.98`，不写 `US$11.98`，与 web
   `formatCost` 的 `currencyDisplay: "narrowSymbol"` 一致；不足 1 分显示 `<$0.01`，与
   web 同规则）；缓存率 = `(cached + cache_creation) / total`；
-  `grid-cols-2 sm:grid-cols-4`，400 宽下标签单行、数值顶边对齐）→ 活跃热力图卡
+  `grid-cols-2 sm:grid-cols-4`，400 宽下标签单行、数值顶边对齐）；**总计周期**下「总
+  Tokens」标签旁挂一个 `CircleInfo` 图标（`size-3.5`、`cursor-help`、`tabIndex=0` 可键盘
+  聚焦），用 HeroUI `Tooltip` 包裹（`showArrow`、placement top），悬停/聚焦显示口径说明
+  （「本机采集器队列全历史」vs web「账号全部设备 + 更早的服务器侧记录」）——2026-11-12
+  操作者问「39.92 亿 vs 156 亿」后先加了一行卡下说明，同日第二轮否决该行（顶破卡片布局）
+  改为标签旁 Tooltip；其余周期无图标、全部周期仍无说明行）→ 活跃热力图卡
   （`HeatmapSection`，紧随统计卡之下，web 仪表盘活跃热力图**同款移植**（2026-11-11，
   取代旧「使用节奏」固定 12 px 横向滚动实现——该实现的 2026-11-10「不拉伸」验收修正
   随之作废）：**364 天（52×7）窗口锚定今天，未来日不渲染**（2026-11-11 D9 与 web 语义
@@ -1036,10 +1041,9 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   D10.1）：`tokenusage project-profiles`（CLI 持令牌代读，桌面不碰设备令牌文件）→
   `lib/project-profiles.ts` 解析 → hook 挂载 + 5 分钟节流拉取，未配对 / 旧 CLI
   静默降级为队列 key + 字母方块；Top 5 + 归因覆盖脚注 + 「在 web 查看」沿用）→
-  最近会话卡
-  （`RecentSessionsCard`：`read_tracker_tail` 只读 `session.queue.jsonl` 末尾 ≤512 KiB，
-  最近 5 条；首行 = `ModelIcon` + 模型名（截断 + title），右侧一行放「tokens · 相对时间」；
-  次行 = 项目 basename；**不显示标题、正文、绝对路径**）→ 采集与同步卡
+  采集与同步卡
+  （2026-11-11 D9 吸收原「采集操作卡」（`cli-actions-card.tsx` 已删除）：Header 左 = 标题
+  「采集与同步」+「更新于 HH:mm:ss」，右 = 版本 Chip 组（`tokenusage-cli vX.Y.Z`——版本串
   （2026-11-11 D9 吸收原「采集操作卡」（`cli-actions-card.tsx` 已删除）：Header 左 = 标题
   「采集与同步」+「更新于 HH:mm:ss」，右 = 版本 Chip 组（`tokenusage-cli vX.Y.Z`——版本串
   先经 `lib/version.ts` 的 `bareVersion` 去 `v` 再拼，避免 `vv0.5.4`；未检测到则 danger
@@ -1054,7 +1058,72 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   前者在采集与同步卡 Chip，后者在设置「网页」组，2026-11-10 验收修正）。卡片一律走
   `Card` 复合结构（Header / Title /
   Description + Content / Footer），2026-11-09 起 D2 手写的带边框 div 卡片收编为
-  `Card`。
+  `Card`。页头右组 2026-11-12（D11）起新增两钮：**分享卡片**（`NodesRight`，`hidden
+  sm:inline-flex` 与 CLI 四钮同规则，窗口无用量时禁用）与**会话视图切换**（`ListUl` ⇄
+  `ChartColumn`，tooltip「会话」/「用量监控」，恒显、置于分享钮之后 GitHub 之前）；
+  会话视图下页头左侧周期筛选隐藏（其驱动构成卡，与会话无关），CLI 四钮照常可用。
+- **会话视图**（2026-11-12 D11，web `/sessions` 单机口径移植，范围与口径见 desktop-plan
+  §12.13）：头部图标切换的独立视图（监控盘 ⇄ 会话互斥），`components/sessions/`——
+  `sessions-body.tsx`（编排）+ `sessions-bar.tsx`（筛选条）+ `sessions-summary-cards.tsx`
+  （四汇总卡）+ `sessions-table.tsx`（列表）+ `sessions-detail-dialog.tsx`（详情）+
+  `model-chips.tsx`（`-chips` 登记后缀），数据面 `lib/sessions.ts` + `hooks/use-sessions.ts`。
+  筛选条 = 周期预设连接式 `ToggleButtonGroup`（今天 / 7D / 30D / 90D，**默认今天**
+  ——2026-11-12 D11 验收修正：与顶部周期默认今日同口径；web 预设语义——相对今天、日粒度
+  半开窗口）+ 来源 `Select`（本地 facets，`SourceIcon` + 显示名）+
+  「清除筛选」（有收窄条件才出现，回默认今天）+ CSV / 刷新图标簇（tooltip「上次更新 …」）；
+  **设备筛选与设备列不做**（本机单设备，2026-11-12 操作者拍板）。四汇总卡 = 会话数 / 总
+  Tokens / 成本 / 平均时长（`每会话`），首载保留真标签、只数字骨架。列表固定 `ended_at`
+  倒序、无列排序；**≥md 表格**（结束时间 / 来源 `Chip` / 项目 / 时长 / Token / 积分列
+  ——窗口内 credits>0 才出现——/ 成本 / 模型（前 3 `Chip` + `+N`）/ 详情钮），整行可点开
+  详情；**<md 堆叠 Card 行**（web 移动端同款；400px 默认窗即此形态）；刷新时行区盖 web
+  `DataTableCard` 同款遮罩（`bg-surface/60` + `backdrop-blur-[2px]` + 居中
+  `Spinner`，有行才盖，2026-11-12 验收修正）。分页 = 共享 `table-pagination.tsx`
+  （web `TablePagination` 单语移植，桌面统一表尾）：左范围摘要 / 中页码 `Pagination`
+  （省略号窗口）/ 右固定 `w-36` 每页条数 `Select`（触发器不换行——手写分页的换行问题即
+  2026-11-12 验收修正的起因）；默认 20/页（10/20/50/100，切页大小锚定当前页）。详情弹窗 =
+  来源 / 项目双 `Chip` + meta 两列（结束时间含相对时间 + 时长）+ Token 拆分（输入 / 缓存
+  读取 / 缓存写入 / 输出 / 推理 / 总计 / 计费 + 积分卡）+ 模型拆分 `BreakdownTable` +
+  隐私 / 成本双脚注；`session_id` 不显示。**口径**：数据整读 `session.queue.jsonl`
+  （8 MiB 上限，超限降级 512 KiB 尾部并出「仅显示最新部分」提示条），解析规则同 CLI 上传
+  映射（账户级来源剔除 / token 恒等门 / reasoning fold / last-wins 去重）；
+  `duration_ms` = `ended_at − started_at` 墙钟（wire 口径）；**成本 = sessions 峰值价读时
+  计价**（与监控盘小时级峰谷计价的差异属契约 §2.11 已接受口径）；CSV = wire
+  `format=csv` 同列名同形态（BOM + CRLF + RFC4180 + 公式注入防护），经
+  Rust `save_file_as` 弹**系统保存对话框**（默认目录 = 桌面，可改；取消不报错），**成功
+  toast 带落盘完整路径**（「已导出 N 条会话：<路径>」，2026-11-12 第二轮验收修正）。
+  列表 `≥md` 表格为**自动布局**（不 `table-fixed`）：列宽只是偏好值、内容决定真实最小宽度，
+  「详情」列给 `w-24` 容下「查看」按钮——首版的固定列宽把按钮挤出表右缘、看起来像被裁掉。
+  隐私：title / 绝对路径 /
+  cache key 解析层即丢，UI 零出现。空态两分（等待新版采集器 + 升级文档；筛选无结果 +
+  清除筛选）。
+- **分享卡片**（2026-11-12 D11，web `components/share-card` 引擎逐字移植）：入口 = 页头
+  `NodesRight` 图标钮（见主窗口结构条）→ `share-card-dialog.tsx` 左右两栏弹窗（**弹窗
+  `Modal.Dialog` 必须显式 `max-w-none`** 推翻 HeroUI 默认 `max-w-md` 帽，否则双栏塌成
+  28rem、预览缩成一条——web 当年修过同一个坑，桌面首版漏抄即复现，2026-11-12 验收
+  修正）：左预览 = 导出 PNG 本身（`<img>`，风格切换交叉淡入淡出、`prefers-reduced-motion`
+  直接切换），右栏 = 显示名称 `TextField`（默认本机名，仅本次弹窗生效、不持久化）+ 风格
+  `ToggleButtonGroup` 2×2 磁贴（特刊 / 小票 / 霓虹 / 唱片，`SquareArticle` / `Receipt` /
+  `Sparkles` / `MusicNote`）+ 复制图片 / 保存 PNG + 隐私说明「卡片只包含聚合数字与热力图，
+  不含明细数据」；**关闭态不得重绘 Canvas**（最后一帧留状态过退场动画，web 同规则）。
+  四画师为纯 Canvas 2D 手绘（`broadsheet.ts` 1200×1630 / `receipt.ts` 800×1240 /
+  `neon.ts` 1080×1620 / `vinyl.ts` 1080×1080），2x 导出（`toDataURL`）；字体零新增
+  （Maple Mono CN 已随桌面打包 + Windows 系统衬线栈）。**数据投影**（`lib/share-input.ts`）：
+  hero / 成本 / 来源榜 / 模型榜 / 峰值日 / 会话数取头部周期用量窗；热力图按 D9 桌面口径
+  ——本机、跟随周期裁剪、格级 = 窗口内最大日四分位、`streakDays` = 窗口内最长连续活跃日；
+  `periodLabel` 预设 = 日期区间、总计 = 年份；窗口无用量 → 投影 null、入口按钮禁用。
+  **导出**：复制走 WebView2 原生 ClipboardItem（失败 toast 引导保存）；保存走 Rust 命令
+  `save_to_downloads`（文件名字符白名单 + Downloads 目录 + 撞名自动序号，toast 播报落盘
+  路径）；CSV 导出另走对话框版 `save_file_as`（见上条）。web 的 `<a download>` 在桌面无
+  对应物，这两个命令就是 `lib/save-file.ts` 的全部出口（2026-11-12 第二轮为保存对话框引入
+  `tauri-plugin-dialog`，仅 Rust 侧驱动，webview 不开 dialog 权限）。窗口尺寸记忆见下条。
+- **窗口尺寸记忆**（2026-11-12 D11，§12.1 既定 localStorage 方案落地）：
+  `hooks/use-window-geometry.ts` 挂 `app.tsx` 顶层——move / resize / 关闭 / 隐藏四路防抖
+  300 ms 写 `tokenusage.desktop.window`（width / height 为 CSS 逻辑 px、x / y 为物理 px、
+  maximized 布尔）；窗口配置 `visible: false`，挂载时读档 → 位置校验落在任一可用显示器内
+  （否则保居中）→ `setSize(LogicalSize)` + `setPosition`（或 `maximize()`）→ `show()`，
+  无启动跳窗；Rust 侧 3 s 看门狗兜底（届时仍不可见则默认几何 show），webview 异常不再丟
+  窗口。capabilities 为此开四条窗口 setter 权限（set-size / set-position / show / maximize，
+  仅 main 窗）。不做设置面板开关，纯自动行为。
 - **采集操作卡交互**（2026-11-09 操作者要求；2026-11-11 起按钮行与输出块并入采集与同步卡、
   页头图标按钮同规则，下述约定不变）：① 四个按钮一律 `PendingButton`——被点的那个
   按钮内渲染 current-color `Spinner`（`size="sm"`，`aria-hidden`），其余按钮 `isDisabled`；
@@ -1108,13 +1177,16 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   Container / Dialog / Header / Heading / Body`），宽 `calc(100vw-1.5rem)`、最高 85vh、内部
   滚动；副标题「仅保存在本机，不随账号同步」。分组：通知（每日汇总 + 汇总时间 / 同步连败 +
   连续次数 / 队列积压 + 阀值，均开关 + 按开关联动显示的下拉）→ 免打扰（开关 + 起止整点）→
-  启动（开机自启）→ 卡片显示（五个 `Switch`：来源构成 / 主要模型 / 项目与仓库 / 使用节奏 /
-  最近会话，默认前三开、后两关，开关即时生效并持久化；三张构成卡全关时连同上方「用量构成」
-  条与周期切换一起隐藏）→ 网页（已配对时四枚 `fullWidth` secondary 按钮 2×2 排布：仪表盘 `/` /
-  项目 `/projects` / 会话 `/sessions` / 成就 `/achievements`，由 `lib/links.ts` 拼
-  `dashboardUrl` 后经 `open_in_browser` 打开；未配对整组隐藏；按钮撑满网格单元，避免
-  400 宽下四枚小按钮浮在大片空白里，2026-11-10 验收修正；按钮前置图标取 web 侧栏同组
-  `Display` / `Folder` / `ListUl` / `Medal`，`size-4`，2026-11-10 验收追加）→ 更新（当前版本行 +
+  启动（开机自启）→ 卡片显示（**四个** `Switch`：来源构成 / 主要模型 / 项目与仓库 / 使用节奏
+  （= 活跃热力图 + 用量趋势），默认前三开、末位关，开关即时生效并持久化；三张构成卡全关时
+  连同上方「用量构成」条与周期切换一起隐藏；2026-11-12 D11 验收起「最近会话」开关随卡一并
+  移除——会话视图已覆盖其职责）→ 网页（**恒显**的 `fullWidth` secondary 按钮 2 列网格：
+  首枚「落地页」（`Globe`，`token-usage.cc`，2026-11-12 D11 验收追加，不依赖配对）；
+  已配对时追加四枚：仪表盘 `/` / 项目 `/projects` / 会话 `/sessions` / 成就
+  `/achievements`，由 `lib/links.ts` 拼 `dashboardUrl` 后经 `open_in_browser` 打开
+  （`LANDING_URL` 同通道）；按钮撑满网格单元，避免 400 宽下小按钮浮在大片空白里
+  （2026-11-10 验收修正）；实例按钮前置图标取 web 侧栏同组 `Display` / `Folder` /
+  `ListUl` / `Medal`，`size-4`，2026-11-10 验收追加）→ 更新（当前版本行 +
   「检查更新」`PendingButton`，D5：启动期静默检查只
   播报中性 toast，安装永远走手动确认——点击即同意 下载→安装→自动重启，检测/下载期
   Spinner，失败 danger toast）。开关一律 HeroUI `Switch` 复合结构（`Switch.Content / Control / Thumb` +

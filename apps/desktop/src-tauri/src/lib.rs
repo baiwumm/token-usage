@@ -29,6 +29,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
+use tauri_plugin_dialog::DialogExt;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -382,6 +383,101 @@ async fn run_cli(args: Vec<String>) -> Result<CliRunResult, String> {
 #[tauri::command]
 fn open_in_browser(url: String) -> Result<(), String> {
     open_url(&url)
+}
+
+/// Filename guard shared by the export commands: a strict whitelist (our call
+/// sites emit `token-usage-<digits>.png` / `token-usage-sessions-<dates>.csv`),
+/// so no path component can escape the target folder.
+fn validate_export_filename(filename: &str) -> Result<(&str, &str), String> {
+    if filename.len() > 120 {
+        return Err("filename too long".into());
+    }
+    if !filename
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+    {
+        return Err("filename not allowed".into());
+    }
+    match filename.rsplit_once('.') {
+        Some((stem, ext)) if !stem.is_empty() && !ext.is_empty() => Ok((stem, ext)),
+        _ => Err("filename must have an extension".into()),
+    }
+}
+
+/// Save user-initiated exports (share-card PNG) to the OS Downloads folder —
+/// the desktop counterpart of the web's `<a download>` (desktop-plan §12.13).
+/// A name collision suffixes `-2`, `-3`, … instead of overwriting.
+#[tauri::command]
+fn save_to_downloads(
+    app: AppHandle,
+    filename: String,
+    contents: Vec<u8>,
+) -> Result<String, String> {
+    let (stem, ext) = validate_export_filename(&filename)?;
+    let dir = app
+        .path()
+        .download_dir()
+        .map_err(|e| format!("download dir unavailable: {e}"))?;
+    let mut candidate = dir.join(&filename);
+    let mut counter = 2;
+
+    while candidate.exists() {
+        candidate = dir.join(format!("{stem}-{counter}.{ext}"));
+        counter += 1;
+    }
+    std::fs::write(&candidate, contents)
+        .map_err(|e| format!("write failed: {e}"))?;
+
+    Ok(candidate.to_string_lossy().into_owned())
+}
+
+/// Save an export through the native save dialog, defaulting to the Desktop
+/// folder (operator request 2026-11-12: the CSV export must let the user pick
+/// the landing spot instead of always writing to Downloads). Returns the
+/// chosen path, or `None` when the dialog was cancelled. The dialog is driven
+/// here rather than from the webview, so no arbitrary-path write command is
+/// ever exposed to JS.
+#[tauri::command]
+async fn save_file_as(
+    app: AppHandle,
+    filename: String,
+    contents: Vec<u8>,
+) -> Result<Option<String>, String> {
+    let (_, ext) = validate_export_filename(&filename)?;
+    let default_dir = app
+        .path()
+        .desktop_dir()
+        .or_else(|_| app.path().document_dir())
+        .map_err(|e| format!("default save dir unavailable: {e}"))?;
+    let ext = ext.to_ascii_lowercase();
+    let mut builder = app
+        .dialog()
+        .file()
+        .set_title("保存导出文件")
+        .set_file_name(&filename)
+        .set_directory(default_dir);
+
+    builder = builder.add_filter(ext.to_ascii_uppercase(), &[ext.as_str()]);
+
+    // Non-blocking callback API (safe off the main thread); a blocking thread
+    // parks on the channel until the user confirms or cancels.
+    let (tx, rx) = std::sync::mpsc::channel();
+    builder.save_file(move |path| {
+        let _ = tx.send(path);
+    });
+    let picked = tauri::async_runtime::spawn_blocking(move || rx.recv().ok().flatten())
+        .await
+        .map_err(|e| e.to_string())?;
+    let Some(file_path) = picked else {
+        return Ok(None);
+    };
+    let path = file_path
+        .into_path()
+        .map_err(|e| format!("unsupported save target: {e}"))?;
+
+    std::fs::write(&path, contents).map_err(|e| format!("write failed: {e}"))?;
+
+    Ok(Some(path.to_string_lossy().into_owned()))
 }
 
 // --- D3 device login: managed `device-login --json` child process ---
@@ -847,6 +943,8 @@ pub fn run() {
             show_main_window(app);
         }))
         .plugin(tauri_plugin_notification::init())
+        // Native save dialog for the sessions CSV export (default Desktop).
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
@@ -864,6 +962,8 @@ pub fn run() {
             cli_info,
             run_cli,
             open_in_browser,
+            save_to_downloads,
+            save_file_as,
             update_tray,
             tray_status,
             device_login_start,
@@ -872,6 +972,21 @@ pub fn run() {
         ])
         .setup(|app| {
             create_tray(app)?;
+            // D11 geometry restore watchdog: the window config starts hidden
+            // so the webview can apply the saved geometry before show() (no
+            // startup jump). If the webview never gets there, this shows the
+            // default-centered window instead of stranding the app.
+            if let Some(window) = app.get_webview_window("main") {
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_secs(3));
+                    match window.is_visible() {
+                        Ok(false) => {
+                            let _ = window.show();
+                        }
+                        _ => {}
+                    }
+                });
+            }
             Ok(())
         })
         .on_window_event(|window, event| {

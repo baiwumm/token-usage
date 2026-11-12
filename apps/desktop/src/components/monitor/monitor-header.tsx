@@ -3,11 +3,14 @@ import type { ReactNode } from "react";
 
 import {
   ArrowRotateRight,
+  ChartColumn,
   CirclePause,
   CirclePlay,
   Gear,
   ListCheck,
+  ListUl,
   LogoGithub,
+  NodesRight,
   Stethoscope,
 } from "@gravity-ui/icons";
 import { Button, Spinner, Tooltip, Typography } from "@heroui/react";
@@ -15,37 +18,50 @@ import { Button, Spinner, Tooltip, Typography } from "@heroui/react";
 import { PeriodFilter } from "@/components/monitor/period-filter";
 import { ThemeToggle } from "@/components/theme-toggle";
 
+/** The two top-level views the header toggles between (desktop-plan §12.13). */
+export type MonitorView = "monitor" | "sessions";
+
 /**
  * Window header: the period filter (今日 / 7D / 30D / 总计) leads, the brand
  * lockup moved out (operator request 2026-11-11 — the window title already
  * says Token Usage), and the right group is tertiary icon buttons: the four
- * CLI actions (<640px they hide; the sync card keeps the buttons as the
- * narrow fallback), then repo / theme / settings. The period filter and CLI
- * actions are optional — the first-run wizard renders this header without
- * them (nothing to filter, CLI mid-setup).
+ * CLI actions and the share button (<640px they hide; the sync card keeps
+ * the CLI buttons as the narrow fallback), then the sessions view toggle
+ * (D11), repo / theme / settings. The period filter and CLI actions are
+ * optional — the first-run wizard renders this header without them (nothing
+ * to filter, CLI mid-setup).
  */
 export function MonitorHeader({
   paused,
   period,
   theme,
+  view = "monitor",
   cliAvailable = false,
   runningCommand = null,
+  shareAvailable = false,
   onPeriodChange,
   onChangeTheme,
   onOpenRepo,
   onOpenSettings,
   onRun,
+  onOpenShare,
+  onToggleView,
 }: {
   paused: boolean;
   period?: UsagePeriod;
   theme: ThemeMode;
+  view?: MonitorView;
   cliAvailable?: boolean;
   runningCommand?: string | null;
+  /** No data in the active window → the share card has nothing to draw. */
+  shareAvailable?: boolean;
   onPeriodChange?: (period: UsagePeriod) => void;
   onChangeTheme: (mode: ThemeMode) => void;
   onOpenRepo: () => void;
   onOpenSettings: () => void;
   onRun?: (command: string, args?: string[]) => void;
+  onOpenShare?: () => void;
+  onToggleView?: (view: MonitorView) => void;
 }) {
   const busy = runningCommand !== null;
   const showControls = period !== undefined && onPeriodChange && onRun;
@@ -92,7 +108,7 @@ export function MonitorHeader({
 
   return (
     <div className="flex items-center justify-between gap-3">
-      {showControls ? (
+      {showControls && view === "monitor" ? (
         <PeriodFilter period={period} onChange={onPeriodChange} />
       ) : null}
       <div className="flex shrink-0 items-center gap-1">
@@ -126,6 +142,51 @@ export function MonitorHeader({
               </Tooltip>
             ))
           : null}
+        {onOpenShare ? (
+          <Tooltip delay={0}>
+            <Button
+              isIconOnly
+              aria-label="分享卡片"
+              className="hidden size-8 min-w-8 shrink-0 text-muted hover:text-foreground sm:inline-flex"
+              isDisabled={!shareAvailable}
+              size="sm"
+              variant="tertiary"
+              onPress={onOpenShare}
+            >
+              <NodesRight aria-hidden="true" className="size-4" />
+            </Button>
+            <Tooltip.Content showArrow placement="bottom">
+              <Tooltip.Arrow />
+              <Typography type="body-xs">分享卡片</Typography>
+            </Tooltip.Content>
+          </Tooltip>
+        ) : null}
+        {onToggleView ? (
+          <Tooltip delay={0}>
+            <Button
+              isIconOnly
+              aria-label={view === "monitor" ? "会话" : "用量监控"}
+              className="size-8 min-w-8 shrink-0 text-muted hover:text-foreground"
+              size="sm"
+              variant="tertiary"
+              onPress={() =>
+                onToggleView(view === "monitor" ? "sessions" : "monitor")
+              }
+            >
+              {view === "monitor" ? (
+                <ListUl aria-hidden="true" className="size-4" />
+              ) : (
+                <ChartColumn aria-hidden="true" className="size-4" />
+              )}
+            </Button>
+            <Tooltip.Content showArrow placement="bottom">
+              <Tooltip.Arrow />
+              <Typography type="body-xs">
+                {view === "monitor" ? "会话" : "用量监控"}
+              </Typography>
+            </Tooltip.Content>
+          </Tooltip>
+        ) : null}
         <Tooltip delay={0}>
           <Button
             isIconOnly
