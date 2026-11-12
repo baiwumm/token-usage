@@ -20,6 +20,7 @@ import {
   sessionProjectFacets,
   sessionRangeWindow,
   sessionSourceFacets,
+  withSelectedFacet,
   type SessionFacet,
   type SessionRange,
   type SessionRow,
@@ -133,24 +134,33 @@ export function useSessions(): SessionsState {
   const { fromMs, toMs } = window;
   const sourceFacets = useMemo(
     () =>
-      sessionSourceFacets(
-        filterSessions(rows, fromMs, toMs, { project, model }),
+      withSelectedFacet(
+        sessionSourceFacets(
+          filterSessions(rows, fromMs, toMs, { project, model }),
+        ),
+        source,
       ),
-    [rows, fromMs, toMs, project, model],
+    [rows, fromMs, toMs, project, model, source],
   );
   const projectFacets = useMemo(
     () =>
-      sessionProjectFacets(
-        filterSessions(rows, fromMs, toMs, { source, model }),
+      withSelectedFacet(
+        sessionProjectFacets(
+          filterSessions(rows, fromMs, toMs, { source, model }),
+        ),
+        project,
       ),
-    [rows, fromMs, toMs, source, model],
+    [rows, fromMs, toMs, source, model, project],
   );
   const modelFacets = useMemo(
     () =>
-      sessionModelFacets(
-        filterSessions(rows, fromMs, toMs, { source, project }),
+      withSelectedFacet(
+        sessionModelFacets(
+          filterSessions(rows, fromMs, toMs, { source, project }),
+        ),
+        model,
       ),
-    [rows, fromMs, toMs, source, project],
+    [rows, fromMs, toMs, source, project, model],
   );
   // Any filter change restarts paging unless the patch is the page itself.
   const page = useMemo(

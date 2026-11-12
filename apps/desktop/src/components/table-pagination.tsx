@@ -103,7 +103,6 @@ export function TablePagination({
         aria-label={labels.pageSize}
         className="w-36 justify-self-end"
         value={String(pageSize)}
-        variant="secondary"
         onChange={(key) => {
           if (key == null) return;
           const next = Number(key);

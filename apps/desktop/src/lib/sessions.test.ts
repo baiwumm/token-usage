@@ -11,6 +11,7 @@ import {
   sessionProjectFacets,
   sessionRangeWindow,
   sessionSourceFacets,
+  withSelectedFacet,
 } from "@/lib/sessions";
 
 const NOW = Date.parse("2026-11-12T12:00:00.000Z");
@@ -369,6 +370,23 @@ describe("session windows, filters and aggregation", () => {
     expect(sessionSourceFacets(rows)).toEqual([
       { key: "qoder", sessions: 1 },
       { key: "zcode", sessions: 1 },
+    ]);
+  });
+
+  it("keeps a selected facet visible when the new window lost it", () => {
+    const facets = [
+      { key: "app", sessions: 2 },
+      { key: "docs", sessions: 1 },
+    ];
+
+    // Unset / already present: the list passes through untouched.
+    expect(withSelectedFacet(facets, "")).toEqual(facets);
+    expect(withSelectedFacet(facets, "app")).toEqual(facets);
+    // Gone from the window (e.g. after switching today ↔ 7D): injected on top
+    // so the trigger keeps its label and the ClearButton stays meaningful.
+    expect(withSelectedFacet(facets, "gone")).toEqual([
+      { key: "gone", sessions: 0 },
+      ...facets,
     ]);
   });
 

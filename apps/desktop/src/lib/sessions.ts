@@ -446,6 +446,26 @@ export function sessionModelFacets(rows: SessionRow[]): SessionFacet[] {
   return sortFacets(counts);
 }
 
+/**
+ * Facet lists are recomputed per window, so a selected source / project / model
+ * can drop out of its own option list after a range switch. RAC then sees no
+ * selected item — the trigger falls back to the 「全部 …」 placeholder while the
+ * filter is still applied, and the ClearButton looks orphaned. Keep the current
+ * selection as a zero-count option at the top, the way web `sessions-client`
+ * re-injects a stale `deviceId` / `source` (2026-11-12 range-switch fix; the
+ * injected count only participates in ordering and is not rendered).
+ */
+export function withSelectedFacet(
+  facets: SessionFacet[],
+  selected: string,
+): SessionFacet[] {
+  if (selected === "" || facets.some((facet) => facet.key === selected)) {
+    return facets;
+  }
+
+  return [{ key: selected, sessions: 0 }, ...facets];
+}
+
 export interface SessionsPage {
   rows: SessionRow[];
   total: number;

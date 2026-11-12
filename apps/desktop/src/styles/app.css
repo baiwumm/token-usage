@@ -60,3 +60,14 @@
 	--color-chart-7: #45bdbd;
 	--color-chart-8: #a0a8b6;
 }
+
+/*
+ * Select 选中值保持单行（web globals.css 同款）：HeroUI 给 .select__value 配了
+ * wrap-break-word，长项目 / 模型名会撑破 Trigger、压到相邻控件。min-w-0 解除
+ * flex 子项的 min-content 下限，truncate 才能生效（省略号收尾）。
+ */
+@layer components {
+	.select__value {
+		@apply min-w-0 truncate;
+	}
+}

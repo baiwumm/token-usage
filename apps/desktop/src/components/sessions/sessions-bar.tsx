@@ -32,9 +32,13 @@ const RANGE_OPTIONS: Array<{ id: SessionRange; label: string }> = [
  *
  * Each select shows the 「全部 …」 placeholder while unset and grows a
  * `Select.ClearButton` once picked (operator round 2: no 清除筛选 button; long
- * project names truncate like the web's device filter). The web's device
- * filter is dropped — the local sidecar is this machine only
- * (desktop-plan §12.13 / §12.14).
+ * project names truncate like the web's device filter). Round 3 (2026-11-12):
+ * all three selects keep the default (primary) variant — the web dashboard
+ * filter look, no more `variant="secondary"` — and the project / model options
+ * drop the session count so long names cannot widen (and overflow) the popover;
+ * the popover is capped and its labels truncate. The web's device filter is
+ * dropped — the local sidecar is this machine only (desktop-plan §12.13 /
+ * §12.14).
  */
 export function SessionsBar({
   range,
@@ -190,7 +194,6 @@ function SourceSelect({
       aria-label="来源"
       className="w-36 shrink-0"
       value={source || null}
-      variant="secondary"
       onChange={(key) => onChange(key == null ? "" : String(key))}
     >
       <Select.Trigger>
@@ -226,7 +229,7 @@ function SourceSelect({
   );
 }
 
-/** Plain facet select for 项目 / 模型 (truncating trigger + session counts). */
+/** Plain facet select for 项目 / 模型 (truncating trigger + truncating options). */
 function FacetSelect({
   allLabel,
   ariaKey,
@@ -248,7 +251,6 @@ function FacetSelect({
       aria-label={ariaKey}
       className={className}
       value={value || null}
-      variant="secondary"
       onChange={(key) => onChange(key == null ? "" : String(key))}
     >
       <Select.Trigger>
@@ -260,17 +262,12 @@ function FacetSelect({
         <Select.ClearButton aria-label={`清除${ariaKey}筛选`} />
         <Select.Indicator />
       </Select.Trigger>
-      <Select.Popover>
+      <Select.Popover className="max-w-72">
         <Popover.Arrow />
         <ListBox>
           {facets.map((facet) => (
             <ListBox.Item key={facet.key} id={facet.key} textValue={facet.key}>
-              <span className="flex w-full items-center justify-between gap-3">
-                <span className="truncate">{facet.key}</span>
-                <span className="text-muted tabular-nums">
-                  {facet.sessions}
-                </span>
-              </span>
+              <span className="min-w-0 truncate">{facet.key}</span>
             </ListBox.Item>
           ))}
         </ListBox>

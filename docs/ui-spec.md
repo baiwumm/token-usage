@@ -1092,13 +1092,21 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   2026-11-12 第二轮把 90D 改成总计，与用量页周期同名同义；总计 = 全量侧车（`fromMs = 0`），
   其余为相对今天的日粒度半开窗口）+ **三个 facet `Select`：来源 / 项目 / 模型**（2026-11-12
   §12.14 追加后两项；每张选项表都按「时间窗 + 另外两个筛选」重算——选项目不会把自己的选项
-  收窄；来源带 `SourceIcon`，项目 / 模型为纯文本 + 会话数，模型匹配走行的 `model_usage`）。
+  收窄；来源带 `SourceIcon`，项目 / 模型为纯文本——**不带会话数**（2026-11-12 第三轮去掉：
+  下拉项右侧计数把弹层撑宽、长项目名溢出窗口），模型匹配走行的 `model_usage`）。
   **三个 Select 统一形态**（2026-11-12 第二轮）：未选时显示「全部来源 / 全部项目 / 全部模型」
   占位（不再在列表里放「全部」项），选中后触发器右侧出现 `Select.ClearButton`（`X`，空态
   隐藏，键盘 Backspace/Delete 同效）；触发器自定义 `Select.Value` 渲染，文本 `truncate` +
-  触发器 `min-w-0`（长项目名不再溢出，与 web `device-filter-select` 同手）；**筛选条不再有
-  「清除筛选」按钮**（仅表格无结果态保留一个引导按钮）。尾随 CSV / 刷新图标簇（tooltip
-  「上次更新 …」）；
+  触发器 `min-w-0`（长项目名不再溢出，与 web `device-filter-select` 同手）；全局
+  `.select__value { min-w-0 truncate }` 覆盖（`src/styles/app.css` `@layer components`，与
+  web `globals.css` 同款，2026-11-12 第三轮复验补修：HeroUI 默认 `wrap-break-word` 会把
+  长选中值撑破触发器）；**切换周期时已选 facet 不丢显示**：选中值若不在新窗口的选项表里，
+  以 `sessions: 0` 置顶补进列表（`withSelectedFacet`，web `sessions-client` 同款做法，
+  2026-11-12 第三轮联调修正），筛选仍生效、触发器名称与清除按钮保持正确）；**筛选条不再有
+  「清除筛选」按钮**（仅表格无结果态保留一个引导按钮）。三个 Select（及表尾每页条数
+  Select）一律默认（primary）variant——2026-11-12 第三轮去掉 `variant="secondary"`，对齐
+  web 仪表盘筛选条；项目 / 模型弹层 `max-w-72`、选项文本 `truncate`（长名不再撑宽弹层）。
+  尾随 CSV / 刷新图标簇（tooltip「上次更新 …」）；
   **设备筛选与设备列不做**（本机单设备，2026-11-12 操作者拍板）。四汇总卡 = 会话数 / 总
   Tokens / 成本 / 平均时长（`每会话`），首载保留真标签、只数字骨架。列表固定 `ended_at`
   倒序、无列排序；**≥md 表格**（结束时间 / 来源 `Chip` / 项目 / 时长 / Token / 积分列

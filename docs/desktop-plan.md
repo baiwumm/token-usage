@@ -514,6 +514,16 @@ requirements 边界表。
   自动重启并打开主窗口，设置里版本显示 v0.3.1；窗口几何、托盘图标与监控数据均正常。更新
   链路自此闭环。
 
+- **0.4 产品迭代验收（2026-11-12 操作者）：本地 0.4.0 安装包通过**。三项（会话项目 / 模型
+  筛选、设置目录入口、托盘周期切换，§12.14）交付后经三轮反馈修正：① 长项目名撑开触发器 +
+  去掉「清除筛选」按钮（§12.14.1）；② 下拉项溢出与 Select 样式统一（下拉去掉会话数、弹层
+  限宽截断、会话视图四个 Select 回落默认 variant；复验补修全局 `.select__value`
+  `min-w-0 truncate`，对齐 web `globals.css`，§12.14.2）；③ 切换周期时已选 facet 从选项表
+  消失导致触发器回落占位、筛选却仍生效（补 `withSelectedFacet` 置顶回注，§12.14.3）。
+  门禁：`pnpm --filter @token-usage/desktop verify` 全绿（135 例）；本地重打 0.4.0 NSIS 包
+  （无签名私钥，`tauri build` 末步 updater 签名报错属预期）。GitHub Release 发版仍按 §11
+  由操作者放行。
+
 ## 11. 发版流程（D5 起）
 
 发布流水线 `release-desktop.yml`，机制对齐 `release-cli.yml`：
@@ -685,7 +695,7 @@ ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最�
 D8 原范围（维护折叠 / 复制按钮）被 D9–D11 吸收，**窗口尺寸记忆已随 D11 落地**（操作者
 2026-11-12 拍板「一起做」）。
 **§12.14 三项（会话项目 / 模型筛选、设置目录入口、托盘周期切换）已于 2026-11-12 交付，
-待操作者安装验收**。
+经三轮操作者反馈修正（§12.14.1–.3）后本地 0.4.0 安装包验收通过**。
 
 ### 12.10 D9（2026-11-11，操作者八点需求的第 1/2/3/7 项）：头部改造 + 四统计卡 + 热力图对齐
 
@@ -1045,3 +1055,35 @@ vite build）；本地重建 NSIS 安装包（无签名密钥，`.sig` 仍由 CI
 测试：`lib/sessions.test.ts` 14 例（新增项目 / 模型筛选与两张 facet；来源 facet 返回形状
 改为 `{key, sessions}`）。门禁：`pnpm --filter @token-usage/desktop verify` 全绿；
 `cargo fmt --check` 与 `cargo clippy --release --all-targets -- -D warnings` 本地通过。
+
+#### 12.14.2 第二轮验收修正（2026-11-12，会话列表两条反馈；**验收通过**）
+
+1. **下拉项溢出**：长项目名把 `Select.Popover` 撑宽、越过窗口右缘。项目 / 模型选项去掉右侧
+   会话数（计数是首版最宽的那一段），`FacetSelect` 弹层加 `max-w-72`、选项文本
+   `min-w-0 truncate`——长名以省略号收尾，弹层宽度不再随内容增长。
+2. **触发器溢出（同一轮复验补修）**：HeroUI 的 `.select__value` 自带 `wrap-break-word`，
+   选中值不截断、直接把 Trigger 撑破压到相邻控件。web 是在 `globals.css` 全局覆盖
+   `.select__value { min-w-0 truncate }`，桌面端漏了这条——已照搬到 `src/styles/app.css`
+   的 `@layer components`（与 HeroUI 同层、后置覆盖），一处生效于全部 Select。
+3. **Select 样式统一**：会话视图的四个 `Select`（来源 / 项目 / 模型 + 表尾每页条数）去掉
+   `variant="secondary"`，回落默认（primary）variant，与 web 仪表盘筛选条同形。设置面板的
+   `Select` 保持 `variant="secondary"`（D4 验收要求，Modal 即 Surface 场景，不在本次范围）。
+
+门禁：`pnpm --filter @token-usage/desktop verify` 全绿（134 例）；本地重建
+`apps/desktop/src-tauri/target/release/bundle/nsis/Token Usage_0.4.0_x64-setup.exe`
+（无签名私钥，`tauri build` 末步 updater 签名报错属预期，NSIS 包完整），交操作者安装验收。
+
+#### 12.14.3 第三轮验收修正（2026-11-12，筛选联动；**验收通过**）
+
+**问题**：三个 facet Select 已有选中值时切换周期（今天 / 7D / 30D / 总计），新窗口的
+选项表可能不再包含该值——React Aria 找不到对应 item，触发器回落到「全部 …」占位，
+但筛选状态仍在生效（列表按旧 key 过滤），ClearButton 变成孤立按钮，看上去像「清空了
+却还是空列表」。
+
+**修法**（照 web `sessions-client` 的做法）：新增 `lib/sessions.ts` 的
+`withSelectedFacet(facets, selected)`——选中值不在新选项表里时，以 `sessions: 0` 置顶
+补进选项表（计数只参与排序、不渲染），触发器保持显示已选名称、清除按钮语义正确。
+`use-sessions.ts` 三张 facet 各包一层，选中值纳入 memo 依赖。数据层筛选行为不变（仍按
+旧 key 过滤，空结果走既有「清除筛选」空态）。
+
+测试：`lib/sessions.test.ts` 新增 1 例（共 135 例）。门禁同上全绿，并重打 0.4.0 安装包。
