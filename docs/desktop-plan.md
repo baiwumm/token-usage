@@ -461,7 +461,8 @@ requirements 边界表。
     主窗口 / 打开 Web 仪表盘 / 退出，截图实测）；D3 收尾挂账的「托盘菜单点击待 UAC
     正常环境补验」就此了结（High 进程 ↔ High 任务栏互信）。同时修正四追记 ① 的结论：
     High 进程 WebView2 创建正常，Medium 的 0x80070005 是 Low 标签构建目录的 profile
-    继承问题，不是「Medium 及以上全拒」。⚠ High 标签随升级/重装丢失，需重打（§11 已记）。
+    继承问题，不是「Medium 及以上全拒」。（「升级/重装后需重打 High 标签」的推论已于
+    2026-11-12 复核推翻：安装包未打标签时托盘正常，见 §11。）
   - 遗留观察：① **已闭合（2026-11-12）**：系统级每日汇总 toast 到点实测弹出通过
     （in-app 中文反馈 toast 此前已全过）；连败 / 积压与每日汇总共用同一通知通道与判定层
     （`lib/notifications.ts` 单测覆盖），操作者判定无需单独造状态验证。② 自启动的「重启后
@@ -500,8 +501,9 @@ requirements 边界表。
   （端点实测返回 0.3.0）→ 操作者从 Release 下载安装，**打开与功能均正常，D11 全项关闭**。
   发版同轮 CI 暴露两处 Rust 门禁问题（`cargo fmt --check` 导入顺序、`clippy::single_match`
   看门狗写成 `match`），均属格式/风格、不影响出包，已随 main 修复；发版流水线不跑
-  fmt/clippy（只有 ci.yml 的 rust-gate 跑），本地发版前应补跑两者。遗留：安装/升级后仍需按
-  §11 给 exe 重打 High 标签，托盘图标才恢复。
+  fmt/clippy（只有 ci.yml 的 rust-gate 跑），本地发版前应补跑两者。遗留项「安装/升级后需
+  手动重打 High 标签」**已于同日复核推翻**：同一安装包未打任何标签，托盘正常注册（原因
+  与证据见 §11）。
 
 ## 11. 发版流程（D5 起）
 
@@ -541,10 +543,16 @@ requirements 边界表。
   拒绝仅出现在 Low 标签的构建目录 profile 下，安装版数据目录在 `%APPDATA%` 继承
   Medium，理论可启动，实测为准）；toast 依赖系统通知管道，D4 记录 ④ 的系统 AUMID
   探针未弹出 ⇒ 本机通知可能整体关闭，验收时先查系统设置的通知总开关。
-  **2026-11-10 实测补充**：兜底有效——对安装版 exe 打 High 标签后托盘注册成功、菜单
+  **2026-11-10 实测补充**：  兜底有效——对安装版 exe 打 High 标签后托盘注册成功、菜单
   全项可用，High 进程的 WebView2 也正常（修正四追记「Medium 及以上全拒」的表述：那是
-  Low 标签构建目录的 profile 继承问题）。⚠ High 标签打在 exe 文件上，**升级/重装会换
-  新文件，需重打一次**（本机环境手段，不入库；重装后托盘消失先想起这个）。
+  Low 标签构建目录的 profile 继承问题）。
+  **2026-11-12 复核（推翻「每次升级都要重打」）**：0.3.0 从 GitHub 安装后，`icacls` 看
+  安装版 exe **没有任何完整性标签**，进程由 `explorer.exe` 拉起，父子双方 IL 均为 High
+  （本机 UAC 关闭 + 内置 Administrator，整个 shell 在 High）；UI Automation 遍历任务栏
+  能看到 `Token Usage` 托盘按钮。结论：真正的充分条件是 **应用进程 IL ≥ 任务栏 IL**，
+  从 explorer 启动天然满足，手动打标签只是历史兜底手段，**不再作为安装/升级后的必做
+  步骤**（该建议已从验收流程中移除；只有应用被低完整性父进程拉起时才会缺托盘，此时按
+  六追记 ① 降级为「关窗只最小化」并在监控盘顶部显示 `TrayNote`）。
 
 ## 12. 0.2 产品迭代计划（2026-11-10 立项，待操作者放行）
 
@@ -657,7 +665,7 @@ ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最�
   （纯逻辑）。
 - 实现时把新卡片 anatomy 回写 `docs/ui-spec.md`「桌面端」节；AGENTS 的 UI 规则不变。
 - 每期 bump 三处 version + CHANGELOG，tag `desktop-v0.2.0` / `desktop-v0.3.0` /
-  `desktop-v0.4.0`；安装后按 §11 重打 High 标签。
+  `desktop-v0.4.0`。（2026-11-12 复核后，安装/升级不再需要给 exe 打完整性标签，见 §11。）
 
 ### 12.8 放行状态
 
@@ -921,7 +929,7 @@ crate（`download_dir` 是 tauri 核心 path API）。
 models 求和门 / credits 与 last-wins / 排序 / 窗口 / 筛选聚合 facets / 分页 / CSV 形态）、
 `lib/share-input.test.ts`（3 项：投影 / 周期标签与 handle 兜底 / 空窗口 null）。
 `pnpm verify` 全绿（desktop 136 tests）。发版：三处 bump **0.3.0** + CHANGELOG，tag
-`desktop-v0.3.0`；安装后照例 §11 重打 High 标签。
+`desktop-v0.3.0`。
 
 #### 12.13.1 D11 第一轮验收修正（2026-11-12，操作者六条反馈）
 
