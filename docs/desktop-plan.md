@@ -1024,6 +1024,24 @@ vite build）；本地重建 NSIS 安装包（无签名密钥，`.sig` 仍由 CI
    变更时立即重推（不等 10 s 轮询）。`TrayLabels.today` 更名 `metric`（Rust 结构 + JS payload
    同步）——这行已不再是「今日」专属。
 
+#### 12.14.1 第一轮验收修正（2026-11-12，操作者四条反馈）
+
+1. **Select 溢出**：长项目名把触发器撑开、压到相邻控件。照 web `device-filter-select` 的
+   做法自定义 `Select.Value` 渲染（`truncate` + `min-w-0` 容器），并把项目 / 模型宽度定
+   为 `w-40` / `w-44`（来源 `w-36` 不变）。
+2. **去掉「清除筛选」按钮**：三个下拉未选时显示「全部 …」占位（列表里不再有「全部」项），
+   选中后触发器长出 `Select.ClearButton`（空态自动隐藏，键盘 Backspace / Delete 同效）；
+   筛选条不再有清除按钮，仅表格无结果态保留一个引导按钮。
+3. **90D → 总计**：会话周期改为 今天 / 7D / 30D / **总计**，与用量页同名；总计窗口
+   `fromMs = 0`（全量侧车），CSV 文件名对应段写 `all` 而不是 1970 日期。
+4. **托盘周期加勾选**：四项改为 `CheckMenuItem` 单选组（Rust 结构多四个句柄）；
+   `TrayLabels` 增 `period` 字段，`update_tray` 按它刷新四个勾选态，JS 在每次推标签时带
+   当前周期。
+
+测试：`lib/sessions.test.ts` 新增「总计窗口从 epoch 起」一例，共 134 例。修正后
+`pnpm --filter @token-usage/desktop verify` 全绿，`cargo fmt --check` 与
+`cargo clippy --release --all-targets -- -D warnings` 零告警；本地重建 0.4.0 安装包。
+
 测试：`lib/sessions.test.ts` 14 例（新增项目 / 模型筛选与两张 facet；来源 facet 返回形状
 改为 `{key, sessions}`）。门禁：`pnpm --filter @token-usage/desktop verify` 全绿；
 `cargo fmt --check` 与 `cargo clippy --release --all-targets -- -D warnings` 本地通过。

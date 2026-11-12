@@ -195,11 +195,14 @@ export function useSessions(): SessionsState {
 
         return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
       };
-      const filename = `token-usage-sessions-${stamp(window.fromMs)}-${stamp(window.toMs - 1)}.csv`;
+      // 总计 reads the whole sidecar — a 1970 start date in the name would be
+      // noise, so it is spelled out instead.
+      const from = range === "all" ? "all" : stamp(window.fromMs);
+      const filename = `token-usage-sessions-${from}-${stamp(window.toMs - 1)}.csv`;
 
       return await saveTextAs(filename, buildSessionsCsv(filtered, deviceName));
     },
-    [filtered, window.fromMs, window.toMs],
+    [filtered, range, window.fromMs, window.toMs],
   );
 
   return {

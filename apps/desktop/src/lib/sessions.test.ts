@@ -230,6 +230,15 @@ describe("session windows, filters and aggregation", () => {
     expect(to.getDate()).toBe(13);
   });
 
+  it("spans the whole sidecar for 总计 and still ends tomorrow 00:00", () => {
+    const { fromMs, toMs } = sessionRangeWindow("all", NOW);
+    const to = new Date(toMs);
+
+    expect(fromMs).toBe(0);
+    expect(to.getHours()).toBe(0);
+    expect(to.getDate()).toBe(13);
+  });
+
   it("filters the half-open window and an exact source", () => {
     const rows = parseSessionRows(
       text([

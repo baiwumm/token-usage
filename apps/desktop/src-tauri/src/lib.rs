@@ -32,7 +32,7 @@ use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use tauri::{
-    menu::{Menu, MenuItem, PredefinedMenuItem},
+    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, State, WindowEvent,
 };
@@ -826,6 +826,11 @@ struct TrayHandles {
     metric: MenuItem<tauri::Wry>,
     status: MenuItem<tauri::Wry>,
     pause: MenuItem<tauri::Wry>,
+    /// Period radio group: exactly one is checked, driven by the webview.
+    period_today: CheckMenuItem<tauri::Wry>,
+    period_week: CheckMenuItem<tauri::Wry>,
+    period_month: CheckMenuItem<tauri::Wry>,
+    period_all: CheckMenuItem<tauri::Wry>,
     paused: Mutex<bool>,
 }
 
@@ -836,6 +841,8 @@ struct TrayLabels {
     metric: String,
     status: String,
     pause_action: String,
+    /// Active period (`today` / `7d` / `30d` / `all`) for the check marks.
+    period: String,
     paused: bool,
 }
 
@@ -853,6 +860,15 @@ fn update_tray(handles: State<TrayHandles>, labels: TrayLabels) -> Result<(), St
         .pause
         .set_text(&labels.pause_action)
         .map_err(|e| e.to_string())?;
+    for (item, key) in [
+        (&handles.period_today, "today"),
+        (&handles.period_week, "7d"),
+        (&handles.period_month, "30d"),
+        (&handles.period_all, "all"),
+    ] {
+        item.set_checked(labels.period == key)
+            .map_err(|e| e.to_string())?;
+    }
     *handles.paused.lock().map_err(|e| e.to_string())? = labels.paused;
     Ok(())
 }
@@ -899,10 +915,14 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
     let status = MenuItem::with_id(app, "tray-status", "采集：正常", false, None::<&str>)?;
     // Period switch (desktop-plan §12.14): the menu mirrors the header's
     // 今日 / 7D / 30D / 总计 filter and writes the same preference.
-    let period_today = MenuItem::with_id(app, "period-today", "今日", true, None::<&str>)?;
-    let period_week = MenuItem::with_id(app, "period-7d", "7D", true, None::<&str>)?;
-    let period_month = MenuItem::with_id(app, "period-30d", "30D", true, None::<&str>)?;
-    let period_all = MenuItem::with_id(app, "period-all", "总计", true, None::<&str>)?;
+    // Check items instead of plain entries: the menu must say which period is
+    // active (operator 2026-11-12 round 2). Default follows the preference
+    // default (今日); the webview re-syncs all four on every label push.
+    let period_today =
+        CheckMenuItem::with_id(app, "period-today", "今日", true, true, None::<&str>)?;
+    let period_week = CheckMenuItem::with_id(app, "period-7d", "7D", true, false, None::<&str>)?;
+    let period_month = CheckMenuItem::with_id(app, "period-30d", "30D", true, false, None::<&str>)?;
+    let period_all = CheckMenuItem::with_id(app, "period-all", "总计", true, false, None::<&str>)?;
     let sync_now = MenuItem::with_id(app, "sync-now", "立即同步", true, None::<&str>)?;
     let pause = MenuItem::with_id(app, "pause-toggle", "暂停采集", true, None::<&str>)?;
     let show = MenuItem::with_id(app, "show", "打开主窗口", true, None::<&str>)?;
@@ -1003,6 +1023,10 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
         metric,
         status,
         pause,
+        period_today,
+        period_week,
+        period_month,
+        period_all,
         paused: Mutex::new(false),
     });
 

@@ -21,17 +21,20 @@ const RANGE_OPTIONS: Array<{ id: SessionRange; label: string }> = [
   { id: "today", label: "今天" },
   { id: "7d", label: "7D" },
   { id: "30d", label: "30D" },
-  { id: "90d", label: "90D" },
+  { id: "all", label: "总计" },
 ];
 
 /**
  * Sessions filter row (web filter-bar 移植, single-machine cut): range presets
- * (今天 / 7D / 30D / 90D, default 今天 — web presets resolve against today, no
- * custom calendar on the desktop), then the three facet selects (来源 / 项目 /
- * 模型, each fed by the window with the other filters applied), 清除筛选 when
- * narrowing, and the CSV / refresh icon cluster. The web's device filter is
- * dropped — the local sidecar is this machine only (desktop-plan §12.13 /
- * §12.14).
+ * (今天 / 7D / 30D / 总计, matching the usage header — 2026-11-12 operator:
+ * 90D → 总计), then the three facet selects (来源 / 项目 / 模型, each fed by the
+ * window with the other filters applied), and the CSV / refresh icon cluster.
+ *
+ * Each select shows the 「全部 …」 placeholder while unset and grows a
+ * `Select.ClearButton` once picked (operator round 2: no 清除筛选 button; long
+ * project names truncate like the web's device filter). The web's device
+ * filter is dropped — the local sidecar is this machine only
+ * (desktop-plan §12.13 / §12.14).
  */
 export function SessionsBar({
   range,
@@ -41,7 +44,6 @@ export function SessionsBar({
   sourceFacets,
   projectFacets,
   modelFacets,
-  hasNarrowingFilters,
   refreshing,
   exporting,
   updatedAt,
@@ -49,7 +51,6 @@ export function SessionsBar({
   onSourceChange,
   onProjectChange,
   onModelChange,
-  onClearFilters,
   onExportCsv,
   onRefresh,
 }: {
@@ -60,7 +61,6 @@ export function SessionsBar({
   sourceFacets: SessionFacet[];
   projectFacets: SessionFacet[];
   modelFacets: SessionFacet[];
-  hasNarrowingFilters: boolean;
   refreshing: boolean;
   exporting: boolean;
   updatedAt: number | null;
@@ -68,7 +68,6 @@ export function SessionsBar({
   onSourceChange: (source: string) => void;
   onProjectChange: (project: string) => void;
   onModelChange: (model: string) => void;
-  onClearFilters: () => void;
   onExportCsv: () => void;
   onRefresh: () => void;
 }) {
@@ -88,7 +87,7 @@ export function SessionsBar({
             next === "today" ||
             next === "7d" ||
             next === "30d" ||
-            next === "90d"
+            next === "all"
           ) {
             onRangeChange(next);
           }
@@ -109,26 +108,20 @@ export function SessionsBar({
       />
       <FacetSelect
         allLabel="全部项目"
-        ariaLabel="项目"
-        className="w-36 shrink-0"
+        ariaKey="项目"
+        className="w-40 shrink-0"
         facets={projectFacets}
         value={project}
         onChange={onProjectChange}
       />
       <FacetSelect
         allLabel="全部模型"
-        ariaLabel="模型"
-        className="w-40 shrink-0"
+        ariaKey="模型"
+        className="w-44 shrink-0"
         facets={modelFacets}
         value={model}
         onChange={onModelChange}
       />
-
-      {hasNarrowingFilters ? (
-        <Button size="sm" variant="outline" onPress={onClearFilters}>
-          清除筛选
-        </Button>
-      ) : null}
 
       <div className="ml-auto flex shrink-0 items-center gap-1">
         <Tooltip delay={0}>
@@ -182,6 +175,7 @@ export function SessionsBar({
   );
 }
 
+/** 来源 select: logo in the trigger, display name in the list. */
 function SourceSelect({
   facets,
   source,
@@ -195,23 +189,25 @@ function SourceSelect({
     <Select
       aria-label="来源"
       className="w-36 shrink-0"
-      value={source || "__all"}
+      value={source || null}
       variant="secondary"
-      onChange={(key) => {
-        if (key == null) return;
-        onChange(key === "__all" ? "" : String(key));
-      }}
+      onChange={(key) => onChange(key == null ? "" : String(key))}
     >
       <Select.Trigger>
-        <Select.Value />
+        <Select.Value>
+          {({ selectedText }) => (
+            <span className="flex min-w-0 items-center gap-1.5">
+              {source === "" ? null : <SourceIcon size={12} source={source} />}
+              <span className="truncate">{selectedText || "全部来源"}</span>
+            </span>
+          )}
+        </Select.Value>
+        <Select.ClearButton aria-label="清除来源筛选" />
         <Select.Indicator />
       </Select.Trigger>
       <Select.Popover>
         <Popover.Arrow />
         <ListBox>
-          <ListBox.Item id="__all" textValue="全部来源">
-            <span className="flex items-center gap-1.5">全部来源</span>
-          </ListBox.Item>
           {facets.map((facet) => (
             <ListBox.Item
               key={facet.key}
@@ -230,17 +226,18 @@ function SourceSelect({
   );
 }
 
-/** Plain facet select for 项目 / 模型 (the source one carries a logo). */
+/** Plain facet select for 项目 / 模型 (truncating trigger + session counts). */
 function FacetSelect({
   allLabel,
-  ariaLabel,
+  ariaKey,
   className,
   facets,
   value,
   onChange,
 }: {
   allLabel: string;
-  ariaLabel: string;
+  /** Accessible name, e.g. 「项目」→ aria-label 项目. */
+  ariaKey: string;
   className: string;
   facets: SessionFacet[];
   value: string;
@@ -248,28 +245,27 @@ function FacetSelect({
 }) {
   return (
     <Select
-      aria-label={ariaLabel}
+      aria-label={ariaKey}
       className={className}
-      value={value || "__all"}
+      value={value || null}
       variant="secondary"
-      onChange={(key) => {
-        if (key == null) return;
-        onChange(key === "__all" ? "" : String(key));
-      }}
+      onChange={(key) => onChange(key == null ? "" : String(key))}
     >
       <Select.Trigger>
-        <Select.Value />
+        <Select.Value>
+          {({ selectedText }) => (
+            <span className="truncate">{selectedText || allLabel}</span>
+          )}
+        </Select.Value>
+        <Select.ClearButton aria-label={`清除${ariaKey}筛选`} />
         <Select.Indicator />
       </Select.Trigger>
       <Select.Popover>
         <Popover.Arrow />
         <ListBox>
-          <ListBox.Item id="__all" textValue={allLabel}>
-            {allLabel}
-          </ListBox.Item>
           {facets.map((facet) => (
             <ListBox.Item key={facet.key} id={facet.key} textValue={facet.key}>
-              <span className="flex items-center justify-between gap-3">
+              <span className="flex w-full items-center justify-between gap-3">
                 <span className="truncate">{facet.key}</span>
                 <span className="text-muted tabular-nums">
                   {facet.sessions}

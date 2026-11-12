@@ -352,6 +352,8 @@ async function pushTrayLabels(
         metric: `${periodLabel(period)} tokens：${formatTokens(window.totalTokens)}`,
         status: `采集：${snapshot.paused ? "已暂停" : "正常"}（${formatTokens(snapshot.week.totalTokens)} / 7 天）`,
         pauseAction: snapshot.paused ? "恢复采集" : "暂停采集",
+        // The tray menu's check marks follow the same preference.
+        period,
         paused: snapshot.paused,
       },
     });

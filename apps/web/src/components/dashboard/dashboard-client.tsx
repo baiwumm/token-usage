@@ -696,7 +696,6 @@ export function DashboardClient() {
         copy={copy}
         devicesLoading={dashboardState.status === "loading"}
         filters={filters}
-        hasFilters={hasFilters}
         lastUpdatedAt={lastUpdatedAt}
         locale={locale}
         range={range}

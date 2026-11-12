@@ -47,13 +47,14 @@ export interface SessionRow {
   models: SessionModelUsage[];
 }
 
-export type SessionRange = "today" | "7d" | "30d" | "90d";
+/** Presets mirror the usage header (2026-11-12: 90D replaced by 总计). */
+export type SessionRange = "today" | "7d" | "30d" | "all";
 
 export const SESSION_RANGE_PRESETS: readonly SessionRange[] = [
   "today",
   "7d",
   "30d",
-  "90d",
+  "all",
 ];
 
 export const DEFAULT_PAGE_SIZE = 20;
@@ -351,7 +352,10 @@ export function filterSessions(
   });
 }
 
-/** Day-granular preset windows like the web: `[startOfDay(today−N+1), tomorrow)`. */
+/**
+ * Day-granular preset windows like the web: `[startOfDay(today−N+1), tomorrow)`.
+ * 总计 spans everything the sidecar holds, so it starts at the epoch.
+ */
 export function sessionRangeWindow(
   range: SessionRange,
   nowMs: number = Date.now(),
@@ -360,11 +364,10 @@ export function sessionRangeWindow(
 
   day.setHours(0, 0, 0, 0);
   const dayStart = day.getTime();
-  const days =
-    range === "today" ? 1 : range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  const days = range === "today" ? 1 : range === "7d" ? 7 : 30;
 
   return {
-    fromMs: dayStart - (days - 1) * 86_400_000,
+    fromMs: range === "all" ? 0 : dayStart - (days - 1) * 86_400_000,
     toMs: dayStart + 86_400_000,
   };
 }
