@@ -43,7 +43,7 @@
 </p>
 
 <p align="center">
-  <a href="https://token-usage.baiwumm.com/u/tu_badge_E99QerXGGOxG7w_BUvBd7GEV9vjzmfT2">
+  <a href="https://token-usage.baiwumm.com/u/tu_page_bOlbNTnYObADlBpAbskviq2h66gHzoGL">
     <img src="https://token-usage.baiwumm.com/api/badge?token=tu_badge_E99QerXGGOxG7w_BUvBd7GEV9vjzmfT2" alt="Token Usage badge" width="600">
   </a>
   <br />

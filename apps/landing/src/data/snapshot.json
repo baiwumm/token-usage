@@ -1,8 +1,8 @@
 {
 	"fetchedAt": "2026-11-14",
 	"totals": {
-		"tokens": 24962757864,
-		"costUsd": 1726.63,
+		"tokens": 25003907062,
+		"costUsd": 1727.92,
 		"activeDays": 109
 	},
 	"meta": {
@@ -1838,7 +1838,7 @@
 			],
 			[
 				"2026-11-14",
-				27911367,
+				69060565,
 				1
 			]
 		]
@@ -1846,23 +1846,23 @@
 	"sources": [
 		{
 			"label": "ZCode",
-			"tokens": 16510920923,
-			"share": 0.6614
+			"tokens": 16552070121,
+			"share": 0.662
 		},
 		{
 			"label": "OpenCode",
 			"tokens": 2135565530,
-			"share": 0.0856
+			"share": 0.0854
 		},
 		{
 			"label": "DeepSeek Harness",
 			"tokens": 1867917651,
-			"share": 0.0748
+			"share": 0.0747
 		},
 		{
 			"label": "WorkBuddy",
 			"tokens": 1392241975,
-			"share": 0.0558
+			"share": 0.0557
 		},
 		{
 			"label": "Reasonix",
@@ -1873,7 +1873,7 @@
 	"models": [
 		{
 			"label": "GLM-5.3-Flash",
-			"tokens": 15030647966
+			"tokens": 15071797164
 		},
 		{
 			"label": "deepseek-v4-flash",
@@ -1922,6 +1922,6 @@
 		260720310,
 		166548882,
 		125355354,
-		27911367
+		69060565
 	]
 }
