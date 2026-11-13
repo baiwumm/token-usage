@@ -54,3 +54,6 @@ scripts/admin/achievement-assets/.work/
 apps/desktop/dist/
 apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/
+
+# supabase cli runtime state (link/cache markers)
+supabase/.temp/
