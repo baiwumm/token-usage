@@ -8,6 +8,7 @@
 // column, fields use InputGroup icon prefixes, OAuth rows are full-width.
 
 import type { SVGProps } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { Envelope, Lock } from "@gravity-ui/icons";
 import {
@@ -49,6 +50,23 @@ const BEIAN_POLICE_CODE = BEIAN_POLICE.match(/\d+/)?.[0] ?? "";
 // the provider: short enough to feel instant, long enough that the spinner
 // and the locked siblings are actually seen on fast connections.
 const OAUTH_REDIRECT_DELAY_MS = 150;
+
+// The browser client is built lazily on the first auth call and initializes
+// itself in the background. A session cookie left behind by an expired or
+// revoked login is torn down during that init (auth-js `_removeSession` also
+// clears every pending PKCE verifier). Every PKCE flow — magic link, password
+// reset, OAuth — writes its verifier right before redirecting, so a teardown
+// landing after that write deletes the verifier and /auth/callback answers
+// `auth_exchange_failed`: the first attempt dies with 「登录链接无效或已过期」
+// and only a second one works. Draining the init chain first makes the
+// teardown happen before the verifier exists.
+async function settleAuthClient(client: SupabaseClient): Promise<void> {
+  try {
+    await client.auth.initialize();
+  } catch {
+    // Initialization is best-effort; the sign-in call reports its own errors.
+  }
+}
 
 function mapAuthError(status: number, locale: Locale): string {
   const copy = LOGIN_COPY[locale];
@@ -138,6 +156,7 @@ export function LoginBody({ next, callbackError }: LoginBodyProps) {
     if (!supabase || busy || oauthPending) return;
     setBusy(true);
     setError(null);
+    await settleAuthClient(supabase);
 
     const { error: authError } = await supabase.auth.signInWithOtp({
       email,
@@ -164,6 +183,7 @@ export function LoginBody({ next, callbackError }: LoginBodyProps) {
     if (!supabase || busy || oauthPending) return;
     setBusy(true);
     setError(null);
+    await settleAuthClient(supabase);
 
     const { error: authError } = await supabase.auth.resetPasswordForEmail(
       email,
@@ -197,6 +217,7 @@ export function LoginBody({ next, callbackError }: LoginBodyProps) {
     if (!supabase || busy || oauthPending) return;
     setOauthPending(provider);
     setError(null);
+    await settleAuthClient(supabase);
 
     const { data, error: authError } = await supabase.auth.signInWithOAuth({
       provider,

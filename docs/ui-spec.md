@@ -604,13 +604,19 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
   微任务链，快网络下导航会抢在绘制前完成、pending 态永不可见）：拿到授权 URL 后先画 150ms 再
   离页，慢网络下 Spinner 持续到 provider 页接管。provider 侧失败的回跳统一落 `/login?error=…`
   由既有错误条渲染。
+- 会话残留清理：任一 PKCE 流程（魔法链接 / 密码重置 / OAuth）发起前先 `await auth.initialize()`
+  结算浏览器客户端的首次初始化，再写本次 flow 的 verifier。初始化会拆除 cookie 里残留的失效
+  会话，而拆除同时清空所有待用 PKCE verifier——拆除落在 verifier 写入之后就使首次登录必失败
+  （`/auth/callback` 回 `auth_exchange_failed`，即「令牌失效回登录页后首次登录报登录链接无效、
+  再点一次才行」）。
 - 错误码映射：GoTrue 以 `?error=<code>` 弹回 `/auth/callback`，路由转发为稳定码 `oauth_<code>`；
   登录页对已知码给专属文案——`oauth_signup_disabled`（「本站注册已关闭，仅限受邀账号登录」）与
   `oauth_access_denied`（取消授权），其余（含本地 `auth_code_missing` / `auth_exchange_failed`）
   回落通用文案。两枚按钮当前恒显；部署者未配置 provider 时点击会经 Supabase 回跳报错，不崩溃。
 
 **验收**：桌面与 375px 无页面级横向滚动；明暗双套成立；`prefers-reduced-motion` 下无入场 /
-呼吸动效；OAuth 按钮断言零网络请求。
+呼吸动效；OAuth 按钮渲染不探测 provider（点击时仅在残留失效会话的情况下由初始化补一次 token
+刷新）。
 
 ### 公开页（`/u/<token>`，徽章点击落地）
 
