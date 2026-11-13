@@ -4,6 +4,7 @@
 // light/dark/system mode, and the primary "pair device" action. Controls are
 // round ghost buttons so the page title stays the loudest element in the bar.
 import {
+  ChartLineArrowUp,
   LogoGithub,
   Moon,
   Plus,
@@ -19,6 +20,7 @@ import {
   Header,
   Label,
   Popover,
+  toast,
   Tooltip,
   Typography,
   parseColor,
@@ -31,6 +33,7 @@ import { NAV_COPY } from "@/lib/copy/nav";
 import { DEVICE_COPY } from "@/lib/copy/device";
 import { useLocalePreference, type LocalePreference } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
+import { fetchBadgeSettings } from "@/lib/badge/api";
 import { REPO_URL } from "@/lib/links";
 import { THEME_COLOR_PALETTES, useThemeColor } from "@/lib/ui/theme-color";
 
@@ -195,6 +198,12 @@ const THEME_MODE_LABELS = {
  * Single button that cycles system → light → dark (operator call 2026-10-28,
  * mirroring the desktop app): the icon and tooltip show the active mode. Shown
  * at every breakpoint — the mobile drawer no longer carries its own toggle.
+ *
+ * The button itself renders from SSR with the neutral system glyph so it shows
+ * up with its siblings — only the mode-dependent glyph/tooltip wait for mount,
+ * because next-themes reads localStorage synchronously on the client but not
+ * on the server (rendering the stored mode from SSR would be a hydration
+ * mismatch; the old empty-placeholder gate made the button pop in late).
  */
 export function ThemeModeToggle() {
   const { theme, setTheme } = useTheme();
@@ -204,12 +213,10 @@ export function ThemeModeToggle() {
 
   useEffect(() => setMounted(true), []);
 
-  if (!mounted) {
-    return <div aria-hidden="true" className="size-8 shrink-0" />;
-  }
-
   const mode =
-    theme === "light" || theme === "dark" ? theme : ("system" as const);
+    mounted && (theme === "light" || theme === "dark")
+      ? theme
+      : ("system" as const);
   const Icon = THEME_MODE_ICONS[mode];
   const label = copy[THEME_MODE_LABELS[mode]];
 
@@ -330,6 +337,60 @@ export function ThemeColorPicker() {
 // return to the manual-input state; no URL query flag is needed on the shell.
 const DEVICE_RESET_EVENT = "token-usage:device-reset";
 
+/**
+ * Opens the account's public page (/u/<page_token>) in a new tab. There is ONE
+ * public page per user, keyed by the settings row's page token — badge tokens
+ * never open it (§3.2). The button always shows: with the page switch on it
+ * opens the page, with the switch (or the config fetch) unavailable it answers
+ * a toast pointing at Settings instead.
+ */
+function PublicPageButton() {
+  const { locale } = useLocalePreference();
+  const copy = NAV_COPY[locale];
+  const [entry, setEntry] = useState<{ url: string } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    void fetchBadgeSettings()
+      .then((config) => {
+        if (!alive) return;
+
+        if (config.pageEnabled && config.pageToken) {
+          setEntry({ url: `${window.location.origin}/u/${config.pageToken}` });
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  function openPage() {
+    if (entry) {
+      window.open(entry.url, "_blank", "noopener,noreferrer");
+
+      return;
+    }
+    toast(copy.publicPageOffHint);
+  }
+
+  return (
+    <ControlTooltip label={copy.publicPage}>
+      <Button
+        isIconOnly
+        aria-label={copy.publicPage}
+        size="sm"
+        variant="tertiary"
+        onPress={openPage}
+      >
+        <ChartLineArrowUp className="size-4" />
+      </Button>
+    </ControlTooltip>
+  );
+}
+
 export function TopActions() {
   const router = useRouter();
   const pathname = usePathname();
@@ -346,6 +407,7 @@ export function TopActions() {
   return (
     <div className="flex shrink-0 items-center gap-1 md:gap-1.5">
       <GitHubLink />
+      <PublicPageButton />
       <LanguageDropdown />
       <ThemeColorPicker />
       <ThemeModeToggle />

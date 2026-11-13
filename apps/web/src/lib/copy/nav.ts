@@ -22,6 +22,8 @@ export interface NavCopy {
   cancel: string;
   accountSettings: string;
   appearance: string;
+  publicPage: string;
+  publicPageOffHint: string;
   randomColor: string;
   language: string;
   languageSystem: string;
@@ -61,6 +63,8 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     cancel: "取消",
     accountSettings: "账户设置",
     appearance: "主题色",
+    publicPage: "公开页",
+    publicPageOffHint: "公开页未开启，请先在设置中打开",
     randomColor: "随机主题色",
     language: "语言",
     languageSystem: "跟随系统",
@@ -98,6 +102,8 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     cancel: "Cancel",
     accountSettings: "Account settings",
     appearance: "Accent color",
+    publicPage: "Public page",
+    publicPageOffHint: "The public page is off — enable it in Settings first",
     randomColor: "Random accent color",
     language: "Language",
     languageSystem: "Follow system",
