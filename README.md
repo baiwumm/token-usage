@@ -43,11 +43,8 @@
 </p>
 
 <p align="center">
-  <a href="https://token-usage.baiwumm.com/u/tu_badge_JTYz-Anbuv5AfcW8rOaoNNeB472Dqsw-">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://token-usage.baiwumm.com/api/badge?token=tu_badge_JTYz-Anbuv5AfcW8rOaoNNeB472Dqsw-&style=sparkline&theme=dark&project=token-usage">
-      <img src="https://token-usage.baiwumm.com/api/badge?token=tu_badge_JTYz-Anbuv5AfcW8rOaoNNeB472Dqsw-&style=sparkline&theme=light&project=token-usage" alt="Token Usage badge" width="600">
-    </picture>
+  <a href="https://token-usage.baiwumm.com/u/tu_badge_E99QerXGGOxG7w_BUvBd7GEV9vjzmfT2">
+    <img src="https://token-usage.baiwumm.com/api/badge?token=tu_badge_E99QerXGGOxG7w_BUvBd7GEV9vjzmfT2" alt="Token Usage badge" width="600">
   </a>
   <br />
   <sub>作者实例的实时用量——由本项目的<a href="docs/badge.md">公开徽章</a>渲染，点击进入公开页</sub>
