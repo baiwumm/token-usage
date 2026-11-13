@@ -3,7 +3,6 @@
 
 export interface LandingCopy {
   nav: {
-    tagline: string;
     demo: string;
   };
   hero: {
@@ -96,14 +95,13 @@ export interface LandingCopy {
 export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
   zh: {
     nav: {
-      tagline: "自托管 AI 用量追踪",
       demo: "查看公开页演示",
     },
     hero: {
       eyebrow: "开源 · 自托管 · MIT",
       sloganMain: "所有采集端的 AI 用量，一块仪表盘看完。",
       sloganSub:
-        "一个邮箱、多台设备，用量与成本数据完全落在你自己的 Supabase 里。采集端只向配对实例上报，跨实例零共享。",
+        "一个账号、多台设备，用量与成本数据完全落在你自己的 Supabase 里。采集端只向配对实例上报，跨实例零共享。",
       deployCta: "立即部署",
       vercelCta: "Deploy to Vercel",
       counters: {
@@ -285,7 +283,6 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
   },
   en: {
     nav: {
-      tagline: "Self-hosted AI token tracking",
       demo: "View live demo",
     },
     hero: {

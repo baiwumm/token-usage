@@ -55,7 +55,7 @@ export function Hero() {
   ];
 
   return (
-    <section className="relative overflow-hidden" id="top">
+    <section className="relative overflow-hidden">
       {/* 暗底氛围光：accent 朱红的低占比 radial glow（login 品牌区同款手法）。 */}
       <div
         aria-hidden="true"

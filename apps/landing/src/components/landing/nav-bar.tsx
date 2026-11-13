@@ -1,13 +1,36 @@
 "use client";
 
-// 顶部导航：logo 锁定 + npm / GitHub / 公开页演示图标按钮，hairline 底边。
-// 恒为暗色，只引 logo-dark 变体。
+// 顶部导航：logo 锁定（单行标题）+ npm / GitHub / 公开页演示图标按钮，
+// 三枚按钮带 Tooltip 箭头提示（对齐 web 端 top-actions 的 ControlTooltip），
+// hairline 底边。恒为暗色，只引 logo-dark 变体。
 
-import { LogoGithub, Person } from "@gravity-ui/icons";
-import { Button, Typography } from "@heroui/react";
+import type { ReactNode } from "react";
+
+import { ChartLineArrowUp, LogoGithub } from "@gravity-ui/icons";
+import { Button, Tooltip, Typography } from "@heroui/react";
+import Link from "next/link";
 
 import { LANDING_COPY } from "@/lib/copy";
 import { NPM_CLI_URL, REPO_URL } from "@/lib/repo-links";
+
+/** 顶栏图标按钮共用的箭头提示。 */
+function NavTooltip({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label: string;
+}) {
+  return (
+    <Tooltip delay={0}>
+      {children}
+      <Tooltip.Content showArrow placement="bottom">
+        <Tooltip.Arrow />
+        <Typography type="body-xs">{label}</Typography>
+      </Tooltip.Content>
+    </Tooltip>
+  );
+}
 
 export function NavBar({ demoUrl }: { demoUrl: string | null }) {
   const copy = LANDING_COPY.zh;
@@ -15,10 +38,10 @@ export function NavBar({ demoUrl }: { demoUrl: string | null }) {
   return (
     <header className="sticky top-0 z-40 border-b border-default/50 bg-background/75 backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-4 px-6">
-        <a
+        <Link
           aria-label="Token Usage"
           className="flex min-w-0 items-center gap-2.5"
-          href="#top"
+          href="/"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -28,53 +51,48 @@ export function NavBar({ demoUrl }: { demoUrl: string | null }) {
             src="/logo-dark.svg"
             width={28}
           />
-          <span className="flex min-w-0 flex-col">
-            <Typography className="leading-tight" type="h6" weight="semibold">
-              Token Usage
-            </Typography>
-            <Typography
-              className="hidden text-[10px] tracking-[0.16em] uppercase sm:block"
-              color="muted"
-              type="body-xs"
-              weight="medium"
-            >
-              {copy.nav.tagline}
-            </Typography>
-          </span>
-        </a>
+          <Typography className="leading-tight" type="h6" weight="semibold">
+            Token Usage
+          </Typography>
+        </Link>
 
         <div className="ml-auto flex items-center gap-2">
           <div className="hidden items-center gap-2 md:flex">
-            <Button
-              isIconOnly
-              aria-label="npm · tokenusage-cli"
-              size="sm"
-              variant="outline"
-              onPress={() => openExternal(NPM_CLI_URL)}
-            >
-              <NpmIcon className="size-4" />
-            </Button>
-            <Button
-              isIconOnly
-              aria-label="GitHub"
-              size="sm"
-              variant="outline"
-              onPress={() => openExternal(REPO_URL)}
-            >
-              <LogoGithub className="size-4" />
-            </Button>
+            <NavTooltip label="npm · tokenusage-cli">
+              <Button
+                isIconOnly
+                aria-label="npm · tokenusage-cli"
+                size="sm"
+                variant="outline"
+                onPress={() => openExternal(NPM_CLI_URL)}
+              >
+                <NpmIcon className="size-4" />
+              </Button>
+            </NavTooltip>
+            <NavTooltip label="GitHub">
+              <Button
+                isIconOnly
+                aria-label="GitHub"
+                size="sm"
+                variant="outline"
+                onPress={() => openExternal(REPO_URL)}
+              >
+                <LogoGithub className="size-4" />
+              </Button>
+            </NavTooltip>
           </div>
-
           {demoUrl ? (
-            <Button
-              isIconOnly
-              aria-label={copy.nav.demo}
-              size="sm"
-              variant="outline"
-              onPress={() => openExternal(demoUrl)}
-            >
-              <Person className="size-4" />
-            </Button>
+            <NavTooltip label={copy.nav.demo}>
+              <Button
+                isIconOnly
+                aria-label={copy.nav.demo}
+                size="sm"
+                variant="outline"
+                onPress={() => openExternal(demoUrl)}
+              >
+                <ChartLineArrowUp className="size-4" />
+              </Button>
+            </NavTooltip>
           ) : null}
         </div>
       </div>
