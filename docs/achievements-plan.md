@@ -62,7 +62,7 @@
 
 ### 1.3 视觉改版决策（2026-10-30，操作者已确认）
 
-背景：P2 的徽章是参数化 SVG（同心圆 + 渐变面 + 通用图标），18 条成就共用一套模具、只靠色相区分，网格观感偏平；上游 TokenTracker 的「插画式浮雕徽章 + 徽章墙」观感明显更好。上游仓库仅作参照（MIT），**不取其素材、不搬其代码**。
+背景：P2 的徽章是参数化 SVG（同心圆 + 渐变面 + 通用图标），首批 18 条成就共用一套模具、只靠色相区分，网格观感偏平；上游 TokenTracker 的「插画式浮雕徽章 + 徽章墙」观感明显更好。上游仓库仅作参照（MIT），**不取其素材、不搬其代码**。
 
 | # | 决策 | 结论 |
 |---|---|---|
@@ -76,7 +76,7 @@
 铆钉边；为避免与段位外环叠成「双环」，`achievement-medallion.tsx` 在圆形框内按 1.0526 倍
 放大（即裁掉 5 % 直径）后再裁切，裁切只发生在展示层，不改动 PNG 资产。
 
-> 资产落地：18 张 256×256 透明 PNG 已在 `apps/web/public/achievements/`；QA 规则（纯黑虚空背景 + 正圆硬币居中占幅 70–95 %）与生成脚本见 §4 P4.2。
+> 资产落地：现 20 张（首批 18 张 + 2026-11-08 增补 2 张）256×256 透明 PNG 已在 `apps/web/public/achievements/`；QA 规则（纯黑虚空背景 + 正圆硬币居中占幅 70–95 %）与生成脚本见 §4 P4.2。
 
 ---
 
@@ -290,7 +290,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 
 ### P0 领域层（无网络、无 UI）
 
-- [x] **P0.1** `lib/achievements/catalog.ts`：18 条定义、5 档阈值、分类、指标 kind、单位、图标 key、文案 key；导出 `TIERS`、`ACHIEVEMENTS`、查询辅助
+- [x] **P0.1** `lib/achievements/catalog.ts`：20 条定义（立项 18 条，2026-11-08 增补 `early_bird` / `biggest_session`）、5 档阈值、分类、指标 kind、单位、图标 key、文案 key；导出 `TIERS`、`ACHIEVEMENTS`、查询辅助
 - [x] **P0.2** `lib/achievements/compute.ts`：纯函数 `computeAchievements({ hourly, sessionStates, sessions, syncRuns, devices, tzContext, now })`；内部自建 canonical 集（含吊销设备）；实现 §3.4 五类扫描与 `achieved_at` 回推
 - [x] **P0.3** `tests/unit/achievements-compute.test.ts`：每档边界、时区日界（跨午夜/跨年）、streak 断档、周末/夜间、去重计数、**吊销设备不清零**、achieved_at 正确、`now` 注入、单调性不变量
 - [x] **P0.4** `tests/unit/achievements-catalog.test.ts`：id 唯一、阈值严格递增且长度 5、kind 在单调白名单、每条有 zh/en 文案 key、图标 key 存在
@@ -323,12 +323,12 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 背景与决策见 §1.3。目标：把「参数化 SVG 徽章 + 卡片网格」换成「每条成就一张插画徽章 + 徽章墙」。
 
 - [x] **P4.1** 风格样张：2 张（`token_titan` / `night_owl`）出图 + 圆形 alpha 裁切验证，**操作者确认风格通过**
-- [x] **P4.2** 18 张徽章资产生成并入库：`apps/web/public/achievements/*.png`（256×256 透明 PNG，文件名 = 成就 id，调色板量化后 17–30 KB / 张，合计 ~420 KB）；prompt 模板 + 生成脚本入库 `scripts/admin/achievement-assets/`（`prompts.json` + `generate.mjs` + README）；资产来源与使用约定写进 `apps/web/public/achievements/README.md`
+- [x] **P4.2** 18 张徽章资产生成并入库（2026-11-08 增补 2 张，现 20 张）：`apps/web/public/achievements/*.png`（256×256 透明 PNG，文件名 = 成就 id，调色板量化后 17–30 KB / 张，合计 ~420 KB）；prompt 模板 + 生成脚本入库 `scripts/admin/achievement-assets/`（`prompts.json` + `generate.mjs` + README）；资产来源与使用约定写进 `apps/web/public/achievements/README.md`
 - [x] **P4.3** 组件改造：`achievement-art.tsx` → `achievement-medallion.tsx`（位图 + 段位金属外环 + 锁定灰化与锁标 + SVG 回退；回退同时覆盖 `onError` 与挂载后 `naturalWidth` 检查）；`achievement-card.tsx` 改墙格（无边框，徽章 + 名称 + 段位文字 / 细进度条）；`achievements-summary.tsx` 改页头摘要（大号 x/18 + 细进度条 + 段位计数行）；`achievements-skeleton.tsx` 改圆形占位；`achievement-dialog.tsx` 换大徽章（176px）；`achievements-section.tsx` 栅格改 3/4/5/6 列
 - [x] **P4.4** 目录层：`catalog.ts` 增 `art` 字段（`/achievements/<id>.png`），`ACHIEVEMENT_ICONS` 退为回退用；`tests/unit/achievements-catalog.test.ts` 守卫同步（id 与文件名一一对应 + 资产存在）
 - [x] **P4.5** 文档回写：`docs/ui-spec.md` 成就节改徽章墙规范；本文件 §0 / §8 更新
 - [x] **P4.6**（2026-10-30 操作者验收通过） `pnpm verify` 全绿 + 浏览器人工验收（浅色 / 深色 / 375px 窄屏 / 图片加载失败回退 / reduced-motion / 键盘可达）；机器核对（headless Chrome + CDP）覆盖深色、375px 无横向滚动、断图回退 SVG、reduce 下 `transition-property: none`、Enter / Esc 开合弹窗并把焦点还给墙格；验收反馈的「当前值不弱化」与「刷新过程/结果 Toast」已修复
-- [x] **P4.7**（2026-10-30 操作者批准并执行）体积收口与脚本可复现：**资产侧已量化**（18 张合计 ~420 KB，单张 17–30 KB）；`jpeg-js@0.4.4` + `pngjs@7.0.0` 加入**仓库根** `package.json` 的 `devDependencies`（不算运行时预算，不改 `apps/web` 依赖图；`docs/rewrite-plan.md` §4 已记录）；生成脚本从脚本目录可直接解析这两个包，`--only` / `--seed` / `--optimize-only` 均可在仓库内跑通。`sharp`（原生二进制的调色板量化）仍为可选、未安装，缺它时量化步骤自动跳过（重新出图的成片约 80–110 KB / 张，用时再补装）
+- [x] **P4.7**（2026-10-30 操作者批准并执行）体积收口与脚本可复现：**资产侧已量化**（20 张，单张 17–30 KB）；`jpeg-js@0.4.4` + `pngjs@7.0.0` 加入**仓库根** `package.json` 的 `devDependencies`（不算运行时预算，不改 `apps/web` 依赖图；`docs/rewrite-plan.md` §4 已记录）；生成脚本从脚本目录可直接解析这两个包，`--only` / `--seed` / `--optimize-only` 均可在仓库内跑通。`sharp`（原生二进制的调色板量化）仍为可选、未安装，缺它时量化步骤自动跳过（重新出图的成片约 80–110 KB / 张，用时再补装）
 
 ### P3 收尾（2026-10-30：4 项实现 / 1 项顺带修复 / 3 项按触发条件关闭）
 
@@ -337,7 +337,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 - [x] **P3.3** 成就分享卡：Canvas 2D 引擎 `components/share-card/achievement.ts`（1080×1350，等字体就绪后绘制，徽章同源 PNG + 金属盘占位回退），纯投影 `lib/achievements/share.ts`（`buildAchievementShareData` / `achievementShareFilename`），弹窗 `achievement-share-dialog.tsx`（预览 + 复制 / 下载 + 失败提示），详情弹窗已解锁时提供入口且先关详情再开分享；零新增依赖，只含聚合数据
 - [x] **P3.4** 3D 翻面硬币：`components/achievements/achievement-coin.tsx`（初版纯 CSS `perspective` / `preserve-3d` / `rotateY`；**2026-11-01 随 P3 收尾实际引入 `motion`** 后改为 `motion/react` 的 `motion` / `useMotionValue` / `useReducedMotion` 驱动入场旋转、拖拽与惯性甩动，纯 CSS 表述作废，见 `docs/rewrite-plan.md` §4），原生 button + `aria-pressed` + Tooltip，正面徽章 / 背面段位盘 + 达成日或下一档阈值，切换成就与关闭弹窗复位
 - [x] **P3.5**（顺带修复）`/achievements` 纳入 `src/proxy.ts` 的受保护页面与 matcher，未登录跳 `/login?next=/achievements`；契约测试补齐。`docs/requirements.md` 要求除 `/login`、`/auth/callback` 与 CLI API 外全部需登录，此前漏配
-- [x] **P3.6** 元成就（集齐 N 个钻石 → 王者之证）—— **评估后不做**。理由：需要第 19 张专属插画资产（本机无 `mmx` 环境），且与「18 条独立指标」的目录设计相冲突。触发条件：操作者提供资产并明确要求
+- [x] **P3.6** 元成就（集齐 N 个钻石 → 王者之证）—— **评估后不做**。理由：需要第 21 张专属插画资产（本机无 `mmx` 环境），且与「20 条各自独立指标」的目录设计相冲突。触发条件：操作者提供资产并明确要求
 - [x] **P3.7** 年度挑战 / 赛季机制 —— **评估后不做**。缺产品定义（窗口 / 重置 / 奖励 / 存储），需要单独的需求文档。触发条件：先有书面产品需求
 - [x] **P3.8** `token_achievements` 写穿缓存 —— **评估后不做**。当前无性能瓶颈，写路径改造只会扩大侵入面。触发条件：全历史快照加载 P95 > 1 s，或 `/api/app/achievements` P95 > 1.5 s，或小时 / 会话行数 > 50 万
 - [x] **P3.9**（2026-10-30 操作者验收通过）`pnpm verify` 全绿（web 30 files / 418 tests + build，CLI 72；lint 0 error / 5 warning，其中 4 条为既有基线、1 条为 `seen.ts` 的降级日志）+ 浏览器人工验收（仪表盘条浅色 / 深色 / 375px、全局 toast 整页一次且成就页不弹、翻面点击与键盘、reduce 无过渡、分享卡预览 / 复制 / 下载 / 断图占位、未登录直跳登录）。已完成的机器核对：未登录 `/achievements` → 307 `/login?next=%2Fachievements`；`GET`/`POST /api/app/achievements` 未登录均 401 + `no-store`；构建产物含 `preserve-3d` / `rotateY(180deg)` / `backface-visibility:hidden` 与 `prefers-reduced-motion:reduce` 规则；迁移已通过 `DATABASE_URL` 执行，`token_achievement_seen` 存在、RLS 开启且 0 policy、anon/authenticated 无权限、service_role 可读写
@@ -348,7 +348,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 ## 5. 阈值校准流程（P0.5）
 
 1. 脚本只读：读取 `SUPABASE_URL`、`SUPABASE_SECRET_KEY`、`ACHIEVEMENTS_USER_ID` 环境变量；不写库、不打印任何 token 明文
-2. 加载该用户全历史（小时行 + 账户级会话状态 + sessions + sync runs），按本地时区计算 18 条指标与五档命中
+2. 加载该用户全历史（小时行 + 账户级会话状态 + sessions + sync runs），按本地时区计算 20 条指标与五档命中
 3. 输出：每条成就的 current value、按初版阈值命中的段位、以及「如果一年重度使用达到 X」的参考区间
 4. 校准原则：一年重度 ≈ 金/钻；王者 2 年+；无成就首月满级；不可达档位（如 source 数上限）及时下调
 5. 定稿：更新 `catalog.ts` 阈值 → 更新 §2 表格 → 守卫测试通过
@@ -382,7 +382,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
 | 历史行数过大导致请求变慢 | 先加 60s 结果缓存；再不行改 SQL 聚合 RPC 或持久化写穿表 |
 | 健康类成就价值观风险 | 阈值保守 + 文案调侃；不做「当前连续」压力机制 |
 | 插画风格漂移（AI 出图不一致） | 统一风格模板 + 硬性 QA（纯黑虚空背景 / 正圆硬币居中占幅 70–95 %）；不合格换 seed 重生成，最多 4 次；生成脚本与 prompt 清单入库可复现 |
-| 资产体积（18 张 PNG 入库） | 已收口：调色板量化后单张 17–30 KB，合计 ~420 KB；量化由可选 `sharp` 完成，未安装时脚本跳过该步（成片偏大但不影响显示） |
+| 资产体积（20 张 PNG 入库） | 已收口：调色板量化后单张 17–30 KB，合计 ~420 KB；量化由可选 `sharp` 完成，未安装时脚本跳过该步（成片偏大但不影响显示） |
 | 资产生成脚本的依赖 | 已批准并落地（2026-10-30）：`jpeg-js@0.4.4` + `pngjs@7.0.0` 为仓库根 `devDependencies`，仅离线脚本使用、不参与 web 构建与运行时拷贝；`sharp` 未安装，需要时再单独申请 |
 | 全局 toast 刷屏 | 每次整页加载只检查一次（模块级标记），跳过 `/achievements`（该页自己管水位）与隐藏页；首次基线静默写入不弹；一次最多一条聚合 toast（最多列 2 个名称） |
 | 未执行迁移 | GET 读 `token_achievement_seen` 失败时降级 `seen_through: null`（只记日志），页面与仪表盘条正常，「新」标记与 toast 自动关闭；`POST` 回 503，客户端静默。补齐迁移后无需改代码 |
@@ -461,7 +461,7 @@ scripts/admin/achievements-calibrate.mjs        # 一次性只读校准脚本
   - `apps/web/src/lib/api/account-data.ts:139`（全历史快照 + 10s TTL）
   - `apps/web/src/lib/account/usage.ts:121`（`canonicalizeUsage`，吊销设备语义）
 - 成就徽章资产（2026-10-30 新增）：
-  - `apps/web/public/achievements/*.png`（18 张插画徽章）
+  - `apps/web/public/achievements/*.png`（20 张插画徽章）
   - `scripts/admin/achievement-assets/prompts.json`（风格模板 + 逐条主体描述）
   - `scripts/admin/achievement-assets/generate.mjs`（出图 + QA + 圆形裁切）
   - `apps/web/src/lib/account/series.ts`（`parseTzContext` / `zonedDayKey` / 时区工具）

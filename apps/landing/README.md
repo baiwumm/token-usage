@@ -8,7 +8,7 @@ token-usage.cc 官方落地页（2026-11-08 立项）：纯静态单页营销站
 ```bash
 pnpm dev:landing     # http://localhost:3000
 pnpm build:landing   # 静态导出到 out/
-pnpm verify          # 根门禁（web + cli + landing 全量）
+pnpm verify          # 根门禁（web + cli + landing + desktop）
 ```
 
 ## 数据快照

@@ -75,6 +75,7 @@ web 同构前端栈，定位、边界与接线见 `docs/desktop-plan.md`）。
 | 改落地页（`apps/landing`：文案、快照数据、部署接线） | `apps/landing/README.md`（UI 仍先读 `docs/ui-spec.md`） |
 | 桌面端（`apps/desktop`：定位、边界、里程碑、验收与发版） | `docs/desktop-plan.md`（UI 仍先读 `docs/ui-spec.md`；发版流程与 updater 机制见其 §11） |
 | 部署与回滚 | `docs/launch-runbook.md` |
+| 运维脚本（建号、成就校准、资产生成、发版清单） | `scripts/README.md`（区分活脚本与 `scripts/archive/`） |
 | 当前进度、剩余事项与待决策 | `docs/rewrite-plan.md` §10 |
 | 历史归档（已完成且不再维护的计划与对比结论） | `docs/archive/` |
 

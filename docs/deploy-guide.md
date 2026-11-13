@@ -123,7 +123,7 @@ Dashboard → **Authentication → URL Configuration**：
 [`docs/ui-spec.md`](ui-spec.md)「项目（`/projects`）」节）。它是**部署级、构建期内联**的开关，
 CLI 采集端不读它：未设置时走 sessions 口径（只覆盖会话级来源，`cursor` / `trae-cn` 永不
 出现），设为 `hourly` 走桶口径（100% token，只有带项目名的桶才有归因；本机 2026-11-04 已用
-`scripts/admin/project-backfill.cjs` 回填 opencode 的历史项目行，其他来源、多模型组与无项目
+`scripts/archive/project-backfill.cjs` 回填 opencode 的历史项目行，其他来源、多模型组与无项目
 证据的桶仍整体计入「未归因」，不做源库重扫）。改值或删除都必须重新部署（Vercel Redeploy）
 才生效；新部署建议先保持默认，等带项目名的桶攒够再切。新采集机器只影响「本机从接入起」的
 用量，不影响历史。

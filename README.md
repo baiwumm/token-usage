@@ -71,7 +71,9 @@ Supabase（Auth + Postgres，RLS 全拒客户端角色，服务端 service-role 
 ```text
 token-usage/
 ├── apps/
-│   └── web/          # Next.js：仪表盘 + CLI 契约层（src/ 目录结构）
+│   ├── web/          # Next.js：仪表盘 + CLI 契约层（src/ 目录结构）
+│   ├── landing/      # token-usage.cc 官方落地页（静态导出）
+│   └── desktop/      # 桌面端托盘伴生工具（Tauri 2）
 ├── packages/
 │   └── cli/          # 采集 CLI（npm: tokenusage-cli）
 ├── supabase/
@@ -89,8 +91,10 @@ token-usage/
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:3000
-pnpm verify     # 提交前门禁：lint + typecheck + test + build
+pnpm dev            # web 仪表盘 http://localhost:3000
+pnpm dev:landing    # 落地页本地预览
+pnpm dev:desktop    # 桌面端（需 Rust 工具链，见 docs/desktop-plan.md §7）
+pnpm verify         # 提交前门禁：web + cli + landing + desktop
 ```
 
 前置要求：Node.js 22.19+（CLI 采集端的 `engines` 下限）、pnpm（版本由根 `packageManager` 字段锁定）。
@@ -99,8 +103,11 @@ pnpm verify     # 提交前门禁：lint + typecheck + test + build
 
 ## 🗺️ 路线图
 
-v1（M0–M7）已于 2026-10-30 全部完成并上线；采集端 CLI 当前 0.4.7。
-剩余待办与待拍板事项见 [`docs/rewrite-plan.md`](docs/rewrite-plan.md) §10。
+v1（M0–M7）已于 2026-10-30 完成并上线；此后新增官方落地页（`apps/landing`，token-usage.cc）
+与桌面端托盘应用（`apps/desktop`）。版本号不在此写死：采集端看
+[`packages/cli/CHANGELOG.md`](packages/cli/CHANGELOG.md)，桌面端看
+[`apps/desktop/CHANGELOG.md`](apps/desktop/CHANGELOG.md)。剩余待办与待拍板事项见
+[`docs/rewrite-plan.md`](docs/rewrite-plan.md) §10。
 
 ## 📚 文档
 

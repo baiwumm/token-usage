@@ -6,13 +6,35 @@
   ingest / public-config / device-rename / device-revoke / sync-report / reconcile。消费者是采集端 CLI——已配对的
   钉版 `tokentracker-cli@1.4.x` 把绝对 URL 存在本地 `config.json` 里，**不能随服务端升级而
   更新**，因此这一档的路径、字段名、语义一经发布即冻结。
-- **Dashboard 面（可演进）**：account-summary、account-\<series\> ×8（含 `sessions` 与
-  `sync-runs`）、dashboard。唯一消费者
+- **Dashboard 面（可演进）**：account-summary、account-\<series\> ×9（含 `sessions`、`sync-runs`、
+  `project-profiles`）、dashboard。唯一消费者
   是本仓库的新仪表盘（旧 selfhost 降级页已裁撤），服务端与 UI 同仓同发、无外部钉版客户端，
   随 UI 版本演进；每次变更需回写本文并同步 golden 测试与前端，但不构成对外承诺。
 
 > CLI 面冻结的含义：字段**不可改名、不可改类型、不可改变语义**；只允许**追加可选字段**。
 > 任何破坏性变更都必须以新的 API 版本路径发布，且旧路径继续可用。
+
+## 0. 端点索引（新增端点先在此登记）
+
+编号连续、不重号；加端点 = 先加本表一行，再写 §2.x 小节，并同步 golden 测试。
+
+| 节 | 端点 | 面 |
+|---|---|---|
+| §2.1 | `POST /api/functions/token-usage-device-flow-authorize` | CLI｜公开 |
+| §2.2 | `POST /api/functions/token-usage-device-flow-poll` | CLI｜凭 device_code |
+| §2.3 | `POST /api/functions/token-usage-device-flow-grant` | CLI｜设备令牌或 JWT |
+| §2.4 | `POST /api/functions/token-usage-ingest` | CLI｜仅设备令牌 |
+| §2.5 | `GET /api/functions/token-usage-public-config` | CLI｜公开 |
+| §2.6 | `GET /api/functions/token-usage-account-summary` | Dashboard｜设备令牌或 JWT |
+| §2.7 | `GET /api/functions/token-usage-account-<series>`（9 个 series，catch-all） | Dashboard｜设备令牌或 JWT |
+| §2.8 | `POST /api/functions/token-usage-device-rename` | CLI｜自身或本账户 |
+| §2.9 | `POST /api/functions/token-usage-device-revoke` | CLI｜自身或本账户 |
+| §2.10 | `GET /api/functions/token-usage-dashboard` | Dashboard｜设备令牌或 JWT |
+| §2.11 | `POST /api/functions/token-usage-sync-report` | CLI｜仅设备令牌 |
+| §2.12 | `GET /api/functions/token-usage-account-sync-runs` | Dashboard｜设备令牌或 JWT |
+| §2.13 | `GET /api/functions/token-usage-reconcile` | CLI｜仅设备令牌 |
+| §2.14 | `GET /api/app/data-version` | 内部｜仅浏览器会话 |
+| §2.15 | `GET /api/functions/token-usage-account-project-profiles` | CLI + Dashboard｜设备令牌或 JWT |
 
 契约以旧实现为准逐端点核对过（来源：TokenTrackerSelfhost 仓库 `api/functions/*` 与
 `api/_lib/*`，2026-10；该仓库已于 2026-10-29 删除）。本文件与实现冲突时，**以本文件 +
@@ -141,7 +163,7 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 > `doctor` / `init` 的输出里打印 `- Device: <默认名> (id <device_id>)`。注意它打印的是
 > **默认名**，不是可被改名的 `device_name` 当前值——两台以上采集机时，默认名才是稳定标识
 > （对照表见 `docs/launch-runbook.md` 的采集机清单）。CLI 输出不属于本契约面，
-> 改动无需回写本文档；该批见 `docs/cli-release.md` §八。
+> 改动无需回写本文档；该批见 `docs/archive/cli-releases.md` §八。
 
 ### 2.3 `POST /api/functions/token-usage-device-flow-grant`（设备令牌或 JWT｜CLI 面）
 
@@ -255,7 +277,7 @@ Query：`from`、`to`（`YYYY-MM-DD`，缺省= 首日 / 调用方本地今天）
 
 ### 2.7 `GET /api/functions/token-usage-account-<series>`（设备令牌或 JWT｜Dashboard 面）
 
-八个只读序列。前六个共享一套时区上下文参数（`tz` / `tz_offset_minutes`）与 `device_id` 过滤；
+九个只读序列（第九个 `project-profiles` 见 §2.15）。前六个共享一套时区上下文参数（`tz` / `tz_offset_minutes`）与 `device_id` 过滤；
 `sessions` 与 `sync-runs` 使用绝对瞬时窗口，不需要 `tz`。Next.js 实现为**一个**动态路由
 （`app/api/functions/[...slug]/route.ts` catch-all 承接 `token-usage-account-<series>` slug，
 App Router 的动态段必须独占整段，`token-usage-account-[series]` 形式的"半动态段"目录不成立），
@@ -462,7 +484,7 @@ Query：`from`、`to`（ISO 瞬时，按 `hour_start ∈ [from,to)`）、`limit`
   （兜 reconcile / replay 这类不建 run 行的改数盲区）。payload 按
   `user(JWT sub) + range/tz/device` 键缓存在 sessionStorage（上限 4 组筛选键）。
 
-### 2.13 `GET /api/functions/token-usage-account-project-profiles`（设备令牌或 JWT｜CLI 面 + Dashboard 面）
+### 2.15 `GET /api/functions/token-usage-account-project-profiles`（设备令牌或 JWT｜CLI 面 + Dashboard 面）
 
 > 2026-11-11 新增（桌面 D10.1）：桌面「项目与仓库 / 项目详情」要显示 web 端编辑过的项目
 > profile（显示名 / logo / repo），而桌面永不读取设备令牌文件（桌面 §3 边界 1）——由

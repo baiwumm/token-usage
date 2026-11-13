@@ -1,6 +1,6 @@
 # 成就徽章插画（achievement artwork）
 
-每条成就一张 256×256 PNG 透明徽章（调色板量化，17–30 KB / 张，18 张合计 ~420 KB），
+每条成就一张 256×256 PNG 透明徽章（调色板量化，17–30 KB / 张，共 20 张），
 文件名为成就 id（与 `apps/web/src/lib/achievements/catalog.ts` 的 `ACHIEVEMENTS[].id`
 一一对应）：
 
@@ -9,7 +9,7 @@ token_titan.png  wordsmith.png  cachekeeper.png  veteran.png
 big_day.png     cache_alchemy.png  marathon_session.png  model_symphony.png
 streak.png      marathoner.png  weekend_warrior.png  night_owl.png
 polyglot.png    multitool.png  project_hopper.png  project_devotion.png
-fleet.png       sync_diligence.png
+fleet.png       sync_diligence.png  early_bird.png  biggest_session.png
 ```
 
 ## 来源与授权
