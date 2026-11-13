@@ -272,7 +272,7 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），
 其值从 publishable key 取——公开客户端值的语义不变。
 
-## 10. 当前状态与剩余事项（2026-11-06 复核；2026-11-08 增补 M-landing；2026-11-09 增补 M-desktop D3 与 CLI 0.5.4；2026-11-10 收官 M-desktop；2026-11-11 增补桌面 0.2 迭代收官；2026-11-12 增补桌面 0.3 / D11 收官与 0.4 迭代验收）
+## 10. 当前状态与剩余事项（2026-11-06 复核；2026-11-08 增补 M-landing；2026-11-09 增补 M-desktop D3 与 CLI 0.5.4；2026-11-10 收官 M-desktop；2026-11-11 增补桌面 0.2 迭代收官；2026-11-12 增补桌面 0.3 / D11 收官与 0.4 迭代验收；2026-11-13 增补桌面 0.4.1 发布）
 
 **里程碑**：M0–M7 全部交付；**M-landing（2026-11-08）**：官方落地页 `apps/landing`
 开发完成并推送（纯静态单页八段、暗色单主题、VERMILLION accent、真实数据快照
@@ -300,8 +300,10 @@ GitHub Release 安装验收**，D8 原范围被 D9–D11 全部吸收；应用�
 不进桌面，范围、验收线与记录见 `docs/desktop-plan.md` §8 / §10 / §12。**桌面端 0.4 产品
 迭代（会话项目 / 模型筛选、设置目录入口、托盘周期切换）已于 2026-11-12 交付，经三轮反馈
 修正（`desktop-plan.md` §12.14.1–.3：长名溢出 / Select 样式统一 / 周期切换筛选联动）后
-本地 0.4.0 安装包验收通过**；GitHub Release 发版按 `desktop-plan.md` §11 由操作者放行。
-桌面端所依赖的
+本地 0.4.0 安装包验收通过**。**0.4.1（设置改版四项 + 货币 / Token 显示 / 数字单位 / 数字
+分组偏好 + 会话空态三分与 `read_tracker_head`）于 2026-11-13 验收通过并已 publish**
+（`desktop-v0.4.1`，`desktop-latest/latest.json` 已覆盖为 0.4.1）；0.4.0 的 draft Release
+始终未发布、被本版取代。桌面端所依赖的
 `project-profiles` 子命令已随 `tokenusage-cli@0.5.5`（2026-11-11 发布）上线，其他机器升级
 CLI 后即可同步 web 编辑的显示名 / logo。生产实例
 `token-usage.baiwumm.com` 自 2026-10-26 起承载
