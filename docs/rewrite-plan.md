@@ -303,7 +303,7 @@ GitHub Release 安装验收**，D8 原范围被 D9–D11 全部吸收；应用�
 本地 0.4.0 安装包验收通过**。**0.4.1（设置改版四项 + 货币 / Token 显示 / 数字单位 / 数字
 分组偏好 + 会话空态三分与 `read_tracker_head`）于 2026-11-13 验收通过并已 publish**
 （`desktop-v0.4.1`，`desktop-latest/latest.json` 已覆盖为 0.4.1）；0.4.0 的 draft Release
-始终未发布、被本版取代。桌面端所依赖的
+始终未发布、被本版取代并于同日删除（tag `desktop-v0.4.0` 保留作构建记录）。桌面端所依赖的
 `project-profiles` 子命令已随 `tokenusage-cli@0.5.5`（2026-11-11 发布）上线，其他机器升级
 CLI 后即可同步 web 编辑的显示名 / logo。生产实例
 `token-usage.baiwumm.com` 自 2026-10-26 起承载

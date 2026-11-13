@@ -537,7 +537,8 @@ D11 落地、会话内项目 / 模型筛选随 §12.14 落地、读时计价随 
   CloseRequested 从 `minimize()` 改为不拦截（补上退出路径）、补 `lib/version.test.ts`，
   并回写 §1 / §4 / §9 / §12 / ui-spec 的陈旧条目与 CHANGELOG 0.3.0 的 High 标签矛盾。
   **上述 2026-11-13 改动未纳入 `desktop-v0.4.0` tag（tag 指向 `47a9f39`），已随
-  `desktop-v0.4.1` 带走。** 该 draft Release 始终未发布，2026-11-13 被 0.4.1 取代。
+  `desktop-v0.4.1` 带走。** 该 draft Release 始终未发布，2026-11-13 被 0.4.1 取代并
+  **删除**（tag 保留作构建记录，避免误 publish 把滚动清单覆盖回 0.4.0）。
 
 - **0.4.1 设置改版（2026-11-13 立项、开发并验收通过，已发布）**：四项合并为同一版本——
   ① 「卡片显示」五个 `Switch` 改 `ToggleButtonGroup selectionMode="multiple" size="sm"`
@@ -561,7 +562,7 @@ D11 落地、会话内项目 / 模型筛选随 §12.14 落地、读时计价随 
   **操作者 2026-11-13 安装验收通过后提交、推 main 并打 `desktop-v0.4.1`，CI 出
   draft Release，同日 publish（`--latest=false`，不抢 CLI 的 latest 标记），
   `desktop-latest/latest.json` 随 `release: published` 覆盖为 0.4.1**；
-  `desktop-v0.4.0` draft 始终未发布，已被本版取代。
+  `desktop-v0.4.0` draft 始终未发布，已被本版取代并于同日删除（tag 保留）。
 
 - **0.4.1 同版复核修复（2026-11-13，随本地包一起验收）**：操作者问「今天会话数为 0」，
   只读排查确认属预期——当天 23 条小时桶来自 workbuddy / minimax-code / trae，均不在
