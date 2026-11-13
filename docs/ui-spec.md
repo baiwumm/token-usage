@@ -65,6 +65,9 @@
   （2026-10-28 操作者指令）。
 - 浮层（Modal / Drawer / Popover / Tooltip / Toast）使用 HeroUI 内置组件及其触发器组件，
   受控用法遵循各组件文档，不自建浮层机制。
+- 所有 `Tooltip` 一律 `delay={0}`（悬浮即出）且带箭头：`<Tooltip.Content showArrow>` 的
+  首个子元素必须是 `<Tooltip.Arrow />`（2026-11-13 操作者裁定）。recharts 的图表 `<Tooltip>`
+  属数据浮层，不在此列。
 - 图标：`@gravity-ui/icons`（与 HeroUI v3 官方示例一致），尺寸对齐 HeroUI 插槽惯例。
 - 图表：recharts（2026-10-24 裁决，替代原"手写 SVG"）；热力图无对应 recharts 类型，用
   主题 token 的 CSS grid 实现（`lib/dashboard` 对齐函数把 wire 的连续天切片对齐为周一列）。

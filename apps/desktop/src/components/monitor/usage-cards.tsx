@@ -203,7 +203,7 @@ function StatCard({
  */
 function LabelHint({ text }: { text: string }) {
   return (
-    <Tooltip delay={150}>
+    <Tooltip delay={0}>
       <Tooltip.Trigger
         aria-label="统计口径说明"
         className="inline-grid shrink-0 cursor-help place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus"
@@ -212,6 +212,7 @@ function LabelHint({ text }: { text: string }) {
         <CircleInfo aria-hidden="true" className="size-3.5" />
       </Tooltip.Trigger>
       <Tooltip.Content showArrow placement="top">
+        <Tooltip.Arrow />
         <Typography
           className="max-w-64 text-left leading-relaxed"
           type="body-xs"

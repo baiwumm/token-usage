@@ -161,7 +161,7 @@ export function TotalTokensHero({
             {hasUnpriced ? "≥ " : ""}
             <FlowNumber text={formatCost(summary.totals.total_cost_usd)} />
           </Typography>
-          <Tooltip>
+          <Tooltip delay={0}>
             <Button
               aria-label={copy.cards.heroCostNote}
               className="size-5 p-0"
@@ -171,6 +171,7 @@ export function TotalTokensHero({
               <CircleInfo aria-hidden="true" className="text-muted size-3.5" />
             </Button>
             <Tooltip.Content showArrow placement="bottom">
+              <Tooltip.Arrow />
               {copy.cards.heroCostNote}
             </Tooltip.Content>
           </Tooltip>
