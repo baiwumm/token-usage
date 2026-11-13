@@ -55,11 +55,15 @@ export interface BadgeCopy {
   deleteDone: string;
   cancel: string;
 
-  detailTitle: string;
   detailEmpty: string;
-  labelLabel: string;
-  labelPlaceholder: string;
-  labelSave: string;
+  labelDialogAdd: string;
+  labelDialogEdit: string;
+  labelField: string;
+  labelFieldPlaceholder: string;
+  labelRequired: string;
+  labelDuplicate: string;
+  labelConfirmAdd: string;
+  labelConfirmEdit: string;
   labelSaved: string;
   paramsLabel: string;
   styleLabel: string;
@@ -150,12 +154,16 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     deleteDone: "徽章已删除",
     cancel: "取消",
 
-    detailTitle: "徽章设置",
     detailEmpty: "先新增或选择一枚徽章。",
-    labelLabel: "备注名",
-    labelPlaceholder: "例如 README 徽章",
-    labelSave: "保存名称",
-    labelSaved: "备注名已保存",
+    labelDialogAdd: "新增徽章",
+    labelDialogEdit: "编辑名称",
+    labelField: "名称",
+    labelFieldPlaceholder: "例如 README 徽章",
+    labelRequired: "请输入名称",
+    labelDuplicate: "名称已存在",
+    labelConfirmAdd: "新增",
+    labelConfirmEdit: "保存",
+    labelSaved: "名称已保存",
     paramsLabel: "展示参数",
     styleLabel: "风格",
     stylePanel: "面板",
@@ -246,12 +254,16 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     deleteDone: "Badge deleted",
     cancel: "Cancel",
 
-    detailTitle: "Badge settings",
     detailEmpty: "Add or select a badge first.",
-    labelLabel: "Label",
-    labelPlaceholder: "e.g. README badge",
-    labelSave: "Save label",
-    labelSaved: "Label saved",
+    labelDialogAdd: "Add badge",
+    labelDialogEdit: "Edit name",
+    labelField: "Name",
+    labelFieldPlaceholder: "e.g. README badge",
+    labelRequired: "Enter a name",
+    labelDuplicate: "That name is already in use",
+    labelConfirmAdd: "Add",
+    labelConfirmEdit: "Save",
+    labelSaved: "Name saved",
     paramsLabel: "Display",
     styleLabel: "Style",
     stylePanel: "Panel",

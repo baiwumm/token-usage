@@ -4,8 +4,9 @@
 
 /** One row per badge; revoked rows still occupy a slot until deleted. */
 export const MAX_BADGES = 10;
-/** Badge label (备注名), characters after trimming. */
-export const MAX_BADGE_LABEL = 40;
+/** Badge label (badge name), characters after trimming; set via the shared
+ *  add/edit dialog and required there (2026-11-14). */
+export const MAX_BADGE_LABEL = 20;
 /** Public display name snapshot (settings level). */
 export const MAX_DISPLAY_NAME = 30;
 /** Repository allowlist size. */

@@ -15,7 +15,7 @@ import { Check, Xmark } from "@gravity-ui/icons";
 import {
   Card,
   Description,
-  Input,
+  InputGroup,
   ListBox,
   Select,
   Switch,
@@ -149,12 +149,17 @@ export function BadgeSettingsCard({
             <TextField
               aria-label={copy.nameLabel}
               className="w-full md:max-w-md"
-              maxLength={MAX_DISPLAY_NAME}
               name="public_name"
               value={draftName}
               onChange={onDraftNameChange}
             >
-              <Input placeholder={copy.namePlaceholder} variant="secondary" />
+              {/* Suffix 实时字数（上限与 limits.ts / 迁移约束对齐） */}
+              <InputGroup variant="secondary">
+                <InputGroup.Input placeholder={copy.namePlaceholder} />
+                <InputGroup.Suffix>
+                  {draftName.length}/{MAX_DISPLAY_NAME}
+                </InputGroup.Suffix>
+              </InputGroup>
             </TextField>
             <PendingButton
               isDisabled={

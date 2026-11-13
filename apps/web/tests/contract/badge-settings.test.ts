@@ -287,7 +287,7 @@ describe("/api/app/badge multi-badge config (docs/badge.md §7.1–7.3)", () => 
     fake.tables.token_public_badge_settings.rows = [];
 
     const res = await POST(
-      request(APP_URL, "POST", { timezone: "Asia/Shanghai" }),
+      request(APP_URL, "POST", { label: "Docs", timezone: "Asia/Shanghai" }),
     );
 
     expect(res.status).toBe(200);
@@ -304,10 +304,19 @@ describe("/api/app/badge multi-badge config (docs/badge.md §7.1–7.3)", () => 
   });
 
   it("POST defaults a new badge to the sparkline style (2026-11-14)", async () => {
-    const res = await POST(request(APP_URL, "POST", {}));
+    const res = await POST(request(APP_URL, "POST", { label: "Fresh" }));
 
     expect(res.status).toBe(200);
     expect((await res.json()).badge).toMatchObject({ style: "sparkline" });
+  });
+
+  it("POST requires a non-empty label (2026-11-14 shared dialog)", async () => {
+    const missing = await POST(request(APP_URL, "POST", {}));
+    const blank = await POST(request(APP_URL, "POST", { label: "   " }));
+
+    expect(missing.status).toBe(400);
+    expect(blank.status).toBe(400);
+    expect(await blank.json()).toEqual({ error: "Invalid label" });
   });
 
   it("PUT cascades badges off a project that left the allowlist (§7.1)", async () => {
@@ -384,10 +393,52 @@ describe("/api/app/badge multi-badge config (docs/badge.md §7.1–7.3)", () => 
       );
     }
 
-    const res = await POST(request(APP_URL, "POST", {}));
+    const res = await POST(request(APP_URL, "POST", { label: "One more" }));
 
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "Badge limit reached" });
+  });
+
+  it("POST rejects a duplicate label, case-folded (2026-11-14)", async () => {
+    const res = await POST(
+      request(APP_URL, "POST", { label: "  README 徽章 " }),
+    );
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "Label already exists" });
+  });
+
+  it("PATCH keeps the badge's own label and rejects another badge's (2026-11-14)", async () => {
+    const keptId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc03";
+
+    fake
+      .table("token_public_badges")
+      .push(badgeRow({ id: keptId, token: `tu_badge_${"e".repeat(32)}`, label: "主页徽章" }));
+
+    const self = await PATCH(
+      request(`${APP_URL}/links/${BADGE_ID}`, "PATCH", { label: "README 徽章" }),
+      context(BADGE_ID),
+    );
+
+    expect(self.status).toBe(200);
+
+    const clash = await PATCH(
+      request(`${APP_URL}/links/${BADGE_ID}`, "PATCH", { label: "主页徽章" }),
+      context(BADGE_ID),
+    );
+
+    expect(clash.status).toBe(409);
+    expect(await clash.json()).toEqual({ error: "Label already exists" });
+  });
+
+  it("PATCH rejects an empty label (2026-11-14 shared dialog)", async () => {
+    const res = await PATCH(
+      request(`${APP_URL}/links/${BADGE_ID}`, "PATCH", { label: "  " }),
+      context(BADGE_ID),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Invalid label" });
   });
 
   it("PATCH revokes and restores the SAME link", async () => {

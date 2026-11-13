@@ -11,27 +11,21 @@ import type { BadgeCopy } from "@/lib/copy/badge";
 
 import {
   Card,
-  Chip,
   Description,
-  Input,
   ListBox,
   Select,
-  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from "@heroui/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { firstKey } from "./appearance-helpers";
 import { BadgeHint } from "./badge-hint-icon";
-import { badgeName } from "./badge-helpers";
 import { BadgeSnippetSection } from "./badge-snippet-section";
 
 import { PanelOverlay } from "@/components/panel-overlay";
-import { PendingButton } from "@/components/pending-button";
 import { badgePreviewUrl } from "@/lib/badge/api";
-import { MAX_BADGE_LABEL } from "@/lib/badge/limits";
 
 function Block({
   label,
@@ -112,38 +106,23 @@ export function BadgeDetailCard({
   badge,
   busy,
   copy,
-  labelBusy,
   origin,
   previewVersion,
-  onSaveLabel,
   onUpdate,
 }: {
   allowedProjects: string[];
   badge: BadgeLink | null;
   busy: boolean;
   copy: BadgeCopy;
-  labelBusy: boolean;
   origin: string;
   previewVersion: number;
-  onSaveLabel: (label: string) => void;
   onUpdate: (patch: BadgeLinkInput) => void;
 }) {
-  const [draftLabel, setDraftLabel] = useState(badge?.label ?? "");
-
-  // Adopt the saved label after a PATCH (the server trims) and when the
-  // selection changes.
-  useEffect(() => {
-    setDraftLabel(badge?.label ?? "");
-  }, [badge?.id, badge?.label]);
-
   const [loadedPreview, setLoadedPreview] = useState<string | null>(null);
 
   if (!badge) {
     return (
       <Card className="p-6">
-        <Card.Header>
-          <Card.Title>{copy.detailTitle}</Card.Title>
-        </Card.Header>
         <Card.Content>
           <Typography className="py-2 text-center" color="muted" type="body-sm">
             {copy.detailEmpty}
@@ -153,7 +132,6 @@ export function BadgeDetailCard({
     );
   }
 
-  const revoked = badge.revokedAt !== null;
   const previewSrc = badgePreviewUrl(
     {
       style: badge.style,
@@ -166,48 +144,10 @@ export function BadgeDetailCard({
   // Derived from the loaded src, so a new query starts in the loading state
   // during the very render that switched it — no effect, no stale frame.
   const previewLoading = loadedPreview !== previewSrc;
-  const labelDirty = draftLabel.trim() !== badge.label;
 
   return (
     <Card className="p-6">
-      <Card.Header>
-        <div className="flex flex-wrap items-center gap-2">
-          <Card.Title>{badgeName(copy, badge)}</Card.Title>
-          {revoked ? (
-            <Chip color="warning" size="sm" variant="soft">
-              {copy.revokedChip}
-            </Chip>
-          ) : (
-            <Chip color="success" size="sm" variant="soft">
-              {copy.activeChip}
-            </Chip>
-          )}
-        </div>
-      </Card.Header>
       <Card.Content className="divide-border/60 flex flex-col divide-y">
-        <Block label={copy.labelLabel}>
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <TextField
-              aria-label={copy.labelLabel}
-              className="w-full md:max-w-md"
-              maxLength={MAX_BADGE_LABEL}
-              name="badge_label"
-              value={draftLabel}
-              onChange={setDraftLabel}
-            >
-              <Input placeholder={copy.labelPlaceholder} variant="secondary" />
-            </TextField>
-            <PendingButton
-              isDisabled={!labelDirty || busy}
-              pending={labelBusy}
-              size="sm"
-              onPress={() => onSaveLabel(draftLabel)}
-            >
-              {copy.labelSave}
-            </PendingButton>
-          </div>
-        </Block>
-
         <Block label={copy.paramsLabel}>
           <div className="flex flex-wrap items-end gap-4">
             <OptionGroup
@@ -225,9 +165,9 @@ export function BadgeDetailCard({
               disabled={busy}
               label={copy.themeLabel}
               options={[
+                { id: "auto", label: copy.themeAuto },
                 { id: "dark", label: copy.themeDark },
                 { id: "light", label: copy.themeLight },
-                { id: "auto", label: copy.themeAuto },
               ]}
               value={badge.theme}
               onChange={(theme) => onUpdate({ theme })}
@@ -293,7 +233,9 @@ export function BadgeDetailCard({
           label={copy.previewAlt}
         >
           {/* Wide panels scroll inside the card, never the page (ui-spec).
-              The overlay holds the frame while a new query loads, so switching
+              mx-auto centers when the badge fits and resolves to 0 when it
+              overflows, so the left edge stays reachable while scrolling. The
+              overlay holds the frame while a new query loads, so switching
               style/theme/range never shows the previous render in place. */}
           <div
             aria-busy={previewLoading}
@@ -303,7 +245,7 @@ export function BadgeDetailCard({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 alt={copy.previewAlt}
-                className="max-w-none"
+                className="mx-auto max-w-none"
                 src={previewSrc}
                 onError={() => setLoadedPreview(previewSrc)}
                 onLoad={() => setLoadedPreview(previewSrc)}

@@ -184,9 +184,27 @@ export async function POST(request: NextRequest) {
 
   if (!parsed.ok) return jsonError(400, parsed.error);
 
+  // 2026-11-14: a badge is created through the shared name dialog — the label
+  // is its identity in the list and is required at creation time.
+  if (!parsed.input.label) return jsonError(400, "Label required");
+
   try {
-    if ((await loadBadges(session.userId)).length >= MAX_BADGES) {
+    const badges = await loadBadges(session.userId);
+
+    if (badges.length >= MAX_BADGES) {
       return jsonError(409, "Badge limit reached");
+    }
+
+    // 2026-11-14: the label is the badge's identity in the list — one name per
+    // account, trimmed and case-folded (revoked rows count too, §7.1).
+    if (
+      badges.some(
+        (row) =>
+          (row.label ?? "").trim().toLowerCase() ===
+          parsed.input.label!.toLowerCase(),
+      )
+    ) {
+      return jsonError(409, "Label already exists");
     }
 
     // §3.2: tu_badge_ + 32 base64url chars from 24 CSPRNG bytes.
@@ -201,7 +219,7 @@ export async function POST(request: NextRequest) {
     const inserted = await insert(BADGES_TABLE, {
       user_id: session.userId,
       token,
-      label: parsed.input.label ?? "",
+      label: parsed.input.label,
       style: defaults.style,
       theme: defaults.theme,
       range: defaults.range,

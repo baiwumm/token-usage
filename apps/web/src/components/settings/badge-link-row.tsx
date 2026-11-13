@@ -8,7 +8,13 @@ import type { BadgeLink } from "@/lib/badge/api";
 import type { BadgeCopy } from "@/lib/copy/badge";
 import type { ReactNode } from "react";
 
-import { ArrowRotateLeft, Ban, Copy, TrashBin } from "@gravity-ui/icons";
+import {
+  ArrowRotateLeft,
+  Ban,
+  Copy,
+  Pencil,
+  TrashBin,
+} from "@gravity-ui/icons";
 import { Button, Chip, Spinner, Tooltip, Typography, cn } from "@heroui/react";
 
 import { badgeName, badgeSummary } from "./badge-helpers";
@@ -40,6 +46,7 @@ export function BadgeLinkRow({
   selected,
   onCopy,
   onDelete,
+  onEdit,
   onSelect,
   onToggleRevoked,
 }: {
@@ -51,6 +58,7 @@ export function BadgeLinkRow({
   selected: boolean;
   onCopy: () => void;
   onDelete: () => void;
+  onEdit: () => void;
   onSelect: () => void;
   onToggleRevoked: () => void;
 }) {
@@ -89,6 +97,18 @@ export function BadgeLinkRow({
       </button>
 
       <div className="flex shrink-0 gap-1">
+        <ActionTooltip label={copy.labelDialogEdit}>
+          <Button
+            isIconOnly
+            aria-label={copy.labelDialogEdit}
+            isDisabled={busy}
+            size="sm"
+            variant="tertiary"
+            onPress={onEdit}
+          >
+            <Pencil aria-hidden="true" className="size-4" />
+          </Button>
+        </ActionTooltip>
         <ActionTooltip label={copy.copyLink}>
           <Button
             isIconOnly

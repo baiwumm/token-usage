@@ -9,14 +9,11 @@ import type { BadgeLink } from "@/lib/badge/api";
 import type { BadgeCopy } from "@/lib/copy/badge";
 
 import { Plus } from "@gravity-ui/icons";
-import { Card, Description, Typography } from "@heroui/react";
+import { Button, Card, Description, Typography } from "@heroui/react";
 
 import { BadgeLinkRow } from "./badge-link-row";
 
-import { PendingButton } from "@/components/pending-button";
-
 export function BadgeLinksCard({
-  addBusy,
   badges,
   busyId,
   copy,
@@ -26,19 +23,21 @@ export function BadgeLinksCard({
   onAdd,
   onCopy,
   onDelete,
+  onEdit,
   onSelect,
   onToggleRevoked,
 }: {
-  addBusy: boolean;
   badges: BadgeLink[];
   busyId: string | null;
   copy: BadgeCopy;
   limit: number;
   revokingId: string | null;
   selectedId: string | null;
+  /** Opens the shared add dialog; the async happens on its confirm button. */
   onAdd: () => void;
   onCopy: (badge: BadgeLink) => void;
   onDelete: (badge: BadgeLink) => void;
+  onEdit: (badge: BadgeLink) => void;
   onSelect: (id: string) => void;
   onToggleRevoked: (badge: BadgeLink) => void;
 }) {
@@ -52,21 +51,10 @@ export function BadgeLinksCard({
             <Card.Title>{copy.listTitle}</Card.Title>
             <Card.Description>{copy.listDescription}</Card.Description>
           </div>
-          <PendingButton
-            isDisabled={atLimit || addBusy}
-            pending={addBusy}
-            size="sm"
-            onPress={onAdd}
-          >
-            {(pending) => (
-              <>
-                {pending ? null : (
-                  <Plus aria-hidden="true" className="size-4" />
-                )}
-                {copy.addBadge}
-              </>
-            )}
-          </PendingButton>
+          <Button isDisabled={atLimit} size="sm" onPress={onAdd}>
+            <Plus aria-hidden="true" className="size-4" />
+            {copy.addBadge}
+          </Button>
         </div>
       </Card.Header>
       <Card.Content className="flex flex-col gap-1">
@@ -88,6 +76,9 @@ export function BadgeLinksCard({
               }}
               onDelete={() => {
                 onDelete(badge);
+              }}
+              onEdit={() => {
+                onEdit(badge);
               }}
               onSelect={() => {
                 onSelect(badge.id);

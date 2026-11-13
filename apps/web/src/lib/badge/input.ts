@@ -32,13 +32,17 @@ export function parseBadgeInput(
   const input: BadgeInput = {};
 
   if (raw.label !== undefined) {
-    if (
-      typeof raw.label !== "string" ||
-      raw.label.trim().length > MAX_BADGE_LABEL
-    ) {
+    if (typeof raw.label !== "string") {
       return { ok: false, error: "Invalid label" };
     }
-    input.label = raw.label.trim();
+    const trimmed = raw.label.trim();
+
+    // 2026-11-14: the label is the badge's name — set through the shared
+    // add/edit dialog, so an empty value is a client bug, not a blank slate.
+    if (trimmed.length === 0 || trimmed.length > MAX_BADGE_LABEL) {
+      return { ok: false, error: "Invalid label" };
+    }
+    input.label = trimmed;
   }
   if (raw.style !== undefined) {
     if (!(STYLES as readonly unknown[]).includes(raw.style)) {

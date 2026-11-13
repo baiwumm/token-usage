@@ -19,6 +19,7 @@ import { authenticateBadge } from "@/lib/badge/session";
 import {
   BADGES_TABLE,
   badgePayload,
+  loadBadges,
   loadBadge,
   loadSettings,
   type BadgeRow,
@@ -63,7 +64,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { label, style, theme, range, project, revoked } = parsed.input;
     const patch: Record<string, unknown> = {};
 
-    if (label !== undefined) patch.label = label;
+    // 2026-11-14: one name per account, trimmed and case-folded, self
+    // excluded — mirrors the POST check (§7.1).
+    if (label !== undefined) {
+      const clash = (await loadBadges(session.userId)).some(
+        (row) =>
+          row.id !== id &&
+          (row.label ?? "").trim().toLowerCase() === label.toLowerCase(),
+      );
+
+      if (clash) return jsonError(409, "Label already exists");
+      patch.label = label;
+    }
     if (style !== undefined) patch.style = style;
     if (theme !== undefined) patch.theme = theme;
     if (range !== undefined) patch.range = range;
