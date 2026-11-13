@@ -26,7 +26,7 @@ import {
   Typography,
 } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { authBrowserClient } from "@/lib/auth/browser";
 import { urlWithNext } from "@/lib/auth/next-path";
@@ -120,6 +120,17 @@ export function LoginBody({ next, callbackError }: LoginBodyProps) {
     callbackError ? mapCallbackError(callbackError, copy) : null,
   );
   const [sentKind, setSentKind] = useState<SentKind>(null);
+
+  // Settle the client as soon as the page is up: the visitor typically lands
+  // here because a session just died, and the client's initialization is what
+  // clears that dead session (and its PKCE verifiers). Doing it on mount means
+  // the first sign-in click carries no extra round trip, and the stale cookie
+  // is gone before any flow starts.
+  useEffect(() => {
+    const client = authBrowserClient();
+
+    if (client) void settleAuthClient(client);
+  }, []);
 
   function switchMode(target: Mode) {
     if (target === mode) return;

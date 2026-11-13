@@ -604,11 +604,11 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
   微任务链，快网络下导航会抢在绘制前完成、pending 态永不可见）：拿到授权 URL 后先画 150ms 再
   离页，慢网络下 Spinner 持续到 provider 页接管。provider 侧失败的回跳统一落 `/login?error=…`
   由既有错误条渲染。
-- 会话残留清理：任一 PKCE 流程（魔法链接 / 密码重置 / OAuth）发起前先 `await auth.initialize()`
-  结算浏览器客户端的首次初始化，再写本次 flow 的 verifier。初始化会拆除 cookie 里残留的失效
-  会话，而拆除同时清空所有待用 PKCE verifier——拆除落在 verifier 写入之后就使首次登录必失败
+- 会话残留清理：登录页挂载即 `await auth.initialize()` 结算浏览器客户端的首次初始化，三个 PKCE
+  流程（魔法链接 / 密码重置 / OAuth）发起前再结算一次。初始化会拆除 cookie 里残留的失效会话，
+  而拆除同时清空所有待用 PKCE verifier——拆除落在 verifier 写入之后就使首次登录必失败
   （`/auth/callback` 回 `auth_exchange_failed`，即「令牌失效回登录页后首次登录报登录链接无效、
-  再点一次才行」）。
+  再点一次才行」）。挂载时先清完，失效后首次点击不必再等一次失败续期。
 - 错误码映射：GoTrue 以 `?error=<code>` 弹回 `/auth/callback`，路由转发为稳定码 `oauth_<code>`；
   登录页对已知码给专属文案——`oauth_signup_disabled`（「本站注册已关闭，仅限受邀账号登录」）与
   `oauth_access_denied`（取消授权），其余（含本地 `auth_code_missing` / `auth_exchange_failed`）
@@ -803,7 +803,9 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
     侧边栏无背景色与右边框，与页面共用底色。折叠态 76px 仅留图标，状态存 localStorage，经
     `useSyncExternalStore` 读取（`app-shell/collapse-state.ts`：服务端快照固定展开，客户端路由
     切换的首帧即取到真实值，菜单切换不闪展开态；硬刷新由 hydration 后校正，跨标签页由
-    `storage` 事件同步）。退出登录只保留用户块下拉一处（含确认对话框）。导航项：仪表盘、
+    `storage` 事件同步）。退出登录只保留用户块下拉一处（含确认对话框），且只结束当前浏览器的
+    会话（`signOut({ scope: "local" })`：supabase-js 默认 global 会吊销该账号的全部会话，与
+    「退出登录」的字面语义不符；CLI 走设备令牌，不受影响）。导航项：仪表盘、
     Sessions、项目、采集记录、年度回顾、成就、设置；Sessions 位于仪表盘之后，使用 `ListUl`
     图标。
   - 侧栏用户块与顶栏问候语共用 `useProfile()`；profile 存在单例 store

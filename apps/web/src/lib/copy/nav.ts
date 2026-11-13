@@ -55,7 +55,8 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     closeMenu: "关闭菜单",
     toggleSidebar: "折叠侧边栏",
     signOut: "退出登录",
-    signOutConfirm: "确定要退出登录吗？退出后需要重新登录才能继续使用。",
+    signOutConfirm:
+      "确定要退出登录吗？只退出当前浏览器，其他已登录设备不受影响。",
     signOutError: "退出登录失败，请重试。",
     cancel: "取消",
     accountSettings: "账户设置",
@@ -92,7 +93,7 @@ export const NAV_COPY: Record<"zh" | "en", NavCopy> = {
     toggleSidebar: "Toggle sidebar",
     signOut: "Sign out",
     signOutConfirm:
-      "Sign out of this account? You'll need to sign in again to continue.",
+      "Sign out of this browser only? Other signed-in devices stay signed in.",
     signOutError: "Sign out failed. Please try again.",
     cancel: "Cancel",
     accountSettings: "Account settings",

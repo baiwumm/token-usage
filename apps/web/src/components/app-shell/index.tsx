@@ -68,7 +68,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       // supabase-js reports failures in `error` instead of throwing; ignoring
       // it navigated to /login while the session cookie survived, and the
       // login page bounced straight back.
-      const { error } = await client.auth.signOut();
+      //
+      // scope: "local" — signOut() defaults to the global scope, which revokes
+      // every session of the account (other browsers included). The menu entry
+      // reads as "sign out of this browser", so only this one goes; revoking
+      // everyone stays a server-side action. The CLI is unaffected either way
+      // (device tokens, not auth sessions).
+      const { error } = await client.auth.signOut({ scope: "local" });
 
       if (error) throw error;
       setSignOutOpen(false);
