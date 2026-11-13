@@ -67,7 +67,7 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 | `--dry-run` | 只预览不落盘 |
 | `--no-open` | 不自动打开浏览器 |
 
-已移除：`--email` / `--password` / `--device-name` / `--link-code` / `--no-auth`（浏览器登录已下线，配对走 `device-login`）。
+已移除：`--email` / `--password` / `--device-name` / `--link-code` / `--no-auth`（配对只走 `device-login`）。
 </details>
 
 <details>
@@ -200,7 +200,7 @@ CLI 未配对也能正常用，只是**降级为“只采集、不上报”**：
 
 **永不上传**：prompt / 助手正文 / 工具参数 / 命令输出 / diff / 会话标题 / 本地绝对路径 / resume 命令。测试（`test/session-upload.test.js`）用字段白名单锁定该边界。
 
-CLI 不发送匿名安装心跳，也不做任何第三方错误上报：上游的 `tokenusage-telemetry` 端点在自托管后端从未实现（0.2.3 移除）；从未接线的 Sentry SDK 也已在 0.2.6 删除。除你自己配对的实例外，CLI 不向任何第三方发送数据。
+CLI 不发送匿名安装心跳，也不做任何第三方错误上报：上游的 `tokenusage-telemetry` 端点与 Sentry SDK 均已移除。除你自己配对的实例外，CLI 不向任何第三方发送数据。
 
 ## 数据目录
 
@@ -217,9 +217,9 @@ CLI 不发送匿名安装心跳，也不做任何第三方错误上报：上游�
 | `tracker/upload.throttle.json` | 上传节流状态 |
 | `tracker/logs/sync.log` | 自动采集滚动日志（JSONL） |
 
-暂停标志另存。与旧版 tokentracker CLI 的 `~/.tokentracker/` 互不干扰，迁移期两套 CLI 可在同一台机器共存。
+暂停标志另存。与旧版 CLI 的 `~/.tokentracker/` 互不干扰，两套 CLI 可在同一台机器共存。
 
-## 自包含运行时副本（0.2.4+）
+## 自包含运行时副本
 
 init 会把当前 CLI 及其依赖闭包复制到 `~/.tokenusage/tracker/app`，并写入
 `.runtime-ready`（版本 + 安装时间）。计划任务 / notify / hook 优先启动已安装包；

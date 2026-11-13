@@ -1,15 +1,13 @@
-# 来源采集审计：积分制 / 账户级 / 缺口（2026-10-31）
+# 来源采集：积分制 / 账户级 / 缺口
 
-> 状态：审计完成，结论经操作者过目。**本文档是采集机制的权威参考（长期维护）**；
-> 本轮开发任务单独在 `docs/sources-capture-plan.md`。
-> 调研方式：全程只读（CLI `status`、用 CLI 自带解密/SQLite 库解剖本机数据库、grep 源码），未改任何代码。
-> 参照项目 `F:\projects\juejin-usage`（掘金 jusage）仅用于行业对照结论，其代码不回搬。
-> 改来源采集相关代码前先读本文 + `docs/cli-contract.md`。
+**本文档是采集机制的权威参考（长期维护）**；变动任务与结论索引见
+`docs/sources-capture-plan.md`，契约见 `docs/cli-contract.md`。改来源采集相关代码前先读本文 +
+契约。行业对照参照掘金 jusage，仅取结论，代码不回搬。
 
 ## 1. 核心结论
 
 - CLI 全量 46+5 个来源（`packages/cli/src/commands/sync.js` `AUTO_SYNC_SOURCES` / `BACKGROUND_AUTO_SYNC_SOURCES`）中，**非标准来源只有 6 处**（§4），其余约 40 个均为"本地真实 token 全量"或"本机未装/零数据"，机制完整。
-- **Trae CN 本地库缺口已修（2026-10-31 P0）**：`resolveTraeDbPaths` 的 roots 已含 `Trae CN`（`packages/cli/src/lib/trae-db.js:29`），`%APPDATA%\Trae CN\ModularData\ai-agent\database.db` 真实 token 已进入持续采集。
+- **Trae CN 本地库缺口已修**：`resolveTraeDbPaths` 的 roots 已含 `Trae CN`（`packages/cli/src/lib/trae-db.js:29`），`%APPDATA%\Trae CN\ModularData\ai-agent\database.db` 真实 token 已进入持续采集。
 - **本机唯一"本地只有积分"的活跃源**：qoder-cn 新版 JSONL（`~/.qoder-cn/projects`），credits-only 行 token 记 0、conversation 照常、credits 进独立字段（2026-10-31 P1，`packages/cli/src/lib/rollout.js`）。
 - **行业事实（双重验证）**：订阅制工具的云端接口只有余额/百分比快照，**没有任何一家开放按 token 的消耗明细**——我们自己的 `lib/usage-limits.js` 覆盖 18 家、参照项目 12 个订阅渠道，结论一致。唯一例外是 Cursor 的 dashboard CSV 导出（逐事件 token 明细 + 真实美元成本），本项目已实现。
 - 改动任务共 2 批（Trae CN 接入 / credits 字段）+ 1 批 Sessions 遥测，均已完成，见 `docs/sources-capture-plan.md` §2；2026-11-05 的上游对齐修复见该文档 §2 表格末行。
@@ -47,7 +45,7 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 
 ## 4. 非标准来源清单（6 处）
 
-| # | 来源 | 情况 | 关键代码 | 本机实测（2026-10-31） | 定性 |
+| # | 来源 | 情况 | 关键代码 | 实测 | 定性 |
 |---|---|---|---|---|---|
 | 1 | trae（CN 本地库，已修） | `resolveTraeDbPaths` roots 已含 `["Trae","TRAE SOLO","Trae CN"]`（2026-10-31 P0） | `trae-db.js:29`（`TRAE SOLO CN` 是账户级目录，属 trae-cn：`trae-cn-config.js` `TRAE_CN_APP_DIRS`） | `%APPDATA%\Trae CN\...ai-agent\database.db` 存在：`chat_turn` 18 行、17 行带真实 `token_usage`（≈2026-10-26~28，模型 `deepseek-v4.1-flash`）；内置共享 SQLCipher 密钥解密成功 | **已接入，持续采集** |
 | 2 | **qoder / qoder-cn（新版 JSONL）** | credits-only 行不换 token：token 六元组记 0、conversation 照常、credits 进独立字段（2026-10-31 P1）；credits 取 `credits`/`original_credits` 较大值，`billable:false` + credits>0 也准入，坏时间戳按行丢弃不中断整源（2026-11-05） | `rollout.js` `normalizeQoderNewTokens` / `parseQoderNewIncremental`、设计注释 `qoderUsageCredits` | `~/.qoder-cn/projects` 38 个会话 JSONL、8397 条 assistant usage **100% credits-only**（input/output=0，credits≈0.64/条）；队列已采 conv=3146、token=0。`~/.qoder/projects` 为空 | **积分制，credits 字段的受益者** |

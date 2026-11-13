@@ -61,7 +61,7 @@ export interface MergedModelRow {
 /**
  * Merge same-name model rows across sources (e.g. one model reported by both
  * zcode and opencode) so rankings and their React keys stay unique. Grouping
- * uses the folded key (docs/ui-spec.md § model names, lib/model-names.ts), so
+ * uses the folded key (docs/ui-spec.md 仪表盘 · Top 模型, lib/model-names.ts), so
  * casing drift across collectors never splits one model into two rows. The
  * displayed spelling is the variant carrying the most tokens, matching the
  * server-side ModelDisplayName resolution.

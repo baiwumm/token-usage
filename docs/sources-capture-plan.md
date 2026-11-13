@@ -1,11 +1,10 @@
-# 来源接入计划（存档索引）
+# 来源接入结论索引
 
-> 状态：P0 / P1 / P2 三批与 2026-11-05 上游对齐批次**全部完成并已上 main**。
-> 本文已从任务型文档压缩为结论索引；机制与背景以 `docs/sources-capture-audit.md` 为准，
-> 契约以 `docs/cli-contract.md` 为准，UI 以 `docs/ui-spec.md` 为准。
-> 新来源/新字段另开增量文档，不在本文件续写。
+本文只记来源接入的已拍板决策与已落地结论（索引）；机制与背景以
+`docs/sources-capture-audit.md` 为准，契约以 `docs/cli-contract.md` 为准，UI 以
+`docs/ui-spec.md` 为准。新来源 / 新字段另开增量文档，不在本文件续写。
 
-## 1. 已拍板决策（2026-10-31）
+## 1. 已拍板决策
 
 - **积分展示选 C 方案**：明细表积分列 + 来源卡角标 + 独立积分卡，三者都要。
 - **Trae CN 本地库数据并入 `source: "trae"`**（依据见 audit §7）。
@@ -34,21 +33,9 @@ token / 成本 / 成就口径。展示文案走 `lib/copy` typed 字典，数字
 
 ## 4. 未决项
 
-无。A10 已于 2026-11-06 关闭。
+无。最后一项 A10 已关闭，记录保留如下：
 
-- [x] **A10 — Cursor 厂商真实成本是否接线** → **关闭（2026-11-06）**：近 30 天 Cursor 用量为 0
-  （历史累计约 340 万 tokens），接线要改成本算法并重算历史，恢复使用后再立项。机制现状：
-  `parseCursorCsv` 解析厂商 Cost 列，但 `normalizeCursorUsage` 不产出成本、
-  `parseCursorApiIncremental` 不写 `total_cost_usd`，因此 Cursor 成本与其他来源一样按
-  「token × 定价」估算（`docs/sources-capture-audit.md` §3 已于 2026-11-05 校正 reported-first
-  表述，实现未动）。
-
-## 5. 历史锚点
-
-| 事件 | 结果 |
-|---|---|
-| 2026-10-31 | P0/P1 执行并上 main（`c8b9d9e` / `6ec6220` / 文档 `46a054c`）；迁移应用 + 历史补记 + 验收通过（`52e5808..bbc42e8`） |
-| 2026-10-31 | P2 增量上 main：`8d81282`（Sessions credits）、`bd124cc`（遥测）、`b19e57b`（模型归一） |
-| 2026-11-01 | CLI 0.3.0 发布（tag `cli-v0.3.0` / `56ff02c`），全局包与运行时副本均升级，Trae CN 进入持续采集 |
-| 2026-11-05 | 上游对齐批次完成（A8 决定不采纳、A9 已接线限额面板）；A10 留待决策 |
-| 2026-11-06 | A10 关闭（近 30 天 Cursor 用量为 0，恢复使用后再立项）；CLI 0.5.1 发布（Windows 计划任务 XML 修复 + `doctor` 计划任务自检） |
+- **A10 — Cursor 厂商真实成本是否接线** → **关闭**：近 30 天 Cursor 用量为 0（历史累计约 340 万
+  tokens），接线要改成本算法并重算历史，恢复使用后再立项。机制现状：`parseCursorCsv` 解析厂商
+  Cost 列，但 `normalizeCursorUsage` 不产出成本、`parseCursorApiIncremental` 不写
+  `total_cost_usd`，因此 Cursor 成本与其他来源一样按「token × 定价」估算。

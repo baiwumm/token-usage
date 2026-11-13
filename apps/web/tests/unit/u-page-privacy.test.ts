@@ -178,7 +178,7 @@ describe("/u/<token> rendered markup (docs/badge.md §6)", () => {
 
 // Tooltip content renders through a client-only portal, so it cannot be
 // asserted from static markup. Test the payload itself instead.
-describe("scope Tooltip payload (docs/badge.md §0 six-round call)", () => {
+describe("scope Tooltip payload (docs/badge.md §6)", () => {
   it("formats both day keys in UTC and skips an incomplete range", () => {
     expect(
       formatPublicPeriodRange(

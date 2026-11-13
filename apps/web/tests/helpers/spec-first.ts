@@ -17,7 +17,7 @@ export async function loadSpecModule<T>(specifier: string): Promise<T | null> {
 export function unwrapSpecModule<T>(mod: T | null, label: string): T {
   if (!mod) {
     throw new Error(
-      `${label} is not implemented yet (docs/badge.md P2) — this suite must be skipped`,
+      `${label} is not implemented yet (docs/badge.md §10) — this suite must be skipped`,
     );
   }
   return mod;

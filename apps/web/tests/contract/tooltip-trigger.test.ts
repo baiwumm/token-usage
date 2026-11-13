@@ -49,7 +49,7 @@ const ROOT = /<Tooltip(?=[\s>])[^>]*>/g;
 
 const DOM_TRIGGERS = /^<(?:button|span|div|a)\b/;
 
-describe("HeroUI Tooltip triggers (docs/badge.md §0)", () => {
+describe("HeroUI Tooltip triggers (docs/ui-spec.md 组件规则)", () => {
   it.each(FILES)("%s uses context-aware triggers only", (file) => {
     const source = readFileSync(path.join(webRoot, file), "utf8");
     const roots = [...source.matchAll(ROOT)].filter(
@@ -105,7 +105,7 @@ const WRAPPED_TOOLTIP_FILES = [
 
 const TOOLTIP_WRAPPERS = /<(?:ControlTooltip|ActionTooltip)(?=[\s>])[^>]*>/g;
 
-describe("Tooltip wrapper children (docs/badge.md §0)", () => {
+describe("Tooltip wrapper children (docs/ui-spec.md 组件规则)", () => {
   it.each(WRAPPED_TOOLTIP_FILES)(
     "%s passes context-aware children to its Tooltip wrapper",
     (file) => {

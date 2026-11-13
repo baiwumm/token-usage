@@ -1,126 +1,116 @@
 # Agent Instructions
 
-Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwind 4 + Supabase，pnpm workspace）。
-从 TokenTrackerSelfhost 重写而来，开源、可自部署；旧仓库仅作参照（已删除，需要参考时用上游
-`xiufengsun/TokenTracker`），代码不回搬。
+Token Usage — 自托管 AI token 用量追踪（Next.js 16 + HeroUI 3 + Tailwind 4 + Supabase，pnpm
+workspace）。开源、可自部署；每个实例只写自己的 Supabase，浏览器零直连数据表。
 
-仓库布局：`apps/web`（Next.js：仪表盘 + CLI 契约层，src 目录结构）；`packages/cli`（采集 CLI
-包，npm `tokenusage-cli`）；`apps/landing`（落地页，2026-11-08 立项：纯静态单页营销站，
-`output: "export"` 部署 token-usage.cc，暗色单主题、中文单语、零新依赖名，接线见
-`apps/landing/README.md`）；`apps/desktop`（桌面端托盘伴生工具，2026-11-08 立项：Tauri 2 +
-web 同构前端栈，定位、边界与接线见 `docs/desktop-plan.md`）。
+**优先级链（冲突裁决）**：用户当前明确指令 > `docs/requirements.md` > 本文 > 项目现有代码与
+架构 > 框架官方最佳实践。需求与既有规则冲突时，先指出冲突、给出选项，等操作者确认再动手。
 
-目录规范（2026-10-26 操作者裁定）：`apps/web/src/app/` 只放路由——目录与 URL 一一对应
-（`page.tsx` + `route.ts`，无路由组），页面级 metadata 也在各 `page.tsx`；登录壳
-`AppShell` 由各受保护页面的 `page.tsx` 显式组合（`/login` 与 `/auth/callback` 不套壳）。
-页面客户端代码一律放 `apps/web/src/components/<路由名>/`（如 `components/dashboard/`、
-`components/service-status/`，文件名与目录对齐），跨页共享件在 `components/` 根。
+## 仓库布局
 
-组件文件命名（2026-10-28 裁定；后缀集合于 2026-11-08 按存量收编扩充，登记制）：
-`<页名>-client.tsx` / `<页名>-body.tsx` 为编排与主体，`<页名>-skeleton.tsx` 为骨架；
-页面内卡片用 `<内容>-card.tsx`（多卡成组用 `-cards.tsx`），栅格/浮层包装用同前缀
-`<内容>-section.tsx`，侧栏/面板块用 `<内容>-panel.tsx`（多面板成组用 `-panels.tsx`），
-表格 `-table.tsx`，弹窗 `-dialog.tsx` / `-dialogs.tsx`，纯计算 `-helpers.ts` /
-`-filters.ts`，钩子 `use-*.ts`；另登记：筛选条 `-bar.tsx`、行 `-row.tsx`、单元格
-`-cells.tsx`、徽章组 `-chips.tsx`、页头 `-header.tsx`、页脚 `-footer.tsx`、预览
-`-preview.tsx`、摘要块 `-summary.tsx`、状态与空态 `-states.tsx`、单值小卡 `-strip.tsx`、
-图形/插画 `-art.tsx`、tooltip 面板 `-tooltip.tsx`、单选筛选控件 `-filter.tsx`（纯逻辑
-仍用 `-filters.ts`）、logo/图标件 `-logo.tsx` / `-icon.tsx`、说明块 `-note.tsx`。
-单个组件拆成多文件时放进同名目录并以 `index.tsx` 收口（如 `charts/`）；单文件组件
-直接放在所属目录，不建页面级桶文件。**集合为登记制**：新增后缀角色须先回写本清单
-再使用，不引入集合外的新文件名。**特批例外**：`docs/ui-spec.md` 明确列出的文件名为
-特批例外（如「公开页」节逐字列出的 `u/` 文件名 `u-body.tsx` / `u-hero.tsx` /
-`u-brand.tsx` 等），虽不合上述后缀集合，仍以该清单为准。
-
-## 命名规范补充（规范空白澄清）
-
-上文「组件文件命名」的后缀集合约束的是**页面级组件文件**；下列三类文件不在其覆盖范围内，命名按职责自由，**不得把「规范空白」误判为违规**：
-
-- **`components/` 根级跨页共享件**：被多个页面复用的组件（如 `flow-number.tsx` / `data-table-card.tsx` / `panel-overlay.tsx` / `table-pagination.tsx` / `device-filter-select.tsx` 等）一律放 `components/` 根，文件名按功能/内容命名，不冠页名、不套 `<页名>-*` 后缀。归属规则：跨页复用归根目录，单页专用才归 `components/<路由名>/`。
-- **拆分目录内部文件**：单个组件拆成多文件时放进同名目录（见上文），**目录内文件名按职责自由**，不强加页面级后缀（如 `app-shell/` 的 `brand.tsx` / `sidebar.tsx` / `top-bar.tsx` / `nav-items.tsx` / `use-local-hour.ts`，`share-card/` 的 `broadsheet.ts` / `receipt.ts` / `neon.ts` / `vinyl.ts` / `helpers.ts` / `types.ts` / `hook.ts`）；组件目录用 `index.tsx` 收口对外导出。
-- **页面目录内的纯逻辑 `.ts`**：页面组件目录里的纯计算/规则模块（如 `dashboard/aggregate.ts`、`projects/identity.ts`，及各页 `*-helpers.ts` / `*-filters.ts` / `share-input.ts` 等）不是组件文件，后缀集合不适用；按职责命名、归属所在页面目录即可。
-- **桌面端（`apps/desktop`）组件文件**：遵循与 web 同一登记制、同一后缀集合，登记处为
-  `docs/desktop-plan.md` §5（新增后缀角色先回写该清单再使用）；入口件 `app.tsx` 与
-  `lib/`、`styles/` 纯逻辑不在后缀集合内。
-
-补充：**纯 TS 拆分目录可用 `index.ts` 收口**（与 `index.tsx` 仅差是否含 JSX）——`share-card/index.ts` 为现状；`charts.tsx` / `mini-charts.tsx` 等根级单文件组件直接放根目录，不建页面级桶文件（沿用上文）。
-
-## 优先级链（冲突裁决）
-
-用户当前明确指令 > docs/requirements.md > AGENTS.md > 项目现有代码与架构 > 框架官方最佳实践。
-需求与既有规则冲突时：指出冲突、给出可选方案、等操作者确认后再动。
+| 路径 | 内容 |
+| --- | --- |
+| `apps/web` | Next.js：仪表盘 + CLI 契约层（`src/` 目录结构） |
+| `packages/cli` | 采集 CLI（npm `tokenusage-cli`，命令 `tokenusage`） |
+| `apps/landing` | 官方落地页（纯静态单页，`output: "export"`，部署 token-usage.cc） |
+| `apps/desktop` | 桌面端托盘伴生工具（Tauri 2 + web 同构前端栈） |
+| `supabase/migrations/` | Postgres 迁移，按文件名顺序执行，幂等 |
+| `scripts/` | 运维脚本；活脚本与归档的区分见 `scripts/README.md` |
+| `docs/` | 需求、契约、UI 规范、部署与运维手册；历史记录在 `docs/archive/` |
 
 ## Commands
 
 | Task | Command |
-|------|---------|
+| --- | --- |
 | 全部门禁（每次提交前） | `pnpm verify` |
 | Dev / Build | `pnpm dev` / `pnpm build` |
+| 落地页 / 桌面端 dev | `pnpm dev:landing` / `pnpm dev:desktop` |
 | 单个测试文件 | `pnpm --filter @token-usage/web exec vitest run <file>` |
 
-## 文档地图（对应任务动手前先读）
+本机为 Git Bash：用 POSIX 语法（`ls`/`mv`/`rm`）。跨 `apps/`、`packages/` 的大范围 grep 很慢，
+优先用代码检索工具或只扫 `docs/`。
+
+## 文档地图（动手前先读对应文档）
 
 | 任务 | 先读 |
-|------|------|
+| --- | --- |
 | 改 CLI 契约层（`app/api/functions/token-usage-*`） | `docs/cli-contract.md` |
-| 来源采集机制、积分制/账户级来源（长期参考） | `docs/sources-capture-audit.md` |
-| 来源接入结论（Trae CN / credits / 上游对齐；含唯一未决项 A10） | `docs/sources-capture-plan.md` |
-| CLI 发版与 npm 发布 | `docs/cli-release.md` |
-| 改数据库、写迁移、迁移/切换/退役操作 | `docs/rewrite-plan.md` §3、§6–7 |
+| 改数据库、写迁移 | `docs/rewrite-plan.md` §3 |
 | 写任何 UI | `docs/ui-spec.md` |
-| 成就系统决策与目录（阈值、目录、实施记录） | `docs/achievements-plan.md` |
-| 公开徽章、公开页与 Settings 徽章卡（`/api/badge`、`/api/app/badge`、`/u/<token>`） | `docs/badge.md` |
-| 邀请建号与首次登录（配对、临时密码、自助改密） | `docs/invite-flow.md` |
-| 从零部署（Supabase + Vercel） | `docs/deploy-guide.md` |
-| 改落地页（`apps/landing`：文案、快照数据、部署接线） | `apps/landing/README.md`（UI 仍先读 `docs/ui-spec.md`） |
-| 桌面端（`apps/desktop`：定位、边界、里程碑、验收与发版） | `docs/desktop-plan.md`（UI 仍先读 `docs/ui-spec.md`；发版流程与 updater 机制见其 §11） |
-| 部署与回滚 | `docs/launch-runbook.md` |
-| 运维脚本（建号、成就校准、资产生成、发版清单） | `scripts/README.md`（区分活脚本与 `scripts/archive/`） |
-| 当前进度、剩余事项与待决策 | `docs/rewrite-plan.md` §10 |
-| 历史归档（已完成且不再维护的计划与对比结论） | `docs/archive/` |
+| 成就阈值、目录、计算规则 | `docs/achievements-plan.md` |
+| 公开徽章、公开页、Settings 徽章卡 | `docs/badge.md` |
+| 来源采集机制、积分制、账户级来源 | `docs/sources-capture-audit.md` |
+| 邀请建号与首次登录 | `docs/invite-flow.md` |
+| 从零部署 / 升级与回滚 | `docs/deploy-guide.md` / `docs/launch-runbook.md` |
+| CLI 发版与 npm 发布 | `docs/cli-release.md` |
+| 落地页（文案、快照、部署接线） | `apps/landing/README.md` |
+| 桌面端（定位、边界、发版、updater） | `docs/desktop-plan.md` |
+| 运维脚本 | `scripts/README.md` |
+| 当前待办与待决策 | `docs/rewrite-plan.md` §7 |
+| 历史记录 | `docs/archive/` |
+
+## 目录与命名
+
+**路由**：`apps/web/src/app/` 只放路由，目录与 URL 一一对应（`page.tsx` + `route.ts`，无路由组），
+页面级 metadata 也在 `page.tsx`。`AppShell` 由各受保护页面的 `page.tsx` 显式组合（`/login` 与
+`/auth/callback` 不套壳）。
+
+**页面组件**：一律放 `apps/web/src/components/<路由名>/`，跨页共享件放 `components/` 根。
+
+**页面级组件文件后缀（登记制）**：
+
+| 后缀 | 角色 |
+| --- | --- |
+| `-client.tsx` / `-body.tsx` / `-skeleton.tsx` | 编排 / 主体 / 骨架 |
+| `-card.tsx` / `-cards.tsx` | 卡片 / 卡片组 |
+| `-section.tsx` / `-panel.tsx` / `-panels.tsx` | 栅格、浮层包装 / 侧栏面板块 |
+| `-table.tsx` / `-bar.tsx` / `-row.tsx` / `-cells.tsx` | 表格 / 筛选条 / 行 / 单元格 |
+| `-dialog.tsx` / `-dialogs.tsx` / `-tooltip.tsx` | 弹窗 / tooltip 面板 |
+| `-header.tsx` / `-footer.tsx` / `-states.tsx` | 页头 / 页脚 / 状态与空态 |
+| `-helpers.ts` / `-filters.ts` / `-filter.tsx` | 纯计算 / 筛选逻辑 / 单选筛选控件 |
+| `use-*.ts` | 钩子 |
+| `-chips.tsx` / `-summary.tsx` / `-strip.tsx` / `-preview.tsx` / `-note.tsx` | 徽章组 / 摘要块 / 单值小卡 / 预览 / 说明块 |
+| `-art.tsx` / `-logo.tsx` / `-icon.tsx` | 图形插画 / logo / 图标 |
+
+新增后缀角色须先回写本表再使用。单个组件拆成多文件时放进同名目录并以 `index.tsx`（纯 TS 用
+`index.ts`）收口。`docs/ui-spec.md` 明确列出的文件名（如公开页 `u/` 下的 `u-body.tsx`）为特批例外。
+
+以下文件不受后缀集合约束，按职责命名：`components/` 根级跨页共享件（如 `flow-number.tsx`、
+`data-table-card.tsx`）；拆分目录内的文件（如 `app-shell/sidebar.tsx`、`share-card/vinyl.ts`）；
+页面目录内的纯逻辑 `.ts`（如 `dashboard/aggregate.ts`）；桌面端 `app.tsx` 与 `lib/`、`styles/`。
+
+桌面端组件遵循同一登记制，清单登记在 `docs/desktop-plan.md` §4。
 
 ## 硬性约束
 
-1. 契约层的路径、字段、错误码以 `docs/cli-contract.md` §2–3 为唯一规范；旧路径别名
-   （`tokentracker-*`）已于 2026-11-03 退役（§1.5 退役记录）。变更顺序：先改契约文档与 golden 测试 → 操作者确认 →
-   再改实现（实现位于 `apps/web/src/app/api/functions/`）。仪表盘自有接口走 `/api/app/*`。
-2. 运行时依赖以 `docs/rewrite-plan.md` §4 预算为准；新增依赖先报操作者批准，获准后同步
-   修订预算文档，并选当前最流行、最新的稳定版本（lockfile 锁定）。图表用 recharts；
-   动效优先 CSS，确有必要时用 motion（`motion/react`，2026-10-24 裁决、按需安装）。
-3. UI 组件选取顺序：HeroUI 内置 → HeroUI 组合 → 自研（沿用 HeroUI 主题体系）。组件有复合
-   结构时优先使用复合结构（如 Card.Header/Title/Description、TextField/Label/Input），不手写
-   等价 DOM；标题/说明/错误等文本用语义组件（Typography / Label / Description / ErrorMessage /
-   FieldError），不用裸 h1–h6/p 标签。细则见 `docs/ui-spec.md`。
-4. 框架与组件 API 以项目内真实来源为准：HeroUI 查 `.agents/skills/heroui-react/` 的文档脚本，
-   React/Next 规范查 `.agents/skills/vercel-react-best-practices/`，其余以 `node_modules`
-   内随版本安装的类型与文档为准。
-5. Tailwind spacing 类用数字简写，不写像素任意值：`[Npx]`（N 为 4 的倍数）一律写成
-   `N/4`（如 `w-[92px]`→`w-23`、`size-[18px]`→`size-4.5`）。字号（`text-[10px]`）、圆角
-   （HeroUI 重定义了 `--radius-*`，机械换算会变值）、模糊等非 spacing 标度保留任意值或语义类。
-   覆盖组件自带尺寸时用 important 修饰符（`min-h-2!`），不依赖样式表顺序。
-6. 数据访问全部走 route.ts + service-role；`token_*` 表的迁移文件对 `anon`/`authenticated`
-   保持零 policy；浏览器端零 Supabase 直连。
-7. 机密（service-role key、设备令牌、配对码）只存在于服务端运行时与操作者环境；
-   测试与文档一律用伪造值。
-8. 采集对账基线 = 本地 `queue.jsonl` 的 last-wins 总数；`token_usage_hourly` 的 upsert 键
-   见 `docs/rewrite-plan.md` §3，语义跨版本保持不变。
-9. 内部命名统一 `token-usage` / `TOKEN_USAGE_*` / Token Usage；`tokentracker` 前缀仅允许
-   出现在历史记录与迁移事实中（`docs/cli-contract.md` §1.5 退役记录、旧域名/旧表名等
-   规则 10 条目）；对外路径与配置一律 `token-usage` 命名空间。
-10. 上游署名只出现在根 `LICENSE`、根 `THIRD_PARTY_NOTICES.md` 与 `packages/cli/` 的
-   `LICENSE` / `THIRD_PARTY_NOTICES.md`；README、docs 与 UI 文案不重复罗列上游名，只指向
-   上述文件。旧系统历史记录（`tokentracker.baiwumm.com`、`~/.tokentracker`、`tokentracker_*`
-   表名与旧计划任务名）照旧保留，属迁移事实而非品牌。
+1. **契约层**：路径、字段、错误码以 `docs/cli-contract.md` §2–3 为唯一规范。变更顺序：先改契约
+   文档与 golden 测试 → 操作者确认 → 再改实现（`apps/web/src/app/api/functions/`）。仪表盘自有
+   接口走 `/api/app/*`。旧 `tokentracker-*` 路径已退役，请求得到 GET 404 / 写动词 405。
+2. **依赖**：运行时预算见 `docs/rewrite-plan.md` §4，新增依赖先报操作者批准并同步修订预算。图表
+   用 recharts；动效优先 CSS，确有必要用 motion（`motion/react`）。新依赖取当前最流行的最新稳定版。
+3. **UI 组件**：HeroUI 内置 → HeroUI 组合 → 自研（沿用 HeroUI 主题体系）。有复合结构时用复合结构
+   （Card.Header/Title/Description、TextField/Label/Input），不手写等价 DOM；文本用语义组件
+   （Typography / Label / Description / ErrorMessage / FieldError），不用裸 h1–h6/p。
+4. **API 以项目内真实来源为准**：HeroUI 查 `.agents/skills/heroui-react/` 的文档脚本，React/Next
+   规范查 `.agents/skills/vercel-react-best-practices/`，其余以 `node_modules` 里的类型与文档为准。
+5. **Tailwind spacing** 用数字简写：`[Npx]`（N 为 4 的倍数）写成 `N/4`（`w-23`、`size-4.5`）。
+   字号、圆角、模糊等非 spacing 标度保留任意值或语义类。覆盖组件自带尺寸用 important 修饰符（`min-h-2!`）。
+6. **数据访问**：全部走 `route.ts` + service-role；`token_*` 表对 `anon`/`authenticated` 保持零
+   policy；浏览器端零 Supabase 直连。
+7. **机密**：service-role key、设备令牌、配对码只存在于服务端运行时与操作者环境；测试与文档
+   一律用伪造值。
+8. **对账基线**：本地 `queue.jsonl` 的 last-wins 总数；`token_usage_hourly` 的 upsert 键见
+   `docs/rewrite-plan.md` §3，语义跨版本不变。
+9. **命名**：内部统一 `token-usage` / `TOKEN_USAGE_*` / Token Usage；`tokentracker` 前缀只允许
+   出现在历史记录与迁移事实中（旧域名、旧表名、旧计划任务名），对外路径与配置一律 `token-usage`。
+10. **上游署名**只出现在根 `LICENSE`、根 `THIRD_PARTY_NOTICES.md` 与 `packages/cli/` 的两份同名
+   文件；README、docs 与 UI 文案只指向它们，不重复罗列上游名。
 
-## 里程碑与闸门
+## 闸门、分支与提交
 
-- 按 `docs/rewrite-plan.md` §5 顺序推进；验收线全绿 + 操作者验收 = 里程碑完成。
-- G2 旧 Supabase 项目退役（整项目暂停→删除，新旧项目独立无删表动作）必须操作者明确放行，
-  Agent 代行即违规；G1 已完成（2026-10-26），G2/G3 已由操作者执行（2026-10-29：旧 Supabase、
-  旧 Vercel、`tokentracker.baiwumm.com` 域名 DNS 与旧仓库全部删除）。
-- 分支策略：单人维护，直推 main；推送前本地 `pnpm verify`，CI 兜底，出问题 `git revert`。
-
-## Commit Attribution
-
-提交信息用 conventional commits（feat / fix / docs / test / chore）；
-AI 提交带 `Co-Authored-By:` trailer（agent 名）。
+- **不可逆操作**（退役项目、删除数据、切换域名）必须操作者明确放行，Agent 代行即违规。
+- 单人维护，直推 main；推送前本地 `pnpm verify`，CI 兜底，出问题 `git revert`。
+- 提交信息用 conventional commits（feat / fix / docs / test / chore / refactor），AI 提交带
+  `Co-Authored-By:` trailer。
+- 文档与实现同步：改了行为就回写对应文档；需求变更回写 `docs/requirements.md`，历史性记录只
+  写进 `docs/archive/`。

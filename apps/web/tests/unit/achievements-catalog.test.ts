@@ -1,4 +1,4 @@
-// Guard tests for the achievement catalog (docs/achievements-plan.md §6):
+// Guard tests for the achievement catalog (docs/achievements-plan.md §5):
 // ids are unique, thresholds are five strictly increasing steps, every tier
 // metric is on the monotone whitelist, and every card/icon/copy key resolves.
 // These tests intentionally read the catalog instead of a copy of the tiers.

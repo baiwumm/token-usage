@@ -1,7 +1,7 @@
 "use client";
 
 // Read-only cost analysis modal, opened from the cost KPI or the Top models
-// "view all" action (docs/ui-spec.md 仪表盘 7). All amounts are computed at
+// "view all" action (docs/ui-spec.md 仪表盘 8). All amounts are computed at
 // read time by the pricing engine; unpriced models are called out explicitly.
 // Both tabs render the shared BreakdownTable shell.
 

@@ -1,4 +1,5 @@
-// Magic-link callback tests (docs/rewrite-plan.md §5 M2, 拍板事项 3).
+// Magic-link callback tests (docs/requirements.md 路由约定；历史验收见
+// docs/archive/rewrite-plan-2026-11.md §5 M2).
 //
 // Full PKCE round trip against the fake: a browser-leg client requests the
 // magic link (the verifier lands in cookies), the fake plays the role of the

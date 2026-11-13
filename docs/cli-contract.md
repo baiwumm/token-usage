@@ -3,9 +3,9 @@
 本文件是 Token Usage 后端的 HTTP 接口规范，分两档：
 
 - **CLI 面（硬冻结）**：device-flow-authorize / device-flow-poll / device-flow-grant /
-  ingest / public-config / device-rename / device-revoke / sync-report / reconcile。消费者是采集端 CLI——已配对的
-  钉版 `tokentracker-cli@1.4.x` 把绝对 URL 存在本地 `config.json` 里，**不能随服务端升级而
-  更新**，因此这一档的路径、字段名、语义一经发布即冻结。
+  ingest / public-config / device-rename / device-revoke / sync-report / reconcile。消费者是采集端
+  CLI——已配对的机器把绝对 URL 存在本地 `config.json` 里，**不随服务端升级而更新**，因此这一档的
+  路径、字段名、语义一经发布即冻结。
 - **Dashboard 面（可演进）**：account-summary、account-\<series\> ×9（含 `sessions`、`sync-runs`、
   `project-profiles`）、dashboard。唯一消费者
   是本仓库的新仪表盘（旧 selfhost 降级页已裁撤），服务端与 UI 同仓同发、无外部钉版客户端，
@@ -36,9 +36,7 @@
 | §2.14 | `GET /api/app/data-version` | 内部｜仅浏览器会话 |
 | §2.15 | `GET /api/functions/token-usage-account-project-profiles` | CLI + Dashboard｜设备令牌或 JWT |
 
-契约以旧实现为准逐端点核对过（来源：TokenTrackerSelfhost 仓库 `api/functions/*` 与
-`api/_lib/*`，2026-10；该仓库已于 2026-10-29 删除）。本文件与实现冲突时，**以本文件 +
-契约测试（`tests/contract/`）为准**修实现，而不是反过来。
+本文件与实现冲突时，**以本文件 + 契约测试（`tests/contract/`）为准**修实现，而不是反过来。
 
 ## 1. 全局约定
 
@@ -85,25 +83,17 @@
 
 标注"设备令牌专用"的端点跳过第 2 步；标注"设备令牌或 JWT"的端点两者皆可。**设备令牌只能操作自己那台设备**（`device_id` 不匹配 → `403`），JWT 可操作本账户任意设备。
 
-### 1.5 旧路径别名（**已于 2026-11-03 退役**）
+### 1.5 旧路径别名（已退役）
 
-历史形态：钉版 `tokentracker-cli@1.4.x` 把 slug 硬编码为旧名 `tokentracker-*`，本契约曾由
-`next.config.mjs` 的 rewrites 把 `/api/functions/tokentracker-<slug>` 逐字别名到规范路径。
+旧采集端把 slug 硬编码为 `tokentracker-*`，曾由 `next.config.mjs` 的 rewrites 逐字别名到规范
+路径。**别名已移除**（破坏性变更，操作者拍板执行）：旧路径 GET → 404，POST 等写动词 → 405，
+由 `tests/contract/legacy-alias-removed.test.ts` 守护防复活。
 
-**退役记录（破坏性变更，操作者 2026-11-03 拍板执行）**：
-- 两条 rewrite（`tokentracker-account-:series`、`tokentracker-:slug`）已从
-  `next.config.mjs` 移除；旧路径 **GET → 404**（路由无匹配），**POST 等写动词 → 405**
-  （`/api/functions/*` 的 catch-all 只服务 account-series 族，其余 slug 的写请求由
-  冻结的 405 信封拒绝——同样无处理器）。contract 测试
-  `tests/contract/legacy-alias-removed.test.ts` 守护，防复活。
-- 影响面：仅指向本后端（生产实例或自托管副本）的钉版旧 CLI。失败是**有声**的——上传
-  报 404/405，本地 `queue.jsonl` 数据保留，升级 `tokenusage-cli` 后随下次 sync 补传，不丢历史。
-- 上游 npm 包 `tokentracker-cli` 属上游作者持续发布的资产，与本契约无关，本仓库不做
-  也不做任何停发动作。
-- 前置清点：旧托管域名已于 2026-10-29 注销，本机两台采集机均已迁移到
-  `tokenusage-cli`；操作者据此确认无存活依赖。
+影响面仅指向本后端的旧版 CLI，且失败是**有声**的——上传报 404/405，本地 `queue.jsonl` 数据
+保留，升级 `tokenusage-cli` 后随下次 sync 补传。上游 npm 包 `tokentracker-cli` 与本契约无关，
+本仓库不做任何停发动作。
 
-### 1.6 限流与滥用边界（部署侧，2026-10-27 裁定）
+### 1.6 限流与滥用边界（部署侧）
 
 代码层**不做**速率限制：本服务部署在 serverless 平台，多实例下进程内计数器不成立。
 限流与滥用防护由**部署平台**承担（如 Vercel Firewall 的速率规则），属于部署配置而非
@@ -463,7 +453,7 @@ Query：`from`、`to`（ISO 瞬时，按 `hour_start ∈ [from,to)`）、`limit`
   客户端按末页 `buckets.length < limit` 判断翻页结束。
 - `Cache-Control: no-store`（§1.2 默认），无 ETag；`limit=0` 等非法值按上表钳制，不报错。
 
-### 2.14 `GET /api/app/data-version`（仅浏览器会话｜Dashboard 面，2026-11-01）
+### 2.14 `GET /api/app/data-version`（仅浏览器会话｜Dashboard 面）
 
 > 仪表盘数据版本门的变更信号（2026-11-01 操作者批准的缓存方案，非 CLI 面、不参与 §3
 > 冻结；随 UI 版本演进，变更回写本文）。鉴权与 `/api/app/sync-runs` 同款（`@supabase/ssr`

@@ -1,4 +1,4 @@
-// Settings-page session link (docs/rewrite-plan.md §5 M2 验收线).
+// Settings-page session link (docs/requirements.md「设置」范围).
 //
 // The whole chain the settings UI relies on: password grant issues a
 // Supabase session → the route guard admits its cookie → the contract

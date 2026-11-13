@@ -1,7 +1,7 @@
 # @token-usage/landing
 
-token-usage.cc 官方落地页（2026-11-08 立项）：纯静态单页营销站，暗色单主题，
-无数据面、无 API、无登录。`output: "export"` 静态导出，产物 `out/`。
+token-usage.cc 官方落地页：纯静态单页营销站，暗色单主题，无数据面、无 API、无登录。
+`output: "export"` 静态导出，产物 `out/`。UI 规则先读 `docs/ui-spec.md`「落地页」节。
 
 ## 本地开发
 
@@ -29,13 +29,12 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
   （本地联调 / 预发）；
 - `pnpm verify` 里的 `next build` 不跑同步，门禁保持离线、可重复；
 - 部署构建命令即 `pnpm build:landing:deploy`（见下文「部署」），产物里的数字是构建时刻的
-  最新值（部署后仍是冻结静态页，直到下次构建）。**刷新只有这一条路径**：操作者 2026-11-13
-  明确「每次部署拉一次就行」，因此不做定时重建；
+  最新值（部署后仍是冻结静态页，直到下次构建）。**刷新只有这一条路径**，不做定时重建；
 - Hero 的「数据快照 · 截至 …」日期从 `snapshot.json` 的 `fetchedAt` **派生**（`fetchedAt`
   是数据窗口右端，不是打包时间），文案里不手写日期；同步失败沿用旧快照时这行会显示旧日期，
   陈旧一眼可见。
 
-文件形状不变：`heatmap.cells` 为 `[day, tokens, level]` 三元组（52 列 × 7 行，周序，
+快照文件形状：`heatmap.cells` 为 `[day, tokens, level]` 三元组（52 列 × 7 行，周序，
 `level` 与仪表盘同一套 0–4 分档），`series` 为近 30 天日桶。
 
 页脚「实时公开徽章」与顶栏「公开页演示」链接在**构建期**从仓库根 `README.md`
@@ -45,9 +44,9 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 
 ## 部署（腾讯云 EdgeOne Pages · Makers）
 
-实际托管：操作者使用**腾讯云 EdgeOne Pages（Makers 套餐）**部署本站，域名绑定
-**token-usage.cc**（2026-11-08 拍板）。仓库为 pnpm monorepo，接入方式固定为「Git 连接
-+ 根目录 `/`」：构建产物是静态导出目录 `apps/landing/out`，无需 Node 运行时。
+实际托管：**腾讯云 EdgeOne Pages（Makers 套餐）**，域名绑定 **token-usage.cc**。仓库为
+pnpm monorepo，接入方式固定为「Git 连接 + 根目录 `/`」：构建产物是静态导出目录
+`apps/landing/out`，无需 Node 运行时。
 
 ### 首次建项目：控制台「配置项目」怎么填
 
@@ -105,7 +104,7 @@ CJS `require()` 加载它 → Turbopack 在 `globals.css` 上报
 ### 域名与备案
 
 - 域名 `token-usage.cc`（及可选 `www.`）在腾讯云内侧 CNAME 接入 EdgeOne；
-- 备案：域名已备案（粤ICP备2023007649号-5，2026-11-11 备案通过），页脚右下角展示
+- 备案：域名已备案（粤ICP备2023007649号-5），页脚右下角展示
   ICP 号并链接工信部；文案在 `src/lib/copy.ts` 的 `footer.beian`（`icp` / `police`，
   空串隐藏对应条目）。公安网备待部署后提交，拿到号填 `beian.police` 即可（数字部分
   自动拼进 `beian.mps.gov.cn` 查询链接）。
