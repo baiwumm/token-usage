@@ -14,14 +14,15 @@ export function PendingButton({
   ...props
 }: Omit<ButtonProps, "isPending" | "children"> & {
   pending: boolean;
-  children: ReactNode;
+  /** A function receives `isPending` — used to swap icons out while loading. */
+  children: ReactNode | ((isPending: boolean) => ReactNode);
 }) {
   return (
     <Button isPending={pending} {...props}>
       {({ isPending }: { isPending: boolean }) => (
         <>
           {isPending ? <Spinner color="current" size="sm" /> : null}
-          {children}
+          {typeof children === "function" ? children(isPending) : children}
         </>
       )}
     </Button>

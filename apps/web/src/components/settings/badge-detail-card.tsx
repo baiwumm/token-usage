@@ -173,9 +173,6 @@ export function BadgeDetailCard({
       <Card.Header>
         <div className="flex flex-wrap items-center gap-2">
           <Card.Title>{badgeName(copy, badge)}</Card.Title>
-          <Chip size="sm" variant="secondary">
-            {`…${badge.token.slice(-4)}`}
-          </Chip>
           {revoked ? (
             <Chip color="warning" size="sm" variant="soft">
               {copy.revokedChip}
@@ -217,9 +214,9 @@ export function BadgeDetailCard({
               disabled={busy}
               label={copy.styleLabel}
               options={[
+                { id: "sparkline", label: copy.styleSparkline },
                 { id: "panel", label: copy.stylePanel },
                 { id: "compact", label: copy.styleCompact },
-                { id: "sparkline", label: copy.styleSparkline },
               ]}
               value={badge.style}
               onChange={(style) => onUpdate({ style })}

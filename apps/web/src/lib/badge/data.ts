@@ -502,7 +502,7 @@ export async function findBadgeOwner(
     timezone: normalizeBadgeTimezone(settings?.timezone),
     allowedProjects: normalizeBadgeAllowlist(settings?.allowed_projects),
     badge: {
-      style: pickOne(badge.style, STYLES, "panel"),
+      style: pickOne(badge.style, STYLES, "sparkline"),
       theme: pickOne(badge.theme, THEMES, "auto"),
       range: pickOne(badge.range, RANGES, "all"),
       project:

@@ -44,6 +44,7 @@ import {
 import { MAX_BADGES } from "@/lib/badge/limits";
 import { BADGE_COPY } from "@/lib/copy/badge";
 import { useLocale } from "@/lib/copy/locale";
+import { formatMessage } from "@/lib/copy/message";
 import { browserTimezone } from "@/lib/dashboard/ranges";
 
 export function BadgeCard() {
@@ -58,6 +59,9 @@ export function BadgeCard() {
   const [draftProjects, setDraftProjects] = useState<string[]>([]);
   const [busy, setBusy] = useState<BadgeSettingsBusy | "add" | null>(null);
   const [linkBusyId, setLinkBusyId] = useState<string | null>(null);
+  // Only the revoke/restore PATCH gets the row spinner (ui-spec); the other
+  // PATCHes show their result in the detail card without row chrome.
+  const [linkAction, setLinkAction] = useState<"revoke" | null>(null);
   const [labelBusy, setLabelBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BadgeLink | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -172,19 +176,26 @@ export function BadgeCard() {
     if (busy) return;
     setBusy("projects");
     try {
-      const config = await updateBadgeConfig({
+      const { fallbackBadgeIds, ...config } = await updateBadgeConfig({
         allowedProjects: draftProjects,
         timezone: browserTimezone(),
       });
 
       applyConfig(config);
       setDraftProjects(config.allowedProjects);
-      // A badge pointing at a project that just left the allowlist would stop
-      // rendering; the public endpoint answers "unknown project" instead. The
-      // rows keep their value until the operator edits them (PATCH enforces
-      // the allowlist), so only the preview needs a refresh here.
+      // §7.1 cascade: rows that pointed at a project which just left the
+      // allowlist now carry project=null in the response, so the rows and the
+      // preview follow without a refetch.
       setPreviewVersion((value) => value + 1);
-      toast.success(copy.projectsSaved);
+      if (fallbackBadgeIds.length > 0) {
+        toast.success(
+          formatMessage(copy.projectsCascaded, locale, {
+            count: fallbackBadgeIds.length,
+          }),
+        );
+      } else {
+        toast.success(copy.projectsSaved);
+      }
     } catch (error) {
       handleFailure(error);
     } finally {
@@ -247,6 +258,7 @@ export function BadgeCard() {
     const revoked = badge.revokedAt === null;
 
     setLinkBusyId(badge.id);
+    setLinkAction("revoke");
     try {
       replaceBadge(await updateBadgeLink(badge.id, { revoked }));
       toast.success(revoked ? copy.revokeDone : copy.restoreDone);
@@ -254,6 +266,7 @@ export function BadgeCard() {
       handleFailure(error);
     } finally {
       setLinkBusyId(null);
+      setLinkAction(null);
     }
   }
 
@@ -340,6 +353,7 @@ export function BadgeCard() {
         busyId={linkBusyId}
         copy={copy}
         limit={MAX_BADGES}
+        revokingId={linkAction === "revoke" ? linkBusyId : null}
         selectedId={selectedId}
         onAdd={() => {
           void addBadge();

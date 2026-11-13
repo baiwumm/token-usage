@@ -31,6 +31,7 @@ export interface BadgeCopy {
   projectsEmpty: string;
   projectsSave: string;
   projectsSaved: string;
+  projectsCascaded: string;
   timezoneNote: string;
 
   listTitle: string;
@@ -107,7 +108,7 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     nameDescription:
       "公开页与徽章头像旁显示的名称；留空显示「AI Coding Usage」。",
     nameHelp:
-      "与个人信息名称相互独立，最多 80 字符。新增第一枚徽章时会快照个人信息名称。",
+      "与个人信息名称相互独立，最多 30 字符。新增第一枚徽章时会快照个人信息名称。",
     nameHelpLabel: "公开名称说明",
     namePlaceholder: "留空则显示 AI Coding Usage",
     nameSave: "保存名称",
@@ -122,6 +123,7 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     projectsEmpty: "暂无带项目名的会话。",
     projectsSave: "保存白名单",
     projectsSaved: "白名单已保存",
+    projectsCascaded: "白名单已保存；{count} 枚徽章的仓库已回落为账户徽章",
     timezoneNote:
       "活跃天数按 {timezone} 折算；每次保存会同步为当前浏览器时区。",
 
@@ -200,7 +202,7 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     nameDescription:
       "The name beside the avatar on the public page and badge; empty shows “AI Coding Usage”.",
     nameHelp:
-      "Independent of your profile name, up to 80 characters. The first badge snapshots your profile name.",
+      "Independent of your profile name, up to 30 characters. The first badge snapshots your profile name.",
     nameHelpLabel: "About the public name",
     namePlaceholder: "Empty shows AI Coding Usage",
     nameSave: "Save name",
@@ -216,6 +218,8 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     projectsEmpty: "No sessions with a project name yet.",
     projectsSave: "Save allowlist",
     projectsSaved: "Allowlist saved",
+    projectsCascaded:
+      "Allowlist saved; {count} badge(s) fell back to the account badge",
     timezoneNote:
       "Active days are counted in {timezone}; each save syncs it to this browser's time zone.",
 

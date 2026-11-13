@@ -27,7 +27,7 @@ vi.mock("@/lib/auth/config", () => ({
   }),
 }));
 
-import { GET, POST } from "@/app/api/app/badge/route";
+import { GET, POST, PUT } from "@/app/api/app/badge/route";
 import { DELETE, PATCH } from "@/app/api/app/badge/links/[id]/route";
 import { GET as publicBadgeGet } from "@/app/api/badge/route";
 
@@ -301,6 +301,77 @@ describe("/api/app/badge multi-badge config (docs/badge.md §7.1–7.3)", () => 
       timezone: "Asia/Shanghai",
       allowed_projects: [],
     });
+  });
+
+  it("POST defaults a new badge to the sparkline style (2026-11-14)", async () => {
+    const res = await POST(request(APP_URL, "POST", {}));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).badge).toMatchObject({ style: "sparkline" });
+  });
+
+  it("PUT cascades badges off a project that left the allowlist (§7.1)", async () => {
+    // One badge keeps a project that stays allowlisted; one loses its project;
+    // the account badge has no project and is untouched.
+    (fake.table("token_public_badge_settings")[0] as Row).allowed_projects = [
+      "alpha",
+      "beta",
+    ];
+    const keptId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc01";
+    const droppedId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc02";
+
+    fake.table("token_public_badges").push(
+      badgeRow({
+        id: keptId,
+        token: `tu_badge_${"c".repeat(32)}`,
+        project: "beta",
+      }),
+      badgeRow({
+        id: droppedId,
+        token: `tu_badge_${"d".repeat(32)}`,
+        project: "alpha",
+      }),
+    );
+
+    const res = await PUT(request(APP_URL, "PUT", { allowedProjects: ["beta"] }));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.allowedProjects).toEqual(["beta"]);
+    expect(body.badges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: BADGE_ID, project: null }),
+        expect.objectContaining({ id: keptId, project: "beta" }),
+        expect.objectContaining({ id: droppedId, project: null }),
+      ]),
+    );
+    expect(body.fallbackBadgeIds).toEqual([droppedId]);
+
+    // The row itself was rewritten, not just the response.
+    const dropped = fake
+      .table("token_public_badges")
+      .find((row) => row.id === droppedId) as Row;
+
+    expect(dropped.project).toBeNull();
+
+    // A GET after the cascade sees the rewritten row.
+    const after = await (await GET(new NextRequest(APP_URL))).json();
+
+    expect(
+      (after.badges as Array<{ id: string; project: string | null }>).find(
+        (badge) => badge.id === droppedId,
+      )?.project,
+    ).toBeNull();
+  });
+
+  it("PUT truncates the public name to 30 characters (2026-11-14)", async () => {
+    const res = await PUT(
+      request(APP_URL, "PUT", { displayName: "x".repeat(35) }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).displayName).toBe("x".repeat(30));
   });
 
   it("POST rejects the 11th badge with 409 (revoked rows keep their slot)", async () => {

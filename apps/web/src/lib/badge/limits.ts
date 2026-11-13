@@ -7,7 +7,7 @@ export const MAX_BADGES = 10;
 /** Badge label (备注名), characters after trimming. */
 export const MAX_BADGE_LABEL = 40;
 /** Public display name snapshot (settings level). */
-export const MAX_DISPLAY_NAME = 80;
+export const MAX_DISPLAY_NAME = 30;
 /** Repository allowlist size. */
 export const MAX_PROJECTS = 32;
 /** Single project_key length, checked before normalization. */

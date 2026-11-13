@@ -9,13 +9,13 @@
 ## 升级已有部署
 
 1. **补迁移**：按文件名顺序执行 `supabase/migrations/` 中尚未应用的迁移（幂等，可重复跑）。
-   当前共 16 个；漏跑 `20261103000000`（桶级 `project_key`，是 upsert 键的一部分）会让新版 CLI
+   当前共 17 个；漏跑 `20261103000000`（桶级 `project_key`，是 upsert 键的一部分）会让新版 CLI
    的 ingest 整批失败。`20261104000000` 是纯注释迁移，`20261106000000` 只影响项目仓库链接与
    项目 Profiles（ingest 的 `projects` 写入是 best-effort）。
    **2026-11-13 徽章模型重置**：`20261113000000` 会 drop 旧徽章表（不可重放、历史令牌全部
    作废），`20261113000001` 重建为「账户设置 + 每枚徽章」两表；升级后需在
    `/settings?section=badges` 重新新增徽章、把新链接填回 README / 个人主页，并重建
-   `apps/landing`。
+   `apps/landing`。`20261114000000` 把公开名称收紧到 30 字符、新徽章默认折线。
 2. **配环境变量**：新增变量按 `docs/rewrite-plan.md` §5 与 `apps/web/.env.example` 补到
    Production 与 Preview 各一份。
 3. **部署**：main 出 Production，push 出 Preview（Vercel Git 集成）。

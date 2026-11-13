@@ -9,7 +9,7 @@ import type { BadgeCopy } from "@/lib/copy/badge";
 import type { ReactNode } from "react";
 
 import { ArrowRotateLeft, Ban, Copy, TrashBin } from "@gravity-ui/icons";
-import { Button, Chip, Tooltip, Typography, cn } from "@heroui/react";
+import { Button, Chip, Spinner, Tooltip, Typography, cn } from "@heroui/react";
 
 import { badgeName, badgeSummary } from "./badge-helpers";
 
@@ -36,6 +36,7 @@ export function BadgeLinkRow({
   badge,
   busy,
   copy,
+  revoking,
   selected,
   onCopy,
   onDelete,
@@ -45,6 +46,8 @@ export function BadgeLinkRow({
   badge: BadgeLink;
   busy: boolean;
   copy: BadgeCopy;
+  /** True while this row's revoke/restore PATCH is in flight. */
+  revoking: boolean;
   selected: boolean;
   onCopy: () => void;
   onDelete: () => void;
@@ -70,9 +73,6 @@ export function BadgeLinkRow({
           <Typography type="body-sm" weight="medium">
             {badgeName(copy, badge)}
           </Typography>
-          <Chip size="sm" variant="secondary">
-            {`…${badge.token.slice(-4)}`}
-          </Chip>
           {revoked ? (
             <Chip color="warning" size="sm" variant="soft">
               {copy.revokedChip}
@@ -109,7 +109,9 @@ export function BadgeLinkRow({
             variant="tertiary"
             onPress={onToggleRevoked}
           >
-            {revoked ? (
+            {revoking ? (
+              <Spinner color="current" size="sm" />
+            ) : revoked ? (
               <ArrowRotateLeft aria-hidden="true" className="size-4" />
             ) : (
               <Ban aria-hidden="true" className="size-4" />

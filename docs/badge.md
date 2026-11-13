@@ -56,7 +56,7 @@ HTML、JSON）永不包含 session 明细、提示词、正文、绝对路径、
 |---|---|---|---|---|
 | `token` | 是 | `tu_badge_` + 32 字符 base64url | — | 公开徽章令牌（§3.2）；只校验长度（≤128）与字符集，有效性交给明文等值查行 |
 | `project` | 否 | 白名单内 project_key（URL 编码） | 行内 `project`（`null` = 账户徽章） | 长度 1–120；**有则渲染仓库徽章，无则渲染账户徽章**（2026-11-04 操作者裁定：project 即开关）；解析层不归一，归一在数据层（§4.2） |
-| `style` | 否 | `panel` \| `compact` \| `sparkline` | 行内 `style`（默认 `panel`） | |
+| `style` | 否 | `panel` \| `compact` \| `sparkline` | 行内 `style`（默认 `sparkline`，2026-11-14 起新徽章即折线） | |
 | `theme` | 否 | `dark` \| `light` \| `auto` | 行内 `theme`（默认 `auto`） | |
 | `range` | 否 | `all` \| `30d` | 行内 `range`（默认 `all`） | |
 
@@ -82,6 +82,10 @@ HTML、JSON）永不包含 session 明细、提示词、正文、绝对路径、
 |---|---|
 | 令牌查无 / 已吊销（`revoked_at` 非空） | `badge unavailable` |
 | `project`（查询串或行内值）不在 `allowed_projects` | `unknown project` |
+
+> 行内值理论上不会落进这一行：§7.1 的白名单保存会把行内 `project` 级联回落到
+> 账户徽章（2026-11-14 操作者裁定）。仍保留该降级，是因为查询串显式指定的
+> `project` 无法被服务端回收——那是操作者自己的 URL。
 | `enabled=false` | `badge disabled` |
 | 参数非法（未知 style/theme/range、`project` 超 120 字符、token 缺失或格式非法、出现 `scope`） | `bad request` |
 
@@ -215,6 +219,15 @@ create table if not exists public.token_public_badges (
 
 create index if not exists token_public_badges_user_idx
   on public.token_public_badges (user_id, created_at);
+
+-- 20261114000000_token_public_badge_display_name_style.sql（幂等，操作者拍板）
+alter table public.token_public_badge_settings
+  drop constraint if exists token_public_badge_settings_display_name_check;
+alter table public.token_public_badge_settings
+  add constraint token_public_badge_settings_display_name_check
+  check (char_length(display_name) <= 30);
+alter table public.token_public_badges
+  alter column style set default 'sparkline';
 ```
 
 - 两表 RLS enabled 零 policy + 仅 `service_role`（与 `token_*` 表同姿态，浏览器零直连）
@@ -227,6 +240,8 @@ create index if not exists token_public_badges_user_idx
   `AI Coding Usage`，可经 §7.1 `PUT {displayName}` 单独改写
 - `allowed_projects` 元素级校验（每项 ≤120 字符、过 `normalizeProjectKey`）在应用层完成
   （PG CHECK 不能含子查询）
+- `display_name` 上限 30 字符（2026-11-14 从 80 收紧，DB CHECK 与应用层截断同步）；
+  新徽章 `style` 默认 `sparkline`（同日操作者拍板，设置页风格选择折线居首）
 
 ### §3.2 令牌、吊销与删除
 
@@ -387,7 +402,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   请求，输出仍不得含 `http(s)://`（xmlns 声明例外）
 - 文本宽度用实现内固定字宽表估算（同字符集 → 同宽度，纯函数确定）
 
-### §5.2 style=panel（默认，上游同款布局）
+### §5.2 style=panel（上游同款布局）
 
 - 画布 600×176、圆角 12
 - 左上：**头像 + 标题**。头像仅在本人上传过头像时出现（36px 圆，图为内联 `data:` URI）；
@@ -446,7 +461,7 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   11px、左右内边距 6
 - 无新增色板 token（品牌板是固定常量，不进 `--` 变量）
 
-### §5.4 style=sparkline
+### §5.4 style=sparkline（默认，2026-11-14 起）
 
 - panel 基础上右上区域加 120×28 折线（`series` 归一化 polyline，仅描边 2px 不填充；
   `series` 空时退化为 panel）；折线位于品牌区下方（x=456、y=56，2026-11-03 随站点行下移
@@ -592,8 +607,8 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 |---|---|
 | `GET` | 返回 `{enabled, timezone, allowedProjects, displayName, knownProjects, badges:[{id, token, label, style, theme, range, project, createdAt, revokedAt}]}`；**令牌明文返回**（本人会话鉴权，链接必须随时可复制）；`knownProjects` 是本人 `token_sessions` 去重的非空 project_key（按 tokens 降序，≤200），白名单多选的数据源；**不含** `hasToken` / `tokenLast4` / `showHeatmap` / `showAchievements` |
 | `GET ?preview=1&style=…&theme=…&range=…&project=…` | 本人预览（§7.3）：会话鉴权代替令牌，参数 / 加载器 / 渲染器与 `/api/badge` 同源，返回 SVG（`no-store`）；不看 `enabled`（未公开也可预览）；白名单仍校验；出现 `scope` 同样 `bad request` |
-| `POST` | 新增一枚：生成令牌并插入行，`label` / `style` / `theme` / `range` / `project` 取请求值（缺省 `""` / `panel` / `auto` / `all` / `null`，`project` 须命中白名单）；若 settings 行不存在则创建（`enabled=true`、快照会话名、`timezone` 取请求值、`allowed_projects=[]`），已存在则仅在 `enabled=false` 时打开；响应 `{badge, enabled:true}`；第 11 枚（含已吊销行）→ `409 {error:"Badge limit reached"}` |
-| `PUT` | 更新账户级 `{enabled?, timezone?, allowedProjects?, displayName?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项 `400`；displayName 须为 string（trim、截 80，**空串合法**=清空，渲染回退 `AI Coding Usage`），非 string `400`；timezone 按 `parseTzContext` 约定归一；成功失效公开页缓存；settings 行不存在时创建 |
+| `POST` | 新增一枚：生成令牌并插入行，`label` / `style` / `theme` / `range` / `project` 取请求值（缺省 `""` / `sparkline` / `auto` / `all` / `null`，2026-11-14 风格默认改折线，`project` 须命中白名单）；若 settings 行不存在则创建（`enabled=true`、快照会话名、`timezone` 取请求值、`allowed_projects=[]`），已存在则仅在 `enabled=false` 时打开；响应 `{badge, enabled:true}`；第 11 枚（含已吊销行）→ `409 {error:"Badge limit reached"}` |
+| `PUT` | 更新账户级 `{enabled?, timezone?, allowedProjects?, displayName?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项 `400`；**级联回落（2026-11-14 操作者裁定）**：白名单移除某项目时，行内 `project` 指向它的徽章自动置 `null`（回落为账户徽章），响应带 `badges`（最新行）与 `fallbackBadgeIds`（被回落行）；displayName 须为 string（trim、截 30，**空串合法**=清空，渲染回退 `AI Coding Usage`），非 string `400`；timezone 按 `parseTzContext` 约定归一；成功失效公开页缓存；settings 行不存在时创建；响应 `{...config, badges, fallbackBadgeIds}` |
 | `PATCH /links/<id>` | 更新该枚的 `{label?, style?, theme?, range?, project?, revoked?}`；`project:null` = 回到账户徽章，非空值必须命中白名单（否则 `400 {error:"Project not allowed"}`）；`revoked:true` 写 `revoked_at`、`false` 清空（同链接恢复）；非本人或不存在的 id → `404 {error:"Badge not found"}`；响应为更新后的 badge |
 | `DELETE /links/<id>` | 物理删行，`204`（无 body）；非本人或不存在 → `404` |
 
@@ -607,17 +622,22 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 公开徽章是独立 tab（`components/settings/badge-card.tsx` 为状态编排器），自上而下三张卡：
 
 1. **账户设置卡**（`badge-settings-card.tsx`）——总开关 `Switch`（没有徽章时禁用并提示先
-   新增；切换即 `PUT {enabled, timezone}`）；公开名称输入 + 保存（`PUT {displayName}`，
-   与个人信息名称解耦，清空后公开面显示 `AI Coding Usage`）；仓库白名单多选（数据源
-   `knownProjects`，已不在会话中的项仍列出以便移除；`PUT {allowedProjects}`）；时区只读
-   展示（浏览器时区，随每次保存 PUT）。一处收紧白名单全局生效（§3.3）。
-2. **徽章列表卡**（`badge-links-card.tsx`）——右上「新增徽章」（到 10 枚禁用并提示）；每行
-   `badge-link-row.tsx` 显示备注名（空则「未命名徽章」）、令牌末四位、生效 / 已吊销 Chip 与
-   一行摘要（风格 · 主题 · 范围 · 仓库）；行内动作 = 复制链接 / 吊销或恢复 / 删除。吊销
+   新增；切换即 `PUT {enabled, timezone}`）；公开名称输入 + 保存（`PUT {displayName}`，≤30
+   字符，与个人信息名称解耦，清空后公开面显示 `AI Coding Usage`）；仓库白名单多选（数据源
+   `knownProjects`，已不在会话中的项仍列出以便移除；`PUT {allowedProjects}`，移除项触发
+   §7.1 级联回落并 toast 告知受影响徽章数）；时区只读展示（浏览器时区，随每次保存 PUT）。
+   一处收紧白名单全局生效（§3.3）。
+2. **徽章列表卡**（`badge-links-card.tsx`）——右上「新增徽章」（pending 时只显示 Spinner
+   不显示 `+` 图标；到 10 枚禁用并提示）；每行
+   `badge-link-row.tsx` 显示备注名（空则「未命名徽章」）、生效 / 已吊销 Chip 与
+   一行摘要（风格 · 主题 · 范围 · 仓库）；行内动作 = 复制链接 / 吊销或恢复 / 删除；吊销 /
+   恢复 PATCH 期间该按钮图标换成 `Spinner`（2026-11-14）。吊销
    **无**二次确认（可逆）；删除用 `AlertDialog status="danger"` 二次确认、不可恢复。已吊销
    行仍占位，直到删除。
-3. **选中徽章卡**（`badge-detail-card.tsx`）——备注名输入 + 保存；风格 / 主题 / 范围 / 仓库
-   单选，改动**即时 PATCH**（失败 toast，界面按服务端返回值回写，无乐观回滚）；实时预览
+3. **选中徽章卡**（`badge-detail-card.tsx`）——头部只放徽章名 + 状态 Chip（不显示令牌
+   片段，令牌只出现在 README 片段与复制链接里，2026-11-14）；备注名输入 + 保存；风格
+   （折线居首、默认选中）/ 主题 / 范围 / 仓库单选，改动**即时 PATCH**（失败 toast，界面按
+   服务端返回值回写，无乐观回滚）；实时预览
    （`PanelOverlay` 遮罩）；README 片段（§7.4）。仓库下拉的空值 = 账户徽章，选中 = 该仓库，
    `Select.ClearButton` 清空回账户（与 §2.1 的 project 开关同构）。
 

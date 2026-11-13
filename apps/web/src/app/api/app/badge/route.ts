@@ -134,7 +134,7 @@ async function previewResponse(
 
     return svgResponse(
       renderBadgeSvg(data, {
-        style: params.style ?? "panel",
+        style: params.style ?? "sparkline",
         theme: params.theme ?? "auto",
       }),
     );
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
     const token = `${TOKEN_PREFIX}${randomBytes(24).toString("base64url")}`;
     const now = new Date().toISOString();
     const defaults: BadgeDefaults = {
-      style: parsed.input.style ?? "panel",
+      style: parsed.input.style ?? "sparkline",
       theme: parsed.input.theme ?? "auto",
       range: parsed.input.range ?? "all",
       project: parsed.input.project ?? null,
@@ -309,7 +309,9 @@ export async function PUT(request: NextRequest) {
   }
   try {
     patch.updated_at = new Date().toISOString();
-    if (await loadSettings(session.userId)) {
+    const existing = await loadSettings(session.userId);
+
+    if (existing) {
       await update(SETTINGS_TABLE, patch, [["user_id", "eq", session.userId]], {
         returning: false,
       });
@@ -321,9 +323,50 @@ export async function PUT(request: NextRequest) {
         { returning: false },
       );
     }
+
+    // §7.1 cascade: a badge whose inline project just left the allowlist falls
+    // back to the account badge, so a stale row can never render "unknown
+    // project" on the public face. URL ?project= overrides keep their own
+    // whitelist check at render time — an explicitly pinned removed project
+    // still degrades there (§2.3), which is the operator's own URL.
+    const previous = normalizeBadgeAllowlist(existing?.allowed_projects);
+    const next = Array.isArray(patch.allowed_projects)
+      ? (patch.allowed_projects as string[])
+      : previous;
+    const removed = previous.filter((key) => !next.includes(key));
+    const fallbackBadgeIds: string[] = [];
+
+    if (removed.length > 0) {
+      for (const row of await loadBadges(session.userId)) {
+        if (!row.project || !removed.includes(row.project)) continue;
+        const updated = await update(
+          BADGES_TABLE,
+          { project: null, updated_at: patch.updated_at },
+          [
+            ["id", "eq", row.id],
+            ["user_id", "eq", session.userId],
+          ],
+          { returning: true },
+        );
+
+        fallbackBadgeIds.push(String(updated[0]?.id ?? row.id));
+      }
+    }
+
     invalidateBadgeData(session.userId);
 
-    return jsonResponse(200, configPayload(await loadSettings(session.userId)));
+    // §7.1: the PUT response carries the fresh badge rows (the cascade may
+    // have rewritten them) plus which rows fell back.
+    const [settings, badges] = await Promise.all([
+      loadSettings(session.userId),
+      loadBadges(session.userId),
+    ]);
+
+    return jsonResponse(200, {
+      ...configPayload(settings),
+      badges: badges.map(badgePayload),
+      fallbackBadgeIds,
+    });
   } catch (error) {
     return unavailable(error);
   }

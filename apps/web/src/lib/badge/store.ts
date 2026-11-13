@@ -84,7 +84,7 @@ export function badgePayload(row: BadgeRow) {
     id: String(row.id),
     token: String(row.token),
     label: typeof row.label === "string" ? row.label : "",
-    style: String(row.style ?? "panel"),
+    style: String(row.style ?? "sparkline"),
     theme: String(row.theme ?? "auto"),
     range: String(row.range ?? "all"),
     project:

@@ -546,24 +546,28 @@ cookie 会话；Loading 骨架 / Error 走共享 `SectionError` 重试），其�
    | 行 | 控件 | 选项 / 行为 |
    |---|---|---|
    | 公开展示 | `Switch`（拇指 Check / Xmark） | 没有徽章时禁用并提示先新增；切换即 `PUT {enabled, timezone}` |
-   | 公开名称 | `TextField` +「保存名称」 | 与个人信息名称解耦，清空保存后显示通用「AI Coding Usage」；有改动才可保存；行说明只留「留空显示 AI Coding Usage」，「与个人信息名独立 / 最多 80 字符」收进 ⓘ Tooltip |
-   | 仓库白名单 | 多选 `Select` +「保存白名单」 | 选项 = `knownProjects` ∪ 已在白名单的项；有改动才可保存，>32 项禁用；行说明只留「最多 32 个」，三项口径缺口（账户级来源不计、无项目名会话不计、同名合并）与「活跃天数按 {时区} 折算」收进 ⓘ Tooltip |
+   | 公开名称 | `TextField` +「保存名称」 | 与个人信息名称解耦，清空保存后显示通用「AI Coding Usage」；有改动才可保存；行说明只留「留空显示 AI Coding Usage」，「与个人信息名独立 / 最多 30 字符」收进 ⓘ Tooltip |
+   | 仓库白名单 | 多选 `Select` +「保存白名单」 | 选项 = `knownProjects` ∪ 已在白名单的项；有改动才可保存，>32 项禁用；保存触发 §7.1 级联回落时 toast 告知回落徽章数（无回落用常规成功 toast）；行说明只留「最多 32 个」，三项口径缺口（账户级来源不计、无项目名会话不计、同名合并）与「活跃天数按 {时区} 折算」收进 ⓘ Tooltip |
 
 2. **徽章列表卡**（`badge-links-card.tsx`）——头部标题 + 说明在左，「新增徽章」（`Plus`
-   图标）在右，到 10 枚禁用并在卡底给出上限说明；空态一行居中 muted 文案。每行
-   `badge-link-row.tsx`：可点击文本块（备注名 /「未命名徽章」+ 末四位 `Chip` + 生效或已吊销
+   图标；pending 期间只显示 `Spinner`、不显示 `+`，2026-11-14）在右，到 10 枚禁用并在卡底
+   给出上限说明；空态一行居中 muted 文案。每行
+   `badge-link-row.tsx`：可点击文本块（备注名 /「未命名徽章」+ 生效或已吊销
    `Chip` + 一行摘要「风格 · 主题 · 范围 · 仓库」，选中行底色 `bg-surface-secondary`）+ 右侧
    三枚图标按钮（`Button isIconOnly size="sm"` + 底部带箭头 `Tooltip`，文案即动作名）：
    - 复制链接（`Copy`）：写完整 `/api/badge?token=…`，成功 `toast.success`。
    - 吊销 / 恢复（`Ban` / `ArrowRotateLeft`）：吊销**无**二次确认（可逆），恢复即同一链接；
+     该按钮 PATCH 期间图标换成 `Spinner`（2026-11-14）；
      行内 `Chip` 从生效（success soft）切到已吊销（warning soft）。
    - 删除（`TrashBin`，`variant="danger-soft"`）：`AlertDialog status="danger"` 二次确认，
      正文写明不可恢复；成功后选中项落到剩余第一枚。
 
-3. **选中徽章卡**（`badge-detail-card.tsx`）——头部徽章名 + 末四位 + 状态 Chip；无选中时
+3. **选中徽章卡**（`badge-detail-card.tsx`）——头部徽章名 + 状态 Chip（不显示令牌片段，
+   令牌只出现在片段与复制链接里，2026-11-14）；无选中时
    显示空态文案。内容自上而下：
    - 备注名：`TextField` +「保存」，有改动才可保存。
-   - 展示参数：风格 / 主题 / 范围三组 `ToggleButtonGroup size="sm"`，仓库单选 `Select`
+   - 展示参数：风格（折线居首，新徽章默认折线）/ 主题 / 范围三组 `ToggleButtonGroup size="sm"`，
+     仓库单选 `Select`
      （`Select.ClearButton` 回到账户徽章）；**改动即时 PATCH**，失败 `toast` 并由服务端返回值
      回写，无乐观回滚；白名单为空时仓库置灰并提示。
    - 预览：`<img>` 走会话鉴权预览（携带该行已保存的参数 + `v` 版本号），换参到新图解码完成

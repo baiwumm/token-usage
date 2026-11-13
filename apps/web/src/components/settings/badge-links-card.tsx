@@ -21,6 +21,7 @@ export function BadgeLinksCard({
   busyId,
   copy,
   limit,
+  revokingId,
   selectedId,
   onAdd,
   onCopy,
@@ -33,6 +34,7 @@ export function BadgeLinksCard({
   busyId: string | null;
   copy: BadgeCopy;
   limit: number;
+  revokingId: string | null;
   selectedId: string | null;
   onAdd: () => void;
   onCopy: (badge: BadgeLink) => void;
@@ -56,8 +58,14 @@ export function BadgeLinksCard({
             size="sm"
             onPress={onAdd}
           >
-            <Plus aria-hidden="true" className="size-4" />
-            {copy.addBadge}
+            {(pending) => (
+              <>
+                {pending ? null : (
+                  <Plus aria-hidden="true" className="size-4" />
+                )}
+                {copy.addBadge}
+              </>
+            )}
           </PendingButton>
         </div>
       </Card.Header>
@@ -73,6 +81,7 @@ export function BadgeLinksCard({
               badge={badge}
               busy={busyId === badge.id}
               copy={copy}
+              revoking={revokingId === badge.id}
               selected={selectedId === badge.id}
               onCopy={() => {
                 onCopy(badge);

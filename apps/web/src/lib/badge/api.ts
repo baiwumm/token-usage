@@ -33,6 +33,17 @@ export type BadgeSettings = BadgeConfig & {
   badges: BadgeLink[];
 };
 
+/**
+ * PUT /api/app/badge response: the fresh config plus the badge rows — rows are
+ * included because the allowlist save may cascade `project` back to null
+ * (§7.1), and the caller must see the rows as the server stored them.
+ */
+export type BadgeConfigResult = BadgeConfig & {
+  badges: BadgeLink[];
+  /** Rows whose inline project left the allowlist and fell back to null. */
+  fallbackBadgeIds: string[];
+};
+
 export type BadgeLinkInput = {
   label?: string;
   style?: BadgeStyle;
@@ -134,8 +145,8 @@ export function updateBadgeConfig(patch: {
   allowedProjects?: string[];
   /** Empty string clears the public name (§7.1). */
   displayName?: string;
-}): Promise<BadgeConfig> {
-  return request<BadgeConfig>("", {
+}): Promise<BadgeConfigResult> {
+  return request<BadgeConfigResult>("", {
     method: "PUT",
     body: JSON.stringify(patch),
   });
