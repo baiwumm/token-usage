@@ -30,9 +30,9 @@ function LoginClientInner() {
     <main className="relative flex min-h-svh flex-col lg:grid lg:grid-cols-[minmax(0,45%)_minmax(0,1fr)]">
       {/* Quick actions (docs/ui-spec.md 登录页): the app-shell top bar's four
           icon buttons, minus the pairing primary. top/height mirror the brand
-          rows (mobile bar pt-8 h-8, desktop lockup lg:py-10 h-9) so both
+          rows (mobile bar pt-6 h-8, desktop lockup lg:py-8 h-9) so both
           centers sit on the same line. */}
-      <div className="absolute top-8 right-6 z-10 flex h-8 items-center gap-1 lg:top-10 lg:right-12 lg:h-9">
+      <div className="absolute top-6 right-5 z-10 flex h-8 items-center gap-1 lg:top-8 lg:right-10 lg:h-9">
         <GitHubLink />
         <LanguageDropdown />
         <ThemeColorPicker />

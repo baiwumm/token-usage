@@ -676,8 +676,9 @@ Tab 切换不新增 history 记录）。**密码重置邮件回跳**：登录页
 顶部品牌条（Logo + 词标）+ 表单卡。**右上角快捷区**（2026-11-07 二轮）：复用
 `components/top-actions.tsx` 的四枚顶栏图标按钮（GitHub 仓库 / 语言 / 主题色 /
 明暗模式；**不含**「配对设备」主按钮），绝对定位页右上角并与品牌行**居中同带**
-（2026-11-07 三轮：`top-8 right-6 h-8`，lg 起 `lg:top-10 lg:right-12 lg:h-9`——
-top/height 镜像品牌行的 `pt-8`+自然行高 与 `lg:py-10`+`h-9`，两侧中心线重合）。
+（2026-11-07 三轮：`top-8 right-6 h-8`，lg 起 `lg:top-10 lg:right-12 lg:h-9`；
+2026-11-13 贴边收紧为 `top-6 right-5 h-8` / `lg:top-8 lg:right-10 lg:h-9`——
+top/height 镜像品牌行的 `pt-6`+自然行高 与 `lg:py-8`+`h-9`，两侧中心线重合）。
 
 **品牌区（左栏）**，自上而下：
 
@@ -690,7 +691,15 @@ top/height 镜像品牌行的 `pt-8`+自然行高 与 `lg:py-10`+`h-9`，两侧�
   回写，取代早先误记的 53×7），单元格色 `var(--heatmap-1..4)` 内联（同仪表盘
   `heatmap-geometry.ts` 用法），整体透明度压低；容器淡出遮罩。呼吸动效纯 CSS 且
   `prefers-reduced-motion` 下关停。
-- 底部页脚一行 muted 小字（`text-[10px]`）：`Token Usage · token-usage.cc`。
+- 底部页脚一行 muted 小字（`text-[10px]`）：`Token Usage · token-usage.cc`（lg 以上
+  与右栏备案号同基线）。
+- **右栏底部备案号**（2026-11-13）：工信部 ICP（`NEXT_PUBLIC_BEIAN_ICP`）与公安网备
+  （`NEXT_PUBLIC_BEIAN_POLICE`）两枚备案号，**部署级环境变量驱动**——变量为空或缺省则整条
+  不渲染，只配一个就只显示一条（构建期内联，改值需重新部署）；每条 = 官方图标
+  （`/beian/icp.png` / `/beian/police.png`，`size-3.5`）+ `text-[10px]` muted 文本，链接分别
+  指向 `beian.miit.gov.cn` 与 `beian.mps.gov.cn` 查询页（公安号数字自动入参）；hover 无下划线、
+  仅文本 300ms 淡入 `--accent`；lg 起绝对定位 `lg:bottom-8`、居中一行且与左栏页脚同一基线，
+  < lg 时叠在 `Token Usage · token-usage.cc` 之下。
 - 环境：`--accent` radial 光晕自左下极淡渗出（~10% 内混透明），全页 `pointer-events-none`，
   明暗主题随 token 自适应。
 

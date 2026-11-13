@@ -267,6 +267,8 @@ publishable key；secret key 无前缀、绝不进浏览器包。
 | `TOKEN_USAGE_DASHBOARD_URL` | 配对回调地址校验（device-flow-authorize 返回的 verification_uri）；同时作为 metadataBase 生成 canonical / Open Graph 绝对地址 |
 | `TOKEN_USAGE_SITE_NAME`（可选） | 页签标题后缀（`<page> - <name>`）与 Apple Web App 标题，默认 `TokenUsage`；不含机密，无需 `NEXT_PUBLIC_` |
 | `NEXT_PUBLIC_PROJECTS_CALIBER`（可选） | `/projects` 页口径开关：`hourly` = 桶口径，缺省 = sessions 口径；部署级、构建期内联，改值/删除均需重新部署（`docs/ui-spec.md`「项目（`/projects`）」节） |
+| `NEXT_PUBLIC_BEIAN_ICP`（可选） | `/login` 页脚备案号：工信部 ICP 号（如 `粤ICP备2023007649号-2`），链接 `beian.miit.gov.cn`；空/缺省不渲染该行；构建期内联 |
+| `NEXT_PUBLIC_BEIAN_POLICE`（可选） | `/login` 页脚公安网备号（如 `粤公网安备44030402006402号`），数字部分自动进 `beian.mps.gov.cn` 查询链接；空/缺省不渲染该行；构建期内联 |
 | `TOKEN_USAGE_FX_RATES`（可选） | 外观设置的汇率覆盖，JSON `{"as_of":"YYYY-MM-DD","rates":{"CNY":6.6849,...}}`；服务端根布局解析后注入 format provider，缺省/解析失败/缺键回退内置快照并记日志；不含机密，但无需 `NEXT_PUBLIC_` |
 
 契约冻结说明：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），

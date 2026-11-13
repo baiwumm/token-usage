@@ -35,6 +35,16 @@ import { useLocale, type Locale } from "@/lib/copy/locale";
 type Mode = "password" | "magic";
 type SentKind = null | "magic" | "reset";
 
+// Filing numbers for the page footer (2026-11-13): deployment-specific, so
+// each line renders only when its env var is set. Static `process.env.X`
+// member access keeps Next's build-time inlining working — dynamic indexing
+// would read undefined inside the client bundle. Values are public and
+// inlined at build time, so changing one needs a redeploy.
+const BEIAN_ICP = process.env.NEXT_PUBLIC_BEIAN_ICP?.trim() ?? "";
+const BEIAN_POLICE = process.env.NEXT_PUBLIC_BEIAN_POLICE?.trim() ?? "";
+// The police link takes just the digits of the number as its query param.
+const BEIAN_POLICE_CODE = BEIAN_POLICE.match(/\d+/)?.[0] ?? "";
+
 // Paint delay between the OAuth state landing and the browser leaving for
 // the provider: short enough to feel instant, long enough that the spinner
 // and the locked siblings are actually seen on fast connections.
@@ -460,14 +470,79 @@ export function LoginBody({ next, callbackError }: LoginBodyProps) {
         </Card>
       </div>
 
+      {/* Bottom line: <lg stacks the site lockup above the filing numbers;
+          from lg the left brand column already carries the lockup, so only
+          the filing numbers show — anchored to the same baseline as that
+          footer note (brand column `lg:py-8` ↔ `lg:bottom-8`). Each number
+          disappears when its env var is unset. */}
+      <div className="absolute inset-x-0 bottom-6 flex flex-col items-center gap-1 lg:bottom-8">
+        <Typography
+          className="text-center text-[10px] lg:hidden"
+          color="muted"
+          type="body-xs"
+        >
+          {copy.footerNote}
+        </Typography>
+        {BEIAN_ICP || (BEIAN_POLICE && BEIAN_POLICE_CODE) ? (
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+            {BEIAN_ICP ? (
+              <BeianLink
+                href="https://beian.miit.gov.cn/"
+                icon="/beian/icp.png"
+                label={BEIAN_ICP}
+              />
+            ) : null}
+            {BEIAN_POLICE && BEIAN_POLICE_CODE ? (
+              <BeianLink
+                href={`https://beian.mps.gov.cn/#/query/webSearch?code=${BEIAN_POLICE_CODE}`}
+                icon="/beian/police.png"
+                label={BEIAN_POLICE}
+              />
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+// One filing number: official badge icon + muted 10px label. Plain `<a>` (not
+// HeroUI Link) so no component underline styles fight the hover treatment —
+// the label only fades into the accent color over 300ms (2026-11-13).
+function BeianLink({
+  href,
+  icon,
+  label,
+}: {
+  href: string;
+  icon: string;
+  label: string;
+}) {
+  return (
+    <a
+      className="group inline-flex items-center gap-1 no-underline"
+      href={href}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        alt=""
+        aria-hidden="true"
+        className="size-3.5 shrink-0"
+        height={14}
+        loading="lazy"
+        src={icon}
+        width={14}
+      />
       <Typography
-        className="absolute inset-x-0 bottom-6 text-center text-[10px] lg:hidden"
+        className="text-[10px] transition-colors duration-300 group-hover:text-accent"
         color="muted"
         type="body-xs"
       >
-        {copy.footerNote}
+        {label}
       </Typography>
-    </div>
+    </a>
   );
 }
 

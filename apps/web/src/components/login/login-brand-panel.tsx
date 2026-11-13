@@ -78,9 +78,9 @@ export function LoginBrandPanel() {
 
   return (
     <>
-      {/* <lg: compact brand bar above the form (pt-8 + 32px row = the quick
-          actions' top-8 h-8 band; centers share one line). */}
-      <div className="flex items-center gap-2.5 px-6 pt-8 lg:hidden">
+      {/* <lg: compact brand bar above the form (pt-6 + 32px row = the quick
+          actions' top-6 h-8 band; centers share one line). */}
+      <div className="flex items-center gap-2.5 px-5 pt-6 lg:hidden">
         <span aria-hidden="true" className="grid size-8 shrink-0 select-none">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -105,7 +105,7 @@ export function LoginBrandPanel() {
       </div>
 
       {/* ≥lg: full brand column. */}
-      <div className="relative hidden lg:flex lg:min-h-svh lg:flex-col lg:border-r lg:border-default/50 lg:px-12 lg:py-10">
+      <div className="relative hidden lg:flex lg:min-h-svh lg:flex-col lg:border-r lg:border-default/50 lg:px-10 lg:py-8">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"

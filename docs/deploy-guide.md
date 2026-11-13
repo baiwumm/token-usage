@@ -114,6 +114,11 @@ Dashboard → **Authentication → URL Configuration**：
 可选：`TOKEN_USAGE_SITE_NAME` 覆盖页签标题后缀与 Apple Web App 标题，默认 `TokenUsage`
 （标题格式为 `<页面名> - <TOKEN_USAGE_SITE_NAME>`）。
 
+可选：`NEXT_PUBLIC_BEIAN_ICP`（工信部 ICP 号，如 `粤ICP备2023007649号-2`）与
+`NEXT_PUBLIC_BEIAN_POLICE`（公安网备号，如 `粤公网安备44030402006402号`）控制登录页右栏
+底部的备案信息：都未设置时整条不显示，只设一个就只显示一条。两者都是构建期内联的公开值，
+改值或删除都需重新部署；公安网备的查询链接会自动从号码里取数字。
+
 可选：`NEXT_PUBLIC_PROJECTS_CALIBER` 控制 `/projects` 页口径（详见
 [`docs/ui-spec.md`](ui-spec.md)「项目（`/projects`）」节）。它是**部署级、构建期内联**的开关，
 CLI 采集端不读它：未设置时走 sessions 口径（只覆盖会话级来源，`cursor` / `trae-cn` 永不
