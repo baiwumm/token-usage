@@ -38,17 +38,20 @@ export async function copyText(
 export function BadgeSnippetSection({
   copy,
   origin,
+  pageToken,
   token,
 }: {
   copy: BadgeCopy;
   origin: string;
+  /** The <a> href keys on the settings row's page token (§3.2). */
+  pageToken: string;
   token: string;
 }) {
   const [variant, setVariant] = useState<Variant>("single");
   const snippet =
     variant === "single"
-      ? singleThemeSnippet(origin, token)
-      : dualThemeSnippet(origin, token);
+      ? singleThemeSnippet(origin, pageToken, token)
+      : dualThemeSnippet(origin, pageToken, token);
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-2">

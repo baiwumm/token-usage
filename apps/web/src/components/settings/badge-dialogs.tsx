@@ -171,3 +171,47 @@ export function DeleteBadgeDialog({
     </AlertDialog.Backdrop>
   );
 }
+
+// Rotate the public page token (§3.2 leak containment): every /u/<page_token>
+// link dies at once, badge embeds are unaffected. Confirmation required —
+// already-shared addresses break.
+export function ResetPageTokenDialog({
+  busy,
+  copy,
+  onClose,
+  onSubmit,
+}: {
+  busy: boolean;
+  copy: BadgeCopy;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <AlertDialog.Backdrop
+      isOpen
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <AlertDialog.Container>
+        <AlertDialog.Dialog>
+          <AlertDialog.Header>
+            <AlertDialog.Icon status="danger" />
+            <AlertDialog.Heading>{copy.pageResetTitle}</AlertDialog.Heading>
+          </AlertDialog.Header>
+          <AlertDialog.Body>
+            <Typography type="body-sm">{copy.pageResetBody}</Typography>
+          </AlertDialog.Body>
+          <AlertDialog.Footer>
+            <Button isDisabled={busy} slot="close" variant="tertiary">
+              {copy.cancel}
+            </Button>
+            <PendingButton pending={busy} variant="danger" onPress={onSubmit}>
+              {copy.pageResetConfirm}
+            </PendingButton>
+          </AlertDialog.Footer>
+        </AlertDialog.Dialog>
+      </AlertDialog.Container>
+    </AlertDialog.Backdrop>
+  );
+}

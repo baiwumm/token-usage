@@ -10,7 +10,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { UBody } from "@/components/u/u-body";
-import { findBadgeOwner } from "@/lib/badge/data";
+import { findPublicPageOwner } from "@/lib/badge/data";
 import { loadPublicPageData } from "@/lib/public-page/data";
 
 export const dynamic = "force-dynamic";
@@ -21,10 +21,10 @@ type PageProps = { params: Promise<{ token: string }> };
 // App Router dynamic params are already URL-decoded; decoding again turns a
 // malformed segment (e.g. /u/%25ZZ -> "%ZZ") into an uncaught URIError and a
 // 500 instead of the intended 404. Pass the segment through untouched.
+// §3.2 (2026-11-14): only the settings row's page token opens this page —
+// badge tokens key the SVG embeds; a disabled page answers null (404).
 const publicOwner = cache(async (token: string) => {
-  const owner = await findBadgeOwner(token);
-
-  return owner?.enabled ? owner : null;
+  return findPublicPageOwner(token);
 });
 
 export async function generateMetadata({

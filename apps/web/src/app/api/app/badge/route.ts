@@ -45,6 +45,8 @@ import {
   TOKEN_PREFIX,
   badgePayload,
   configPayload,
+  ensurePageToken,
+  generatePageToken,
   loadBadges,
   loadSettings,
   type BadgeRow,
@@ -155,11 +157,17 @@ export async function GET(request: NextRequest) {
   if (search.get("preview") === "1") return previewResponse(session, search);
 
   try {
-    const [settings, badges, knownProjects] = await Promise.all([
+    const [loaded, badges, knownProjects] = await Promise.all([
       loadSettings(session.userId),
       loadBadges(session.userId),
       loadKnownProjects(session.userId),
     ]);
+
+    // Rows from before the page-token migration get theirs on first config
+    // read, so the shell can always build the /u/<page_token> link.
+    const settings = loaded
+      ? await ensurePageToken(session.userId, loaded)
+      : loaded;
 
     return jsonResponse(200, {
       ...configPayload(settings),
@@ -250,6 +258,7 @@ export async function POST(request: NextRequest) {
           display_name: session.displayName,
           timezone: parsed.input.timezone ?? "UTC",
           allowed_projects: [],
+          page_token: generatePageToken(),
           updated_at: now,
         },
         "user_id",
@@ -282,6 +291,8 @@ export async function PUT(request: NextRequest) {
     timezone?: unknown;
     allowedProjects?: unknown;
     displayName?: unknown;
+    pageEnabled?: unknown;
+    resetPageToken?: unknown;
   };
   const patch: Record<string, unknown> = {};
 
@@ -290,6 +301,21 @@ export async function PUT(request: NextRequest) {
       return jsonError(400, "Invalid enabled");
     }
     patch.enabled = input.enabled;
+  }
+  if (input.pageEnabled !== undefined) {
+    if (typeof input.pageEnabled !== "boolean") {
+      return jsonError(400, "Invalid pageEnabled");
+    }
+    // §3.2: the page switch is independent of the badge master switch.
+    patch.page_enabled = input.pageEnabled;
+  }
+  if (input.resetPageToken !== undefined) {
+    if (input.resetPageToken !== true) {
+      return jsonError(400, "Invalid resetPageToken");
+    }
+    // §3.2 leak containment: rotating the page token kills every /u/<page>
+    // link at once; badge SVG embeds keep working (they key on badge tokens).
+    patch.page_token = generatePageToken();
   }
   if (input.displayName !== undefined) {
     // §7.1: the public name is decoupled from the profile name — trimmed and
@@ -336,7 +362,11 @@ export async function PUT(request: NextRequest) {
     } else {
       await upsert(
         SETTINGS_TABLE,
-        { user_id: session.userId, ...patch },
+        {
+          user_id: session.userId,
+          page_token: generatePageToken(),
+          ...patch,
+        },
         "user_id",
         { returning: false },
       );
@@ -374,11 +404,15 @@ export async function PUT(request: NextRequest) {
     invalidateBadgeData(session.userId);
 
     // §7.1: the PUT response carries the fresh badge rows (the cascade may
-    // have rewritten them) plus which rows fell back.
-    const [settings, badges] = await Promise.all([
+    // have rewritten them) plus which rows fell back; the page token is
+    // backfilled here too so a pre-migration row always leaves with one.
+    const [loaded, badges] = await Promise.all([
       loadSettings(session.userId),
       loadBadges(session.userId),
     ]);
+    const settings = loaded
+      ? await ensurePageToken(session.userId, loaded)
+      : loaded;
 
     return jsonResponse(200, {
       ...configPayload(settings),

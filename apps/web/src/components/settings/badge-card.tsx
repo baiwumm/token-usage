@@ -518,6 +518,7 @@ export function BadgeCard() {
         busy={selected !== null && linkBusyId === selected.id}
         copy={copy}
         origin={origin}
+        pageToken={settings.pageToken}
         previewVersion={previewVersion}
         onUpdate={(patch) => {
           if (selected) void updateLink(selected, patch);

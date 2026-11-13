@@ -26,6 +26,10 @@ export type BadgeConfig = {
   allowedProjects: string[];
   /** The publicly rendered name; "" falls back to "AI Coding Usage" (§5.2). */
   displayName: string;
+  /** §3.2: the page's own switch — off means /u/<page_token> answers 404. */
+  pageEnabled: boolean;
+  /** /u/<pageToken> — the one account-level public page key (§3.2). */
+  pageToken: string | null;
 };
 
 export type BadgeSettings = BadgeConfig & {
@@ -145,6 +149,10 @@ export function updateBadgeConfig(patch: {
   allowedProjects?: string[];
   /** Empty string clears the public name (§7.1). */
   displayName?: string;
+  /** §3.2: the page's own switch, independent of the badge master switch. */
+  pageEnabled?: boolean;
+  /** true rotates the page token: every /u/<page_token> link dies at once. */
+  resetPageToken?: true;
 }): Promise<BadgeConfigResult> {
   return request<BadgeConfigResult>("", {
     method: "PUT",

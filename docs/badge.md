@@ -107,7 +107,7 @@ HTML、JSON）永不包含 session 明细、提示词、正文、绝对路径、
 
 | 参数 | 必填 | 取值 | 说明 |
 |---|---|---|---|
-| `token` | 是 | 非空字符串 | 校验规则同 §2.1（≤128 字符、`[A-Za-z0-9_-]`），有效性同样交给明文查行 |
+| `token` | 是 | **公开页令牌**（§3.2，`tu_page_` 前缀） | 校验规则同 §2.1（≤128 字符、`[A-Za-z0-9_-]`），有效性同样交给明文查行；**徽章令牌一律 404**（2026-11-14 起公开页与徽章彻底解耦） |
 
 不接受 `project` / `style` / `theme` / `range`：本端点只出**账户级**快照，也不读取徽章行内的
 `project`。
@@ -235,6 +235,20 @@ alter table public.token_public_badges
 alter table public.token_public_badges
   add constraint token_public_badges_label_check
   check (char_length(label) <= 20);
+
+-- 20261114000002_token_public_badge_settings_page_entry.sql（幂等，操作者拍板）
+alter table public.token_public_badge_settings
+  add column if not exists show_page_entry boolean not null default true;
+alter table public.token_public_badge_settings
+  add column if not exists page_token text
+    check (page_token is null or page_token ~ '^tu_page_[A-Za-z0-9_-]{32}$');
+create unique index if not exists token_public_badge_settings_page_token_key
+  on public.token_public_badge_settings (page_token)
+  where page_token is not null;
+
+-- 20261114000003_token_public_badge_settings_page_enabled.sql（幂等，操作者拍板）
+alter table public.token_public_badge_settings
+  add column if not exists page_enabled boolean not null default true;
 ```
 
 - 两表 RLS enabled 零 policy + 仅 `service_role`（与 `token_*` 表同姿态，浏览器零直连）
@@ -257,6 +271,11 @@ alter table public.token_public_badges
   已吊销行也计入；命中 → `409 {error:"Label already exists"}`。弹窗先用本地列表即时
   判重，服务端同步镜像校验，409 回显为弹窗内联错误；不设 DB 唯一索引（写入路径唯一，
   应用层校验足够，且避免卡死历史空名行）
+- `show_page_entry`（默认 true，2026-11-14）控制登录后顶栏是否显示「公开页」入口按钮，
+  **不控制公开页本身**；`page_enabled`（默认 true，2026-11-14）是公开页自己的开关——关闭时
+  `/u/` 404，开启时正常访问；徽章总开关 `enabled` 只影响徽章图片（§2.3），不触及页面；
+  `page_token` 是每用户一份公开页的唯一钥匙（§3.2），settings 行创建时生成，迁移前的
+  旧行首次读取配置时懒生成
 
 ### §3.2 令牌、吊销与删除
 
@@ -272,6 +291,14 @@ alter table public.token_public_badges
 - **删除**（`DELETE /links/<id>`）：物理删行、不可恢复；此后访问呈现 `badge unavailable`
 - 令牌出现在 URL 查询里 → 会进各级访问日志：这是公开徽章的设计前提（令牌只控制聚合数字的
   公开）。泄露处置 = 吊销该枚（之后可恢复）或删除后新建；**不再有「重置换锁」**
+
+**公开页令牌（2026-11-14 新增）**：`/u/<token>` 是**每用户一份**的账户级页面，由 settings 行
+的 `page_token`（`tu_page_` + 32 字符 base64url，同熵）唯一标识——**徽章令牌不再打开公开页**
+（§2.3/§2.4 的查无语义同样适用）。公开页与徽章彻底解耦：吊销、删除、新增徽章都不影响公开页
+URL；页面由**独立开关** `page_enabled`（§3.2，2026-11-14）控制，关闭时 404、开启时正常访问，
+徽章总开关 `enabled` 只管徽章图片（§2.3）。settings 行创建时生成，迁移前的旧行在首次读取
+配置时懒生成；`PUT {resetPageToken:true}` 可轮换（泄露处置：旧 `/u/` 链接全部立即失效，
+徽章图片不受影响）。
 
 ### §3.3 allowed_projects
 
@@ -364,7 +391,12 @@ export interface BadgeData {
 export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 ```
 
-### §4.7 公开页总数据口径（2026-11-05 操作者裁定）
+### §4.7 公开页总数据口径（2026-11-05 操作者裁定；2026-11-14 收敛为每用户一份）
+
+- **公开页恒为账户级（2026-11-14）**：`/u/<page_token>` 与徽章解耦，任何徽章行的仓库口径
+  都不影响本页；仓库范围只存在于 SVG 徽章（§4.1–4.2）。页面 URL 见 §3.2 公开页令牌。
+- **页面开关独立（2026-11-14）**：`page_enabled` 管 `/u/` 可达性（关 = 404），徽章总开关
+  `enabled` 只管 SVG 徽章；两开关互不影响。
 
 - 页面固定 `range=all`，**删除近 30 天维度**：不渲染 30 日柱图、30 日汇总文案、任何
   时间范围切换，也不引入日均 / 环比 / rolling 窗口派生值。§2.1 的 `range=30d` 仅保留给
@@ -620,10 +652,10 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 | 方法 | 行为 |
 |---|---|
-| `GET` | 返回 `{enabled, timezone, allowedProjects, displayName, knownProjects, badges:[{id, token, label, style, theme, range, project, createdAt, revokedAt}]}`；**令牌明文返回**（本人会话鉴权，链接必须随时可复制）；`knownProjects` 是本人 `token_sessions` 去重的非空 project_key（按 tokens 降序，≤200），白名单多选的数据源；**不含** `hasToken` / `tokenLast4` / `showHeatmap` / `showAchievements` |
+| `GET` | 返回 `{enabled, timezone, allowedProjects, displayName, showPageEntry, pageEnabled, pageToken, knownProjects, badges:[{id, token, label, style, theme, range, project, createdAt, revokedAt}]}`；**徽章令牌明文返回**（本人会话鉴权，链接必须随时可复制）；`pageToken` 是公开页钥匙（§3.2，缺失时读取即懒生成）；`showPageEntry` 控制顶栏入口；`pageEnabled` 是公开页开关（§3.2）；`knownProjects` 是本人 `token_sessions` 去重的非空 project_key（按 tokens 降序，≤200），白名单多选的数据源；**不含** `hasToken` / `tokenLast4` / `showHeatmap` / `showAchievements` |
 | `GET ?preview=1&style=…&theme=…&range=…&project=…` | 本人预览（§7.3）：会话鉴权代替令牌，参数 / 加载器 / 渲染器与 `/api/badge` 同源，返回 SVG（`no-store`）；不看 `enabled`（未公开也可预览）；白名单仍校验；出现 `scope` 同样 `bad request` |
 | `POST` | 新增一枚：生成令牌并插入行，`label` **必填**（1–20 字符，缺失或空 → `400 {error:"Label required"}` / `{error:"Invalid label"}`）且**用户内判重**（trim、大小写不敏感，重名 → `409 {error:"Label already exists"}`，2026-11-14）；`style` / `theme` / `range` / `project` 取请求值（缺省 `sparkline` / `auto` / `all` / `null`，`project` 须命中白名单）；若 settings 行不存在则创建（`enabled=true`、快照会话名、`timezone` 取请求值、`allowed_projects=[]`），已存在则仅在 `enabled=false` 时打开；响应 `{badge, enabled:true}`；第 11 枚（含已吊销行）→ `409 {error:"Badge limit reached"}` |
-| `PUT` | 更新账户级 `{enabled?, timezone?, allowedProjects?, displayName?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项 `400`；**级联回落（2026-11-14 操作者裁定）**：白名单移除某项目时，行内 `project` 指向它的徽章自动置 `null`（回落为账户徽章），响应带 `badges`（最新行）与 `fallbackBadgeIds`（被回落行）；displayName 须为 string（trim、截 30，**空串合法**=清空，渲染回退 `AI Coding Usage`），非 string `400`；timezone 按 `parseTzContext` 约定归一；成功失效公开页缓存；settings 行不存在时创建；响应 `{...config, badges, fallbackBadgeIds}` |
+| `PUT` | 更新账户级 `{enabled?, timezone?, allowedProjects?, displayName?, showPageEntry?, pageEnabled?, resetPageToken?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项 `400`；**级联回落（2026-11-14 操作者裁定）**：白名单移除某项目时，行内 `project` 指向它的徽章自动置 `null`（回落为账户徽章），响应带 `badges`（最新行）与 `fallbackBadgeIds`（被回落行）；displayName 须为 string（trim、截 30，**空串合法**=清空，渲染回退 `AI Coding Usage`），非 string `400`；`showPageEntry` 布尔（顶栏入口）；`pageEnabled` 布尔（公开页开关，独立于徽章总开关）；`resetPageToken:true` 轮换公开页令牌（旧 `/u/` 链接全部立即失效，§3.2）；timezone 按 `parseTzContext` 约定归一；成功失效公开页缓存；settings 行不存在时创建（含公开页令牌）；响应 `{...config, badges, fallbackBadgeIds}` |
 | `PATCH /links/<id>` | 更新该枚的 `{label?, style?, theme?, range?, project?, revoked?}`；`label` 出现时必须 1–20 字符（空 → `400 {error:"Invalid label"}`）并参与用户内判重（排除自身，重名 → `409 {error:"Label already exists"}`，2026-11-14）；`project:null` = 回到账户徽章，非空值必须命中白名单（否则 `400 {error:"Project not allowed"}`）；`revoked:true` 写 `revoked_at`、`false` 清空（同链接恢复）；非本人或不存在的 id → `404 {error:"Badge not found"}`；响应为更新后的 badge |
 | `DELETE /links/<id>` | 物理删行，`204`（无 body）；非本人或不存在 → `404` |
 
@@ -661,6 +693,14 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   名称）：`Modal` + `Form` + `TextField isRequired`（≤20 字，Enter 提交），空值禁用确认钮、
   内联 `FieldError`；新增确认后自动选中新徽章，直接在下方详情卡调参；失败 toast 且弹窗
   保留草稿（2026-11-14）
+- **公开页卡片在账户 tab（2026-11-14 二次调整）**：徽章 tab 的账户设置卡只管徽章
+  （公开展示 / 公开名称 / 白名单）；「公开页」开关与「重置链接」操作移到**账户 tab** 的
+  `public-page-card.tsx`（自取数 `/api/app/badge`）——「公开页」开关（`PUT {pageEnabled}`，
+  **独立于徽章总开关**：关 = `/u/` 404，开 = 正常访问）+「重置公开页链接」按钮
+  （`AlertDialog status="danger"` 确认后 `PUT {resetPageToken:true}` 轮换令牌，旧链接全部失效）。
+  顶栏（`top-actions.tsx`，`ChartLineArrowUp` 图标）**恒显示**：页面开关开时新标签页打开
+  `/u/<page_token>`，关（或配置不可用）时 toast 提示先去设置开启；配置经 `GET /api/app/badge`
+  获取，读取即顺带回填 page_token
 - 次要说明（公开名称细则、白名单口径与时区、预览前置条件）收进 label 旁的 `CircleInfo`
   图标按钮 + `Tooltip`，行内 `Description` 只留一句动作前必读文案；对应文案键为
   `nameHelp` / `projectsCaveat` / `timezoneNote` / `previewHelp` 与 `*HelpLabel`
@@ -679,15 +719,17 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 ### §7.4 README 片段复制（两版都给）
 
-- 单主题：`<a href="<origin>/u/<token>"><img src="<origin>/api/badge?token=<token>" alt="…"></a>`
+- 单主题：`<a href="<origin>/u/<page_token>"><img src="<origin>/api/badge?token=<badge_token>" alt="…"></a>`
+  （2026-11-14：`<a>` 指向**公开页令牌**——页面 URL 不随徽章增删吊销变化；`<img>` 仍用
+  徽章令牌）
 - 双主题：`<picture>` + `<source media="(prefers-color-scheme: dark)">`（GitHub 现行推荐
   写法，README 里的 prefers-color-scheme 跟随访客的 GitHub 主题设置；`#gh-*-mode-only`
   片段为其旧式替代，不再输出）。两条 URL 只额外带 `theme=dark|light`
 - `<origin>` 用部署自身 origin（自部署各自填）
-- 片段**只带 `token`**：风格 / 主题 / 范围 / 仓库存在徽章行里，设置页改完对已嵌入徽章即时
+- 片段**只带令牌**：风格 / 主题 / 范围 / 仓库存在徽章行里，设置页改完对已嵌入徽章即时
   生效，README 永远不用跟着改
-- 令牌任何时候都可用：列表与详情显示末四位，复制按钮与片段给出完整链接；不再有一次性揭示
-  或 `YOUR_BADGE_TOKEN` 占位符
+- 令牌任何时候都可用：复制按钮与片段给出完整链接；不再有一次性揭示或
+  `YOUR_BADGE_TOKEN` 占位符（2026-11-14 起列表与详情不再显示令牌末四位）
 
 ## §8 缓存与滥用面
 

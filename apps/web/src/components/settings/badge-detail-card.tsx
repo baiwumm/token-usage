@@ -107,6 +107,7 @@ export function BadgeDetailCard({
   busy,
   copy,
   origin,
+  pageToken,
   previewVersion,
   onUpdate,
 }: {
@@ -115,6 +116,8 @@ export function BadgeDetailCard({
   busy: boolean;
   copy: BadgeCopy;
   origin: string;
+  /** The <a> in snippets keys on the account's page token (§3.2). */
+  pageToken: string | null;
   previewVersion: number;
   onUpdate: (patch: BadgeLinkInput) => void;
 }) {
@@ -255,13 +258,19 @@ export function BadgeDetailCard({
           </div>
         </Block>
 
-        <Block description={copy.snippetDescription} label={copy.snippetLabel}>
-          <BadgeSnippetSection
-            copy={copy}
-            origin={origin}
-            token={badge.token}
-          />
-        </Block>
+        {pageToken ? (
+          <Block
+            description={copy.snippetDescription}
+            label={copy.snippetLabel}
+          >
+            <BadgeSnippetSection
+              copy={copy}
+              origin={origin}
+              pageToken={pageToken}
+              token={badge.token}
+            />
+          </Block>
+        ) : null}
       </Card.Content>
     </Card>
   );

@@ -57,6 +57,7 @@ const badgeAppRoute = await loadSpecModule<BadgeAppRoute>(
 const fake = new FakeSupabase();
 
 const BADGE_TOKEN = `tu_badge_${"a".repeat(32)}`;
+const PAGE_TOKEN = `tu_page_${"p".repeat(32)}`;
 const BADGE_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const BADGE_URL = "http://localhost/api/badge";
 const DATA_URL = "http://localhost/api/badge/data";
@@ -81,6 +82,9 @@ function seedBadgeScenario(): void {
     display_name: "Ming Wei",
     timezone: "Asia/Shanghai",
     allowed_projects: ["token-usage"],
+    show_page_entry: true,
+    page_token: PAGE_TOKEN,
+    page_enabled: true,
     created_at: "2026-10-01T00:00:00.000Z",
     updated_at: "2026-10-01T00:00:00.000Z",
   });
@@ -429,7 +433,7 @@ describe.skipIf(!badgeDataRoute)(
         badgeDataRoute,
         "app/api/badge/data/route",
       );
-      const res = await GET(new Request(`${DATA_URL}?token=${BADGE_TOKEN}`));
+      const res = await GET(new Request(`${DATA_URL}?token=${PAGE_TOKEN}`));
 
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toBe("application/json");
@@ -486,7 +490,7 @@ describe.skipIf(!badgeDataRoute)(
       expect(body.series).toHaveLength(30);
     });
 
-    it("rejects junk tokens with 400 and hides unknown, revoked or disabled ones behind 404 (§2.4.3)", async () => {
+    it("rejects junk tokens with 400, answers only the page token, and hides unknown or disabled pages behind 404 (§2.4.3)", async () => {
       const { GET } = unwrapSpecModule(
         badgeDataRoute,
         "app/api/badge/data/route",
@@ -500,21 +504,34 @@ describe.skipIf(!badgeDataRoute)(
       const junk = await GET(new Request(`${DATA_URL}?token=${"x".repeat(200)}`));
       expect(junk.status).toBe(400);
 
+      // §3.2 (2026-11-14): badge tokens never open the public page — active or
+      // revoked, they answer the same 404 as an unknown token.
+      const badgeToken = await GET(
+        new Request(`${DATA_URL}?token=${BADGE_TOKEN}`),
+      );
+      expect(badgeToken.status).toBe(404);
+      expect(await badgeToken.json()).toEqual({ error: "badge unavailable" });
+
       const unknown = await GET(
-        new Request(`${DATA_URL}?token=tu_badge_${"b".repeat(32)}`),
+        new Request(`${DATA_URL}?token=tu_page_${"b".repeat(32)}`),
       );
       expect(unknown.status).toBe(404);
       expect(await unknown.json()).toEqual({ error: "badge unavailable" });
 
-      badgeRow().revoked_at = "2026-11-01T00:00:00.000Z";
-      const revoked = await GET(new Request(`${DATA_URL}?token=${BADGE_TOKEN}`));
-      expect(revoked.status).toBe(404);
-      expect(await revoked.json()).toEqual({ error: "badge unavailable" });
+      // §3.2 (2026-11-14): the page has its own switch — the badge master
+      // switch never gates it.
+      const settingsRow = fake.table(
+        "token_public_badge_settings",
+      )[0] as Row;
+      settingsRow.enabled = false;
+      const masterOff = await GET(
+        new Request(`${DATA_URL}?token=${PAGE_TOKEN}`),
+      );
+      expect(masterOff.status).toBe(200);
 
-      badgeRow().revoked_at = null;
-      (fake.table("token_public_badge_settings")[0] as Row).enabled = false;
+      settingsRow.page_enabled = false;
       const disabled = await GET(
-        new Request(`${DATA_URL}?token=${BADGE_TOKEN}`),
+        new Request(`${DATA_URL}?token=${PAGE_TOKEN}`),
       );
       expect(disabled.status).toBe(404);
       expect(await disabled.json()).toEqual({ error: "badge unavailable" });
@@ -532,10 +549,11 @@ describe.skipIf(!badgeDataRoute)(
       expect((await OPTIONS()).status).toBe(204);
 
       const body = await (
-        await GET(new Request(`${DATA_URL}?token=${BADGE_TOKEN}`))
+        await GET(new Request(`${DATA_URL}?token=${PAGE_TOKEN}`))
       ).text();
 
       expect(body).not.toContain(BADGE_TOKEN);
+      expect(body).not.toContain(PAGE_TOKEN);
       expect(body).not.toContain(USER_ID);
       expect(body).not.toContain("data:image/");
     });

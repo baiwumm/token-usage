@@ -383,6 +383,46 @@ describe("/api/app/badge multi-badge config (docs/badge.md §7.1–7.3)", () => 
     expect((await res.json()).displayName).toBe("x".repeat(30));
   });
 
+  it("GET backfills the page token for pre-migration settings rows (2026-11-14)", async () => {
+    const res = await GET(new NextRequest(APP_URL));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.pageToken).toMatch(/^tu_page_[A-Za-z0-9_-]{32}$/);
+    expect(
+      (fake.table("token_public_badge_settings")[0] as Row).page_token,
+    ).toBe(body.pageToken);
+  });
+
+  it("PUT persists pageEnabled without touching the badge master switch (2026-11-14)", async () => {
+    const res = await PUT(request(APP_URL, "PUT", { pageEnabled: false }));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).pageEnabled).toBe(false);
+    const row = fake.table("token_public_badge_settings")[0] as Row;
+
+    expect(row.page_enabled).toBe(false);
+    // The badge master switch is a different column and stays untouched.
+    expect(row.enabled).toBe(false);
+  });
+
+  it("PUT resetPageToken rotates the page token (2026-11-14)", async () => {
+    const before = (await (await GET(new NextRequest(APP_URL))).json())
+      .pageToken as string;
+
+    const res = await PUT(request(APP_URL, "PUT", { resetPageToken: true }));
+
+    expect(res.status).toBe(200);
+    const after = (await res.json()).pageToken as string;
+
+    expect(after).toMatch(/^tu_page_[A-Za-z0-9_-]{32}$/);
+    expect(after).not.toBe(before);
+    expect(
+      (fake.table("token_public_badge_settings")[0] as Row).page_token,
+    ).toBe(after);
+  });
+
   it("POST rejects the 11th badge with 409 (revoked rows keep their slot)", async () => {
     for (let index = 1; index < 10; index += 1) {
       fake.table("token_public_badges").push(

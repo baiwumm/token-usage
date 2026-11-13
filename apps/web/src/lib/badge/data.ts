@@ -472,6 +472,39 @@ export type BadgeOwner = {
   badge: BadgeDefaults;
 };
 
+// Public page token → account owner (docs/badge.md §3.2, 2026-11-14): the
+// /u/<token> page is ONE account-level page per user, keyed by the settings
+// row's page_token — badge tokens never open it. A disabled page answers null
+// exactly like an unknown token; the result never echoes the token.
+
+/** The narrow owner slice the public page actually consumes (§4.7). */
+export type PublicPageOwner = {
+  userId: string;
+  displayName: string;
+  timezone: string;
+};
+
+export async function findPublicPageOwner(
+  token: string,
+): Promise<PublicPageOwner | null> {
+  const rows = await select("token_public_badge_settings", {
+    select: "user_id,page_enabled,display_name,timezone",
+    filters: [["page_token", "eq", token]],
+    limit: 1,
+  });
+  const settings = rows[0];
+
+  // §3.2: the page has its own switch (2026-11-14) — off answers null (404)
+  // exactly like an unknown token. The badge master switch never gates it.
+  if (!settings || settings.page_enabled !== true) return null;
+
+  return {
+    userId: String(settings.user_id),
+    displayName: String(settings.display_name ?? ""),
+    timezone: normalizeBadgeTimezone(settings.timezone),
+  };
+}
+
 // Public token → owner (docs/badge.md §3.2, 2026-11-13): the token is stored
 // in plaintext, so this is one equality lookup plus the account settings.
 // Revoked rows answer null exactly like an unknown token — a revoked link must

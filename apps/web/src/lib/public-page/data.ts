@@ -7,7 +7,7 @@
 // (no per-user switches), the repository subsection is gone, and the owner
 // avatar is inlined from the same loader the SVG badge uses.
 
-import type { BadgeOwner } from "@/lib/badge/data";
+import type { PublicPageOwner } from "@/lib/badge/data";
 import type { HeatmapPayload } from "@/lib/dashboard/api";
 import type { PublicPageData } from "./types";
 
@@ -46,7 +46,7 @@ function latestUpdatedAt(rows: Record<string, unknown>[]): string | null {
 /** Same 52-week, owner-timezone window the dashboard heatmap endpoint uses. */
 function buildHeatmap(
   rows: Record<string, unknown>[],
-  owner: BadgeOwner,
+  owner: PublicPageOwner,
   now: Date,
 ): HeatmapPayload {
   const tzContext = { timeZone: owner.timezone, offsetMinutes: null };
@@ -75,7 +75,7 @@ function buildHeatmap(
 }
 
 async function buildPublicPageData(
-  owner: BadgeOwner,
+  owner: PublicPageOwner,
   now: Date,
 ): Promise<PublicPageData> {
   const [account, usage, snapshot, avatarDataUri] = await Promise.all([
@@ -124,7 +124,7 @@ async function buildPublicPageData(
 }
 
 export function loadPublicPageData(
-  owner: BadgeOwner,
+  owner: PublicPageOwner,
   now: Date = new Date(),
 ): Promise<PublicPageData> {
   const key = publicPageCacheKey(owner.userId);

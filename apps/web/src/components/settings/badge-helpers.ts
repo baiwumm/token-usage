@@ -20,21 +20,31 @@ export function badgeUrl(origin: string, token: string): string {
   return `${origin}/api/badge?token=${token}`;
 }
 
-export function pageUrl(origin: string, token: string): string {
-  return `${origin}/u/${token}`;
+/** The public page keys on the settings row's page token (§3.2) — badge
+    tokens only ever key the SVG embeds, never the page URL. */
+export function pageUrl(origin: string, pageToken: string): string {
+  return `${origin}/u/${pageToken}`;
 }
 
 /** Single-theme snippet: one image linking to the public page. */
-export function singleThemeSnippet(origin: string, token: string): string {
-  return `<a href="${pageUrl(origin, token)}"><img src="${badgeUrl(origin, token)}" alt="${ALT_TEXT}"></a>`;
+export function singleThemeSnippet(
+  origin: string,
+  pageToken: string,
+  token: string,
+): string {
+  return `<a href="${pageUrl(origin, pageToken)}"><img src="${badgeUrl(origin, token)}" alt="${ALT_TEXT}"></a>`;
 }
 
 /** Dual-theme snippet: a <picture> that follows GitHub's own theme setting. */
-export function dualThemeSnippet(origin: string, token: string): string {
+export function dualThemeSnippet(
+  origin: string,
+  pageToken: string,
+  token: string,
+): string {
   const [dark, light] = DUAL_THEME;
 
   return [
-    `<a href="${pageUrl(origin, token)}">`,
+    `<a href="${pageUrl(origin, pageToken)}">`,
     "  <picture>",
     `    <source media="(prefers-color-scheme: dark)" srcset="${badgeUrl(origin, token)}&theme=${dark}">`,
     `    <img src="${badgeUrl(origin, token)}&theme=${light}" alt="${ALT_TEXT}">`,

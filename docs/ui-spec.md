@@ -72,6 +72,10 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
 - 仪表盘各区块独立取数与独立三态，一个接口失败不拖垮整页；首载骨架按最终栅格排布。
 - 响应式断点用 Tailwind 默认（`sm` 640 / `md` 768 / `lg` 1024 / `xl` 1280）；`lg` 以下侧边栏
   收进抽屉（`AppShell` 承担），顶栏保留主操作与主题切换。
+- 顶栏右侧动作簇（`top-actions.tsx`）：GitHub / 公开页（`ChartLineArrowUp`，**恒显示**，
+  2026-11-14：页面开关开时新标签页打开 `/u/<page_token>`，页面关（或配置不可用）时 toast
+  提示先去设置开启；配置经 `GET /api/app/badge` 获取、读取顺带回填 page_token）/ 语言 /
+  主题色 / 主题模式（按钮本体 SSR 渲染不迟现，水合后图标随存储值切换）/ 配对设备主按钮。
 - 最小支持宽度 375px：页面级不出现横向滚动；宽表在卡内横向滚动容器里滚动，分享卡预览
   等固定宽度面板同理。
 - 抽屉 / 弹窗打开时锁定背景滚动，关闭后恢复；移动端底部操作区留安全区内边距。
@@ -476,6 +480,11 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
   - 头像卡：更换走 `react-easy-crop` 裁剪弹窗（缩放滑杆 + ±90° 旋转），canvas 合成 256×256
     WebP 后上传，更换 / 删除按钮并列；弹窗是与项目 Logo 共用的
     `components/image-crop-dialog.tsx`，文案与上传函数由调用方传入。
+  - 公开页卡（`public-page-card.tsx`，2026-11-14）：每账户一份的 `/u/<公开页令牌>` 用量页的
+    开关与令牌轮换，自取数 `/api/app/badge`。行：「公开访问」`Switch`（关 = `/u/` 立即 404，
+    徽章图片不受影响；切换即 `PUT {pageEnabled, timezone}`）+「公开页链接」重置按钮
+    （`AlertDialog status="danger"` 确认后 `PUT {resetPageToken:true}`，旧链接全部失效）；
+    加载失败 `SectionError` 重试。
   - 预算卡：月度 USD 上限，`NumberField`（最小 0、最大 1,000,000、步长 1、整数美元），保存写
     本机 `token-usage.budget`，0 关闭。
   - 密码卡：设置 / 更新密码，≥8 位；魔法链接账号在此开启密码登录。
@@ -545,7 +554,7 @@ cookie 会话；Loading 骨架按三卡结构逐块占位（账户设置行/列�
 
    | 行 | 控件 | 选项 / 行为 |
    |---|---|---|
-   | 公开展示 | `Switch`（拇指 Check / Xmark） | 没有徽章时禁用并提示先新增；切换即 `PUT {enabled, timezone}` |
+   | 公开展示 | `Switch`（拇指 Check / Xmark） | 没有徽章时禁用并提示先新增；切换即 `PUT {enabled, timezone}`；只管徽章图片，不触及公开页 |
    | 公开名称 | `TextField` +「保存名称」 | 输入框为 `InputGroup variant="secondary"`，`Suffix` 实时显示 `{n}/{30}` 字数（2026-11-14）；与个人信息名称解耦，清空保存后显示通用「AI Coding Usage」；有改动才可保存；行说明只留「留空显示 AI Coding Usage」，「与个人信息名独立 / 最多 30 字符」收进 ⓘ Tooltip |
    | 仓库白名单 | 多选 `Select` +「保存白名单」 | 选项 = `knownProjects` ∪ 已在白名单的项；有改动才可保存，>32 项禁用；保存触发 §7.1 级联回落时 toast 告知回落徽章数（无回落用常规成功 toast）；行说明只留「最多 32 个」，三项口径缺口（账户级来源不计、无项目名会话不计、同名合并）与「活跃天数按 {时区} 折算」收进 ⓘ Tooltip |
 
@@ -582,7 +591,8 @@ cookie 会话；Loading 骨架按三卡结构逐块占位（账户设置行/列�
      宽面板溢出时 auto margin 归零左对齐、卡内横向滚动，不外溢
      页面。
    - README 片段：`ToggleButtonGroup`（单主题 / 跟随 GitHub 明暗）+ 只读 `TextArea` + 复制；
-     片段**只带令牌**（双主题额外带 `theme`），说明写明「设置页改风格 / 主题 / 范围 / 仓库会
+     片段**只带令牌**（`<a>` 用公开页令牌 `/u/<page_token>`，`<img>` 用徽章令牌；双主题额外带
+     `theme`），说明写明「设置页改风格 / 主题 / 范围 / 仓库会
      即时作用于已嵌入徽章，README 不用改」。
 
 - 次要说明统一收进 label 旁 `BadgeHint`（`CircleInfo` 图标按钮）+ `Tooltip`（`delay={0}` +

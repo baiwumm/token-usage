@@ -2,6 +2,10 @@
 // 单一来源：不硬编码令牌——README 变更即跟随。解析失败返回 null，调用方
 // 隐藏徽章/演示入口即可，不阻塞构建。
 // 服务端专用（node:fs）：只被 server components 引用。
+//
+// 2026-11-14 公开页模型：/u/<公开页令牌> 是每用户一份的账户级页面（§3.2），
+// 与徽章令牌（只管 SVG 直链）解耦。README 徽章块的 <a href> 指向公开页令牌、
+// <img src> 指向徽章令牌，两处各取所需。
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -9,10 +13,12 @@ import { join } from "node:path";
 export interface BadgeSource {
   /** 徽章端点 origin，如 https://token-usage.baiwumm.com */
   origin: string;
-  /** 公开徽章令牌（README 已公开，非机密）。 */
+  /** 徽章令牌（README 已公开，非机密）——SVG 直链用。 */
   token: string;
-  /** /u/<token> 公开页完整链接。 */
-  publicPageUrl: string;
+  /** 公开页令牌——/u/ 页面与 §2.4 数据快照用；README 未提供时为 null。 */
+  pageToken: string | null;
+  /** /u/<公开页令牌> 完整链接；公开页令牌缺失时为 null。 */
+  publicPageUrl: string | null;
 }
 
 let cached: BadgeSource | null | undefined;
@@ -29,18 +35,23 @@ function parse(): BadgeSource | null {
     return null;
   }
 
-  // 第一处 badge img URL 即账户级徽章（README 徽章区首个 <img>）。
-  const match = readme.match(
+  // 第一处 badge img URL 即徽章直链（README 徽章区首个 <img>）；
+  // 第一处 /u/tu_page_… 链接即公开页入口（徽章块的 <a href>）。
+  const badgeMatch = readme.match(
     /https:\/\/[^\s"'<>]+\/api\/badge\?token=([A-Za-z0-9_-]+)/,
   );
+  const pageMatch = readme.match(
+    /https:\/\/[^\s"'<>]+\/u\/(tu_page_[A-Za-z0-9_-]+)/,
+  );
 
-  if (!match) return null;
-  const origin = new URL(match[0]).origin;
+  if (!badgeMatch && !pageMatch) return null;
+  const origin = new URL((badgeMatch ?? pageMatch)![0]).origin;
 
   return {
     origin,
-    token: match[1],
-    publicPageUrl: `${origin}/u/${match[1]}`,
+    token: badgeMatch?.[1] ?? "",
+    pageToken: pageMatch?.[1] ?? null,
+    publicPageUrl: pageMatch ? `${origin}/u/${pageMatch[1]}` : null,
   };
 }
 

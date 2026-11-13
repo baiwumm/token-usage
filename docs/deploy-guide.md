@@ -40,7 +40,7 @@ npx supabase db push
 
 **方式 B：SQL Editor 手动执行**
 
-在 SQL Editor 按文件名顺序逐个粘贴执行（共 18 个）：
+在 SQL Editor 按文件名顺序逐个粘贴执行（共 20 个）：
 
 | 迁移 | 作用 |
 | --- | --- |
@@ -62,6 +62,8 @@ npx supabase db push
 | `20261113000001_token_public_badge_rows.sql` | 新徽章模型两表：账户设置 + 每枚徽章 |
 | `20261114000000_token_public_badge_display_name_style.sql` | 公开名称收紧到 30 字符、新徽章默认折线（幂等） |
 | `20261114000001_token_public_badge_label_20.sql` | 徽章名称收紧到 20 字符（幂等） |
+| `20261114000002_token_public_badge_settings_page_entry.sql` | 公开页令牌列（幂等；公开页改每用户一份、独立开关） |
+| `20261114000003_token_public_badge_settings_page_enabled.sql` | 公开页独立开关列（幂等；总开关只管徽章） |
 
 **完成条件**：Table Editor 里出现 `token_devices`、`token_device_tokens`、`token_device_codes`、
 `token_usage_hourly`、`token_account_session_states`、`token_sessions`、`token_sync_runs`、

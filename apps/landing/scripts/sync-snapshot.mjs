@@ -44,15 +44,21 @@ function findSource() {
 		return null;
 	}
 
-	const match = readme.match(
+	// §2.4 数据令牌：优先公开页令牌（README 徽章块的 <a href>，2026-11-14 起每
+	// 用户一份公开页，/u/ 只认它）；没有公开页链接时回退徽章令牌（旧 README
+	// 兼容，新服务端会 404 → 保留已提交快照并告警）。
+	const badgeMatch = readme.match(
 		/https:\/\/[^\s"'<>]+\/api\/badge\?token=([A-Za-z0-9_-]+)/,
 	);
+	const pageMatch = readme.match(
+		/https:\/\/[^\s"'<>]+\/u\/(tu_page_[A-Za-z0-9_-]+)/,
+	);
 
-	if (!match) return null;
+	if (!badgeMatch && !pageMatch) return null;
 
 	return {
-		origin: new URL(match[0]).origin,
-		token: match[1],
+		origin: new URL((badgeMatch ?? pageMatch)[0]).origin,
+		token: (pageMatch ?? badgeMatch)[1],
 	};
 }
 

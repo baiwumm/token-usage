@@ -6,7 +6,7 @@
 
 import { NextResponse } from "next/server";
 
-import { findBadgeOwner } from "@/lib/badge/data";
+import { findPublicPageOwner } from "@/lib/badge/data";
 import { isValidBadgeToken } from "@/lib/badge/params";
 import { loadPublicPageData } from "@/lib/public-page/data";
 import { buildPublicSnapshot } from "@/lib/public-page/snapshot";
@@ -29,9 +29,9 @@ export async function GET(request: Request) {
   if (!isValidBadgeToken(token)) return errorResponse(400, "bad request");
 
   try {
-    const owner = await findBadgeOwner(token);
+    const owner = await findPublicPageOwner(token);
 
-    if (!owner?.enabled) return errorResponse(404, "badge unavailable");
+    if (!owner) return errorResponse(404, "badge unavailable");
 
     const snapshot = buildPublicSnapshot(await loadPublicPageData(owner));
 

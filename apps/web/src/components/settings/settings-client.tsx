@@ -37,6 +37,7 @@ import {
 import { DevicesTable } from "./devices-table";
 import { PasswordCard } from "./password-card";
 import { ProfileCard } from "./profile-card";
+import { PublicPageCard } from "./public-page-card";
 
 import { useSessionBootstrap } from "@/lib/auth/session-bootstrap";
 import { useLocale } from "@/lib/copy/locale";
@@ -342,6 +343,7 @@ export function SettingsClient() {
         <div className="flex flex-col gap-4">
           <ProfileCard />
           <AvatarCard />
+          <PublicPageCard />
           <BudgetCard />
           <PasswordCard />
         </div>

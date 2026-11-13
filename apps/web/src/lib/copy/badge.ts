@@ -42,6 +42,17 @@ export interface BadgeCopy {
   untitled: string;
   copyLink: string;
   copyLinkDone: string;
+  pageCardDescription: string;
+  pageToggleLabel: string;
+  pageLabel: string;
+  pageDescription: string;
+  pageOn: string;
+  pageOff: string;
+  pageResetLabel: string;
+  pageResetTitle: string;
+  pageResetBody: string;
+  pageResetConfirm: string;
+  pageResetDone: string;
   revoke: string;
   restore: string;
   revokeDone: string;
@@ -140,6 +151,19 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     untitled: "未命名徽章",
     copyLink: "复制链接",
     copyLinkDone: "链接已复制",
+    pageCardDescription:
+      "每账户一份的公开用量页（/u/<公开页令牌>），与徽章互相独立：开关只管页面，徽章图片跟随「公开展示」。",
+    pageToggleLabel: "公开访问",
+    pageLabel: "公开页",
+    pageDescription: "关闭后公开页地址立即 404，徽章图片不受影响。",
+    pageOn: "公开页已开启",
+    pageOff: "公开页已关闭",
+    pageResetLabel: "公开页链接",
+    pageResetTitle: "重置公开页链接？",
+    pageResetBody:
+      "重置后旧公开页链接立即失效，已分享出去的地址需要更新；徽章图片不受影响。链接泄露时用这个处置。",
+    pageResetConfirm: "重置链接",
+    pageResetDone: "公开页链接已重置",
     revoke: "吊销",
     restore: "恢复",
     revokeDone: "已吊销，可随时恢复",
@@ -240,6 +264,20 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     untitled: "Untitled badge",
     copyLink: "Copy link",
     copyLinkDone: "Link copied",
+    pageCardDescription:
+      "One public usage page per account (/u/<page token>), independent of badges: the switch governs the page, badge images follow “Public”.",
+    pageToggleLabel: "Public access",
+    pageLabel: "Public page",
+    pageDescription:
+      "Turning it off makes the /u/ URL answer 404 right away — badge images are unaffected.",
+    pageOn: "Public page enabled",
+    pageOff: "Public page disabled",
+    pageResetLabel: "Public page link",
+    pageResetTitle: "Rotate the public page link?",
+    pageResetBody:
+      "The old /u/ link stops working immediately and shared addresses must be updated; badge images are unaffected. Use this if the link leaks.",
+    pageResetConfirm: "Rotate link",
+    pageResetDone: "Public page link rotated",
     revoke: "Revoke",
     restore: "Restore",
     revokeDone: "Revoked — restore any time",
