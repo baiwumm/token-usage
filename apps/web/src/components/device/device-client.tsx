@@ -8,9 +8,10 @@
 import {
   Button,
   Card,
+  ErrorMessage,
+  Form,
   InputOTP,
   Label,
-  Spinner,
   Typography,
 } from "@heroui/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,6 +23,7 @@ import {
   type FormEvent,
 } from "react";
 
+import { PendingButton } from "@/components/pending-button";
 import { authBrowserClient } from "@/lib/auth/browser";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
 import { DEVICE_COPY } from "@/lib/copy/device";
@@ -33,18 +35,19 @@ import {
 } from "@/lib/dashboard/api";
 
 // Contract alphabet: no 0/1/I/L/O (docs/cli-contract.md §2.1).
+const CODE_LENGTH = 8;
 const USER_CODE_PATTERN = /^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/;
 // Dispatched by the app shell's primary action while already on /device
 // (docs/ui-spec.md 配对 · 顶栏主操作复位语义).
 const DEVICE_RESET_EVENT = "token-usage:device-reset";
 
-type Phase = "input" | "confirm" | "approving" | "success" | "error";
+type Phase = "input" | "confirm" | "success";
 
 function normalizeCode(raw: string): string {
   return raw
     .toUpperCase()
     .replace(/[^A-HJKMNP-Z2-9]/g, "")
-    .slice(0, 8);
+    .slice(0, CODE_LENGTH);
 }
 
 function formatCode(packed: string): string {
@@ -67,6 +70,7 @@ function DeviceClientInner() {
   const [activeCode, setActiveCode] = useState(
     USER_CODE_PATTERN.test(urlCode) ? urlCode : "",
   );
+  const [pending, setPending] = useState(false);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
   const redirectToLogin = useCallback(() => {
@@ -97,28 +101,34 @@ function DeviceClientInner() {
     return () => window.removeEventListener(DEVICE_RESET_EVENT, onReset);
   }, [resetToInput]);
 
+  // Approves in place: the button carries the pending state and a failed
+  // grant surfaces as inline copy, so the page never leaves the current card
+  // until the pairing succeeds.
   async function approve(code: string) {
-    const supabase = authBrowserClient();
-    const {
-      data: { session },
-    } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
+    if (pending) return;
 
-    if (!session?.access_token) {
-      redirectToLogin();
-
-      return;
-    }
-    setPhase("approving");
+    setPending(true);
     setErrorDetail(null);
 
     try {
-      // A hung request must not pin the page on the approving spinner forever:
+      const supabase = authBrowserClient();
+      const {
+        data: { session },
+      } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
+
+      if (!session?.access_token) {
+        redirectToLogin();
+
+        return;
+      }
+      // A hung request must not pin the button on the pending spinner forever:
       // 15 s is well past any healthy round-trip to the grant endpoint, and
-      // the timeout surfaces the retryable error state instead.
+      // the timeout surfaces the retryable inline error instead.
       await grantDeviceFlow(session.access_token, {
         userCode: code,
         timeoutMs: 15_000,
       });
+      setActiveCode(code);
       setPhase("success");
     } catch (error) {
       if (isUnauthorized(error)) {
@@ -133,24 +143,22 @@ function DeviceClientInner() {
             ? copy.errorInvalid
             : (error instanceof Error && error.message) || copy.errorGeneric,
       );
-      setPhase("error");
+    } finally {
+      setPending(false);
     }
   }
 
   function submitManual(event: FormEvent) {
     event.preventDefault();
-    const packed = normalizeCode(draft);
-    const formatted = formatCode(packed);
+    const formatted = formatCode(normalizeCode(draft));
 
     if (!USER_CODE_PATTERN.test(formatted)) {
       setErrorDetail(copy.errorInvalid);
-      setPhase("error");
-      setActiveCode("");
 
       return;
     }
     setActiveCode(formatted);
-    setPhase("confirm");
+    void approve(formatted);
   }
 
   return (
@@ -168,17 +176,22 @@ function DeviceClientInner() {
             <Card.Description>{copy.manualHint}</Card.Description>
           </Card.Header>
           <Card.Content>
-            <form className="flex flex-col gap-3" onSubmit={submitManual}>
+            <Form className="flex flex-col gap-3" onSubmit={submitManual}>
               <Label htmlFor="device-user-code">{copy.codeLabel}</Label>
               <InputOTP
+                aria-describedby={errorDetail ? "device-code-error" : undefined}
                 autoCapitalize="characters"
                 className="justify-center"
                 id="device-user-code"
                 inputMode="text"
-                maxLength={8}
+                isInvalid={!!errorDetail}
+                maxLength={CODE_LENGTH}
                 value={draft}
                 variant="secondary"
-                onChange={(raw) => setDraft(normalizeCode(raw))}
+                onChange={(raw) => {
+                  setDraft(normalizeCode(raw));
+                  setErrorDetail(null);
+                }}
               >
                 <InputOTP.Group>
                   <InputOTP.Slot index={0} />
@@ -194,10 +207,20 @@ function DeviceClientInner() {
                   <InputOTP.Slot index={7} />
                 </InputOTP.Group>
               </InputOTP>
-              <Button className="self-center" type="submit">
+              {errorDetail ? (
+                <ErrorMessage id="device-code-error" role="alert">
+                  {errorDetail}
+                </ErrorMessage>
+              ) : null}
+              <PendingButton
+                className="self-center"
+                isDisabled={draft.length !== CODE_LENGTH}
+                pending={pending}
+                type="submit"
+              >
                 {copy.approve}
-              </Button>
-            </form>
+              </PendingButton>
+            </Form>
           </Card.Content>
         </Card>
       ) : null}
@@ -216,22 +239,23 @@ function DeviceClientInner() {
             >
               {activeCode}
             </Typography>
-            <Button
-              className="self-center"
-              onPress={() => void approve(activeCode)}
-            >
-              {copy.approve}
-            </Button>
+            {errorDetail ? (
+              <ErrorMessage role="alert">{errorDetail}</ErrorMessage>
+            ) : null}
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <PendingButton
+                pending={pending}
+                onPress={() => void approve(activeCode)}
+              >
+                {copy.approve}
+              </PendingButton>
+              {errorDetail ? (
+                <Button variant="secondary" onPress={resetToInput}>
+                  {copy.startOver}
+                </Button>
+              ) : null}
+            </div>
           </Card.Content>
-        </Card>
-      ) : null}
-
-      {phase === "approving" ? (
-        <Card className="items-center gap-2 p-10">
-          <Spinner />
-          <Typography color="muted" type="body-sm">
-            {copy.approving}
-          </Typography>
         </Card>
       ) : null}
 
@@ -241,31 +265,6 @@ function DeviceClientInner() {
             <Card.Title>{copy.successTitle}</Card.Title>
             <Card.Description>{copy.successBody}</Card.Description>
           </Card.Header>
-        </Card>
-      ) : null}
-
-      {phase === "error" ? (
-        <Card className="flex-col gap-3 p-6">
-          <Card.Header>
-            <Card.Title>{copy.errorTitle}</Card.Title>
-            <Card.Description>
-              {errorDetail ?? copy.errorGeneric}
-            </Card.Description>
-          </Card.Header>
-          <Card.Content className="flex gap-2">
-            {activeCode ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onPress={() => void approve(activeCode)}
-              >
-                {copy.retry}
-              </Button>
-            ) : null}
-            <Button size="sm" variant="secondary" onPress={resetToInput}>
-              {copy.startOver}
-            </Button>
-          </Card.Content>
         </Card>
       ) : null}
     </main>

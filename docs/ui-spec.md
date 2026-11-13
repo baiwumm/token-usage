@@ -826,16 +826,20 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 
 差异清单（相对 Sessions）：
 
-- **`user_code` 五态流程**（`Phase = input | confirm | approving | success | error`）：① `input`——
-  无合法 `?user_code=` 时手填 `InputOTP`（8 槽、4+4 分组，自动大写并过滤非法字符、格式化
-  `XXXX-XXXX`）；② `confirm`——URL 带合法码或手填通过后展示大号等宽 `user_code`，点「批准」
-  才发请求；③ `approving`——`Spinner` + 说明、禁用重复提交；④ `success`——成功卡；
-  ⑤ `error`——404 码不存在/过期、400 码无效、其余通用错误，带「重试」（保留当前码）与
-  「重新输入」（复位到 ①）。**无列表、无筛选、无 URL 分页、无汇总卡、无刷新按钮**；
-  `user_code` 只从 `?user_code=` 读取、不回写 URL。
+- **`user_code` 三态流程**（`Phase = input | confirm | success`）：① `input`——无合法
+  `?user_code=` 时手填 `InputOTP`（8 槽、4+4 分组，自动大写并过滤非法字符、格式化
+  `XXXX-XXXX`）；「批准配对」在 8 位填满前 `isDisabled`，填满后点按**直接批准**；② `confirm`
+  ——URL 带合法码时展示大号等宽 `user_code` + 「批准配对」（深链不手填，始终显式确认一次）；
+  ③ `success`——成功卡。
+- **按钮即状态**：批准期间按钮自身 `isPending`（`PendingButton`：`Spinner` + 原文案），不再
+  整卡切换加载态，也不可重复提交；失败发生在当前卡内——`InputOTP` 置 `isInvalid` + 下方
+  `ErrorMessage`（`role="alert"`）直接给错误语（404 码不存在/过期、400 码无效、其余通用
+  错误），保留已填内容，再次点按即重试；`input` 卡改码即清错，`confirm` 卡错误时额外给
+  「输入其他配对码」（复位到 ①，顶栏主操作同名）。**无列表、无筛选、无 URL 分页、无汇总
+  卡、无刷新按钮**；`user_code` 只从 `?user_code=` 读取、不回写 URL。
 - **顶栏主操作复位语义**：顶栏固定「配对设备」主操作（`Plus`，`variant="primary"`）始终
   `router.push("/device")`（不带 `user_code`），语义是**新建一次配对**；当页面已带 `?user_code=`
-  处于 confirm / approving / error 态时，点它必须清除 `user_code`、丢弃当前码与错误、复位回
+  处于 confirm 态（含批准中、已出错）时，点它必须清除 `user_code`、丢弃当前码与错误、复位回
   `input` 手填态，不得沿用旧码继续批准。其余顶栏控件（GitHub / 语言 / 主题色 / 明暗）行为不变。
 - 页面为 `max-w-xl` 居中单列审批流（非数据面）：不套 `DataTableCard` / 汇总卡 /
   `DeviceFilterSelect` / CSV 导出；`min-h` 居中、无页面级横向滚动。

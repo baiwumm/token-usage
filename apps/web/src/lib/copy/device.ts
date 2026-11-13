@@ -10,14 +10,11 @@ export interface DeviceCopy {
   confirmTitle: string;
   confirmBody: string;
   approve: string;
-  approving: string;
   successTitle: string;
   successBody: string;
-  errorTitle: string;
   errorInvalid: string;
   errorNotFound: string;
   errorGeneric: string;
-  retry: string;
   startOver: string;
 }
 
@@ -32,14 +29,11 @@ export const DEVICE_COPY: Record<"zh" | "en", DeviceCopy> = {
     confirmBody:
       "以下配对码来自你的采集端 CLI。批准后，该 CLI 将获得本账户的上报令牌。",
     approve: "批准配对",
-    approving: "批准中…",
     successTitle: "配对成功",
     successBody: "设备已批准。回到采集端 CLI，令牌会自动下发并开始上报。",
-    errorTitle: "配对失败",
     errorInvalid: "配对码格式不正确。",
     errorNotFound: "配对码不存在、已过期或已被使用。请在采集端重新发起配对。",
     errorGeneric: "配对请求失败，请稍后再试。",
-    retry: "重试",
     startOver: "输入其他配对码",
   },
   en: {
@@ -54,16 +48,13 @@ export const DEVICE_COPY: Record<"zh" | "en", DeviceCopy> = {
     confirmBody:
       "This code comes from your collector CLI. Approving grants it a reporting token for your account.",
     approve: "Approve pairing",
-    approving: "Approving…",
     successTitle: "Paired",
     successBody:
       "The device is approved. Back in the collector CLI, the token arrives automatically and reporting starts.",
-    errorTitle: "Pairing failed",
     errorInvalid: "That pairing code is malformed.",
     errorNotFound:
       "The code does not exist, has expired, or was already used. Start a new pairing on the collector.",
     errorGeneric: "The pairing request failed. Try again shortly.",
-    retry: "Retry",
     startOver: "Enter another code",
   },
 };
