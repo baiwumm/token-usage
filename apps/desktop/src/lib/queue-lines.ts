@@ -30,7 +30,7 @@ export interface QueueBucketRow {
   reasoningOutputTokens: number;
   totalTokens: number;
   billableTotalTokens: number | null;
-  /** Collector-side clamped cost estimate (docs/cli-contract.md §2). */
+  /** Collector-reported cost; a positive authoritative value wins over read-time pricing. */
   totalCostUsd: number;
   conversationCount: number;
   credits: number;
@@ -41,7 +41,7 @@ export interface SourceUsage {
   tokens: number;
   conversations: number;
   share: number;
-  /** Collector cost estimate summed over the group (web Top 模型/成本列口径). */
+  /** Read-time priced cost summed over the group (web Top 模型/成本列口径). */
   totalCostUsd: number;
 }
 
@@ -78,7 +78,7 @@ export interface UsageWindow {
   projects: ProjectUsage[];
   /** Tokens carrying a project key (the rest is the unattributed residual). */
   attributedTokens: number;
-  /** Sum of the collector's clamped cost estimates (预计费用). */
+  /** Window total from the read-time pricing engine (预计费用). */
   totalCostUsd: number;
   inputTokens: number;
   cachedInputTokens: number;
@@ -412,7 +412,7 @@ export interface DailyUsage {
   day: string;
   tokens: number;
   conversations: number;
-  /** Collector cost estimates folded into the bucket. */
+  /** Read-time priced costs folded into the bucket. */
   costUsd: number;
   /** cached_input + cache_creation, for per-bucket cache-rate sparklines. */
   cacheTokens: number;

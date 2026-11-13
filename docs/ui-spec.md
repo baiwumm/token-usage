@@ -1170,7 +1170,9 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   `components/pending-button.tsx` 复用。② 运行结果：失败（exit≠0 或未能启动）渲染
   **danger Alert**（`status="danger"`，标题 = `命令 · exit N`，描述 = CLI 输出尾部，`font-mono`
   `whitespace-pre-wrap break-all`——长路径无空格须可断行，`Alert.Content` 加 `min-w-0` 防 400
-  宽溢出）；成功仍用中性 `bg-default` 结果块 + `pre`（最多 8 行）。
+  宽溢出）；失败 Alert 标题行右侧有 `isIconOnly` ghost 复制按钮（`Copy` / 已复制 `Check`，
+  `aria-label` 随状态切换、输出为空时禁用，复用 `hooks/use-copy.ts`，与配对向导同款），
+  复制 CLI 原始输出尾部；成功仍用中性 `bg-default` 结果块 + `pre`（最多 8 行）。
 - **采集操作卡反馈 Toast**（2026-11-09 操作者要求：CLI 输出只有英文，需中文反馈）：
   结果块保留 CLI 原始输出（英文是 CLI 的口径，便于排查），另在 `hooks/use-monitor-toasts.ts`
   用 HeroUI `toast` 汇报中文摘要——成功 `toast.success`（同步完成 / 采集已暂停·已恢复）、
@@ -1204,8 +1206,10 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   不上（判据是两边 IL 的相对高低，不是 UAC 开关——本机 explorer 为 High，从开始菜单启动天然
   满足，2026-11-12 实测 0.3.0 未打任何标签托盘正常）。webview 调 `tray_status`（400 / 1200 /
   3000 ms 三次探测，任一 true 即视为可用）后，监控盘页头下方显示 `warning` Alert「托盘图标
-  未注册」——说明任务栏权限高于本应用、**用「以管理员身份运行」重启可恢复**，**关闭窗口只
-  最小化到任务栏**（同一判据下 Rust 把 CloseRequested 从 `hide()` 降级为 `minimize()`）。
+  未注册」——说明任务栏权限高于本应用、**用「以管理员身份运行」重启可恢复**，**关闭窗口会
+  直接退出应用**（2026-11-13 修正：托盘未注册时没有「退出」菜单项，原先 Rust 把
+  CloseRequested 降级为 `minimize()` 会让应用永远无法退出，现改为不拦截关闭；`TrayNote`
+  同步改文案）。托盘已注册时仍 `prevent_close()` + `hide()` 进托盘。
   说明块只在确认不可用时出现，正常机器无此元素。
 - **主题与语言**（2026-11-09 D4 定稿）：页头单个图标按钮循环 跟随系统 → 浅色 → 深色，
   图标与 tooltip（「主题：{当前模式}」）始终显示**当前**模式（图标：`Display` / `Sun` / `Moon`）；

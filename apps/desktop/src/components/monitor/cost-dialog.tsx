@@ -13,9 +13,10 @@ import { groupSourceUsage, sourceDisplayLabel } from "@/lib/source-logos";
 /**
  * 成本分析 modal (web 同款移植, simplified): totals headline + the daily cost
  * area chart + per-model / per-source tabs sharing the BreakdownTable shell.
- * Amounts are the collector's clamped estimates summed from the queue — the
- * web's read-time pricing engine has no desktop counterpart, so there is no
- * unpriced-model callout here.
+ * D10.1 (2026-11-11) ported the web's read-time pricing engine here through
+ * `lib/pricing.ts` (see `rowCostUsd` in `lib/queue-lines.ts`), so every amount
+ * now shares the dashboard's caliber. Only the web's unpriced-model callout is
+ * out of scope — the narrow single-column window has no room for it.
  */
 export function CostDialog({
   open,
@@ -65,7 +66,7 @@ export function CostDialog({
           <Modal.Header>
             <Modal.Heading>成本分析</Modal.Heading>
             <Typography color="muted" type="body-xs">
-              成本为采集端上报的估算值（预计口径）
+              按模型定价估算（与网页仪表盘同口径）
             </Typography>
           </Modal.Header>
           <Modal.Body className="flex flex-col gap-5">

@@ -1,7 +1,13 @@
 import type { CliRunOutcome } from "@/hooks/use-monitor";
 import type { MonitorSnapshot } from "@/lib/monitor";
 
-import { ArrowRotateRight, CirclePause, CirclePlay } from "@gravity-ui/icons";
+import {
+  ArrowRotateRight,
+  Check,
+  CirclePause,
+  CirclePlay,
+  Copy,
+} from "@gravity-ui/icons";
 import {
   Alert,
   Button,
@@ -14,6 +20,7 @@ import {
 
 import { PendingButton } from "@/components/pending-button";
 import { useCliLatest } from "@/hooks/use-cli-latest";
+import { useCopy } from "@/hooks/use-copy";
 import { formatBytes, formatDuration, formatTokens } from "@/lib/format-tokens";
 import { bareVersion } from "@/lib/version";
 
@@ -58,6 +65,7 @@ export function SyncStatusCard({
       ? bareVersion(snapshot.cli.version)
       : null;
   const { state, check } = useCliLatest(installed);
+  const { copied, copy } = useCopy();
 
   return (
     <Card className="border-border">
@@ -209,12 +217,32 @@ export function SyncStatusCard({
             <Alert status="danger">
               <Alert.Indicator />
               <Alert.Content className="min-w-0">
-                <Alert.Title>
-                  {lastOutcome.command} ·{" "}
-                  {lastOutcome.resolved
-                    ? `exit ${lastOutcome.exitCode ?? "signal"}`
-                    : "未能启动 CLI"}
-                </Alert.Title>
+                <div className="flex items-start justify-between gap-2">
+                  <Alert.Title>
+                    {lastOutcome.command} ·{" "}
+                    {lastOutcome.resolved
+                      ? `exit ${lastOutcome.exitCode ?? "signal"}`
+                      : "未能启动 CLI"}
+                  </Alert.Title>
+                  <Button
+                    isIconOnly
+                    aria-label={copied ? "已复制" : "复制失败输出"}
+                    className="shrink-0"
+                    isDisabled={!lastOutcome.outputTail}
+                    size="sm"
+                    variant="ghost"
+                    onPress={() => void copy(lastOutcome.outputTail)}
+                  >
+                    {copied ? (
+                      <Check
+                        aria-hidden="true"
+                        className="size-4 text-success"
+                      />
+                    ) : (
+                      <Copy aria-hidden="true" className="size-4" />
+                    )}
+                  </Button>
+                </div>
                 <Alert.Description className="mt-1 block whitespace-pre-wrap break-all font-mono text-xs">
                   {lastOutcome.outputTail}
                 </Alert.Description>

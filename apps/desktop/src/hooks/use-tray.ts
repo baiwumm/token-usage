@@ -1,9 +1,10 @@
-// Tray availability (desktop-plan §10): `tray-icon` swallows a rejected
-// `Shell_NotifyIcon`, and a process with a lower integrity level cannot post
-// to an elevated taskbar at all — so on a UAC-off session the icon never
-// appears while the build still succeeds. Rust answers the truth; the checks
-// are repeated because the shell may register the icon just after the window
-// loads, and the verdict is sticky-true (a later miss does not unhide it).
+// Tray availability (desktop-plan §10/§11): `tray-icon` swallows a rejected
+// `Shell_NotifyIcon`, and a process whose integrity level is lower than the
+// taskbar's cannot post its icon there — usually because a low-integrity parent
+// (a script, a restricted scheduled task) launched the app, NOT because UAC is
+// off (0.3.1 correction). Rust answers the truth; the checks are repeated
+// because the shell may register the icon just after the window loads, and the
+// verdict is sticky-true (a later miss does not unhide it).
 
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";

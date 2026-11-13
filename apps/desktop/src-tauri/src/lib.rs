@@ -1090,17 +1090,15 @@ pub fn run() {
         .on_window_event(|window, event| {
             // Close-to-tray: the monitor keeps watching from the tray; a real
             // quit goes through the tray menu so the process stays intentional.
-            // When the shell never registered the icon (window lower integrity
-            // than the taskbar, e.g. an elevated/UAC-off session) hiding would
-            // strand the app with no way back — minimize to the taskbar instead.
+            // When the shell never registered the icon (the app's integrity
+            // level is lower than the taskbar's — typically a low-integrity
+            // parent, NOT UAC being off; see 0.3.1) there is no tray menu to
+            // quit from. Let the close go through in that case instead of
+            // minimizing forever with no exit path; TrayNote explains it.
             if let WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" {
+                if window.label() == "main" && tray_registered(window.app_handle()) {
                     api.prevent_close();
-                    if tray_registered(window.app_handle()) {
-                        let _ = window.hide();
-                    } else {
-                        let _ = window.minimize();
-                    }
+                    let _ = window.hide();
                 }
             }
         })
