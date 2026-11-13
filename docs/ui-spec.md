@@ -882,7 +882,8 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
 - **数据规则**：快照（`src/data/snapshot.json`）只含聚合数字与日桶等级，由
   `scripts/sync-snapshot.mjs` 在构建期从 `GET /api/badge/data?token=…`
   （`docs/badge.md` §2.4，与公开页同一 service-role 加载器）拉取改写，`fetchedAt`
-  为窗口右端；拉取失败保留已提交快照、不阻塞构建，`pnpm verify` 的构建不联网；实拍截图
+  为窗口右端（Hero 的「数据快照 · 截至 …」从此派生，文案不手写日期；刷新只在每次部署
+  构建，不做定时重建）；拉取失败保留已提交快照、不阻塞构建，`pnpm verify` 的构建不联网；实拍截图
   不得出现操作者姓名与邮箱（顶栏问候、侧栏用户菜单均需处理）；分享卡展示用 mock 数据
   导出的 PNG。
 - **交互模式**：轮播 6s 自动前进（悬停暂停、reduced-motion 停用）、交叉淡入、16:10

@@ -178,7 +178,7 @@ export function Hero() {
                 className="size-1.5 rounded-full"
                 style={{ background: "var(--accent)" }}
               />
-              {copy.hero.snapshotNote}
+              {copy.hero.snapshotNote(SNAPSHOT.fetchedAt)}
             </span>
           </div>
         </div>

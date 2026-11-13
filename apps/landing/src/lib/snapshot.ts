@@ -1,6 +1,8 @@
-// 快照数据（2026-11-08 从操作者公开徽章/公开页提取，README 已公开链接）。
-// 纯聚合数字 + 52 周日桶等级，无行级数据；fetchedAt 标注时效。
-// 展示格式化走 badge 的固定口径（KMB 两位小数），不接用户偏好系统。
+// 快照数据（生成物，勿手改）：部署构建时由 scripts/sync-snapshot.mjs 从
+// GET /api/badge/data?token=… 拉取改写（README 已公开链接）。纯聚合数字 +
+// 52 周日桶等级，无行级数据；fetchedAt 为数据窗口右端，Hero 的「截至」日期
+// 即取自它，标签不会与数字漂移。展示格式化走 badge 的固定口径（KMB 两位
+// 小数），不接用户偏好系统。
 
 import snapshotJson from "@/data/snapshot.json";
 

@@ -23,7 +23,8 @@ export interface LandingCopy {
       streak: string;
       peak: string;
     };
-    snapshotNote: string;
+    /** 「截至」日期由 snapshot.json 的 fetchedAt 派生（部署同步时刷新）。 */
+    snapshotNote: (asOf: string) => string;
   };
   terminal: {
     eyebrow: string;
@@ -116,7 +117,8 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
         streak: "最长连续",
         peak: "单日峰值",
       },
-      snapshotNote: "数据快照 · 截至 2026-11-08 · 来自真实自部署实例的公开数据",
+      snapshotNote: (asOf) =>
+        `数据快照 · 截至 ${asOf} · 来自真实自部署实例的公开数据`,
     },
     terminal: {
       eyebrow: "01 / 接入",
@@ -304,8 +306,8 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
         streak: "Longest streak",
         peak: "Peak day",
       },
-      snapshotNote:
-        "Data snapshot · as of 2026-11-08 · from a real self-hosted instance",
+      snapshotNote: (asOf) =>
+        `Data snapshot · as of ${asOf} · from a real self-hosted instance`,
     },
     terminal: {
       eyebrow: "01 / Setup",
