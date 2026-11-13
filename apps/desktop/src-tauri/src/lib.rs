@@ -307,6 +307,53 @@ fn read_tracker_tail(
     Ok(Some(String::from_utf8_lossy(&buffer).into_owned()))
 }
 
+/// Read only the head of a tracker file. `session.queue.jsonl` is rewritten in
+/// descending `ended_at` order (newest rows FIRST), so the tail read used for
+/// append-only logs would return the OLDEST sessions. Same canonical guard and
+/// 512 KiB cap; a cut in the middle of the final line is dropped so the parser
+/// only sees whole JSONL rows (0.4.2).
+#[tauri::command]
+fn read_tracker_head(
+    app: AppHandle,
+    rel_path: String,
+    max_bytes: Option<u64>,
+) -> Result<Option<String>, String> {
+    use std::io::Read;
+
+    const MAX_HEAD_BYTES: u64 = 512 * 1024;
+    let tracker = tracker_dir(&app)?;
+    let tracker_canonical = match tracker.canonicalize() {
+        Ok(path) => path,
+        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(err) => return Err(err.to_string()),
+    };
+    let target = tracker.join(&rel_path);
+    let canonical = match target.canonicalize() {
+        Ok(path) => path,
+        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(err) => return Err(err.to_string()),
+    };
+    if !canonical.starts_with(&tracker_canonical) {
+        return Err("path outside tracker dir".into());
+    }
+    let meta = std::fs::metadata(&canonical).map_err(|e| e.to_string())?;
+    let limit = max_bytes.unwrap_or(MAX_HEAD_BYTES).min(MAX_HEAD_BYTES);
+    let to_read = limit.min(meta.len());
+    let mut file = std::fs::File::open(&canonical).map_err(|e| e.to_string())?;
+    let mut buffer = vec![0u8; to_read as usize];
+    file.read_exact(&mut buffer).map_err(|e| e.to_string())?;
+    let text = String::from_utf8_lossy(&buffer).into_owned();
+    if to_read == meta.len() {
+        return Ok(Some(text));
+    }
+
+    // A truncated read ends mid-line (or mid-UTF8) — keep complete rows only.
+    Ok(match text.rfind('\n') {
+        Some(position) if position > 0 => Some(text[..position].to_string()),
+        _ => None,
+    })
+}
+
 #[tauri::command]
 fn read_instance_config(app: AppHandle) -> Result<InstanceConfig, String> {
     read_instance_config_inner(&app)
@@ -1058,6 +1105,7 @@ pub fn run() {
             tracker_paths,
             read_tracker_file,
             read_tracker_tail,
+            read_tracker_head,
             read_instance_config,
             cli_info,
             run_cli,

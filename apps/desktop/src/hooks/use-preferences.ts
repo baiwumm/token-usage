@@ -6,6 +6,7 @@
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { useCallback, useEffect, useState } from "react";
 
+import { setFormatPreferences } from "@/lib/format-tokens";
 import {
   loadPreferences,
   normalizePreferences,
@@ -14,12 +15,22 @@ import {
 } from "@/lib/preferences";
 
 export function usePreferences() {
-  const [prefs, setPrefs] = useState<Preferences>(() => loadPreferences());
+  const [prefs, setPrefs] = useState<Preferences>(() => {
+    const loaded = loadPreferences();
+
+    // Publish the saved format before the first render reads a number: charts,
+    // cards, tray labels and notification bodies call formatTokens() directly,
+    // with no Provider/Context in between.
+    setFormatPreferences(loaded);
+
+    return loaded;
+  });
 
   const update = useCallback((patch: Partial<Preferences>) => {
     setPrefs((prev) => {
       const next = normalizePreferences({ ...prev, ...patch });
 
+      setFormatPreferences(next);
       savePreferences(next);
 
       return next;

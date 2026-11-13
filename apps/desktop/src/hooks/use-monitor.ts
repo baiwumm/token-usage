@@ -76,7 +76,12 @@ async function readInstanceConfig(): Promise<InstanceConfig | null> {
  * which follows the same preference the header filter writes — the menu can
  * switch it without the window.
  */
-export function useMonitor(period: UsagePeriod) {
+/**
+ * `formatKey` changes whenever a display-format preference changes; the tray
+ * labels are plain strings outside React and must be pushed again immediately
+ * instead of waiting for the next 10 s poll.
+ */
+export function useMonitor(period: UsagePeriod, formatKey = "") {
   const [phase, setPhase] = useState<MonitorPhase>({ kind: "loading" });
   const [machineId, setMachineId] = useState<string | null>(null);
   const [hostname, setHostname] = useState<string | null>(null);
@@ -276,7 +281,7 @@ export function useMonitor(period: UsagePeriod) {
     const snapshot = snapshotRef.current;
 
     if (snapshot !== null) void pushTrayLabels(snapshot, period);
-  }, [period]);
+  }, [period, formatKey]);
 
   // Tray action mirror: the menu spawns tokenusage in the Rust process, so the
   // window has no idea a run started — these events flip the action card into

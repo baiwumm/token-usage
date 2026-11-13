@@ -36,6 +36,7 @@ export function SessionsTable({
   rows,
   total,
   creditsInWindow,
+  hasAnySessions,
   hasNarrowingFilters,
   offset,
   pageSize,
@@ -46,10 +47,13 @@ export function SessionsTable({
   onViewDetail,
   onClearFilters,
   onOpenDocs,
+  onWidenRange,
 }: {
   rows: SessionRow[];
   total: number;
   creditsInWindow: boolean;
+  /** Whole sidecar has rows; true "no data" state must not be shown then. */
+  hasAnySessions: boolean;
   hasNarrowingFilters: boolean;
   offset: number;
   pageSize: number;
@@ -60,6 +64,7 @@ export function SessionsTable({
   onViewDetail: (session: SessionRow) => void;
   onClearFilters: () => void;
   onOpenDocs: () => void;
+  onWidenRange: () => void;
 }) {
   const hasRows = rows.length > 0;
   const showOverlay = hasRows && refreshing;
@@ -255,13 +260,26 @@ export function SessionsTable({
               />
             ))}
           </div>
+        ) : !hasAnySessions ? (
+          <div className="flex flex-col items-start gap-2 py-6">
+            <ListUl aria-hidden="true" className="text-muted size-6" />
+            <Typography type="body-sm" weight="semibold">
+              还没有会话元数据
+            </Typography>
+            <Typography className="text-muted max-w-2xl" type="body-sm">
+              会话列表只读取采集器写入的会话元数据，不会从小时用量推导。用支持会话元数据的来源产生会话并同步后，会出现在这里。
+            </Typography>
+            <Button size="sm" variant="secondary" onPress={onOpenDocs}>
+              查看说明文档
+            </Button>
+          </div>
         ) : hasNarrowingFilters ? (
           <div className="flex flex-col items-start gap-2 py-6">
             <Typography type="body-sm" weight="semibold">
               当前筛选没有会话
             </Typography>
             <Typography className="text-muted" type="body-sm">
-              换一个时间范围或来源，或清除筛选。
+              换一个来源、项目或模型，或清除筛选。
             </Typography>
             <Button size="sm" variant="outline" onPress={onClearFilters}>
               清除筛选
@@ -271,14 +289,13 @@ export function SessionsTable({
           <div className="flex flex-col items-start gap-2 py-6">
             <ListUl aria-hidden="true" className="text-muted size-6" />
             <Typography type="body-sm" weight="semibold">
-              等待新版采集器
+              这个时间范围没有会话
             </Typography>
             <Typography className="text-muted max-w-2xl" type="body-sm">
-              会话列表只读取本机采集器写入的会话元数据，不会从小时用量推导。升级
-              CLI 并执行 sync 后，会话会出现在这里。
+              本机有会话记录，但都不在当前时间范围内。换一个更宽的范围就能看到。
             </Typography>
-            <Button size="sm" variant="secondary" onPress={onOpenDocs}>
-              升级文档
+            <Button size="sm" variant="secondary" onPress={onWidenRange}>
+              查看全部会话
             </Button>
           </div>
         )}

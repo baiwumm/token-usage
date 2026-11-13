@@ -52,6 +52,9 @@ export function MonitorBody() {
   // Preferences come first: the monitor needs the active period for the tray
   // line, and the header filter writes the same field.
   const { prefs, update, setAutostart } = usePreferences();
+  // Any display-format change must repaint the tray usage line and the share
+  // card — both are computed outside the render that changed the preference.
+  const formatKey = `${prefs.currency}|${prefs.tokenDisplay}|${prefs.tokenUnit}|${prefs.tokenGrouping}`;
   const {
     phase,
     machineId,
@@ -66,7 +69,7 @@ export function MonitorBody() {
     refreshCli,
     refreshNow,
     runCli,
-  } = useMonitor(prefs.period);
+  } = useMonitor(prefs.period, formatKey);
 
   useMonitorToasts({ cli, cliResolved, lastOutcome });
   const trayAvailable = useTrayAvailable();
@@ -141,7 +144,9 @@ export function MonitorBody() {
 
   // Share-card input follows the header period (D11); null until a snapshot
   // exists / when the active window is empty (the header button disables).
-  // Hook order: above the phase early-returns below.
+  // Hook order: above the phase early-returns below. Depending on the whole
+  // prefs object repaints the share card whenever a display format changes —
+  // its numbers come from the formatter singleton, not from props.
   const shareInput = useMemo(
     () =>
       phase.kind === "ready"
@@ -151,7 +156,7 @@ export function MonitorBody() {
             snapshot: phase.snapshot,
           })
         : null,
-    [hostname, phase, prefs.period],
+    [hostname, phase, prefs],
   );
 
   if (phase.kind === "error") {
@@ -191,14 +196,12 @@ export function MonitorBody() {
 
   const settingsDialog = (
     <SettingsDialog
-      dashboardUrl={pairedUrl}
       open={settingsOpen}
       prefs={prefs}
       updater={updater}
       onChange={update}
       onCheckUpdate={() => void updater.checkForUpdates(true)}
       onOpenChange={setSettingsOpen}
-      onOpenUrl={openUrl}
       onToggleAutostart={setAutostart}
     />
   );
@@ -239,6 +242,7 @@ export function MonitorBody() {
       <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 p-4">
         <MonitorHeader
           cliAvailable={cli.available}
+          dashboardUrl={pairedUrl}
           paused={snapshot.paused}
           period={period}
           runningCommand={runningCommand}

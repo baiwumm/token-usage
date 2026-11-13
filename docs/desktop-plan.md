@@ -538,6 +538,42 @@ D11 落地、会话内项目 / 模型筛选随 §12.14 落地、读时计价随 
   并回写 §1 / §4 / §9 / §12 / ui-spec 的陈旧条目与 CHANGELOG 0.3.0 的 High 标签矛盾。
   **上述 2026-11-13 改动未纳入 `desktop-v0.4.0` tag（tag 指向 `47a9f39`），随下一版带走。**
 
+- **0.4.1 设置改版（2026-11-13 立项并完成，待操作者安装验收）**：四项合并为同一版本——
+  ① 「卡片显示」五个 `Switch` 改 `ToggleButtonGroup selectionMode="multiple" size="sm"`
+  （顺序照监控盘渲染：热力图 / 趋势 / Top 模型 / 来源 / 项目；与 `Label` 同行右对齐、
+  窄窗换行）；② 「当前版本」改 `Chip size="sm" variant="soft"`；③ 页头「跟随系统」图标
+  改 web 页头同款 Lucide sun-moon 内联 SVG，移除「设置-网页」整组文字跳转，落地页与
+  仪表盘改为页头 `isIconOnly` tertiary 图标按钮（仪表盘仅在已配对时出现，`webUrl` 门控不变）；
+  ④ 设置新增「显示格式」分组（货币 / Token 显示 / 数字单位 / 数字分组），字段落在
+  `lib/preferences.ts` 的 `tokenusage.desktop.preferences`，**零新增依赖、不与 web 同步**（§9）。
+  格式规则由 `lib/display-format.ts`（web `lib/format/core.ts` 纯函数移植，含内置 FX 快照）
+  提供，`lib/format-tokens.ts` 保持 9 个导出签名不变、改由模块级偏好单例驱动，因此
+  100+ 调用点（含托盘用量文案与通知正文这类 React 树外调用）零改动即生效；偏好变更经
+  `formatKey` 立即重推托盘并重建分享卡输入。默认保留桌面原有的紧凑 / 万·亿 / USD 视觉，
+  切「完整」才用分组位数（与 web 默认 `full` 不同，两端偏好独立）。
+  门禁：desktop verify 15 文件 / 154 例、根 `pnpm verify`（web 663 / CLI 296 /
+  landing / desktop 154）、`cargo fmt --check` 与
+  `cargo clippy --release --all-targets -- -D warnings` 全绿；本地 NSIS 包
+  `src-tauri/target/release/bundle/nsis/Token Usage_0.4.1_x64-setup.exe`
+  （复核修复后重出包 4,842,436 B，覆盖同版本旧包）已产出，末步因无
+  `TAURI_SIGNING_PRIVATE_KEY` 未生成 `.sig`
+  （退出码 1，属预期）。**本轮只出本地 NSIS 包供安装验收，不推 main / 不打 tag /
+  不 publish**；`desktop-v0.4.0` draft 保持原状。
+
+- **0.4.1 同版复核修复（2026-11-13，随本地包一起验收）**：操作者问「今天会话数为 0」，
+  只读排查确认属预期——当天 23 条小时桶来自 workbuddy / minimax-code / trae，均不在
+  会话侧车 8 类扫描来源内；侧车 219 行、最新 `ended_at` 为 `2026-11-12T10:22Z`，
+  7D / 30D 分别有 27 / 99 条。两项复核修复并入 0.4.1（尚未发布，重出本地包覆盖）：
+  ① 会话空态由两分改三分（无会话元数据 / 当前时间范围没有会话 / 筛选无结果），
+  **预设时间范围不再算筛选**，`hasNarrowingFilters` 只认来源 / 项目 / 模型（桌面）或
+  自定义起止时间 / 设备 / 来源（web），同步回写 ui-spec 空态规范与 web 中英文案；
+  桌面端以整份侧车解析行数区分「真没数据」与「窗口内没数据」，第三类给
+  「查看全部会话」直达总计。② CLI 的 `session.queue.jsonl` 按 `ended_at` 降序全量
+  重写（最新在文件头），而 >8 MiB 时原降级走 `read_tracker_tail` 读末尾会拿到最旧
+  记录；新增 Rust 命令 `read_tracker_head`（同样的 canonical 守卫与 512 KiB 上限、
+  丢弃被截断的末行），`use-sessions.ts` 降级改调它，`partial` 提示「仅显示最新部分」
+  自此名实相符。§12.4 D7 的「只读尾部」口径已加复核注记。
+
 ## 11. 发版流程（D5 起）
 
 发布流水线 `release-desktop.yml`，机制对齐 `release-cli.yml`：
@@ -670,6 +706,9 @@ ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最�
    只读会话元数据，**不显示正文 / 标题 / 绝对路径**；Rust 加 `read_tracker_tail`，每 60 s
    或跟随主轮询但只读尾部。
    验收：与 `session.queue.jsonl` 尾部逐条一致；隐私字段不出现；1.7 MB 文件不全量 IPC。
+   **（2026-11-13 复核：本条「只读尾部」口径已被 D7.1 取代；会话侧车由 CLI 按
+   `ended_at` 降序全量重写、最新在文件头。0.4.1 起会话视图整读全文件，超 8 MiB
+   时降级改走 `read_tracker_head` 读头部 512 KiB，见 §10。）**
 3. **卡片显隐**（设置面板）：来源 / 模型 / 项目 / 热力图 / 最近会话，默认前三开。
    验收：开关即时生效并持久化；默认界面保持简洁。
 
@@ -713,6 +752,9 @@ D8 原范围（维护操作 / 复制按钮）被 D9–D11 吸收：维护折叠�
 **§12.14 三项（会话项目 / 模型筛选、设置目录入口、托盘周期切换）已于 2026-11-12 交付，
 经三轮操作者反馈修正（§12.14.1–.3）后本地 0.4.0 安装包验收通过**；`desktop-v0.4.0`
 tag 于 2026-11-13 推送、CI 出 draft Release，publish 仍由操作者在 Release 页放行。
+**0.4.1 设置改版（四项合并，见 §10）已完成开发并验收通过；同版复核修复（会话空态
+三分 + `read_tracker_head`）已并入、重出本地 NSIS 包供复验，未推 main / 未打 tag /
+未 publish。**
 
 ### 12.10 D9（2026-11-11，操作者八点需求的第 1/2/3/7 项）：头部改造 + 四统计卡 + 热力图对齐
 

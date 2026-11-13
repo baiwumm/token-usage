@@ -1,21 +1,17 @@
-// D4 settings: notification switches + thresholds, quiet hours, autostart.
-// Everything here maps 1:1 to `lib/preferences.ts`; the pure decision rules in
-// `lib/notifications.ts` read the same fields, so the dialog never has to
-// explain behavior the scheduler does not implement.
+// D4 settings: notification switches + thresholds, quiet hours, autostart,
+// card visibility (0.4.1 multi-select) and the four local display-format
+// preferences. Everything maps 1:1 to `lib/preferences.ts`; the pure decision
+// rules in `lib/notifications.ts` read the same fields, so the dialog never
+// has to explain behavior the scheduler does not implement.
 
 import type { UpdaterState } from "@/hooks/use-updater";
+import type { ReactNode } from "react";
 
 import { invoke } from "@tauri-apps/api/core";
-import {
-  Display,
-  FileText,
-  Folder,
-  Globe,
-  ListUl,
-  Medal,
-} from "@gravity-ui/icons";
+import { FileText, Folder } from "@gravity-ui/icons";
 import {
   Button,
+  Chip,
   Description,
   Label,
   ListBox,
@@ -24,34 +20,41 @@ import {
   Select,
   Separator,
   Switch,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
   toast,
 } from "@heroui/react";
 
 import { PendingButton } from "@/components/pending-button";
-import { LANDING_URL, webUrl, type WebPage } from "@/lib/links";
+import {
+  BUILT_IN_FX,
+  SUPPORTED_CURRENCIES,
+  currencyLabel,
+  formatFxRate,
+  type CurrencyCode,
+  type TokenDisplay,
+  type TokenGrouping,
+  type TokenUnit,
+} from "@/lib/display-format";
+import { formatBytes } from "@/lib/format-tokens";
 import {
   BACKLOG_BYTES_OPTIONS,
   FAILURE_THRESHOLD_OPTIONS,
   formatHour,
   type Preferences,
 } from "@/lib/preferences";
-import { formatBytes } from "@/lib/format-tokens";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
-// Icons mirror the web app shell's navigation (Display / Folder / ListUl /
-// Medal) so a page keeps the same mark in both surfaces.
-const WEB_LINKS: Array<{
-  page: WebPage;
-  label: string;
-  icon: typeof Display;
-}> = [
-  { page: "dashboard", label: "仪表盘", icon: Display },
-  { page: "projects", label: "项目", icon: Folder },
-  { page: "sessions", label: "会话", icon: ListUl },
-  { page: "achievements", label: "成就", icon: Medal },
-];
+/** Card order mirrors the monitor stack (monitor-body.tsx 0.4.1). */
+const CARD_OPTIONS = [
+  { id: "showHeatmap", label: "活跃热力图" },
+  { id: "showTrend", label: "用量趋势" },
+  { id: "showModels", label: "Top 模型" },
+  { id: "showSources", label: "来源构成" },
+  { id: "showProjects", label: "项目与仓库" },
+] as const;
 
 /**
  * Autostart writes HKCU\…\Run, which a process of lower integrity than the
@@ -194,34 +197,50 @@ function ToggleRow({
   );
 }
 
+/** Label left / control right on the same row; wraps on a 340 px window. */
+function FormatRow({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <Label>{label}</Label>
+        {description ? (
+          <Description className="text-xs">{description}</Description>
+        ) : null}
+      </div>
+      <div className="flex flex-col items-end gap-1">{children}</div>
+    </div>
+  );
+}
+
 export function SettingsDialog({
   open,
   prefs,
-  dashboardUrl,
   onChange,
   onOpenChange,
-  onOpenUrl,
   onToggleAutostart,
   updater,
   onCheckUpdate,
 }: {
   open: boolean;
   prefs: Preferences;
-  /** Paired instance base URL; null hides the web deep links. */
-  dashboardUrl: string | null;
   onChange: (patch: Partial<Preferences>) => void;
   onOpenChange: (open: boolean) => void;
-  onOpenUrl: (url: string) => void;
   onToggleAutostart: (enabled: boolean) => Promise<void>;
   /** D5 updater state; checked silently at startup, installed on click. */
   updater: UpdaterState;
   onCheckUpdate: () => void;
 }) {
-  const webLinks = WEB_LINKS.flatMap((link) => {
-    const url = webUrl(dashboardUrl, link.page);
-
-    return url === null ? [] : [{ ...link, url }];
-  });
+  const selectedCards = CARD_OPTIONS.filter((card) => prefs[card.id]).map(
+    (card) => card.id,
+  );
 
   // Reveal the CLI's own folders (read-only debugging aid, desktop-plan
   // §12.14). Rust whitelists the two targets and reports a missing folder.
@@ -349,36 +368,33 @@ export function SettingsDialog({
             <Separator />
 
             <section className="flex flex-col gap-3">
-              <Typography type="body-sm" weight="semibold">
-                卡片显示
-              </Typography>
-              <ToggleRow
-                isSelected={prefs.showTrend}
-                label="用量趋势"
-                onChange={(value) => onChange({ showTrend: value })}
-              />
-              <ToggleRow
-                isSelected={prefs.showSources}
-                label="来源构成"
-                onChange={(value) => onChange({ showSources: value })}
-              />
-              <ToggleRow
-                isSelected={prefs.showModels}
-                label="Top 模型"
-                onChange={(value) => onChange({ showModels: value })}
-              />
-              <ToggleRow
-                isSelected={prefs.showProjects}
-                label="项目与仓库"
-                onChange={(value) => onChange({ showProjects: value })}
-              />
-              <ToggleRow
-                isSelected={prefs.showHeatmap}
-                label="活跃热力图"
-                onChange={(value) => onChange({ showHeatmap: value })}
-              />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label>卡片显示</Label>
+                <ToggleButtonGroup
+                  aria-label="卡片显示"
+                  className="flex-wrap"
+                  selectedKeys={selectedCards}
+                  selectionMode="multiple"
+                  size="sm"
+                  onSelectionChange={(keys) => {
+                    const patch: Partial<Preferences> = {};
+
+                    for (const card of CARD_OPTIONS) {
+                      patch[card.id] = keys.has(card.id);
+                    }
+                    onChange(patch);
+                  }}
+                >
+                  {CARD_OPTIONS.map((card, index) => (
+                    <ToggleButton key={card.id} id={card.id}>
+                      {index > 0 ? <ToggleButtonGroup.Separator /> : null}
+                      {card.label}
+                    </ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+              </div>
               <Description className="text-xs">
-                默认展开趋势与用量构成卡；开关即时生效
+                选项顺序与监控盘卡片一致；选择即时生效
               </Description>
             </section>
 
@@ -386,41 +402,133 @@ export function SettingsDialog({
 
             <section className="flex flex-col gap-3">
               <Typography type="body-sm" weight="semibold">
-                网页
+                显示格式
               </Typography>
-              <div className="grid grid-cols-2 gap-2">
-                {/* The landing page is this project's own site — reachable
-                    without a pairing (D11 acceptance round 1). */}
-                <Button
-                  fullWidth
-                  size="sm"
+              <FormatRow
+                description={
+                  prefs.currency === "USD"
+                    ? "费用按读时计价，换算仅影响展示"
+                    : `${formatFxRate(prefs.currency)} · 参考汇率 · ${BUILT_IN_FX.as_of}`
+                }
+                label="货币"
+              >
+                <Select
+                  aria-label="货币"
+                  className="w-40"
+                  value={prefs.currency}
                   variant="secondary"
-                  onPress={() => onOpenUrl(LANDING_URL)}
+                  onChange={(key) => {
+                    if (key != null) {
+                      onChange({ currency: String(key) as CurrencyCode });
+                    }
+                  }}
                 >
-                  <Globe aria-hidden="true" className="size-4 shrink-0" />
-                  落地页
-                </Button>
-                {webLinks.map((link) => {
-                  const Icon = link.icon;
+                  <Select.Trigger>
+                    <Select.Value />
+                    <Select.Indicator />
+                  </Select.Trigger>
+                  <Select.Popover>
+                    <Popover.Arrow />
+                    <ListBox>
+                      {SUPPORTED_CURRENCIES.map((code) => (
+                        <ListBox.Item
+                          key={code}
+                          id={code}
+                          textValue={currencyLabel(code)}
+                        >
+                          {currencyLabel(code)}
+                        </ListBox.Item>
+                      ))}
+                    </ListBox>
+                  </Select.Popover>
+                </Select>
+              </FormatRow>
+              <FormatRow
+                description="紧凑按单位缩写，完整显示全部分组数字"
+                label="Token 显示"
+              >
+                <ToggleButtonGroup
+                  disallowEmptySelection
+                  aria-label="Token 显示"
+                  selectedKeys={[prefs.tokenDisplay]}
+                  selectionMode="single"
+                  size="sm"
+                  onSelectionChange={(keys) => {
+                    const value = [...keys][0];
 
-                  return (
-                    <Button
-                      key={link.page}
-                      fullWidth
-                      size="sm"
-                      variant="secondary"
-                      onPress={() => onOpenUrl(link.url)}
-                    >
-                      <Icon aria-hidden="true" className="size-4 shrink-0" />
-                      {link.label}
-                    </Button>
-                  );
-                })}
-              </div>
+                    if (value === "compact" || value === "full") {
+                      onChange({ tokenDisplay: value as TokenDisplay });
+                    }
+                  }}
+                >
+                  <ToggleButton id="compact">紧凑</ToggleButton>
+                  <ToggleButton id="full">
+                    <ToggleButtonGroup.Separator />
+                    完整
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </FormatRow>
+              <FormatRow label="数字单位">
+                <ToggleButtonGroup
+                  disallowEmptySelection
+                  aria-label="数字单位"
+                  isDisabled={prefs.tokenDisplay === "full"}
+                  selectedKeys={[prefs.tokenUnit]}
+                  selectionMode="single"
+                  size="sm"
+                  onSelectionChange={(keys) => {
+                    const value = [...keys][0];
+
+                    if (value === "kmb" || value === "wan") {
+                      onChange({ tokenUnit: value as TokenUnit });
+                    }
+                  }}
+                >
+                  <ToggleButton id="kmb">K/M/B</ToggleButton>
+                  <ToggleButton id="wan">
+                    <ToggleButtonGroup.Separator />
+                    万/亿
+                  </ToggleButton>
+                </ToggleButtonGroup>
+                {prefs.tokenDisplay === "full" ? (
+                  <Description className="text-xs">
+                    仅在「紧凑」模式下生效
+                  </Description>
+                ) : null}
+              </FormatRow>
+              <FormatRow label="数字分组">
+                <ToggleButtonGroup
+                  disallowEmptySelection
+                  aria-label="数字分组"
+                  isDisabled={prefs.tokenDisplay === "compact"}
+                  selectedKeys={[String(prefs.tokenGrouping)]}
+                  selectionMode="single"
+                  size="sm"
+                  onSelectionChange={(keys) => {
+                    const value = [...keys][0];
+
+                    if (value != null) {
+                      onChange({
+                        tokenGrouping: (Number(value) === 4
+                          ? 4
+                          : 3) as TokenGrouping,
+                      });
+                    }
+                  }}
+                >
+                  <ToggleButton id="3">3 位</ToggleButton>
+                  <ToggleButton id="4">
+                    <ToggleButtonGroup.Separator />4 位
+                  </ToggleButton>
+                </ToggleButtonGroup>
+                {prefs.tokenDisplay === "compact" ? (
+                  <Description className="text-xs">
+                    仅在「完整」模式下生效
+                  </Description>
+                ) : null}
+              </FormatRow>
               <Description className="text-xs">
-                {webLinks.length > 0
-                  ? "在浏览器打开项目官网与已配对实例的页面"
-                  : "在浏览器打开项目官网"}
+                只影响本机显示，与网页端偏好互不同步
               </Description>
             </section>
 
@@ -465,11 +573,11 @@ export function SettingsDialog({
                 <Typography color="muted" type="body-sm">
                   当前版本
                 </Typography>
-                <Typography className="tabular-nums" type="body-sm">
+                <Chip className="tabular-nums" size="sm" variant="soft">
                   {updater.currentVersion === null
                     ? "…"
                     : `v${updater.currentVersion}`}
-                </Typography>
+                </Chip>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-col gap-1">

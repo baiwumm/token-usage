@@ -1,10 +1,21 @@
 // Desktop preferences (desktop-plan D4). Kept in localStorage only: nothing
 // leaves the machine, the CLI's config.json is never written (§3 boundary 1),
-// and the web's per-user settings deliberately do not sync here (§9).
+// and the web's per-user settings deliberately do not sync here (§9). The
+// four display-format fields are local equivalents of the web's format
+// preferences: same rules, independent values (0.4.1).
 //
 // Normalization is defensive: a hand-edited or half-written value must never
 // wedge the panel, so every field falls back to its default and numbers are
 // clamped to the ranges the UI offers.
+
+import {
+  DEFAULT_DISPLAY_FORMAT,
+  sanitizeDisplayFormat,
+  type CurrencyCode,
+  type TokenDisplay,
+  type TokenGrouping,
+  type TokenUnit,
+} from "@/lib/display-format";
 
 export type ThemeMode = "system" | "light" | "dark";
 
@@ -38,6 +49,11 @@ export interface Preferences {
   showModels: boolean;
   showProjects: boolean;
   showHeatmap: boolean;
+  /** Display format — local-only, never synced with the web (§9). */
+  currency: CurrencyCode;
+  tokenDisplay: TokenDisplay;
+  tokenUnit: TokenUnit;
+  tokenGrouping: TokenGrouping;
 }
 
 export const STORAGE_KEY = "tokenusage.desktop.preferences";
@@ -65,6 +81,10 @@ export const DEFAULT_PREFERENCES: Preferences = {
   showModels: true,
   showProjects: true,
   showHeatmap: false,
+  currency: DEFAULT_DISPLAY_FORMAT.currency,
+  tokenDisplay: DEFAULT_DISPLAY_FORMAT.tokenDisplay,
+  tokenUnit: DEFAULT_DISPLAY_FORMAT.tokenUnit,
+  tokenGrouping: DEFAULT_DISPLAY_FORMAT.tokenGrouping,
 };
 
 const THEMES: readonly ThemeMode[] = ["system", "light", "dark"];
@@ -148,6 +168,12 @@ export function normalizePreferences(raw: unknown): Preferences {
       DEFAULT_PREFERENCES.showProjects,
     ),
     showHeatmap: asBoolean(source.showHeatmap, DEFAULT_PREFERENCES.showHeatmap),
+    ...sanitizeDisplayFormat({
+      currency: source.currency,
+      tokenDisplay: source.tokenDisplay,
+      tokenUnit: source.tokenUnit,
+      tokenGrouping: source.tokenGrouping,
+    }),
   };
 }
 

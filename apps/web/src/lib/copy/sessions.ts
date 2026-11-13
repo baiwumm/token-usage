@@ -79,6 +79,9 @@ export interface SessionsCopy {
     emptyDocs: string;
     filterEmptyTitle: string;
     filterEmptyBody: string;
+    rangeEmptyTitle: string;
+    rangeEmptyBody: string;
+    rangeEmptyAction: string;
   };
 }
 
@@ -159,13 +162,16 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
     states: {
       loadError: "会话加载失败。",
       retry: "重试",
-      emptyTitle: "等待新版采集器",
+      emptyTitle: "还没有会话元数据",
       emptyBody:
-        "Sessions 只读取设备上报的会话元数据，不会从小时用量推导。升级 CLI 并执行 sync 后，会话会出现在这里。",
+        "Sessions 只读取设备上报的会话元数据，不会从小时用量推导。采集器上报会话后会出现在这里。",
       emptyPair: "配对设备",
-      emptyDocs: "升级文档",
+      emptyDocs: "采集器文档",
       filterEmptyTitle: "当前筛选没有会话",
-      filterEmptyBody: "换一个时间范围、设备或来源，或清除筛选。",
+      filterEmptyBody: "换一个来源、设备或时间范围，或清除筛选。",
+      rangeEmptyTitle: "这个时间范围没有会话",
+      rangeEmptyBody: "换一个更宽的时间范围，或查看全部会话。",
+      rangeEmptyAction: "查看全部会话",
     },
   },
   en: {
@@ -248,13 +254,16 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
     states: {
       loadError: "Failed to load sessions.",
       retry: "Retry",
-      emptyTitle: "Waiting for the new collector",
+      emptyTitle: "No session metadata yet",
       emptyBody:
-        "Sessions reads device-reported session metadata only — it never derives sessions from hourly buckets. Upgrade the CLI and run sync to see them here.",
+        "Sessions reads device-reported session metadata only — it never derives sessions from hourly buckets. They appear here once the collector reports them.",
       emptyPair: "Pair a device",
-      emptyDocs: "Upgrade guide",
+      emptyDocs: "Collector guide",
       filterEmptyTitle: "No sessions match these filters",
-      filterEmptyBody: "Try another range, device or source, or clear filters.",
+      filterEmptyBody: "Try another source, device or range, or clear filters.",
+      rangeEmptyTitle: "No sessions in this range",
+      rangeEmptyBody: "Try a wider range, or view all sessions.",
+      rangeEmptyAction: "View all sessions",
     },
   },
 };

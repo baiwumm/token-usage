@@ -6,30 +6,37 @@ import {
   ChartColumn,
   CirclePause,
   CirclePlay,
+  Display,
   Gear,
+  Globe,
   ListCheck,
   ListUl,
   LogoGithub,
   NodesRight,
   Stethoscope,
 } from "@gravity-ui/icons";
+import { invoke } from "@tauri-apps/api/core";
 import { Button, Spinner, Tooltip, Typography } from "@heroui/react";
 
 import { PeriodFilter } from "@/components/monitor/period-filter";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LANDING_URL, webUrl } from "@/lib/links";
 
 /** The two top-level views the header toggles between (desktop-plan §12.13). */
 export type MonitorView = "monitor" | "sessions";
 
+function openInBrowser(url: string): void {
+  void invoke("open_in_browser", { url }).catch(() => undefined);
+}
+
 /**
- * Window header: the period filter (今日 / 7D / 30D / 总计) leads, the brand
- * lockup moved out (operator request 2026-11-11 — the window title already
- * says Token Usage), and the right group is tertiary icon buttons: the four
- * CLI actions and the share button (<640px they hide; the sync card keeps
- * the CLI buttons as the narrow fallback), then the sessions view toggle
- * (D11), repo / theme / settings. The period filter and CLI actions are
- * optional — the first-run wizard renders this header without them (nothing
- * to filter, CLI mid-setup).
+ * Window header: the period filter (今日 / 7D / 30D / 总计) leads, the right
+ * group is tertiary icon buttons — the four CLI actions and the share button
+ * (<640px they hide; the sync card keeps the CLI buttons as the narrow
+ * fallback), then the sessions view toggle (D11), landing / dashboard (0.4.1),
+ * repo / theme / settings. The period filter and CLI actions are optional —
+ * the first-run wizard renders this header without them, and an unpaired
+ * machine has no dashboard deep link to offer.
  */
 export function MonitorHeader({
   paused,
@@ -39,6 +46,7 @@ export function MonitorHeader({
   cliAvailable = false,
   runningCommand = null,
   shareAvailable = false,
+  dashboardUrl = null,
   onPeriodChange,
   onChangeTheme,
   onOpenRepo,
@@ -55,6 +63,8 @@ export function MonitorHeader({
   runningCommand?: string | null;
   /** No data in the active window → the share card has nothing to draw. */
   shareAvailable?: boolean;
+  /** Paired instance base URL; null hides the dashboard button. */
+  dashboardUrl?: string | null;
   onPeriodChange?: (period: UsagePeriod) => void;
   onChangeTheme: (mode: ThemeMode) => void;
   onOpenRepo: () => void;
@@ -65,6 +75,7 @@ export function MonitorHeader({
 }) {
   const busy = runningCommand !== null;
   const showControls = period !== undefined && onPeriodChange && onRun;
+  const dashboardLink = webUrl(dashboardUrl, "dashboard");
   const actions: Array<{
     id: string;
     label: string;
@@ -107,11 +118,11 @@ export function MonitorHeader({
   ];
 
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-3">
       {showControls && view === "monitor" ? (
         <PeriodFilter period={period} onChange={onPeriodChange} />
       ) : null}
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-1">
         {paused ? (
           <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-muted tabular-nums">
             采集已暂停
@@ -184,6 +195,41 @@ export function MonitorHeader({
               <Typography type="body-xs">
                 {view === "monitor" ? "会话" : "用量监控"}
               </Typography>
+            </Tooltip.Content>
+          </Tooltip>
+        ) : null}
+        {/* Landing is always reachable; the dashboard needs a paired instance. */}
+        <Tooltip delay={0}>
+          <Button
+            isIconOnly
+            aria-label="落地页"
+            className="size-8 min-w-8 shrink-0 text-muted hover:text-foreground"
+            size="sm"
+            variant="tertiary"
+            onPress={() => openInBrowser(LANDING_URL)}
+          >
+            <Globe aria-hidden="true" className="size-4" />
+          </Button>
+          <Tooltip.Content showArrow placement="bottom">
+            <Tooltip.Arrow />
+            <Typography type="body-xs">落地页</Typography>
+          </Tooltip.Content>
+        </Tooltip>
+        {dashboardLink !== null ? (
+          <Tooltip delay={0}>
+            <Button
+              isIconOnly
+              aria-label="仪表盘"
+              className="size-8 min-w-8 shrink-0 text-muted hover:text-foreground"
+              size="sm"
+              variant="tertiary"
+              onPress={() => openInBrowser(dashboardLink)}
+            >
+              <Display aria-hidden="true" className="size-4" />
+            </Button>
+            <Tooltip.Content showArrow placement="bottom">
+              <Tooltip.Arrow />
+              <Typography type="body-xs">仪表盘</Typography>
             </Tooltip.Content>
           </Tooltip>
         ) : null}

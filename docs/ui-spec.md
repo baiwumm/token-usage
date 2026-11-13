@@ -305,9 +305,14 @@
   隐私提示“仅用量元数据，不含对话内容、路径或命令”；成本脚注“按模型定价估算，可能与
   仪表盘 provider 上报成本存在差异”。
   `session_id` 只作内部键，不在 UI 展示。
-- 空态两分：
-  - 无会话且无筛选 → “等待新版采集器”说明 + 配对设备 / 升级文档链接；不得从小时桶
-    生成假会话。
+- 空态三分（0.4.1 复核改版，web 与桌面同判据）：**预设时间范围不算筛选**，只有
+  来源 / 项目 / 模型 / 设备 / 自定义起止时间算「筛选」。
+  - 完全没有会话元数据 → “还没有会话元数据”说明 + 配对设备 / 采集器文档链接；
+    不得从小时桶生成假会话。桌面端以整份侧车解析后 0 行为准，web 端以「总计且
+    无筛选时 0 条」为准。
+  - 有数据但当前时间范围内 0 条 → “这个时间范围没有会话”+「查看全部会话」；
+    不得再提示升级 CLI（CLI 自 0.1.0 起即写会话侧车，旧文案是 M-CLI 未上线期的
+    临时占位）。
   - 筛选无结果 → 清除筛选。
 - 错误：401 跳登录并回跳 `/sessions`；其他错误在列表区重试。
 - 隐私：页面不出现 prompt、正文、标题、绝对路径、resume command；项目列只显示 basename。
@@ -982,8 +987,12 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   「今日 / 7D / 30D / 总计」，size sm、默认今日、写 preferences，2026-11-11 D9 自「用量
   构成条」上移并取代品牌 lockup，短标签由操作者拍板；右侧 = 暂停 chip + CLI 四图标按钮
   （立即同步 / 暂停·恢复 / Doctor / 对账，`hidden sm:inline-flex`——<640px 隐藏，窄窗由
-  采集与同步卡内按钮兜底，2026-11-11 宽度账裁定）+ GitHub / 主题 / 设置，图标按钮一律
-  `variant="tertiary"`）→（未配对且本次已跳过向导时：warning Alert「这台机器还没配对」+「去配对」；
+  采集与同步卡内按钮兜底，2026-11-11 宽度账裁定）+ 会话视图切换 + GitHub / 主题 / 设置，
+  图标按钮一律 `variant="tertiary"`；0.4.1 起在 GitHub 前追加「落地页」（`Globe`，恒显，
+  `token-usage.cc`）与「仪表盘」（`Display`，仅已配对时出现）两枚图标按钮，两者在页头内部
+  直接走 `open_in_browser`，取代原「设置-网页」的文字跳转；新增按钮后右侧组改
+  `flex-wrap justify-end`、外层 `flex-wrap`，340 / 400 宽下自动换行而不产生横向滚动）
+  →（未配对且本次已跳过向导时：warning Alert「这台机器还没配对」+「去配对」；
   向导页头部仅保留 repo / 主题 / 设置——筛选与 CLI 按钮均为可选 prop，接入流程不渲染）→
   四张统计卡（总 Tokens / 预计费用 / 会话数 / 缓存率，2026-11-11 取代原「今日 tokens /
   近 7 天」两张定值卡；全部跟随页头筛选；每卡 = 标签 + 环比 `Chip` + 数值 + recharts
@@ -997,9 +1006,12 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   环比与迷你图都不显示**（操作者规则）；预计费用 = **读时计价**（2026-11-11 D10.1：
   采集端恒写 `total_cost_usd: 0`，桌面移植 web 计价引擎 `lib/pricing.ts` 同源快照，规则与
   web `computeRowCost` 一致——权威上报值优先、免费/订阅源为 0、DeepSeek 时段价）；
-  **费用一律美元窄符号两位小数**（`formatCost` → `$11.98`，不写 `US$11.98`，与 web
+  **费用默认美元窄符号两位小数**（`formatCost` → `$11.98`，不写 `US$11.98`，与 web
   `formatCost` 的 `currencyDisplay: "narrowSymbol"` 一致；不足 1 分显示 `<$0.01`，与
-  web 同规则）；缓存率 = `(cached + cache_creation) / total`；
+  web 同规则）；0.4.1 起「设置-显示格式-货币」可切换 USD / EUR / GBP / CNY / JPY / HKD，
+  按 `lib/display-format.ts` 内置离线 FX 快照换算后仍用该币种的 narrowSymbol 两位小数，
+  **存储与计价始终以 USD 为准，换算只影响展示**；缓存率 =
+  `(cached + cache_creation) / total`；
   `grid-cols-2 sm:grid-cols-4`，400 宽下标签单行、数值顶边对齐）；**总计周期**下「总
   Tokens」标签旁挂一个 `CircleInfo` 图标（`size-3.5`、`cursor-help`、`tabIndex=0` 可键盘
   聚焦），用 HeroUI `Tooltip` 包裹（`showArrow`、placement top），悬停/聚焦显示口径说明
@@ -1120,8 +1132,9 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   来源 / 项目双 `Chip` + meta 两列（结束时间含相对时间 + 时长）+ Token 拆分（输入 / 缓存
   读取 / 缓存写入 / 输出 / 推理 / 总计 / 计费 + 积分卡）+ 模型拆分 `BreakdownTable` +
   隐私 / 成本双脚注；`session_id` 不显示。**口径**：数据整读 `session.queue.jsonl`
-  （8 MiB 上限，超限降级 512 KiB 尾部并出「仅显示最新部分」提示条），解析规则同 CLI 上传
-  映射（账户级来源剔除 / token 恒等门 / reasoning fold / last-wins 去重）；
+  （8 MiB 上限，超限降级 512 KiB **文件头**并出「仅显示最新部分」提示条——CLI 按
+  `ended_at` 降序全量重写、最新在文件开头，0.4.1 前读尾部会拿到最旧记录），解析规则
+  同 CLI 上传映射（账户级来源剔除 / token 恒等门 / reasoning fold / last-wins 去重）；
   `duration_ms` = `ended_at − started_at` 墙钟（wire 口径）；**成本 = sessions 峰值价读时
   计价**（与监控盘小时级峰谷计价的差异属契约 §2.11 已接受口径）；CSV = wire
   `format=csv` 同列名同形态（BOM + CRLF + RFC4180 + 公式注入防护），经
@@ -1130,8 +1143,9 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   列表 `≥md` 表格为**自动布局**（不 `table-fixed`）：列宽只是偏好值、内容决定真实最小宽度，
   「详情」列给 `w-24` 容下「查看」按钮——首版的固定列宽把按钮挤出表右缘、看起来像被裁掉。
   隐私：title / 绝对路径 /
-  cache key 解析层即丢，UI 零出现。空态两分（等待新版采集器 + 升级文档；筛选无结果 +
-  清除筛选）。
+  cache key 解析层即丢，UI 零出现。空态三分沿用本文 Sessions 节判据：无会话元数据
+  （说明 + 采集器文档）/ 当前时间范围没有会话（说明 +「查看全部会话」直达总计）/
+  筛选无结果（清除筛选）；**预设时间范围不算筛选**。
 - **分享卡片**（2026-11-12 D11，web `components/share-card` 引擎逐字移植）：入口 = 页头
   `NodesRight` 图标钮（见主窗口结构条）→ `share-card-dialog.tsx` 左右两栏弹窗（**弹窗
   `Modal.Dialog` 必须显式 `max-w-none`** 推翻 HeroUI 默认 `max-w-md` 帽，否则双栏塌成
@@ -1211,33 +1225,39 @@ provider 时点击会经 Supabase 回跳报错，不崩溃。
   CloseRequested 降级为 `minimize()` 会让应用永远无法退出，现改为不拦截关闭；`TrayNote`
   同步改文案）。托盘已注册时仍 `prevent_close()` + `hide()` 进托盘。
   说明块只在确认不可用时出现，正常机器无此元素。
-- **主题与语言**（2026-11-09 D4 定稿）：页头单个图标按钮循环 跟随系统 → 浅色 → 深色，
-  图标与 tooltip（「主题：{当前模式}」）始终显示**当前**模式（图标：`Display` / `Sun` / `Moon`）；
-  选择写 `tokenusage.desktop.preferences`，`index.html` 首帧前读同一 key 上 `dark` 类（无闪烁），
+- **主题与语言**（2026-11-09 D4 定稿；图标 2026-11-13 0.4.1 修正）：页头单个图标按钮循环
+  跟随系统 → 浅色 → 深色，图标与 tooltip（「主题：{当前模式}」）始终显示**当前**模式
+  （跟随系统 = web 页头同款 Lucide sun-moon 内联 SVG，浅色 `Sun` / 深色 `Moon`；0.4.1 起
+  不再用 `Display`，后者只是 web 设置面板的图标）；选择写
+  `tokenusage.desktop.preferences`，`index.html` 首帧前读同一 key 上 `dark` 类（无闪烁），
   系统模式监听 `prefers-color-scheme`；语言 zh-CN 单语（对齐 landing，web 双语不强制桌面）。
-- **设置面板**（D4，页头齿轮；向导页头同样可进）：Modal 复合结构（`Modal.Backdrop /
-  Container / Dialog / Header / Heading / Body`），宽 `calc(100vw-1.5rem)`、最高 85vh、内部
-  滚动；副标题「仅保存在本机，不随账号同步」。分组：通知（每日汇总 + 汇总时间 / 同步连败 +
-  连续次数 / 队列积压 + 阀值，均开关 + 按开关联动显示的下拉）→ 免打扰（开关 + 起止整点）→
-  启动（开机自启）→ 卡片显示（**四个** `Switch`：来源构成 / 主要模型 / 项目与仓库 / 使用节奏
-  （= 活跃热力图 + 用量趋势），默认前三开、末位关，开关即时生效并持久化；三张构成卡全关时
-  连同上方「用量构成」条与周期切换一起隐藏；2026-11-12 D11 验收起「最近会话」开关随卡一并
-  移除——会话视图已覆盖其职责）→ 网页（**恒显**的 `fullWidth` secondary 按钮 2 列网格：
-  首枚「落地页」（`Globe`，`token-usage.cc`，2026-11-12 D11 验收追加，不依赖配对）；
-  已配对时追加四枚：仪表盘 `/` / 项目 `/projects` / 会话 `/sessions` / 成就
-  `/achievements`，由 `lib/links.ts` 拼 `dashboardUrl` 后经 `open_in_browser` 打开
-  （`LANDING_URL` 同通道）；按钮撑满网格单元，避免 400 宽下小按钮浮在大片空白里
-  （2026-11-10 验收修正）；实例按钮前置图标取 web 侧栏同组 `Display` / `Folder` /
-  `ListUl` / `Medal`，`size-4`，2026-11-10 验收追加）→ 本机数据（2 列网格：数据目录 /
-  日志目录，`Folder` / `FileText`；走 Rust 命令 `open_tracker_dir`，白名单只允许
-  `tracker` 与 `logs` 两个目标，目录不存在时 toast 提示先让采集器跑一次；2026-11-12
-  §12.14）→ 更新（当前版本行 +
-  「检查更新」`PendingButton`，D5：启动期静默检查只
-  播报中性 toast，安装永远走手动确认——点击即同意 下载→安装→自动重启，检测/下载期
-  Spinner，失败 danger toast）。开关一律 HeroUI `Switch` 复合结构（`Switch.Content / Control / Thumb` +
-  `Label`），说明用 `Description` 小字；数值/时段用 `Select` + `ListBox`（小时 00:00–23:00），
-  Select 一律 `variant="secondary"`（2026-11-10 操作者验收要求；Modal 即 Surface 场景，低
-  强调无阴影）。
+- **设置面板**（D4，页头齿轮；0.4.1 改版；向导页头同样可进）：Modal 复合结构
+  （`Modal.Backdrop / Container / Dialog / Header / Heading / Body`），宽
+  `calc(100vw-1.5rem)`、最高 85vh、内部滚动；副标题「仅保存在本机，不随账号同步」。
+  分组：通知（每日汇总 + 汇总时间 / 同步连败 + 连续次数 / 队列积压 + 阀值，均开关 +
+  按开关联动显示的下拉）→ 免打扰（开关 + 起止整点）→ 启动（开机自启）→
+  **卡片显示**（0.4.1：五个 `Switch` 改为单个 `ToggleButtonGroup
+  selectionMode="multiple" size="sm"`，`selectedKeys` 为 `Set<Key>`、子项是独立
+  `<ToggleButton id>` 并带 `ToggleButtonGroup.Separator`；顺序照监控盘渲染 = 活跃热力图 /
+  用量趋势 / Top 模型 / 来源构成 / 项目与仓库；与 `Label` 同行右对齐、窄窗 `flex-wrap`
+  换行；默认热力图关、其余开，选择即时生效并持久化；构成卡全关时双栏容器一并隐藏）→
+  **显示格式**（0.4.1 新增，替代原「网页」组：货币 `Select`（USD / EUR / GBP / CNY /
+  JPY / HKD，标签为 CLDR 中文名 + 窄符号，非 USD 时下方给 `1 USD = x CODE` 与快照日期）+
+  Token 显示（紧凑 / 完整）/ 数字单位（K/M/B / 万/亿，仅紧凑生效）/ 数字分组
+  （3 位 / 4 位，仅完整生效），后三项为 `ToggleButtonGroup selectionMode="single"
+  size="sm"`，互斥项 `isDisabled` 并给 `Description` 提示；每行 `Label` 左、控件右同行
+  右对齐、窄窗换行；四项只写本机 `tokenusage.desktop.preferences`，**不与 web 同步**
+  （desktop-plan §9），规则由 `lib/display-format.ts` 提供、经 `lib/format-tokens.ts`
+  的模块级偏好单例作用于所有数字与费用（含托盘文案与通知正文）；默认保留桌面原有的
+  紧凑 / 万·亿 / USD 视觉）→ 本机数据（2 列网格：数据目录 / 日志目录，
+  `Folder` / `FileText`；走 Rust 命令 `open_tracker_dir`，白名单只允许 `tracker` 与
+  `logs` 两个目标，目录不存在时 toast 提示先让采集器跑一次）→ 更新（「当前版本」右侧为
+  `Chip size="sm" variant="soft"`（0.4.1，不可点击）+「检查更新」`PendingButton`，
+  D5：启动期静默检查只播报中性 toast，安装永远走手动确认——点击即同意 下载→安装→
+  自动重启，检测/下载期 Spinner，失败 danger toast）。开关一律 HeroUI `Switch` 复合结构
+  （`Switch.Content / Control / Thumb` + `Label`），说明用 `Description` 小字；数值/时段用
+  `Select` + `ListBox`（小时 00:00–23:00），Select 一律 `variant="secondary"`
+  （2026-11-10 操作者验收要求；Modal 即 Surface 场景，低强调无阴影）。
 - **通知规则**（D4）：三类——每日汇总（本地时间到点、每天一次）、同步连败（`finished` 分隔
   轮次，上传失败也计；达阀值报一次，恢复后重新武装）、队列积压（待上传超阀报一次，回落才
   重新武装）。免打扰时段只**抑制发送**、不标记已发（到期未发的顺延到时段结束后）。通知正文

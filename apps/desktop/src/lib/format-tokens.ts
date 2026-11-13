@@ -1,14 +1,44 @@
-// Token number formatting for the desktop monitor. Fixed zh-CN compact style
-// (万 / 亿 via Intl compact notation) — the web's per-user format preferences
-// deliberately do not sync across apps (docs/desktop-plan.md §9).
+// Desktop display formatting. Every helper keeps its call signature so the
+// 100+ call sites (charts, cards, dialogs, share cards, tray labels and
+// notification bodies) need no changes — they read a module-level preference
+// snapshot set by usePreferences. Tray/toast text lives outside the React tree,
+// so a Context/Provider (the web's approach) would not reach it.
+//
+// The rules themselves live in lib/display-format.ts, ported from the web so
+// both surfaces agree. Preferences are local-only (desktop-plan §9).
 
-const formatter = new Intl.NumberFormat("zh-CN", {
-  notation: "compact",
-  maximumFractionDigits: 2,
-});
+import type { Preferences } from "@/lib/preferences";
+
+import {
+  DEFAULT_DISPLAY_FORMAT,
+  formatCostWith,
+  formatNumberWith,
+  formatTokensWith,
+  type DisplayFormat,
+} from "@/lib/display-format";
+
+let activeFormat: DisplayFormat = { ...DEFAULT_DISPLAY_FORMAT };
+
+/**
+ * Sync the formatter with the saved preferences. Called from usePreferences on
+ * first load and on every change, before the render that shows new numbers.
+ */
+export function setFormatPreferences(prefs: Preferences): void {
+  activeFormat = {
+    currency: prefs.currency,
+    tokenDisplay: prefs.tokenDisplay,
+    tokenUnit: prefs.tokenUnit,
+    tokenGrouping: prefs.tokenGrouping,
+  };
+}
+
+/** Read-only view for tests and derived helpers. */
+export function getFormatPreferences(): DisplayFormat {
+  return { ...activeFormat };
+}
 
 export function formatTokens(tokens: number): string {
-  return formatter.format(tokens);
+  return formatTokensWith(tokens, activeFormat);
 }
 
 const percentFormatter = new Intl.NumberFormat("zh-CN", {
@@ -21,41 +51,18 @@ export function formatPercent(ratio: number): string {
   return percentFormatter.format(ratio);
 }
 
-const costFormatter = new Intl.NumberFormat("zh-CN", {
-  style: "currency",
-  currency: "USD",
-  // zh-CN's default symbol is "US$"; the narrow symbol keeps every cost
-  // column to "$11.98" like the web's formatCost.
-  currencyDisplay: "narrowSymbol",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 /**
- * Read-time USD estimate → "$11.98" (stat cards, charts, dialogs). Same rules
- * as the web's formatCost: two decimals, sub-cent values read "<$0.01" rather
- * than rounding to $0.00.
+ * Read-time USD estimate → "$11.98" (stat cards, charts, dialogs). Two
+ * decimals, sub-cent values read "<$0.01"; the currency and FX conversion
+ * follow the active preference.
  */
 export function formatCost(valueUsd: number): string {
-  const abs = Math.abs(valueUsd);
-
-  if (abs === 0) return costFormatter.format(0);
-  if (abs < 0.01) {
-    const tiny = costFormatter.format(0.01);
-
-    return valueUsd < 0 ? `-${tiny}` : `<${tiny}`;
-  }
-
-  return costFormatter.format(valueUsd);
+  return formatCostWith(valueUsd, activeFormat);
 }
-
-const numberFormatter = new Intl.NumberFormat("zh-CN", {
-  maximumFractionDigits: 0,
-});
 
 /** Grouped count ("5,477") for conversation counts in chart tooltips. */
 export function formatNumber(value: number): string {
-  return numberFormatter.format(value);
+  return formatNumberWith(value, activeFormat);
 }
 
 const creditsFormatter = new Intl.NumberFormat("zh-CN", {

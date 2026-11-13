@@ -226,8 +226,11 @@ export function SessionsClient() {
     redirectToLogin,
   ]);
 
+  // Preset time ranges are not "filters": an empty window gets its own
+  // "view all" state, while explicit filters get "clear filters" (ui-spec).
+  const hasTimeWindow =
+    filters.range !== "all" || Boolean(filters.from) || Boolean(filters.to);
   const hasNarrowingFilters =
-    filters.range !== "all" ||
     Boolean(filters.from) ||
     Boolean(filters.to) ||
     Boolean(filters.deviceId) ||
@@ -303,6 +306,7 @@ export function SessionsClient() {
         <SessionsTable
           copy={copy}
           hasNarrowingFilters={hasNarrowingFilters}
+          hasTimeWindow={hasTimeWindow}
           locale={locale}
           offset={filters.offset}
           pageSize={filters.pageSize}

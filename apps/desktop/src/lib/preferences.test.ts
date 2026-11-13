@@ -110,6 +110,55 @@ describe("card visibility", () => {
   });
 });
 
+describe("display format preferences", () => {
+  it("defaults to the compact 万/亿 look with USD", () => {
+    expect(DEFAULT_PREFERENCES.currency).toBe("USD");
+    expect(DEFAULT_PREFERENCES.tokenDisplay).toBe("compact");
+    expect(DEFAULT_PREFERENCES.tokenUnit).toBe("wan");
+    expect(DEFAULT_PREFERENCES.tokenGrouping).toBe(3);
+  });
+
+  it("keeps valid values and rejects junk values", () => {
+    const prefs = normalizePreferences({
+      currency: "CNY",
+      tokenDisplay: "full",
+      tokenUnit: "kmb",
+      tokenGrouping: 4,
+    });
+
+    expect(prefs.currency).toBe("CNY");
+    expect(prefs.tokenDisplay).toBe("full");
+    expect(prefs.tokenUnit).toBe("kmb");
+    expect(prefs.tokenGrouping).toBe(4);
+
+    const junk = normalizePreferences({
+      currency: "BTC",
+      tokenDisplay: "huge",
+      tokenUnit: "dozen",
+      tokenGrouping: 9,
+    });
+
+    expect(junk.currency).toBe("USD");
+    expect(junk.tokenDisplay).toBe("compact");
+    expect(junk.tokenUnit).toBe("wan");
+    expect(junk.tokenGrouping).toBe(3);
+  });
+
+  it("round-trips the four fields through storage", () => {
+    const storage = memoryStorage();
+
+    savePreferences(
+      { ...DEFAULT_PREFERENCES, currency: "JPY", tokenGrouping: 4 },
+      storage,
+    );
+
+    const loaded = loadPreferences(storage);
+
+    expect(loaded.currency).toBe("JPY");
+    expect(loaded.tokenGrouping).toBe(4);
+  });
+});
+
 describe("theme cycle", () => {
   it("cycles system → light → dark → system", () => {
     expect(nextTheme("system")).toBe("light");

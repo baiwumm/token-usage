@@ -79,6 +79,7 @@ export function SessionsBody({
       />
       <SessionsTable
         creditsInWindow={sessions.totals.credits > 0}
+        hasAnySessions={sessions.hasAnySessions}
         hasNarrowingFilters={sessions.hasNarrowingFilters}
         loading={sessions.loading}
         offset={sessions.offset}
@@ -91,6 +92,7 @@ export function SessionsBody({
         onOpenDocs={() => onOpenUrl(README_URL)}
         onPageSizeChange={sessions.setPageSize}
         onViewDetail={(session) => setDetail(session)}
+        onWidenRange={() => sessions.setRange("all")}
       />
       <SessionsDetailDialog
         session={detail}

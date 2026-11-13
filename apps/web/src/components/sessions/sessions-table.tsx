@@ -39,6 +39,7 @@ export function SessionsTable({
   offset,
   pageSize,
   hasNarrowingFilters,
+  hasTimeWindow,
   onOffsetChange,
   onPageSizeChange,
   onViewDetail,
@@ -54,6 +55,8 @@ export function SessionsTable({
   offset: number;
   pageSize: number;
   hasNarrowingFilters: boolean;
+  /** A preset range other than 总计 is active (own empty state, not a filter). */
+  hasTimeWindow: boolean;
   onOffsetChange: (offset: number) => void;
   onPageSizeChange: (pageSize: number, offset: number) => void;
   onViewDetail: (session: SessionItem) => void;
@@ -254,10 +257,33 @@ export function SessionsTable({
     </div>
   );
 
+  // A preset time range is not a filter: with data elsewhere, offer "view all"
+  // instead of the "upgrade the collector" hint (ui-spec 空态三分).
+  const rangeEmpty = (
+    <div className="flex flex-col items-start gap-2 py-6">
+      <ListUl aria-hidden="true" className="text-muted size-6" />
+      <Typography type="body-sm" weight="semibold">
+        {copy.states.rangeEmptyTitle}
+      </Typography>
+      <Typography className="max-w-2xl" color="muted" type="body-sm">
+        {copy.states.rangeEmptyBody}
+      </Typography>
+      <Button size="sm" variant="outline" onPress={onClearFilters}>
+        {copy.states.rangeEmptyAction}
+      </Button>
+    </div>
+  );
+
   return (
     <DataTableCard
       columns={columns}
-      empty={hasNarrowingFilters ? filterEmpty : emptyState}
+      empty={
+        hasNarrowingFilters
+          ? filterEmpty
+          : hasTimeWindow
+            ? rangeEmpty
+            : emptyState
+      }
       error={{
         message: copy.states.loadError,
         onRetry,
