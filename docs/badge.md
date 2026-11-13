@@ -581,6 +581,9 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 - 预览筛选（§7.3）：风格 / 主题 / 范围 / **仓库**；不再有「对象」开关——仓库下拉默认空
   = 账户徽章，选中 = 该仓库，清空（`Select.ClearButton`）= 回到账户（2026-11-04 操作者裁定，
   与 §2.1 的 project 开关同构）
+- 次要说明（令牌轮换细则、公开名称细则、白名单口径与时区、预览前置条件）收进 label 旁的
+  `CircleInfo` 图标按钮 + `Tooltip`，行内 `Description` 只留一句动作前必读文案；对应文案键为
+  `tokenHelp` / `nameHelp` / `projectsCaveat` / `timezoneNote` / `previewHelp` 与 `*HelpLabel`
 - 细则遵循 `docs/ui-spec.md`（HeroUI 复合结构 + 语义文本组件）；随 P3 在 ui-spec
   增补对应小节
 
@@ -601,7 +604,9 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
   片段为其旧式替代，不再输出）
 - `<origin>` 用部署自身 origin（自部署各自填）
 - 令牌只在生成/重置后的一次性揭示弹窗里填入片段；此后卡片内的片段以
-  `YOUR_BADGE_TOKEN` 占位，由操作者替换为自己保存的令牌（遗失则重置）
+  `YOUR_BADGE_TOKEN` 占位，由操作者替换为自己保存的令牌（遗失则重置）。令牌行说明与
+  重置确认正文都写明「明文只显示一次」「重置成功会直接给出填好新令牌的片段」；占位片段的
+  复制成功提示改为提醒替换占位符，避免直接贴进 README 后得到坏图。
 
 ## §8 缓存与滥用面
 

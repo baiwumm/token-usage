@@ -10,7 +10,7 @@
 import type { LoadStatus } from "@/lib/loadable";
 import type { Key } from "react";
 
-import { Check, Xmark } from "@gravity-ui/icons";
+import { Check, CircleInfo, Xmark } from "@gravity-ui/icons";
 import {
   Button,
   Card,
@@ -23,6 +23,7 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
   toast,
 } from "@heroui/react";
@@ -63,26 +64,59 @@ type Busy = "toggle" | "token" | "projects" | "name" | null;
 
 // Long-content row: label + description stacked above a full-width body
 // (allowlist caveat, preview image, README snippet). Same divider rhythm as
-// the appearance Row.
+// the appearance Row. `hint` optionally renders beside the label.
 function Block({
   label,
   description,
+  hint,
   children,
 }: {
   label: string;
   description: string;
+  hint?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
       <div className="flex flex-col gap-1">
-        <Typography type="body-sm" weight="medium">
-          {label}
-        </Typography>
+        <div className="flex items-center gap-1">
+          <Typography type="body-sm" weight="medium">
+            {label}
+          </Typography>
+          {hint}
+        </div>
         <Description className="text-muted text-xs">{description}</Description>
       </div>
       {children}
     </div>
+  );
+}
+
+// Secondary explanations (token rotation rules, naming details, allowlist
+// coverage and time zone, preview preconditions) live behind this info icon so
+// each row keeps only the one line the operator needs before acting.
+function Hint({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tooltip delay={0}>
+      <Button
+        aria-label={label}
+        className="text-muted size-5 shrink-0 p-0"
+        size="sm"
+        variant="ghost"
+      >
+        <CircleInfo aria-hidden="true" className="size-3.5" />
+      </Button>
+      <Tooltip.Content showArrow placement="bottom">
+        <Tooltip.Arrow />
+        <div className="flex max-w-72 flex-col gap-1.5">{children}</div>
+      </Tooltip.Content>
+    </Tooltip>
   );
 }
 
@@ -380,7 +414,15 @@ export function BadgeCard() {
           </Switch>
         </Row>
 
-        <Row description={copy.tokenDescription} label={copy.tokenLabel}>
+        <Row
+          description={copy.tokenDescription}
+          hint={
+            <Hint label={copy.tokenHelpLabel}>
+              <Typography type="body-xs">{copy.tokenHelp}</Typography>
+            </Hint>
+          }
+          label={copy.tokenLabel}
+        >
           <Typography className="tabular-nums" type="body-sm">
             {settings.hasToken && settings.tokenLast4
               ? formatMessage(copy.tokenActive, locale, {
@@ -411,7 +453,15 @@ export function BadgeCard() {
           )}
         </Row>
 
-        <Block description={copy.nameDescription} label={copy.nameLabel}>
+        <Block
+          description={copy.nameDescription}
+          hint={
+            <Hint label={copy.nameHelpLabel}>
+              <Typography type="body-xs">{copy.nameHelp}</Typography>
+            </Hint>
+          }
+          label={copy.nameLabel}
+        >
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <TextField
               aria-label={copy.nameLabel}
@@ -441,6 +491,16 @@ export function BadgeCard() {
 
         <Block
           description={copy.projectsDescription}
+          hint={
+            <Hint label={copy.projectsHelpLabel}>
+              <Typography type="body-xs">{copy.projectsCaveat}</Typography>
+              <Typography type="body-xs">
+                {formatMessage(copy.timezoneNote, locale, {
+                  timezone: settings.timezone,
+                })}
+              </Typography>
+            </Hint>
+          }
           label={copy.projectsLabel}
         >
           {projectOptions.length === 0 ? (
@@ -496,17 +556,17 @@ export function BadgeCard() {
               </PendingButton>
             </div>
           )}
-          <Description className="text-muted text-xs">
-            {copy.projectsCaveat}
-          </Description>
-          <Description className="text-muted text-xs">
-            {formatMessage(copy.timezoneNote, locale, {
-              timezone: settings.timezone,
-            })}
-          </Description>
         </Block>
 
-        <Block description={copy.previewDescription} label={copy.previewLabel}>
+        <Block
+          description={copy.previewDescription}
+          hint={
+            <Hint label={copy.previewHelpLabel}>
+              <Typography type="body-xs">{copy.previewHelp}</Typography>
+            </Hint>
+          }
+          label={copy.previewLabel}
+        >
           <div className="flex flex-wrap items-end gap-4">
             <OptionGroup
               label={copy.styleLabel}

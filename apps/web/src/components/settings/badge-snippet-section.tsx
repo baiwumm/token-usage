@@ -20,17 +20,22 @@ import {
 import { useState } from "react";
 
 import { firstKey } from "./appearance-helpers";
-import { dualThemeSnippet, singleThemeSnippet } from "./badge-helpers";
+import {
+  TOKEN_PLACEHOLDER,
+  dualThemeSnippet,
+  singleThemeSnippet,
+} from "./badge-helpers";
 
 type Variant = "single" | "dual";
 
 export async function copyText(
   text: string,
   copy: Pick<BadgeCopy, "copied" | "copyFailed">,
+  successMessage?: string,
 ): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
-    toast.success(copy.copied);
+    toast.success(successMessage ?? copy.copied);
   } catch {
     toast(copy.copyFailed);
   }
@@ -52,6 +57,10 @@ export function BadgeSnippetSection({
     variant === "single"
       ? singleThemeSnippet(origin, token, view)
       : dualThemeSnippet(origin, token, view);
+  // The card passes the placeholder; the reveal dialog passes the real token.
+  // Copying a placeholder snippet only works in the README after the operator
+  // swaps the token in, so the toast has to say so instead of a bare 「已复制」.
+  const isPlaceholder = token === TOKEN_PLACEHOLDER;
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-2">
@@ -78,7 +87,11 @@ export function BadgeSnippetSection({
           size="sm"
           variant="secondary"
           onPress={() => {
-            void copyText(snippet, copy);
+            void copyText(
+              snippet,
+              copy,
+              isPlaceholder ? copy.copiedPlaceholder : undefined,
+            );
           }}
         >
           <Copy aria-hidden="true" className="size-4" />

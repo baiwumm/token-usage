@@ -1,24 +1,30 @@
 // Shared appearance row (docs/ui-spec.md 设置 · 偏好): label + optional
 // description on the left, the control on the right. Every appearance card uses
-// the same divider-separated row, so the layout lives in one place.
+// the same divider-separated row, so the layout lives in one place. `hint`
+// optionally renders beside the label (an info tooltip in the badge card).
 
 import { Description, Typography } from "@heroui/react";
 
 export function Row({
   label,
   description,
+  hint,
   children,
 }: {
   label: string;
   description?: string;
+  hint?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 md:flex-row md:items-start md:justify-between md:gap-8">
       <div className="flex min-w-0 flex-col gap-1 md:max-w-sm">
-        <Typography type="body-sm" weight="medium">
-          {label}
-        </Typography>
+        <div className="flex items-center gap-1">
+          <Typography type="body-sm" weight="medium">
+            {label}
+          </Typography>
+          {hint}
+        </div>
         {description ? (
           <Description className="text-muted text-xs">
             {description}

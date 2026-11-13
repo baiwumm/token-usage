@@ -485,16 +485,20 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
     | 行 | 控件 | 选项 / 行为 |
     |---|---|---|
     | 公开展示 | `Switch`（拇指 Check / Xmark） | 未生成令牌时禁用并提示先生成；切换即 PUT（带浏览器时区） |
-    | 访问令牌 | 文本「已生成 · 末四位 xxxx」+ 按钮 | 无令牌：主按钮「生成令牌」；有令牌：「重置令牌」→ `AlertDialog`（`status="warning"`，确认按钮 `variant="danger"`），正文写明旧链接立即失效、已上报用量不受影响 |
-    | 公开名称 | `TextField` +「保存名称」 | 与个人信息名称解耦：徽章与公开页头像旁显示的名称，清空保存后显示通用「AI Coding Usage」；有改动才可保存，重生成令牌后随 GET 重新同步 |
-    | 仓库白名单 | 多选 `Select` +「保存白名单」 | 选项 = `knownProjects` ∪ 已在白名单的项；有改动才可保存，>32 项禁用；下方说明三项口径缺口（账户级来源不计、无项目名会话不计、同名合并）与「活跃天数按 {时区} 折算」 |
-    | 预览 | 三组 `ToggleButtonGroup size="sm"`（风格 / 主题 / 范围）+ 仓库单选 `Select` | 预览图走会话预览分支，切换即换参；换参到新图解码完成之间盖 `PanelOverlay`（容器 `aria-busy`），不闪上一张图；白名单为空时「仓库」置灰并提示；600px 面板在卡内横向滚动容器里，不外溢页面 |
-    | README 片段 | `ToggleButtonGroup`（单主题 / 跟随 GitHub 明暗）+ 只读 `TextArea` + 复制 | 按当前预览参数生成，令牌以 `YOUR_BADGE_TOKEN` 占位 |
+    | 访问令牌 | 文本「已生成 · 末四位 xxxx」+ 按钮 | 无令牌：主按钮「生成令牌」；有令牌：「重置令牌」→ `AlertDialog`（`status="warning"`，确认按钮 `variant="danger"`），正文写明旧链接立即失效、重置成功会直接给出填好新令牌的片段、已上报用量不受影响；行说明只留「持有链接者可看聚合、明文只显示一次」，轮换细节收进 label 旁 ⓘ Tooltip |
+    | 公开名称 | `TextField` +「保存名称」 | 与个人信息名称解耦：徽章与公开页头像旁显示的名称，清空保存后显示通用「AI Coding Usage」；有改动才可保存，重生成令牌后随 GET 重新同步。行说明只留「留空显示 AI Coding Usage」，「与个人信息名独立 / 最多 80 字符 / 重置会重新快照」收进 ⓘ Tooltip |
+    | 仓库白名单 | 多选 `Select` +「保存白名单」 | 选项 = `knownProjects` ∪ 已在白名单的项；有改动才可保存，>32 项禁用；行说明只留「最多 32 个」，三项口径缺口（账户级来源不计、无项目名会话不计、同名合并）与「活跃天数按 {时区} 折算」收进 label 旁 ⓘ Tooltip |
+    | 预览 | 三组 `ToggleButtonGroup size="sm"`（风格 / 主题 / 范围）+ 仓库单选 `Select` | 预览图走会话预览分支，切换即换参；换参到新图解码完成之间盖 `PanelOverlay`（容器 `aria-busy`），不闪上一张图；白名单为空时「仓库」置灰并提示；600px 面板在卡内横向滚动容器里，不外溢页面；「未开启公开时也可预览」收进 ⓘ Tooltip |
+    | README 片段 | `ToggleButtonGroup`（单主题 / 跟随 GitHub 明暗）+ 只读 `TextArea` + 复制 | 按当前预览参数生成，令牌以 `YOUR_BADGE_TOKEN` 占位，说明写明「换成你的令牌（遗失则重置）」；复制成功提示提醒替换占位符（防直接贴进 README） |
+
+  - 次要说明统一收进 label 旁 `CircleInfo` 图标按钮 + `Tooltip`（`delay={0}` + `showArrow` +
+    `placement="bottom"`，`aria-label` 为「…说明」）；行内 `Description` 只保留动作前必读的一句。
 
   - 生成 / 重置成功后弹「保存你的徽章令牌」`Modal`（`size="lg"`）：`Alert status="warning"` 写明
     只显示这一次；只读令牌框 + 图标复制按钮；下方是已填好真实令牌的同款片段区。该弹窗
     `isDismissable={false}` + `isKeyboardDismissDisabled`，只能点「我已保存」关闭。
-  - 复制统一 `navigator.clipboard.writeText`，成功 `toast.success`，失败普通 `toast` 提示手动选择。
+  - 复制统一 `navigator.clipboard.writeText`，成功 `toast.success`（占位片段改用替换提醒文案），
+    失败普通 `toast` 提示手动选择。
 - 偏好分区由「外观」与「数据刷新」两张 `Card` 组成；外观卡逐行 label + control + `Description`
   （语言 / 货币 / 日期下拉 `variant="secondary"`，货币选项为本地化名称 + 窄符号，如
   `人民币(￥)`）；分区内 `ToggleButtonGroup` 统一 `size="sm"`；`Select` 无 size 属性，用默认尺寸：

@@ -15,6 +15,8 @@ export interface BadgeCopy {
   enabledOff: string;
   tokenLabel: string;
   tokenDescription: string;
+  tokenHelp: string;
+  tokenHelpLabel: string;
   tokenNone: string;
   tokenActive: string;
   generate: string;
@@ -29,14 +31,18 @@ export interface BadgeCopy {
   revealDone: string;
   copy: string;
   copied: string;
+  copiedPlaceholder: string;
   copyFailed: string;
   nameLabel: string;
   nameDescription: string;
+  nameHelp: string;
+  nameHelpLabel: string;
   namePlaceholder: string;
   nameSave: string;
   nameSaved: string;
   projectsLabel: string;
   projectsDescription: string;
+  projectsHelpLabel: string;
   projectsCaveat: string;
   projectsPlaceholder: string;
   projectsEmpty: string;
@@ -45,6 +51,8 @@ export interface BadgeCopy {
   timezoneNote: string;
   previewLabel: string;
   previewDescription: string;
+  previewHelp: string;
+  previewHelpLabel: string;
   previewAlt: string;
   styleLabel: string;
   stylePanel: string;
@@ -76,20 +84,23 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     saveError: "保存失败，请重试。",
     enabledLabel: "公开展示",
     enabledDescription:
-      "关闭后公开链接显示「badge disabled」，令牌保留，重新开启即可恢复。",
+      "关闭后公开链接显示「badge disabled」；令牌保留，重开即恢复。",
     enabledNeedsToken: "先生成令牌才能开启。",
     enabledOn: "已开启公开徽章",
     enabledOff: "已关闭公开徽章",
     tokenLabel: "访问令牌",
     tokenDescription:
-      "令牌是公开链接的一部分，持有链接的人可查看聚合用量；重置后旧链接立即失效。",
+      "持有公开链接的人可查看聚合用量；明文只在生成/重置时显示一次。",
+    tokenHelp:
+      "重置会立即轮换令牌：旧链接全部失效，新令牌与填好的片段只在弹窗里出现一次。",
+    tokenHelpLabel: "令牌说明",
     tokenNone: "尚未生成",
     tokenActive: "已生成 · 末四位 {last4}",
     generate: "生成令牌",
     reset: "重置令牌",
     resetTitle: "重置徽章令牌？",
     resetBody:
-      "旧令牌会立即失效，所有嵌入旧链接的徽章将显示「badge unavailable」，需要换成新的 README 片段。已上报的用量不受影响。",
+      "旧令牌会立即失效，所有嵌入旧链接的徽章将显示「badge unavailable」，需要换成新的 README 片段。重置成功后会直接给出填好新令牌的片段。已上报的用量不受影响。",
     resetConfirm: "重置",
     cancel: "取消",
     revealTitle: "保存你的徽章令牌",
@@ -99,15 +110,20 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     revealDone: "我已保存",
     copy: "复制",
     copied: "已复制",
+    copiedPlaceholder: "已复制，记得把 YOUR_BADGE_TOKEN 换成你的令牌",
     copyFailed: "复制失败，请手动选择文本。",
     nameLabel: "公开名称",
     nameDescription:
-      "徽章与公开页头像旁显示的名称，与个人信息里的名称相互独立，最多 80 字符；清空保存后显示通用的「AI Coding Usage」。重置令牌会以个人信息名称重新快照。",
+      "公开页与徽章头像旁显示的名称；留空显示「AI Coding Usage」。",
+    nameHelp:
+      "与个人信息名称相互独立，最多 80 字符。重置令牌会以个人信息名称重新快照。",
+    nameHelpLabel: "公开名称说明",
     namePlaceholder: "留空则显示 AI Coding Usage",
     nameSave: "保存名称",
     nameSaved: "公开名称已保存",
     projectsLabel: "仓库白名单",
     projectsDescription: "只有列入白名单的仓库可以生成仓库徽章，最多 32 个。",
+    projectsHelpLabel: "白名单口径与时区说明",
     projectsCaveat:
       "口径说明：仓库徽章只统计 Sessions 中带项目名的会话——不含 Cursor / Trae CN 等账户级来源；缺少项目名的历史会话不计入；不同目录下的同名仓库合并统计。",
     projectsPlaceholder: "选择仓库",
@@ -118,7 +134,9 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
       "活跃天数按 {timezone} 折算；每次保存会同步为当前浏览器时区。",
     previewLabel: "预览",
     previewDescription:
-      "切换风格、主题、范围与仓库，预览即时更新；未选仓库即账户徽章，未开启公开时同样可预览。",
+      "切换风格、主题、范围与仓库即时预览；未选仓库即账户徽章。",
+    previewHelp: "未开启公开时同样可预览。",
+    previewHelpLabel: "预览说明",
     previewAlt: "徽章预览",
     styleLabel: "风格",
     stylePanel: "面板",
@@ -136,7 +154,7 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     projectEmpty: "先在上方把仓库加入白名单。",
     snippetLabel: "README 片段",
     snippetDescription:
-      "按当前预览参数生成。把 YOUR_BADGE_TOKEN 换成生成时保存的令牌；遗失后重置令牌即可拿到填好的新片段。",
+      "按当前预览参数生成；把 YOUR_BADGE_TOKEN 换成你的令牌（遗失则重置）。",
     snippetSingle: "单主题",
     snippetDual: "跟随 GitHub 明暗",
   },
@@ -149,20 +167,23 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     saveError: "Couldn't save. Please try again.",
     enabledLabel: "Public",
     enabledDescription:
-      "When off, the public link shows “badge disabled”. The token is kept, so turning it back on restores the badge.",
+      "When off, the public link shows “badge disabled”; the token is kept and comes back with the switch.",
     enabledNeedsToken: "Generate a token first.",
     enabledOn: "Public badge enabled",
     enabledOff: "Public badge disabled",
     tokenLabel: "Access token",
     tokenDescription:
-      "The token is part of the public link — anyone holding the link sees the aggregates. Resetting it breaks the old link immediately.",
+      "Anyone holding the public link sees the aggregates; the plaintext is shown only once, on generate or reset.",
+    tokenHelp:
+      "Resetting rotates the token immediately: every old link breaks, and the new token plus a filled-in snippet appear once in the dialog.",
+    tokenHelpLabel: "About the token",
     tokenNone: "Not generated yet",
     tokenActive: "Active · ends in {last4}",
     generate: "Generate token",
     reset: "Reset token",
     resetTitle: "Reset the badge token?",
     resetBody:
-      "The old token stops working right away: every badge embedding the old link will show “badge unavailable” until you swap in the new README snippet. Reported usage is not affected.",
+      "The old token stops working right away: every badge embedding the old link will show “badge unavailable” until you swap in the new README snippet. The reset hands you that snippet with the new token already filled in. Reported usage is not affected.",
     resetConfirm: "Reset",
     cancel: "Cancel",
     revealTitle: "Save your badge token",
@@ -172,16 +193,22 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     revealDone: "I've saved it",
     copy: "Copy",
     copied: "Copied",
+    copiedPlaceholder:
+      "Copied — remember to replace YOUR_BADGE_TOKEN with your token",
     copyFailed: "Couldn't copy — select the text manually.",
     nameLabel: "Public name",
     nameDescription:
-      "The name shown next to the avatar on the badge and public page — independent of your profile name, up to 80 characters. Saving an empty value shows the generic “AI Coding Usage”. Resetting the token re-snapshots your profile name.",
+      "The name beside the avatar on the public page and badge; empty shows “AI Coding Usage”.",
+    nameHelp:
+      "Independent of your profile name, up to 80 characters. Resetting the token re-snapshots your profile name.",
+    nameHelpLabel: "About the public name",
     namePlaceholder: "Empty shows AI Coding Usage",
     nameSave: "Save name",
     nameSaved: "Public name saved",
     projectsLabel: "Repository allowlist",
     projectsDescription:
       "Only allowlisted repositories can have a repo badge (up to 32).",
+    projectsHelpLabel: "Allowlist coverage and time zone",
     projectsCaveat:
       "Coverage: repo badges count Sessions that carry a project name — account-level sources such as Cursor and Trae CN are excluded, older sessions without a project name are left out, and same-named folders in different places are merged.",
     projectsPlaceholder: "Choose repositories",
@@ -192,7 +219,9 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
       "Active days are counted in {timezone}; each save syncs it to this browser's time zone.",
     previewLabel: "Preview",
     previewDescription:
-      "Switch style, theme, range and repository to update the preview — no repository means the account badge, and it works before the badge is public too.",
+      "Style, theme, range and repository update the preview live; no repository means the account badge.",
+    previewHelp: "The preview works before the badge is public too.",
+    previewHelpLabel: "About the preview",
     previewAlt: "Badge preview",
     styleLabel: "Style",
     stylePanel: "Panel",
@@ -210,7 +239,7 @@ export const BADGE_COPY: Record<"zh" | "en", BadgeCopy> = {
     projectEmpty: "Add a repository to the allowlist above first.",
     snippetLabel: "README snippet",
     snippetDescription:
-      "Built from the preview settings. Replace YOUR_BADGE_TOKEN with the token you saved; if it's lost, reset the token to get a filled-in snippet.",
+      "Built from the preview settings; replace YOUR_BADGE_TOKEN with your token (reset it if lost).",
     snippetSingle: "Single theme",
     snippetDual: "Follow GitHub theme",
   },
