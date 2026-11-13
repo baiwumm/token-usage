@@ -1,25 +1,25 @@
-// Badge config for the signed-in operator (docs/badge.md §7.1): the browser
+﻿// Badge config for the signed-in operator (docs/badge.md §7.1): the browser
 // session authenticates via @supabase/ssr cookies exactly like
 // /api/app/achievements (the /api/functions contract gate does not apply),
 // then all reads and writes go through service-role.
 //
-// The raw badge token exists only inside a generate response: the row keeps
-// its SHA-256 hash plus the last four characters for the settings display.
-// DELETE disables (hash kept, §3.2) so the public badge reads
-// "badge disabled"; only a generate rotates the hash away.
+// 2026-11-13 (multi-badge model): one row per badge in token_public_badges,
+// plus one settings row per user. The token is stored in plaintext and handed
+// back on every GET — it is a public identifier, and the settings page must be
+// able to show the link again at any time. Creating a badge never touches the
+// others; revoking sets revoked_at (reversible, same link), deleting removes
+// the row for good (per-badge route).
 //
-// GET ?preview=1 renders the owner's badge SVG from the session instead of
-// the token (§7.3) — the settings page never holds the plaintext after the
-// one-time reveal. It lives on this route so the deployment keeps the same
+// GET ?preview=1 renders the owner's badge SVG from the session instead of a
+// token (§7.3). It lives on this route so the deployment keeps the same
 // function count.
 
 import { randomBytes } from "node:crypto";
 
 import { NextResponse, type NextRequest } from "next/server";
 
-import { requireAppSession } from "@/lib/api/app-session";
 import { jsonResponse } from "@/lib/api/http";
-import { select, update, upsert } from "@/lib/api/supabase-rest";
+import { insert, update, upsert } from "@/lib/api/supabase-rest";
 import {
   invalidateBadgeData,
   loadBadgeData,
@@ -27,75 +27,34 @@ import {
   normalizeBadgeAllowlist,
   normalizeBadgeProject,
   normalizeBadgeTimezone,
+  type BadgeDefaults,
 } from "@/lib/badge/data";
+import { parseBadgeInput } from "@/lib/badge/input";
+import {
+  MAX_BADGES,
+  MAX_DISPLAY_NAME,
+  MAX_PROJECTS,
+  MAX_PROJECT_LENGTH,
+} from "@/lib/badge/limits";
 import { parseBadgeParams } from "@/lib/badge/params";
 import { renderBadgeSvg, renderFallbackBadge } from "@/lib/badge/render";
-import { sha256Hex } from "@/lib/device-codes";
-
-const TABLE = "token_public_badges";
-const TOKEN_PREFIX = "tu_badge_";
-const MAX_PROJECTS = 32;
-const MAX_PROJECT_LENGTH = 120;
-const MAX_DISPLAY_NAME = 80;
+import { authenticateBadge } from "@/lib/badge/session";
+import {
+  BADGES_TABLE,
+  SETTINGS_TABLE,
+  TOKEN_PREFIX,
+  badgePayload,
+  configPayload,
+  loadBadges,
+  loadSettings,
+  type BadgeRow,
+} from "@/lib/badge/store";
 
 function jsonError(status: number, error: string): NextResponse {
   return NextResponse.json(
     { error },
     { status, headers: { "Cache-Control": "no-store" } },
   );
-}
-
-type Session =
-  { userId: string; displayName: string } | { response: NextResponse };
-
-async function authenticate(): Promise<Session> {
-  const session = await requireAppSession();
-
-  if ("response" in session) return session;
-
-  // §3.1: the display name is a session snapshot — never the email.
-  const metadata = (session.user.user_metadata ?? {}) as {
-    display_name?: unknown;
-  };
-  const displayName =
-    typeof metadata.display_name === "string"
-      ? metadata.display_name.trim().slice(0, MAX_DISPLAY_NAME)
-      : "";
-
-  return { userId: session.userId, displayName };
-}
-
-type BadgeRow = {
-  token_hash: string | null;
-  token_last4: string | null;
-  enabled: boolean | null;
-  display_name: string | null;
-  timezone: string | null;
-  allowed_projects: unknown;
-};
-
-async function loadRow(userId: string): Promise<BadgeRow | undefined> {
-  const rows = await select(TABLE, {
-    select:
-      "token_hash,token_last4,enabled,display_name,timezone,allowed_projects",
-    filters: [["user_id", "eq", userId]],
-    limit: 1,
-  });
-
-  return rows[0] as BadgeRow | undefined;
-}
-
-// §7.1 GET shape — the raw token never appears, only whether one exists and
-// its last four characters.
-function configPayload(row: BadgeRow | undefined) {
-  return {
-    enabled: row?.enabled === true,
-    timezone: normalizeBadgeTimezone(row?.timezone),
-    allowedProjects: normalizeBadgeAllowlist(row?.allowed_projects),
-    displayName: typeof row?.display_name === "string" ? row.display_name : "",
-    hasToken: Boolean(row?.token_hash),
-    tokenLast4: row?.token_hash && row.token_last4 ? row.token_last4 : null,
-  };
 }
 
 async function readJson(request: NextRequest): Promise<unknown> {
@@ -131,7 +90,9 @@ function svgResponse(svg: string): NextResponse {
 // §7.3 owner preview: the same params, loader and renderer as the public
 // endpoint, authenticated by the session. Renders regardless of the enabled
 // flag so a style can be chosen before going public; the allowlist still
-// applies to repo previews.
+// applies to repo previews. Preview is parameter-driven (the client passes the
+// selected badge's stored values), so it always matches what the public link
+// would render.
 async function previewResponse(
   session: { userId: string; displayName: string },
   search: URLSearchParams,
@@ -144,14 +105,14 @@ async function previewResponse(
   if (!params.ok) return svgResponse(renderFallbackBadge("bad request"));
 
   try {
-    const row = await loadRow(session.userId);
+    const settings = await loadSettings(session.userId);
     let project: string | null = null;
 
-    if (params.scope === "repo") {
+    if (params.project) {
       project = normalizeBadgeProject(params.project);
       if (
         !project ||
-        !normalizeBadgeAllowlist(row?.allowed_projects).includes(project)
+        !normalizeBadgeAllowlist(settings?.allowed_projects).includes(project)
       ) {
         return svgResponse(renderFallbackBadge("unknown project"));
       }
@@ -163,16 +124,19 @@ async function previewResponse(
         // display_name is a legitimate "show the generic label" value — falling
         // back on || would preview the profile name while the public badge says
         // "AI Coding Usage". Only a missing row previews the profile name.
-        displayName: row?.display_name ?? session.displayName,
-        timezone: normalizeBadgeTimezone(row?.timezone),
+        displayName: settings?.display_name ?? session.displayName,
+        timezone: normalizeBadgeTimezone(settings?.timezone),
       },
-      params.scope,
+      project ? "repo" : "user",
       project,
-      params.range,
+      params.range ?? "all",
     );
 
     return svgResponse(
-      renderBadgeSvg(data, { style: params.style, theme: params.theme }),
+      renderBadgeSvg(data, {
+        style: params.style ?? "panel",
+        theme: params.theme ?? "auto",
+      }),
     );
   } catch (error) {
     logError(error);
@@ -182,7 +146,7 @@ async function previewResponse(
 }
 
 export async function GET(request: NextRequest) {
-  const session = await authenticate();
+  const session = await authenticateBadge();
 
   if ("response" in session) return session.response;
 
@@ -191,55 +155,102 @@ export async function GET(request: NextRequest) {
   if (search.get("preview") === "1") return previewResponse(session, search);
 
   try {
-    const [row, knownProjects] = await Promise.all([
-      loadRow(session.userId),
+    const [settings, badges, knownProjects] = await Promise.all([
+      loadSettings(session.userId),
+      loadBadges(session.userId),
       loadKnownProjects(session.userId),
     ]);
 
-    return jsonResponse(200, { ...configPayload(row), knownProjects });
+    return jsonResponse(200, {
+      ...configPayload(settings),
+      knownProjects,
+      badges: badges.map(badgePayload),
+    });
   } catch (error) {
     return unavailable(error);
   }
 }
 
+// Create one more badge. Existing badges are untouched — that is the whole
+// point of the multi-badge model (§3.2).
 export async function POST(request: NextRequest) {
-  const session = await authenticate();
+  const session = await authenticateBadge();
 
   if ("response" in session) return session.response;
 
-  const body = (await readJson(request)) as { action?: unknown } | undefined;
+  const settings = await loadSettings(session.userId);
+  const allowedProjects = normalizeBadgeAllowlist(settings?.allowed_projects);
+  const parsed = parseBadgeInput(await readJson(request), allowedProjects);
 
-  if (body?.action !== "generate") return jsonError(400, "Unsupported action");
-
-  // §3.2: tu_badge_ + 32 base64url chars from 24 CSPRNG bytes.
-  const token = `${TOKEN_PREFIX}${randomBytes(24).toString("base64url")}`;
+  if (!parsed.ok) return jsonError(400, parsed.error);
 
   try {
-    // Upsert only names the token columns, so timezone and the allowlist of
-    // an existing row survive a rotation.
-    await upsert(
-      TABLE,
-      {
-        user_id: session.userId,
-        token_hash: sha256Hex(token),
-        token_last4: token.slice(-4),
-        enabled: true,
-        display_name: session.displayName,
-        updated_at: new Date().toISOString(),
-      },
-      "user_id",
-      { returning: false },
-    );
+    if ((await loadBadges(session.userId)).length >= MAX_BADGES) {
+      return jsonError(409, "Badge limit reached");
+    }
+
+    // §3.2: tu_badge_ + 32 base64url chars from 24 CSPRNG bytes.
+    const token = `${TOKEN_PREFIX}${randomBytes(24).toString("base64url")}`;
+    const now = new Date().toISOString();
+    const defaults: BadgeDefaults = {
+      style: parsed.input.style ?? "panel",
+      theme: parsed.input.theme ?? "auto",
+      range: parsed.input.range ?? "all",
+      project: parsed.input.project ?? null,
+    };
+    const inserted = await insert(BADGES_TABLE, {
+      user_id: session.userId,
+      token,
+      label: parsed.input.label ?? "",
+      style: defaults.style,
+      theme: defaults.theme,
+      range: defaults.range,
+      project: defaults.project,
+      created_at: now,
+      updated_at: now,
+      revoked_at: null,
+    });
+
+    // Creating a badge turns the public switch on (the old generate did the
+    // same); the first badge also snapshots the profile name and the browser
+    // zone, so a fresh account never starts with an unsaved settings row.
+    if (settings) {
+      if (!settings.enabled) {
+        await update(
+          SETTINGS_TABLE,
+          { enabled: true, updated_at: now },
+          [["user_id", "eq", session.userId]],
+          { returning: false },
+        );
+      }
+    } else {
+      await upsert(
+        SETTINGS_TABLE,
+        {
+          user_id: session.userId,
+          enabled: true,
+          display_name: session.displayName,
+          timezone: parsed.input.timezone ?? "UTC",
+          allowed_projects: [],
+          updated_at: now,
+        },
+        "user_id",
+        { returning: false },
+      );
+    }
     invalidateBadgeData(session.userId);
 
-    return jsonResponse(200, { token });
+    return jsonResponse(200, {
+      badge: badgePayload(inserted[0] as BadgeRow),
+      enabled: true,
+    });
   } catch (error) {
     return unavailable(error);
   }
 }
 
 export async function PUT(request: NextRequest) {
-  const session = await authenticate();
+  const session = await authenticateBadge();
 
   if ("response" in session) return session.response;
 
@@ -264,8 +275,8 @@ export async function PUT(request: NextRequest) {
   }
   if (input.displayName !== undefined) {
     // §7.1: the public name is decoupled from the profile name — trimmed and
-    // capped like the generate snapshot; an empty string is legal and makes
-    // the renderer fall back to the generic "AI Coding Usage" label.
+    // capped like the create snapshot; an empty string is legal and makes the
+    // renderer fall back to the generic "AI Coding Usage" label.
     if (typeof input.displayName !== "string") {
       return jsonError(400, "Invalid displayName");
     }
@@ -298,38 +309,21 @@ export async function PUT(request: NextRequest) {
   }
   try {
     patch.updated_at = new Date().toISOString();
-    if (await loadRow(session.userId)) {
-      await update(TABLE, patch, [["user_id", "eq", session.userId]], {
+    if (await loadSettings(session.userId)) {
+      await update(SETTINGS_TABLE, patch, [["user_id", "eq", session.userId]], {
         returning: false,
       });
     } else {
-      await upsert(TABLE, { user_id: session.userId, ...patch }, "user_id", {
-        returning: false,
-      });
+      await upsert(
+        SETTINGS_TABLE,
+        { user_id: session.userId, ...patch },
+        "user_id",
+        { returning: false },
+      );
     }
     invalidateBadgeData(session.userId);
 
-    return jsonResponse(200, configPayload(await loadRow(session.userId)));
-  } catch (error) {
-    return unavailable(error);
-  }
-}
-
-export async function DELETE() {
-  const session = await authenticate();
-
-  if ("response" in session) return session.response;
-
-  try {
-    await update(
-      TABLE,
-      { enabled: false, updated_at: new Date().toISOString() },
-      [["user_id", "eq", session.userId]],
-      { returning: false },
-    );
-    invalidateBadgeData(session.userId);
-
-    return jsonResponse(200, configPayload(await loadRow(session.userId)));
+    return jsonResponse(200, configPayload(await loadSettings(session.userId)));
   } catch (error) {
     return unavailable(error);
   }

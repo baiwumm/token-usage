@@ -15,12 +15,18 @@
 // TOKEN_USAGE_USAGE_CACHE=off convention.
 
 import type { RestRow } from "@/lib/api/supabase-rest";
-import type { BadgeData, BadgeModel, BadgeRange, BadgeSource } from "./types";
+import type {
+  BadgeData,
+  BadgeModel,
+  BadgeRange,
+  BadgeSource,
+  BadgeStyle,
+  BadgeTheme,
+} from "./types";
 
 import { loadAccountUsage, loadSessionRows } from "@/lib/api/account-data";
 import { secretKey, select, supabaseUrl } from "@/lib/api/supabase-rest";
 import { rowCost, zonedDayKey } from "@/lib/account/series";
-import { sha256Hex } from "@/lib/device-codes";
 import { normalizeProjectKey } from "@/lib/ingest/normalize";
 import { ModelDisplayName, modelGroupKey } from "@/lib/model-names";
 import { computeRowCost } from "@/lib/pricing";
@@ -434,35 +440,76 @@ export function normalizeBadgeTimezone(value: unknown): string {
 
 const MAX_KNOWN_PROJECTS = 200;
 
+const STYLES: readonly BadgeStyle[] = ["panel", "compact", "sparkline"];
+const THEMES: readonly BadgeTheme[] = ["dark", "light", "auto"];
+const RANGES: readonly BadgeRange[] = ["all", "30d"];
+
+function pickOne<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  fallback: T,
+): T {
+  const raw = String(value ?? "");
+
+  return (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
+}
+
+/** Display defaults stored on the badge row (docs/badge.md §3.1). */
+export type BadgeDefaults = {
+  style: BadgeStyle;
+  theme: BadgeTheme;
+  range: BadgeRange;
+  project: string | null;
+};
+
 export type BadgeOwner = {
   userId: string;
   enabled: boolean;
   displayName: string;
   timezone: string;
   allowedProjects: string[];
+  /** Column defaults the URL may override (§2.1). */
+  badge: BadgeDefaults;
 };
 
-// Public token → owner, matched by SHA-256 (§3.2) — shared by /api/badge and
-// the /u page. Null when no row carries that hash; the result never echoes
-// the token or its hash.
+// Public token → owner (docs/badge.md §3.2, 2026-11-13): the token is stored
+// in plaintext, so this is one equality lookup plus the account settings.
+// Revoked rows answer null exactly like an unknown token — a revoked link must
+// not reveal that it once existed. The result never echoes the token.
 export async function findBadgeOwner(
   token: string,
 ): Promise<BadgeOwner | null> {
   const rows = await select("token_public_badges", {
-    select: "user_id,enabled,display_name,timezone,allowed_projects",
-    filters: [["token_hash", "eq", sha256Hex(token)]],
+    select: "user_id,style,theme,range,project,revoked_at",
+    filters: [["token", "eq", token]],
     limit: 1,
   });
-  const row = rows[0];
+  const badge = rows[0];
 
-  if (!row) return null;
+  if (!badge || badge.revoked_at != null) return null;
+
+  const settingsRows = await select("token_public_badge_settings", {
+    select: "enabled,display_name,timezone,allowed_projects",
+    filters: [["user_id", "eq", String(badge.user_id)]],
+    limit: 1,
+  });
+  const settings = settingsRows[0];
 
   return {
-    userId: String(row.user_id),
-    enabled: row.enabled === true,
-    displayName: String(row.display_name ?? ""),
-    timezone: normalizeBadgeTimezone(row.timezone),
-    allowedProjects: normalizeBadgeAllowlist(row.allowed_projects),
+    userId: String(badge.user_id),
+    enabled: settings?.enabled === true,
+    displayName: String(settings?.display_name ?? ""),
+    timezone: normalizeBadgeTimezone(settings?.timezone),
+    allowedProjects: normalizeBadgeAllowlist(settings?.allowed_projects),
+    badge: {
+      style: pickOne(badge.style, STYLES, "panel"),
+      theme: pickOne(badge.theme, THEMES, "auto"),
+      range: pickOne(badge.range, RANGES, "all"),
+      project:
+        typeof badge.project === "string" && badge.project
+          ? badge.project
+          : null,
+    },
   };
 }
 

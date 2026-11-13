@@ -1,8 +1,7 @@
-// Spec-first golden tests for the badge URL parameter layer
-// (docs/badge.md §2.1 / §2.3). The module lands with P2; while it is absent
-// the suite skips itself (see tests/helpers/spec-first.ts) so `pnpm verify`
-// stays green. The assertions below are the executable form of the doc —
-// the implementation must satisfy them unchanged.
+// Golden tests for the badge URL parameter layer (docs/badge.md §2.1 / §2.3).
+// 2026-11-13 multi-badge model: every parameter is an *override* — absent means
+// "use the badge row's stored default", so the parser returns null. `scope` was
+// retired with the token reset and is always bad_request.
 
 import { describe, expect, it } from "vitest";
 
@@ -16,11 +15,10 @@ type Parsed =
   | {
       ok: true;
       token: string;
-      scope: "user" | "repo";
       project: string | null;
-      style: BadgeStyle;
-      theme: BadgeTheme;
-      range: BadgeRange;
+      style: BadgeStyle | null;
+      theme: BadgeTheme | null;
+      range: BadgeRange | null;
     }
   | { ok: false; reason: "bad_request" };
 
@@ -33,26 +31,32 @@ const params = await loadSpecModule<ParamsModule>(
 );
 
 describe.skipIf(!params)("badge params (docs/badge.md §2.1)", () => {
-  it("applies the documented defaults", () => {
+  it("returns null overrides when the query omits them (row defaults apply)", () => {
     const { parseBadgeParams } = unwrapSpecModule(params, "lib/badge/params");
 
-    expect(parseBadgeParams(new URLSearchParams({ token: "tu_badge_x" }))).toEqual({
+    expect(
+      parseBadgeParams(new URLSearchParams({ token: "tu_badge_x" })),
+    ).toEqual({
       ok: true,
       token: "tu_badge_x",
-      scope: "user",
       project: null,
-      style: "panel",
-      theme: "dark",
-      range: "all",
+      style: null,
+      theme: null,
+      range: null,
     });
   });
 
-  it("requires a non-empty token", () => {
+  it("requires a non-empty, shape-valid token", () => {
     const { parseBadgeParams } = unwrapSpecModule(params, "lib/badge/params");
 
     expect(parseBadgeParams(new URLSearchParams()).ok).toBe(false);
     expect(parseBadgeParams(new URLSearchParams({ token: "" })).ok).toBe(false);
-    expect(parseBadgeParams(new URLSearchParams({ token: "   " })).ok).toBe(false);
+    expect(parseBadgeParams(new URLSearchParams({ token: "   " })).ok).toBe(
+      false,
+    );
+    expect(parseBadgeParams(new URLSearchParams({ token: "bad token!" })).ok).toBe(
+      false,
+    );
   });
 
   it("rejects unknown style/theme/range values as bad_request", () => {
@@ -62,7 +66,6 @@ describe.skipIf(!params)("badge params (docs/badge.md §2.1)", () => {
       ["style", "banner"],
       ["theme", "sepia"],
       ["range", "7d"],
-      ["scope", "team"],
     ] as const) {
       const parsed = parseBadgeParams(
         new URLSearchParams({ token: "tu_badge_x", [key]: value }),
@@ -71,7 +74,7 @@ describe.skipIf(!params)("badge params (docs/badge.md §2.1)", () => {
     }
   });
 
-  it("accepts the full documented value set", () => {
+  it("accepts the full documented value set as overrides", () => {
     const { parseBadgeParams } = unwrapSpecModule(params, "lib/badge/params");
 
     expect(
@@ -81,87 +84,41 @@ describe.skipIf(!params)("badge params (docs/badge.md §2.1)", () => {
           style: "sparkline",
           theme: "auto",
           range: "30d",
+          project: "token-usage",
         }),
       ),
     ).toEqual({
       ok: true,
       token: "tu_badge_x",
-      scope: "user",
-      project: null,
+      project: "token-usage",
       style: "sparkline",
       theme: "auto",
       range: "30d",
     });
-
-    expect(
-      parseBadgeParams(
-        new URLSearchParams({
-          token: "tu_badge_x",
-          project: "token-usage",
-          style: "compact",
-          theme: "light",
-        }),
-      ),
-    ).toEqual({
-      ok: true,
-      token: "tu_badge_x",
-      scope: "repo",
-      project: "token-usage",
-      style: "compact",
-      theme: "light",
-      range: "all",
-    });
   });
 
-  it("selects repo scope from project alone and ignores the legacy scope value (§2.1)", () => {
+  it("rejects every legacy scope value outright (§2.3)", () => {
     const { parseBadgeParams } = unwrapSpecModule(params, "lib/badge/params");
-    const base = {
-      ok: true as const,
-      token: "tu_badge_x",
-      scope: "repo" as const,
-      project: "token-usage",
-      style: "panel" as const,
-      theme: "dark" as const,
-      range: "all" as const,
-    };
 
-    expect(
-      parseBadgeParams(
-        new URLSearchParams({ token: "tu_badge_x", project: "token-usage" }),
-      ),
-    ).toEqual(base);
-    // A legacy scope value cannot take the project away: project wins.
-    expect(
-      parseBadgeParams(
-        new URLSearchParams({
-          token: "tu_badge_x",
-          scope: "user",
-          project: "token-usage",
-        }),
-      ),
-    ).toEqual(base);
-    // No project (blank included) means the account badge.
+    for (const value of ["user", "repo", "team", ""]) {
+      expect(
+        parseBadgeParams(
+          new URLSearchParams({
+            token: "tu_badge_x",
+            scope: value,
+            project: "token-usage",
+          }),
+        ),
+      ).toEqual({ ok: false, reason: "bad_request" });
+    }
+  });
+
+  it("normalizes a blank project to null (account badge)", () => {
+    const { parseBadgeParams } = unwrapSpecModule(params, "lib/badge/params");
+
     expect(
       parseBadgeParams(new URLSearchParams({ token: "tu_badge_x", project: "  " })),
-    ).toMatchObject({ ok: true, scope: "user", project: null });
-  });
-
-  it("legacy scope=repo without a project stays bad_request (§2.3)", () => {
-    const { parseBadgeParams } = unwrapSpecModule(params, "lib/badge/params");
-
-    expect(
-      parseBadgeParams(new URLSearchParams({ token: "tu_badge_x", scope: "repo" })),
-    ).toEqual({ ok: false, reason: "bad_request" });
-    expect(
-      parseBadgeParams(
-        new URLSearchParams({ token: "tu_badge_x", scope: "repo", project: "" }),
-      ),
-    ).toEqual({ ok: false, reason: "bad_request" });
-    expect(
-      parseBadgeParams(
-        new URLSearchParams({ token: "tu_badge_x", scope: "repo", project: "   " }),
-      ),
-    ).toEqual({ ok: false, reason: "bad_request" });
+    ).toMatchObject({ ok: true, project: null });
   });
 
   it("caps project at 120 characters", () => {
@@ -170,15 +127,13 @@ describe.skipIf(!params)("badge params (docs/badge.md §2.1)", () => {
     const exact = "p".repeat(120);
     expect(
       parseBadgeParams(
-        new URLSearchParams({ token: "tu_badge_x", scope: "repo", project: exact }),
+        new URLSearchParams({ token: "tu_badge_x", project: exact }),
       ).ok,
     ).toBe(true);
 
     const over = "p".repeat(121);
     expect(
-      parseBadgeParams(
-        new URLSearchParams({ token: "tu_badge_x", scope: "repo", project: over }),
-      ),
+      parseBadgeParams(new URLSearchParams({ token: "tu_badge_x", project: over })),
     ).toEqual({ ok: false, reason: "bad_request" });
   });
 
@@ -186,8 +141,9 @@ describe.skipIf(!params)("badge params (docs/badge.md §2.1)", () => {
     const { parseBadgeParams } = unwrapSpecModule(params, "lib/badge/params");
 
     const parsed = parseBadgeParams(
-      new URLSearchParams({ token: "tu_badge_x", scope: "repo", project: "My.Repo-2" }),
+      new URLSearchParams({ token: "tu_badge_x", project: "My.Repo-2" }),
     );
+
     expect(parsed.ok && parsed.project).toBe("My.Repo-2");
   });
 });

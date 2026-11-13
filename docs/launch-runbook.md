@@ -9,9 +9,13 @@
 ## 升级已有部署
 
 1. **补迁移**：按文件名顺序执行 `supabase/migrations/` 中尚未应用的迁移（幂等，可重复跑）。
-   当前共 14 个；漏跑 `20261103000000`（桶级 `project_key`，是 upsert 键的一部分）会让新版 CLI
+   当前共 16 个；漏跑 `20261103000000`（桶级 `project_key`，是 upsert 键的一部分）会让新版 CLI
    的 ingest 整批失败。`20261104000000` 是纯注释迁移，`20261106000000` 只影响项目仓库链接与
    项目 Profiles（ingest 的 `projects` 写入是 best-effort）。
+   **2026-11-13 徽章模型重置**：`20261113000000` 会 drop 旧徽章表（不可重放、历史令牌全部
+   作废），`20261113000001` 重建为「账户设置 + 每枚徽章」两表；升级后需在
+   `/settings?section=badges` 重新新增徽章、把新链接填回 README / 个人主页，并重建
+   `apps/landing`。
 2. **配环境变量**：新增变量按 `docs/rewrite-plan.md` §5 与 `apps/web/.env.example` 补到
    Production 与 Preview 各一份。
 3. **部署**：main 出 Production，push 出 Preview（Vercel Git 集成）。
@@ -25,6 +29,8 @@
 - `/` 返回 200；`/device` 可达且能提交配对码；
 - CLI 全链路：`authorize` → `/device` 批准 → `poll` 拿到令牌 → `ingest` 一批 → 200；
 - 仪表盘数值与 `queue.jsonl` last-wins 对账一致；
+- **公开徽章**（`/settings?section=badges`）：新增一枚 → 打开复制出的链接出图 → 吊销后同链接
+  显示 `badge unavailable` → 恢复后同一链接重新出图 → 删除后 `badge unavailable`；
 - 浏览器网络面板零 Supabase 数据表直连请求；
 - **旧路径已退役**：`GET /api/functions/tokentracker-public-config` 应为 404、写动词 405
   （契约 §1.5）。这是有声失败，钉版旧 CLI 会在这里被挡住而不是静默丢数据；

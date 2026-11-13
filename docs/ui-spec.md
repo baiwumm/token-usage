@@ -466,9 +466,11 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
 
 ### 设置 · 账户设置（`/settings`）
 
-- 页面用 `Tabs` / 分段导航：账户 / 偏好 / 设备，Tab 状态读写 `?section=`（`history.replaceState`
-  回写，非法或缺失值回落 `account`）；分区取值为 `appearance | account | devices`（账户 =
-  `account`、偏好 = `appearance`、设备 = `devices`），各分区用 `Card` 复合结构。
+- 页面用 `Tabs` / 分段导航：账户 / 偏好 / 设备 / 公开徽章，Tab 状态读写 `?section=`
+  （`history.replaceState` 回写，非法或缺失值回落 `account`）；分区取值为
+  `appearance | account | devices | badges`（账户 = `account`、偏好 = `appearance`、设备 =
+  `devices`、公开徽章 = `badges`），各分区用 `Card` 复合结构，图标依次 `Person` / `Palette` /
+  `Display` / `Star`。
 - 账户分区自上而下：
   - 个人信息卡：名称 + 只读邮箱。
   - 头像卡：更换走 `react-easy-crop` 裁剪弹窗（缩放滑杆 + ±90° 旋转），canvas 合成 256×256
@@ -477,28 +479,6 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
   - 预算卡：月度 USD 上限，`NumberField`（最小 0、最大 1,000,000、步长 1、整数美元），保存写
     本机 `token-usage.budget`，0 关闭。
   - 密码卡：设置 / 更新密码，≥8 位；魔法链接账号在此开启密码登录。
-  - 公开徽章卡（最底部，规范见 `docs/badge.md` §7）：自取数 `/api/app/badge`（cookie 会话），
-    Loading 骨架 / Error 走共享 `SectionError` 重试。短控件用 `Row`（label + `Description` 左、
-    控件右），长内容（白名单、预览、README 片段）用卡内 `Block`（label + 说明在上、全宽内容
-    在下）：
-
-    | 行 | 控件 | 选项 / 行为 |
-    |---|---|---|
-    | 公开展示 | `Switch`（拇指 Check / Xmark） | 未生成令牌时禁用并提示先生成；切换即 PUT（带浏览器时区） |
-    | 访问令牌 | 文本「已生成 · 末四位 xxxx」+ 按钮 | 无令牌：主按钮「生成令牌」；有令牌：「重置令牌」→ `AlertDialog`（`status="warning"`，确认按钮 `variant="danger"`），正文写明旧链接立即失效、重置成功会直接给出填好新令牌的片段、已上报用量不受影响；行说明只留「持有链接者可看聚合、明文只显示一次」，轮换细节收进 label 旁 ⓘ Tooltip |
-    | 公开名称 | `TextField` +「保存名称」 | 与个人信息名称解耦：徽章与公开页头像旁显示的名称，清空保存后显示通用「AI Coding Usage」；有改动才可保存，重生成令牌后随 GET 重新同步。行说明只留「留空显示 AI Coding Usage」，「与个人信息名独立 / 最多 80 字符 / 重置会重新快照」收进 ⓘ Tooltip |
-    | 仓库白名单 | 多选 `Select` +「保存白名单」 | 选项 = `knownProjects` ∪ 已在白名单的项；有改动才可保存，>32 项禁用；行说明只留「最多 32 个」，三项口径缺口（账户级来源不计、无项目名会话不计、同名合并）与「活跃天数按 {时区} 折算」收进 label 旁 ⓘ Tooltip |
-    | 预览 | 三组 `ToggleButtonGroup size="sm"`（风格 / 主题 / 范围）+ 仓库单选 `Select` | 预览图走会话预览分支，切换即换参；换参到新图解码完成之间盖 `PanelOverlay`（容器 `aria-busy`），不闪上一张图；白名单为空时「仓库」置灰并提示；600px 面板在卡内横向滚动容器里，不外溢页面；「未开启公开时也可预览」收进 ⓘ Tooltip |
-    | README 片段 | `ToggleButtonGroup`（单主题 / 跟随 GitHub 明暗）+ 只读 `TextArea` + 复制 | 按当前预览参数生成，令牌以 `YOUR_BADGE_TOKEN` 占位，说明写明「换成你的令牌（遗失则重置）」；复制成功提示提醒替换占位符（防直接贴进 README） |
-
-  - 次要说明统一收进 label 旁 `CircleInfo` 图标按钮 + `Tooltip`（`delay={0}` + `showArrow` +
-    `placement="bottom"`，`aria-label` 为「…说明」）；行内 `Description` 只保留动作前必读的一句。
-
-  - 生成 / 重置成功后弹「保存你的徽章令牌」`Modal`（`size="lg"`）：`Alert status="warning"` 写明
-    只显示这一次；只读令牌框 + 图标复制按钮；下方是已填好真实令牌的同款片段区。该弹窗
-    `isDismissable={false}` + `isKeyboardDismissDisabled`，只能点「我已保存」关闭。
-  - 复制统一 `navigator.clipboard.writeText`，成功 `toast.success`（占位片段改用替换提醒文案），
-    失败普通 `toast` 提示手动选择。
 - 偏好分区由「外观」与「数据刷新」两张 `Card` 组成；外观卡逐行 label + control + `Description`
   （语言 / 货币 / 日期下拉 `variant="secondary"`，货币选项为本地化名称 + 窄符号，如
   `人民币(￥)`）；分区内 `ToggleButtonGroup` 统一 `size="sm"`；`Select` 无 size 属性，用默认尺寸：
@@ -549,11 +529,55 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
   （`isPending` 时图标位换 `Spinner`）。探针注册表在 `components/settings/diagnostics.ts`，
   runner 在 `use-diagnostics.ts`，文案在 `lib/copy/diagnostics.ts`。
 - 深链筛选与回跳：首帧从 `?section=` 读取并**筛选**取值，只接受 `appearance` / `account` /
-  `devices`，缺失或非法值一律回落 `account` 并用 `replaceState` 回写规范 URL（与 `popstate`
-  同步，Tab 切换不新增 history 记录）。密码重置邮件回跳
+  `devices` / `badges`，缺失或非法值一律回落 `account` 并用 `replaceState` 回写规范 URL（与
+  `popstate` 同步，Tab 切换不新增 history 记录）。密码重置邮件回跳
   `/auth/callback?next=/settings`，最终落在 `/settings`（不带 `?section=`），按缺省回落
   `account`，用户直接在账户分区的密码卡设新密码——该回跳不得被地址栏残留的 `?section=` 截到
   别的分区，也不得丢失原路径与查询参数。
+
+### 设置 · 公开徽章（`/settings?section=badges`）
+
+规范化契约见 `docs/badge.md` §7。`badge-card.tsx` 是状态编排器（自取数 `/api/app/badge`，
+cookie 会话；Loading 骨架 / Error 走共享 `SectionError` 重试），其下三张卡纯展示：
+
+1. **账户设置卡**（`badge-settings-card.tsx`）——短控件用 `Row`（label + `Description` 左、
+   控件右），名称与白名单用卡内 `Block`（label + 说明在上、全宽内容在下）：
+
+   | 行 | 控件 | 选项 / 行为 |
+   |---|---|---|
+   | 公开展示 | `Switch`（拇指 Check / Xmark） | 没有徽章时禁用并提示先新增；切换即 `PUT {enabled, timezone}` |
+   | 公开名称 | `TextField` +「保存名称」 | 与个人信息名称解耦，清空保存后显示通用「AI Coding Usage」；有改动才可保存；行说明只留「留空显示 AI Coding Usage」，「与个人信息名独立 / 最多 80 字符」收进 ⓘ Tooltip |
+   | 仓库白名单 | 多选 `Select` +「保存白名单」 | 选项 = `knownProjects` ∪ 已在白名单的项；有改动才可保存，>32 项禁用；行说明只留「最多 32 个」，三项口径缺口（账户级来源不计、无项目名会话不计、同名合并）与「活跃天数按 {时区} 折算」收进 ⓘ Tooltip |
+
+2. **徽章列表卡**（`badge-links-card.tsx`）——头部标题 + 说明在左，「新增徽章」（`Plus`
+   图标）在右，到 10 枚禁用并在卡底给出上限说明；空态一行居中 muted 文案。每行
+   `badge-link-row.tsx`：可点击文本块（备注名 /「未命名徽章」+ 末四位 `Chip` + 生效或已吊销
+   `Chip` + 一行摘要「风格 · 主题 · 范围 · 仓库」，选中行底色 `bg-surface-secondary`）+ 右侧
+   三枚图标按钮（`Button isIconOnly size="sm"` + 底部带箭头 `Tooltip`，文案即动作名）：
+   - 复制链接（`Copy`）：写完整 `/api/badge?token=…`，成功 `toast.success`。
+   - 吊销 / 恢复（`Ban` / `ArrowRotateLeft`）：吊销**无**二次确认（可逆），恢复即同一链接；
+     行内 `Chip` 从生效（success soft）切到已吊销（warning soft）。
+   - 删除（`TrashBin`，`variant="danger-soft"`）：`AlertDialog status="danger"` 二次确认，
+     正文写明不可恢复；成功后选中项落到剩余第一枚。
+
+3. **选中徽章卡**（`badge-detail-card.tsx`）——头部徽章名 + 末四位 + 状态 Chip；无选中时
+   显示空态文案。内容自上而下：
+   - 备注名：`TextField` +「保存」，有改动才可保存。
+   - 展示参数：风格 / 主题 / 范围三组 `ToggleButtonGroup size="sm"`，仓库单选 `Select`
+     （`Select.ClearButton` 回到账户徽章）；**改动即时 PATCH**，失败 `toast` 并由服务端返回值
+     回写，无乐观回滚；白名单为空时仓库置灰并提示。
+   - 预览：`<img>` 走会话鉴权预览（携带该行已保存的参数 + `v` 版本号），换参到新图解码完成
+     之间盖 `PanelOverlay`（容器 `aria-busy`），不闪上一张图；宽面板在卡内横向滚动，不外溢
+     页面。
+   - README 片段：`ToggleButtonGroup`（单主题 / 跟随 GitHub 明暗）+ 只读 `TextArea` + 复制；
+     片段**只带令牌**（双主题额外带 `theme`），说明写明「设置页改风格 / 主题 / 范围 / 仓库会
+     即时作用于已嵌入徽章，README 不用改」。
+
+- 次要说明统一收进 label 旁 `BadgeHint`（`CircleInfo` 图标按钮）+ `Tooltip`（`delay={0}` +
+  `showArrow` + `placement="bottom"`，`aria-label` 为「…说明」）；行内 `Description` 只保留
+  动作前必读的一句。
+- 复制统一 `navigator.clipboard.writeText`，成功 `toast.success`，失败普通 `toast` 提示手动
+  选择。
 
 ### 登录页（`/login`）
 

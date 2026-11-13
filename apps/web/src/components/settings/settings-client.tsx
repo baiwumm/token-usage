@@ -13,7 +13,7 @@
 
 import type { LoadStatus } from "@/lib/loadable";
 
-import { Display, Palette, Person } from "@gravity-ui/icons";
+import { Display, Palette, Person, Star } from "@gravity-ui/icons";
 import { Tabs, toast } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -51,7 +51,12 @@ import {
   type AccountDeviceRow,
 } from "@/lib/dashboard/api";
 
-const SETTINGS_SECTIONS = ["account", "appearance", "devices"] as const;
+const SETTINGS_SECTIONS = [
+  "account",
+  "appearance",
+  "devices",
+  "badges",
+] as const;
 
 type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
@@ -322,6 +327,13 @@ export function SettingsClient() {
               </span>
               <Tabs.Indicator />
             </Tabs.Tab>
+            <Tabs.Tab id="badges">
+              <span className="flex items-center gap-1.5">
+                <Star aria-hidden="true" className="size-4" />
+                {copy.sectionBadges}
+              </span>
+              <Tabs.Indicator />
+            </Tabs.Tab>
           </Tabs.List>
         </Tabs.ListContainer>
       </Tabs>
@@ -332,7 +344,6 @@ export function SettingsClient() {
           <AvatarCard />
           <BudgetCard />
           <PasswordCard />
-          <BadgeCard />
         </div>
       ) : null}
       {section === "appearance" ? (
@@ -357,6 +368,12 @@ export function SettingsClient() {
             onRevoke={openRevoke}
           />
           <DiagnosticsCard accessToken={accessToken} />
+        </div>
+      ) : null}
+
+      {section === "badges" ? (
+        <div className="flex flex-col gap-4">
+          <BadgeCard />
         </div>
       ) : null}
 

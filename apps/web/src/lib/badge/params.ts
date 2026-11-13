@@ -1,7 +1,13 @@
 // URL parameter layer for GET /api/badge (docs/badge.md §2.1). Pure parsing:
-// the token's validity is the data layer's hash lookup, and project_key
-// normalization lives there too (§2.1) — this layer only validates shape and
-// applies the documented defaults.
+// the token's validity is the data layer's lookup, and project_key
+// normalization lives there too (§2.1) — this layer only validates shape.
+//
+// 2026-11-13 (multi-badge model): the parameters are now *overrides*. Every
+// badge row stores its own style/theme/range/project defaults, so an absent
+// query parameter means "use the row's value". `null` here distinguishes
+// "absent" from "present but invalid". The retired `scope` parameter is
+// rejected outright: its links died with the token reset, and `project` alone
+// has selected the repo badge since 2026-11-04.
 
 import type { BadgeRange, BadgeStyle, BadgeTheme } from "./types";
 
@@ -9,40 +15,35 @@ export type ParsedBadgeParams =
   | {
       ok: true;
       token: string;
-      scope: "user" | "repo";
+      /** Raw project key, normalized in the data layer (§4.2). */
       project: string | null;
-      style: BadgeStyle;
-      theme: BadgeTheme;
-      range: BadgeRange;
+      /** `null` = fall back to the badge row's stored default. */
+      style: BadgeStyle | null;
+      theme: BadgeTheme | null;
+      range: BadgeRange | null;
     }
   | { ok: false; reason: "bad_request" };
 
-const SCOPES = ["user", "repo"] as const;
 const STYLES: readonly BadgeStyle[] = ["panel", "compact", "sparkline"];
 const THEMES: readonly BadgeTheme[] = ["dark", "light", "auto"];
 const RANGES: readonly BadgeRange[] = ["all", "30d"];
 const MAX_PROJECT_LENGTH = 120;
 
-// Absent → documented default; present but outside the set → invalid (null),
-// which §2.3 classifies as bad_request.
+// Absent → null (fall back to the badge row's stored default); present but
+// outside the set → also null, which `parseBadgeParams` classifies as
+// bad_request by checking `has()` together with the value.
 function pick<T extends string>(
   search: URLSearchParams,
   key: string,
   allowed: readonly T[],
-  fallback: T,
 ): T | null {
-  const value = search.get(key);
+  if (!search.has(key)) return null;
 
-  if (value == null) return fallback;
+  const value = search.get(key) ?? "";
 
   return (allowed as readonly string[]).includes(value) ? (value as T) : null;
 }
 
-// §2.1 (2026-11-04 operator call): `project` is the switch — present renders
-// the repo badge, absent renders the account badge. The old `scope` parameter
-// is still accepted (existing README embeds) but no longer decides anything;
-// its value stays validated, and `scope=repo` without a project is still an
-// error so a stale link can never quietly turn into an account badge.
 /** Issued tokens are `tu_badge_` + base64url(24 bytes), i.e. 41 chars. */
 const MAX_TOKEN_LENGTH = 128;
 const TOKEN_CHARS = /^[A-Za-z0-9_-]+$/;
@@ -50,7 +51,7 @@ const TOKEN_CHARS = /^[A-Za-z0-9_-]+$/;
 /**
  * Shape check shared by §2.1 and the §2.4 snapshot endpoint. Both are public
  * and unauthenticated, so junk / oversized tokens are rejected here before
- * they are hashed and sent to the database.
+ * they reach the database.
  */
 export function isValidBadgeToken(token: string): boolean {
   return (
@@ -62,41 +63,35 @@ export function isValidBadgeToken(token: string): boolean {
 
 export function parseBadgeParams(search: URLSearchParams): ParsedBadgeParams {
   const token = (search.get("token") ?? "").trim();
-  const tokenValid = isValidBadgeToken(token);
-  const style = pick(search, "style", STYLES, "panel");
-  const theme = pick(search, "theme", THEMES, "dark");
-  const range = pick(search, "range", RANGES, "all");
-  const scopeRaw = search.get("scope");
-  const scopeValid =
-    scopeRaw === null || (SCOPES as readonly string[]).includes(scopeRaw);
+  const style = pick(search, "style", STYLES);
+  const theme = pick(search, "theme", THEMES);
+  const range = pick(search, "range", RANGES);
 
-  if (!tokenValid || !style || !theme || !range || !scopeValid) {
+  if (
+    !isValidBadgeToken(token) ||
+    (style === null && search.has("style")) ||
+    (theme === null && search.has("theme")) ||
+    (range === null && search.has("range")) ||
+    // Retired 2026-11-13: an old embed carrying `scope` is as dead as its
+    // token, and silently ignoring it would hide a broken link.
+    search.has("scope")
+  ) {
     return { ok: false, reason: "bad_request" };
   }
 
-  const project = search.get("project") ?? "";
-  const trimmed = project.trim();
+  const project = (search.get("project") ?? "").trim();
 
-  if (trimmed) {
-    // §2.1: ≤120 字符；通过后原样透传，归一在数据层（§4.2）。
-    if (trimmed.length > MAX_PROJECT_LENGTH) {
-      return { ok: false, reason: "bad_request" };
-    }
-
-    return {
-      ok: true,
-      token,
-      scope: "repo",
-      project,
-      style,
-      theme,
-      range,
-    };
-  }
-
-  if (scopeRaw === "repo") {
+  if (project.length > MAX_PROJECT_LENGTH) {
     return { ok: false, reason: "bad_request" };
   }
 
-  return { ok: true, token, scope: "user", project: null, style, theme, range };
+  return {
+    ok: true,
+    token,
+    // Normalization happens on both sides of the comparison in the data layer.
+    project: project || null,
+    style,
+    theme,
+    range,
+  };
 }

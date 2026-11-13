@@ -40,7 +40,7 @@ npx supabase db push
 
 **方式 B：SQL Editor 手动执行**
 
-在 SQL Editor 按文件名顺序逐个粘贴执行（共 14 个）：
+在 SQL Editor 按文件名顺序逐个粘贴执行（共 16 个）：
 
 | 迁移 | 作用 |
 | --- | --- |
@@ -53,16 +53,23 @@ npx supabase db push
 | `20261031000000_token_usage_credits.sql` | 小时桶 `credits` 列（缺列时新版 CLI ingest 整批报错） |
 | `20261031000001_token_sync_runs_credits.sql` | 采集记录 `credits_ingested` 遥测 |
 | `20261031000003_token_sessions_credits.sql` | 会话级 `credits` 列与 upsert RPC |
-| `20261101000000_token_public_badges.sql` | 公开徽章表 |
+| `20261101000000_token_public_badges.sql` | 公开徽章表（旧单令牌模型，随后被 2026-11-13 迁移 drop） |
 | `20261103000000_token_hourly_project_key.sql` | 契约 v2 桶级 `project_key`（upsert 键的一部分） |
 | `20261104000000_token_hourly_cost_usd_comment.sql` | `total_cost_usd` 列注释（纯注释） |
-| `20261105000000_token_public_badges_sections.sql` | 徽章分区字段 |
+| `20261105000000_token_public_badges_sections.sql` | 旧徽章分区字段（随旧表一并 drop） |
 | `20261106000000_token_project_repos_profiles.sql` | 项目仓库表与项目资料（缺省时 Projects 的仓库链接/Profiles／桌面端项目 logo 不可用） |
+| `20261113000000_token_public_badges_reset.sql` | 删除旧单令牌徽章表（**不可重放**；旧徽章链接全部作废） |
+| `20261113000001_token_public_badge_rows.sql` | 新徽章模型两表：账户设置 + 每枚徽章 |
 
 **完成条件**：Table Editor 里出现 `token_devices`、`token_device_tokens`、`token_device_codes`、
 `token_usage_hourly`、`token_account_session_states`、`token_sessions`、`token_sync_runs`、
-`token_achievement_seen`、`token_public_badges`、`token_project_repos`、`token_project_profiles`，
+`token_achievement_seen`、`token_public_badge_settings`、`token_public_badges`、
+`token_project_repos`、`token_project_profiles`，
 且**没有任何 policy**——RLS 全拒（客户端零直连）是本项目的安全姿态，数据只经应用服务端读写。
+
+> **升级提示（2026-11-13 徽章模型重置）**：`20261113000000` 会 drop 旧徽章表，历史令牌全部
+> 作废。升级后需在 `/settings?section=badges` 重新新增徽章、把新的 `api/badge?token=…` 链接
+> 填回 README / 个人主页，并重建 `apps/landing`（构建期快照用新令牌拉取）。
 
 ## 3. 配置 Supabase Auth
 

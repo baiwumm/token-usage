@@ -114,14 +114,19 @@ function defaultTables(): Record<string, TableDef> {
       generate: ["created_at", "updated_at"],
       unique: [{ name: "token_achievement_seen_pkey", columns: ["user_id"] }],
     },
-    token_public_badges: {
+    token_public_badge_settings: {
       rows: [],
       generate: ["created_at", "updated_at"],
+      unique: [{ name: "token_public_badge_settings_pkey", columns: ["user_id"] }],
+    },
+    // Public badge model v2 (2026-11-13): one row per badge, token stored in
+    // plaintext, display defaults on the row, revocation as a timestamp.
+    token_public_badges: {
+      rows: [],
+      generate: ["id", "created_at", "updated_at"],
       unique: [
-        { name: "token_public_badges_pkey", columns: ["user_id"] },
-        // PG unique ignores NULLs — mirror that so a revoked (null hash) row
-        // never blocks another row's hash.
-        { name: "token_public_badges_token_hash_key", columns: ["token_hash"], partial: (r) => r.token_hash != null },
+        { name: "token_public_badges_pkey", columns: ["id"] },
+        { name: "token_public_badges_token_key", columns: ["token"] },
       ],
     },
     token_allowed_emails: { rows: [], generate: ["created_at"], unique: [{ name: "token_allowed_emails_email_key", columns: ["email"] }] },

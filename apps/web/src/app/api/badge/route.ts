@@ -1,8 +1,12 @@
 // Public badge endpoint (docs/badge.md §2): query-parameter driven SVG for
 // READMEs and profile pages. Service-role reads only (zero browser Supabase);
-// the token is matched by its SHA-256 hash and never echoed back. Business
-// failures degrade to the fixed fallback card with no-store, so an embedded
-// badge never renders as a broken image (§2.3).
+// the token is a plaintext public identifier (2026-11-13) and is never echoed
+// back. Business failures degrade to the fixed fallback card with no-store, so
+// an embedded badge never renders as a broken image (§2.3).
+//
+// Query parameters are overrides: an absent style/theme/range/project falls
+// back to the badge row's stored defaults, which is what lets the operator
+// restyle a badge without touching the README.
 
 import { NextResponse } from "next/server";
 
@@ -51,13 +55,15 @@ export async function GET(request: Request) {
 
     if (!owner) return fallback("badge unavailable");
 
+    // §2.1: query override > row default > renderer default.
+    const requested = params.project ?? owner.badge.project;
     let project: string | null = null;
 
     // §4.2 allowlist before the enabled flag (golden-pinned precedence): a
     // non-allowlisted repo reads "unknown project" whether or not the badge
     // is currently disabled. Exact match after normalization on both sides.
-    if (params.scope === "repo") {
-      project = normalizeBadgeProject(params.project);
+    if (requested) {
+      project = normalizeBadgeProject(requested);
       if (!project || !owner.allowedProjects.includes(project)) {
         return fallback("unknown project");
       }
@@ -68,13 +74,16 @@ export async function GET(request: Request) {
     const data = await loadBadgeData(
       owner.userId,
       { displayName: owner.displayName, timezone: owner.timezone },
-      params.scope,
+      project ? "repo" : "user",
       project,
-      params.range,
+      params.range ?? owner.badge.range,
     );
 
     return svgResponse(
-      renderBadgeSvg(data, { style: params.style, theme: params.theme }),
+      renderBadgeSvg(data, {
+        style: params.style ?? owner.badge.style,
+        theme: params.theme ?? owner.badge.theme,
+      }),
       SVG_SUCCESS_CACHE,
     );
   } catch (error) {

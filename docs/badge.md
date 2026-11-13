@@ -1,21 +1,23 @@
 # 公开徽章与公开页
 
 本文件是公开徽章 `GET /api/badge`、聚合快照 `GET /api/badge/data`（§2.4）、配置端点
-`GET/POST/PUT/DELETE /api/app/badge` 与公开页 `/u/<token>` 的唯一规范。四者都**不属于** CLI
-契约层（`docs/cli-contract.md` 不约束），但变更顺序同契约层：先改本文档与 golden 测试 → 操作者
-确认 → 再改实现。页面视觉见 `docs/ui-spec.md` 公开页节；分轮裁定与实施记录见
+`GET/POST/PUT /api/app/badge` + `PATCH/DELETE /api/app/badge/links/<id>` 与公开页
+`/u/<token>` 的唯一规范。它们都**不属于** CLI 契约层（`docs/cli-contract.md` 不约束），但变更
+顺序同契约层：先改本文档与 golden 测试 → 操作者确认 → 再改实现。页面视觉见
+`docs/ui-spec.md` 公开页与「设置 · 公开徽章」节；分轮裁定与实施记录见
 `docs/archive/badge-2026-11.md`。
 
 **现行口径要点**：
 
 1. 徽章第三列是**活跃天数**（自托管无排行榜语义）。
-2. 凭证是**每用户随机公开徽章令牌**，可生成 / 重置 / 吊销，不暴露 user_id。
-3. 仓库名属敏感面：`scope=repo` 徽章走**仓库白名单**（§3.3）。
+2. 凭证是**每用户最多 10 枚随机公开徽章令牌**（一行一枚，令牌即行 ID），可新增 / 吊销 / 恢复 /
+   删除；令牌**明文存库**，本人设置页任何时候都能看到完整链接（§3.2）。
+3. 仓库名属敏感面：带 `project` 的徽章走**仓库白名单**（§3.3）。
 4. 公开页 `/u/<token>` 固定展示：Hero（头像 + 显示名）、总数据口径（§4.7）、近一年热力图
    （与仪表盘同款、无筛选无下钻）、全部已解锁成就（复用 `AchievementDialog`，隐藏分享入口）、
    页脚隐私声明；**无仓库模块**，无时间范围切换。
-5. 隐私：公开聚合用量、近一年逐日用量（含 tooltip 来源明细）与已解锁成就详情；永不包含会话
-   明细、提示词、正文、绝对路径、email、user_id、设备标识、原始令牌或哈希。
+5. 隐私：公开聚合用量、近一年逐日用量（含 tooltip 来源明细）与已解锁成就详情；公开响应永不
+   包含会话明细、提示词、正文、绝对路径、email、user_id、设备标识、令牌本身。
 6. Token 数值随访客偏好（`useFormat().formatTokens`），成本与占比固定 USD 口径（§4.5）。
 
 ## §1 定位与隐私立场
@@ -27,11 +29,12 @@
 | SVG 徽章 | `GET /api/badge`，嵌 README / 个人主页 | 公开 |
 | 公开页 | `/u/<token>`（徽章点击落地） | 公开 |
 | 聚合快照 JSON | `GET /api/badge/data`（静态营销站构建期拉取，§2.4） | 公开（同一令牌） |
-| 配置面 | Settings 页 `badge-card` + `/api/app/badge` | 登录用户本人 |
+| 配置面 | Settings 页「公开徽章」tab `badge-card` + `/api/app/badge`（含 `/links/<id>`） | 登录用户本人 |
 
-隐私立场（与 `token_sessions` 表注释同源）：**只出聚合数字**。任何响应（SVG、HTML、
-JSON）永不包含 session 明细、提示词、正文、绝对路径、email、user_id、原始令牌或
-令牌哈希。仓库名（project_key）属敏感面，默认不公开，白名单逐个开启（§3.3）。
+隐私立场（与 `token_sessions` 表注释同源）：**只出聚合数字**。任何**公开**响应（SVG、
+HTML、JSON）永不包含 session 明细、提示词、正文、绝对路径、email、user_id、令牌本身。
+令牌只由会话鉴权的配置端点回给本人（§7.1）；数据库明文保存是 2026-11-13 的操作者决定
+（§3.2）。仓库名（project_key）属敏感面，默认不公开，白名单逐个开启（§3.3）。
 
 分级补充（2026-11-05 操作者放行，公开页改版）：
 
@@ -39,7 +42,7 @@ JSON）永不包含 session 明细、提示词、正文、绝对路径、email�
 - `/u/<token>` **始终展示**（无开关）：聚合汇总数字之外，额外公开 ① 近一年逐日聚合用量
   （含 tooltip 里的按来源构成）、② 已解锁成就的完整详情（当前值、阈值与达成日）。
 - 公开页仍**永不包含**：会话明细、提示词、正文、绝对路径、email、user_id、设备标识、
-  原始令牌 / 哈希，以及上段列出的全部敏感项（§3.5 的两个开关已移除）。
+  令牌本身，以及上段列出的全部敏感项（§3.5 描述的两个历史开关已随表重建消失）。
 - 页面页脚隐私声明按上述口径固定表述（§6）。
 
 ## §2 徽章端点 GET /api/badge
@@ -49,14 +52,19 @@ JSON）永不包含 session 明细、提示词、正文、绝对路径、email�
 
 ### §2.1 参数
 
-| 参数 | 必填 | 取值 | 默认 | 说明 |
+| 参数 | 必填 | 取值 | 缺省 | 说明 |
 |---|---|---|---|---|
-| `token` | 是 | 非空字符串 | — | 公开徽章令牌（§3.2）；只校验非空，格式与有效性交给哈希查库 |
-| `project` | 否 | 白名单内 project_key（URL 编码） | — | 长度 1–120；**有则渲染仓库徽章，无则渲染账户徽章**（2026-11-04 操作者裁定：project 即开关）；解析层不归一，归一在数据层（§4.2） |
-| `scope` | 否 | `user` \| `repo` | — | **遗留参数**（2026-11-04 起不再决定对象，仅为兼容既有嵌入保留）：值仍校验；`scope=repo` 而缺 `project` 仍按 bad request，避免旧链接静默变成账户徽章；`scope=user&project=…` 以 project 为准 |
-| `style` | 否 | `panel` \| `compact` \| `sparkline` | `panel` | |
-| `theme` | 否 | `dark` \| `light` \| `auto` | `dark` | |
-| `range` | 否 | `all` \| `30d` | `all` | |
+| `token` | 是 | `tu_badge_` + 32 字符 base64url | — | 公开徽章令牌（§3.2）；只校验长度（≤128）与字符集，有效性交给明文等值查行 |
+| `project` | 否 | 白名单内 project_key（URL 编码） | 行内 `project`（`null` = 账户徽章） | 长度 1–120；**有则渲染仓库徽章，无则渲染账户徽章**（2026-11-04 操作者裁定：project 即开关）；解析层不归一，归一在数据层（§4.2） |
+| `style` | 否 | `panel` \| `compact` \| `sparkline` | 行内 `style`（默认 `panel`） | |
+| `theme` | 否 | `dark` \| `light` \| `auto` | 行内 `theme`（默认 `auto`） | |
+| `range` | 否 | `all` \| `30d` | 行内 `range`（默认 `all`） | |
+
+取值优先级：**查询串 > 徽章行内值 > 内置默认**（2026-11-13）。README 片段只带 `token`，
+操作者在设置页改风格 / 主题 / 范围 / 仓库即时作用于已嵌入的徽章，无需改 README（§7.4）。
+
+`scope` 已于 2026-11-13 退役：出现即 `bad request`（旧嵌入与旧令牌一同作废；静默忽略会
+把一条坏链接伪装成正常徽章）。
 
 ### §2.2 响应
 
@@ -72,12 +80,15 @@ JSON）永不包含 session 明细、提示词、正文、绝对路径、email�
 
 | 情形 | 兜底卡文案 |
 |---|---|
-| 令牌查无 / 哈希不匹配 | `badge unavailable` |
+| 令牌查无 / 已吊销（`revoked_at` 非空） | `badge unavailable` |
+| `project`（查询串或行内值）不在 `allowed_projects` | `unknown project` |
 | `enabled=false` | `badge disabled` |
-| `scope=repo` 且 project 不在 `allowed_projects` | `unknown project` |
-| 参数非法（未知 style/theme/range/scope、`project` 超 120 字符、token 缺失、遗留 `scope=repo` 缺 `project`） | `bad request` |
+| 参数非法（未知 style/theme/range、`project` 超 120 字符、token 缺失或格式非法、出现 `scope`） | `bad request` |
 
-注意：`scope=repo` 且白名单命中但该仓库暂无会话**不是降级**——正常渲染，计数为 0
+判定顺序固定：参数 → 令牌 → 白名单 → 总开关。吊销与查无表现完全一致（不暴露存在性），
+且被吊销或禁用时不泄露行内配置。
+
+注意：`project` 白名单命中但该仓库暂无会话**不是降级**——正常渲染，计数为 0
 （见附录 A fixture B）。
 
 ## §2.4 聚合快照 JSON `GET /api/badge/data`
@@ -92,9 +103,10 @@ JSON）永不包含 session 明细、提示词、正文、绝对路径、email�
 
 | 参数 | 必填 | 取值 | 说明 |
 |---|---|---|---|
-| `token` | 是 | 非空字符串 | 校验规则同 §2.1（≤128 字符、`[A-Za-z0-9_-]`），有效性同样交给哈希查库 |
+| `token` | 是 | 非空字符串 | 校验规则同 §2.1（≤128 字符、`[A-Za-z0-9_-]`），有效性同样交给明文查行 |
 
-不接受 `project` / `style` / `theme` / `range`：本端点只出**账户级**快照。
+不接受 `project` / `style` / `theme` / `range`：本端点只出**账户级**快照，也不读取徽章行内的
+`project`。
 
 ### §2.4.2 响应
 
@@ -145,7 +157,7 @@ JSON）永不包含 session 明细、提示词、正文、绝对路径、email�
 | 情形 | 状态 | 响应体 |
 |---|---|---|
 | 缺 `token` / 格式非法 | `400` | `{"error":"bad request"}` |
-| 令牌查无 / 哈希不匹配 / `enabled=false` | `404` | `{"error":"badge unavailable"}` |
+| 令牌查无 / 已吊销 / `enabled=false` | `404` | `{"error":"badge unavailable"}` |
 | `POST`/`PUT`/`DELETE` | `405` | `{"error":"Method not allowed"}` |
 | 未预期异常 | `500` | `{"error":"Internal Server Error"}` |
 
@@ -156,18 +168,23 @@ JSON）永不包含 session 明细、提示词、正文、绝对路径、email�
 ### §2.4.4 隐私
 
 只含 §1 的聚合口径：总量、来源 / 模型各前 5、近 52 周逐日用量等级、近 30 日序列。
-**不含**头像（`data:` URI 只在 SVG 与 `/u` 页面内联）、email、user_id、原始令牌、
-令牌哈希、会话明细、project_key。
+**不含**头像（`data:` URI 只在 SVG 与 `/u` 页面内联）、email、user_id、令牌本身、
+会话明细、project_key。
 
 ## §3 令牌与配置存储
 
-### §3.1 迁移 `supabase/migrations/20261101000000_token_public_badges.sql`
+### §3.1 迁移 `20261113000000_token_public_badges_reset.sql` + `20261113000001_token_public_badge_rows.sql`
+
+2026-11-13 操作者拍板：**不做数据迁移**，旧表一次性 drop（历史令牌全部作废，当时用量极少），
+再按新模型重建两张表：
 
 ```sql
-create table if not exists public.token_public_badges (
+-- 20261113000000_token_public_badges_reset.sql（不可重放）
+drop table if exists public.token_public_badges;
+
+-- 20261113000001_token_public_badge_rows.sql（幂等）
+create table if not exists public.token_public_badge_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  token_hash text unique check (token_hash is null or char_length(token_hash) = 64),
-  token_last4 text check (token_last4 is null or char_length(token_last4) = 4),
   enabled boolean not null default false,
   display_name text not null default '' check (char_length(display_name) <= 80),
   timezone text not null default 'UTC' check (char_length(timezone) between 1 and 64),
@@ -177,30 +194,54 @@ create table if not exists public.token_public_badges (
   check (jsonb_typeof(allowed_projects) = 'array'
          and jsonb_array_length(allowed_projects) <= 32)
 );
+
+create table if not exists public.token_public_badges (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  token text not null unique
+    check (token ~ '^tu_badge_[A-Za-z0-9_-]{32}$'),
+  label text not null default '' check (char_length(label) <= 40),
+  style text not null default 'panel'
+    check (style in ('panel', 'compact', 'sparkline')),
+  theme text not null default 'auto'
+    check (theme in ('dark', 'light', 'auto')),
+  range text not null default 'all'
+    check (range in ('all', '30d')),
+  project text check (project is null or char_length(project) between 1 and 120),
+  created_at timestamptz not null default clock_timestamp(),
+  updated_at timestamptz not null default clock_timestamp(),
+  revoked_at timestamptz
+);
+
+create index if not exists token_public_badges_user_idx
+  on public.token_public_badges (user_id, created_at);
 ```
 
-- RLS enabled 零 policy + 仅 `service_role`（与 `token_*` 表同姿态，浏览器零直连）
-- `token_hash` 可空：`null` = 未生成；PG unique 允许多个 NULL
-- `token_last4` 是生成时落库的明文末 4 位，仅供 §7.1 GET 的 `tokenLast4` 展示；
-  sha256 不可逆、末 4 位无法从哈希还原，必须随生成持久化（2026-11-02 P2 实施修订，
-  由 contract golden 钉定）
-- `display_name` 初始为**会话快照**（§7.1 generate 写入），公开渲染不回查 auth，也绝不
-  回退到 email；2026-11-09 起可经 §7.1 `PUT {displayName}` 单独改写（含清空，空串由渲染
-  器回退 `AI Coding Usage`），令牌不动
-- `allowed_projects` 元素级校验（每项 ≤120 字符、过 `normalizeProjectKey`）在应用层
-  完成（PG CHECK 不能含子查询）
+- 两表 RLS enabled 零 policy + 仅 `service_role`（与 `token_*` 表同姿态，浏览器零直连）
+- **账户级 vs 每枚**：`enabled`（总开关）、`display_name`（公开名）、`timezone`（活跃天口径）、
+  `allowed_projects`（暴露边界）在 settings 行——一处收紧全局生效；`label`、
+  `style`/`theme`/`range`/`project`、`revoked_at`、`created_at` 在每枚徽章行
+- 新增首枚徽章时若 settings 行不存在则创建：`enabled=true`、`display_name` 快照会话
+  `user_metadata.display_name`（缺省空串）、`timezone` 取请求值、`allowed_projects=[]`。
+  已有行时只在 `enabled=false` 时打开。公开渲染不回查 auth；空串由渲染器回退
+  `AI Coding Usage`，可经 §7.1 `PUT {displayName}` 单独改写
+- `allowed_projects` 元素级校验（每项 ≤120 字符、过 `normalizeProjectKey`）在应用层完成
+  （PG CHECK 不能含子查询）
 
-### §3.2 令牌
+### §3.2 令牌、吊销与删除
 
-- 格式：`tu_badge_` + 32 字符 base64url（24 字节 CSPRNG）；前缀便于密钥扫描
-- 服务端只存 `sha256(token)` hex（64 位小写）+ 明文末 4 位（`token_last4`，§3.1）；
-  明文只在生成响应里出现一次，之后不可再取
-- 重置 = 覆盖 `token_hash`（旧令牌即刻失效，相当于轮换；公开端呈现 `badge unavailable`）
-- 吊销（§7.1 DELETE）= `enabled=false`，哈希与末 4 位保留——公开端按 §2.3 呈现
-  `badge disabled`，重新启用无需重发令牌（2026-11-02 P2 实施修订：golden 的 DELETE
-  用例要求吊销后仍渲染 `badge disabled`，哈希置空将呈现 `badge unavailable`，与断言冲突）
-- 令牌出现在 URL 查询里 → 会进各级访问日志：这是公开徽章的设计前提（令牌只控制
-  聚合数字的公开），泄露面 = 重置即换锁
+- 格式：`tu_badge_` + 32 字符 base64url（24 字节 CSPRNG）；前缀便于密钥扫描，PG CHECK 兜底
+- **明文存库，令牌即行 ID**（2026-11-13 操作者决定）：令牌本来就是印在 README 里的公开
+  标识，哈希只带来「自己也看不到自己的链接」；数据库已持有徽章渲染所需的全部聚合，明文
+  不扩大泄露面。公开端点仍从不回显令牌（§1），只有会话鉴权的 §7.1 返回
+- **新增**（`POST /api/app/badge`）：插入一行并生成新令牌；已有徽章的令牌与链接完全不受
+  影响；上限 10 枚（含已吊销行）
+- **吊销**（`PATCH {revoked:true}`）：写 `revoked_at`；公开端与「查无」表现完全一致
+  （`badge unavailable`，§2.3），行与令牌保留，不暴露曾经存在
+- **恢复**（`PATCH {revoked:false}`）：清空 `revoked_at`，恢复的是**同一个链接**，令牌不轮换
+- **删除**（`DELETE /links/<id>`）：物理删行、不可恢复；此后访问呈现 `badge unavailable`
+- 令牌出现在 URL 查询里 → 会进各级访问日志：这是公开徽章的设计前提（令牌只控制聚合数字的
+  公开）。泄露处置 = 吊销该枚（之后可恢复）或删除后新建；**不再有「重置换锁」**
 
 ### §3.3 allowed_projects
 
@@ -212,26 +253,16 @@ create table if not exists public.token_public_badges (
 - IANA 名称；Settings 保存时由浏览器提供并按 `parseTzContext` 约定归一
   （`lib/account/series.ts`，非法回退 UTC）；活跃天数按此时区折算（§4.3）
 
-### §3.5 公开增强模块开关（**已废弃**；DB 列保留但代码不再读写）
+### §3.5 公开增强模块开关（**已移除**；2026-11-13 随表重建消失）
 
-新迁移（P9 创建；文件名以落地时复核 `supabase/migrations` 最新序号为准，本节以
-`20261105000000_token_public_badges_sections.sql` 示意）只做增量，不重建表：
-
-```sql
-alter table public.token_public_badges
-  add column if not exists show_heatmap boolean not null default false,
-  add column if not exists show_achievements boolean not null default false;
-```
-
-- 两列曾用于控制公开页是否渲染全历史热力图与已解锁成就墙（默认 `false`、无回填、
-  无新表、无新 policy，RLS 零 policy + 仅 `service_role` 姿态不变）。
-- 两个开关已**整体移除**：配置端点不再暴露 `showHeatmap` /
-  `showAchievements`，代码也不再读写这两列（避免不可逆 DDL，列与迁移保留）；公开页的热力图
-  与成就**始终计算并展示**，无开关、无「关了就不算不传」的分支。
+历史上 `token_public_badges` 曾有 `show_heatmap` / `show_achievements` 两列，控制公开页是否
+渲染全历史热力图与已解锁成就墙。两个开关早已从配置端点与 UI 移除（公开页始终计算并展示，
+无「关了就不算不传」的分支）；本次重建没有保留这两列，新迁移里不再出现它们，旧迁移只作为
+历史事实留在 `supabase/migrations`。
 
 ## §4 数据与口径
 
-### §4.1 account 徽章（scope=user）
+### §4.1 account 徽章（不带 `project`）
 
 - 与仪表盘同口径（2026-11-02 P3 实测修订，操作者裁定）：数据取账户快照的
   `canonicalRows`（仅活跃设备、Cursor 跨设备去重、Trae CN 取会话态），tokens 汇总
@@ -242,7 +273,7 @@ alter table public.token_public_badges
 - TOP 模型：按 `model` 聚合降序 ≤5（公开页展示，徽章不展示）
 - **复用** `lib/api/account-data.ts` 的快照单飞加载，不新增第二条全量拉取路径
 
-### §4.2 repo 徽章（scope=repo）
+### §4.2 repo 徽章（带 `project`）
 
 - 源表 `token_sessions`（`user_id` + `project_key` eq；索引 `token_sessions_user_project_idx`）
 - tokens 直接汇总；cost 由 `lib/pricing` 匹配单价计算（同仪表盘 Sessions 视图口径：
@@ -252,7 +283,8 @@ alter table public.token_public_badges
   1. `cursor` / `trae-cn` 为账户级来源，不进 `token_sessions` → 仓库徽章天然不含；
   2. `project_key` 为空的历史会话不计入（旧 CLI 回放可能缺失）；
   3. 同名 basename（不同目录同名仓库）合并统计。
-- 白名单校验：请求 project 与 `allowed_projects` **精确匹配**（归一后比较）
+- 白名单校验：生效的 project（查询串优先，其次行内值）与 `allowed_projects` **精确匹配**
+  （归一后比较）
 
 ### §4.3 活跃天数（RANK 替代位，拍板 1）
 
@@ -290,7 +322,7 @@ export interface BadgeModel { key: string; label: string; tokens: number }
 export interface BadgeData {
   scope: "user" | "repo";
   project: string | null;      // repo 时为展示用 project_key（已截断前原值）
-  displayName: string;         // 行内快照；空串由渲染器回退（§5.2）
+  displayName: string;         // settings 行快照；空串由渲染器回退（§5.2）
   avatarDataUri?: string | null; // 头像内联 data: URI（§5.2，2026-11-02）；缺失 → 首字母圆
   range: BadgeRange;
   totals: BadgeTotals;
@@ -457,8 +489,9 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 - 路由 `apps/web/src/app/u/[token]/page.tsx`（动态段独占整段）；无 AppShell
   （与 `/login` 同类）；metadata：标题 = `displayName + " · Token Usage"`，
   `robots: noindex`（**保持**，不做 SEO 收录）
-- 令牌查无或 `enabled=false` → `notFound()`（404）；`findBadgeOwner` 由 `/api/badge`
-  与本页共用，`generateMetadata` 与页面经 React `cache` 共享一次查找
+- 令牌查无、已吊销（`revoked_at` 非空）或 `enabled=false` → `notFound()`（404）；三者表现
+  一致，不暴露链接是否曾经存在。`findBadgeOwner` 由 `/api/badge` 与本页共用，
+  `generateMetadata` 与页面经 React `cache` 共享一次查找
 - 页面 SSR service-role 直出（`PublicPageData`，§4.7），不走 `/api/app`；正文不渲染令牌，
   令牌只以 URL 段形式出现在访客本就持有的请求 URL 里
 - 主题跟随系统（无明暗切换入口、不做深色专属变体）；文案随访客语言
@@ -553,88 +586,104 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 ## §7 Settings 配置面
 
-### §7.1 /api/app/badge（会话守卫沿用 `/api/app/achievements` 模式）
+### §7.1 `/api/app/badge` 与 `/api/app/badge/links/<id>`（会话守卫沿用 `/api/app/achievements` 模式）
 
 | 方法 | 行为 |
 |---|---|
-| `GET` | 返回 `{enabled, timezone, allowedProjects, displayName, hasToken, tokenLast4, knownProjects}`（永不回明文）；`knownProjects` 是本人 `token_sessions` 去重的非空 project_key（按 tokens 降序，≤200），白名单多选的数据源（§7.2）；**不含** `showHeatmap` / `showAchievements`（§3.5 已移除，契约测试断言响应无此两属性） |
-| `GET ?preview=1&style=…&theme=…&range=…&scope=…&project=…` | 本人预览（§7.3）：会话鉴权代替令牌，参数/加载器/渲染器与 `/api/badge` 同源，返回 SVG（`no-store`）；不看 `enabled`（未公开也可预览），repo 预览仍校验白名单 |
-| `POST {action:"generate"}` | 生成/重置令牌：写 `token_hash`、`token_last4`、`enabled=true`、`display_name` 快照（取会话 `user_metadata.display_name`，缺省空串），响应**一次性**携带明文 token |
-| `PUT` | 更新 `{enabled?, timezone?, allowedProjects?, displayName?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项报 `400`；displayName 须为 string（trim、截 80，**空串合法**=清空，渲染回退 `AI Coding Usage`），非 string 报 `400`；timezone 按 `parseTzContext` 约定归一；**只接受这四个字段**（`showHeatmap` / `showAchievements` 已随 §3.5 移除，不解析）；变更成功失效公开页缓存 |
-| `DELETE` | 吊销：`enabled=false`（哈希与末 4 位保留，公开端呈现 `badge disabled`，§3.2） |
+| `GET` | 返回 `{enabled, timezone, allowedProjects, displayName, knownProjects, badges:[{id, token, label, style, theme, range, project, createdAt, revokedAt}]}`；**令牌明文返回**（本人会话鉴权，链接必须随时可复制）；`knownProjects` 是本人 `token_sessions` 去重的非空 project_key（按 tokens 降序，≤200），白名单多选的数据源；**不含** `hasToken` / `tokenLast4` / `showHeatmap` / `showAchievements` |
+| `GET ?preview=1&style=…&theme=…&range=…&project=…` | 本人预览（§7.3）：会话鉴权代替令牌，参数 / 加载器 / 渲染器与 `/api/badge` 同源，返回 SVG（`no-store`）；不看 `enabled`（未公开也可预览）；白名单仍校验；出现 `scope` 同样 `bad request` |
+| `POST` | 新增一枚：生成令牌并插入行，`label` / `style` / `theme` / `range` / `project` 取请求值（缺省 `""` / `panel` / `auto` / `all` / `null`，`project` 须命中白名单）；若 settings 行不存在则创建（`enabled=true`、快照会话名、`timezone` 取请求值、`allowed_projects=[]`），已存在则仅在 `enabled=false` 时打开；响应 `{badge, enabled:true}`；第 11 枚（含已吊销行）→ `409 {error:"Badge limit reached"}` |
+| `PUT` | 更新账户级 `{enabled?, timezone?, allowedProjects?, displayName?}`；allowedProjects 逐项过 `normalizeProjectKey` + 长度校验，非法项 `400`；displayName 须为 string（trim、截 80，**空串合法**=清空，渲染回退 `AI Coding Usage`），非 string `400`；timezone 按 `parseTzContext` 约定归一；成功失效公开页缓存；settings 行不存在时创建 |
+| `PATCH /links/<id>` | 更新该枚的 `{label?, style?, theme?, range?, project?, revoked?}`；`project:null` = 回到账户徽章，非空值必须命中白名单（否则 `400 {error:"Project not allowed"}`）；`revoked:true` 写 `revoked_at`、`false` 清空（同链接恢复）；非本人或不存在的 id → `404 {error:"Badge not found"}`；响应为更新后的 badge |
+| `DELETE /links/<id>` | 物理删行，`204`（无 body）；非本人或不存在 → `404` |
 
-- 无会话 → `401 {error:"Unauthorized"}`；非法体 → `400 {error}`；一律 `no-store`
+- 无会话 → `401 {error:"Unauthorized"}`；非法体 → `400 {error}`；存储异常 → `503`；一律 `no-store`
 - 预览挂在同一路由（与 `/api/app/achievements` 的 POST 同理：不增加部署函数数）
+- 字段校验集中在 `lib/badge/input.ts`（POST 与 PATCH 共用，同一输入同一错误码）：label
+  trim 后 ≤40、时区归一、枚举值只接受 §2.1 的集合
 
-### §7.2 Settings 卡片 `components/settings/badge-card.tsx`
+### §7.2 Settings 卡片（`/settings?section=badges`）
 
-- 开关；公开名称输入框（§7.1 `PUT {displayName}`，2026-11-09：与个人信息名称解耦，
-  清空保存后公开面显示 `AI Coding Usage`，令牌不动；重生成令牌会以会话名重新快照，卡内
-  随 GET 重新同步）；令牌生成/重置（二次确认 + 明文只显示一次 + 复制）；白名单多选（数据源：
-  §7.1 `knownProjects`——Sessions 已展示数据的投影，白名单里已不在会话中的项仍列出以便移除）；
-  时区只读展示（浏览器时区，保存时随 PUT）
-- 公开展示开关：**仅 1 个 `Switch`**（`enabled`，公开展示开关），沿用现有 `enabled` 开关的复合
-  结构与 `onChange` 写法；变更走 §7.1 PUT，成功 `toast.success`，失败保留原态不乐观更新
-- 原「公开增强模块 / 全历史热力图 / 成就徽章」三块与其两个 `Switch`（`show_heatmap` /
-  `show_achievements`）已移除；DB 两列保留但
-  代码不再读写（§3.5）
-- 预览筛选（§7.3）：风格 / 主题 / 范围 / **仓库**；不再有「对象」开关——仓库下拉默认空
-  = 账户徽章，选中 = 该仓库，清空（`Select.ClearButton`）= 回到账户（2026-11-04 操作者裁定，
-  与 §2.1 的 project 开关同构）
-- 次要说明（令牌轮换细则、公开名称细则、白名单口径与时区、预览前置条件）收进 label 旁的
-  `CircleInfo` 图标按钮 + `Tooltip`，行内 `Description` 只留一句动作前必读文案；对应文案键为
-  `tokenHelp` / `nameHelp` / `projectsCaveat` / `timezoneNote` / `previewHelp` 与 `*HelpLabel`
-- 细则遵循 `docs/ui-spec.md`（HeroUI 复合结构 + 语义文本组件）；随 P3 在 ui-spec
-  增补对应小节
+公开徽章是独立 tab（`components/settings/badge-card.tsx` 为状态编排器），自上而下三张卡：
+
+1. **账户设置卡**（`badge-settings-card.tsx`）——总开关 `Switch`（没有徽章时禁用并提示先
+   新增；切换即 `PUT {enabled, timezone}`）；公开名称输入 + 保存（`PUT {displayName}`，
+   与个人信息名称解耦，清空后公开面显示 `AI Coding Usage`）；仓库白名单多选（数据源
+   `knownProjects`，已不在会话中的项仍列出以便移除；`PUT {allowedProjects}`）；时区只读
+   展示（浏览器时区，随每次保存 PUT）。一处收紧白名单全局生效（§3.3）。
+2. **徽章列表卡**（`badge-links-card.tsx`）——右上「新增徽章」（到 10 枚禁用并提示）；每行
+   `badge-link-row.tsx` 显示备注名（空则「未命名徽章」）、令牌末四位、生效 / 已吊销 Chip 与
+   一行摘要（风格 · 主题 · 范围 · 仓库）；行内动作 = 复制链接 / 吊销或恢复 / 删除。吊销
+   **无**二次确认（可逆）；删除用 `AlertDialog status="danger"` 二次确认、不可恢复。已吊销
+   行仍占位，直到删除。
+3. **选中徽章卡**（`badge-detail-card.tsx`）——备注名输入 + 保存；风格 / 主题 / 范围 / 仓库
+   单选，改动**即时 PATCH**（失败 toast，界面按服务端返回值回写，无乐观回滚）；实时预览
+   （`PanelOverlay` 遮罩）；README 片段（§7.4）。仓库下拉的空值 = 账户徽章，选中 = 该仓库，
+   `Select.ClearButton` 清空回账户（与 §2.1 的 project 开关同构）。
+
+- 次要说明（公开名称细则、白名单口径与时区、预览前置条件）收进 label 旁的 `CircleInfo`
+  图标按钮 + `Tooltip`，行内 `Description` 只留一句动作前必读文案；对应文案键为
+  `nameHelp` / `projectsCaveat` / `timezoneNote` / `previewHelp` 与 `*HelpLabel`
+  （`lib/copy/badge.ts`）
+- 细则遵循 `docs/ui-spec.md`（HeroUI 复合结构 + 语义文本组件）
 
 ### §7.3 预览
 
-- 卡内实时 `<img src="/api/app/badge?preview=1&…">`（附 cache-busting 查询参数绕浏览器
-  缓存），风格/主题/范围/仓库切换即换参（仓库下拉的空值 = 账户徽章）。2026-11-02 P3 实施修订：原写 `/api/badge?token=…`，
-  但明文令牌只在生成时出现一次，页面刷新后无从构造公开 URL，故改用会话鉴权预览分支（§7.1）
-- 换参后到新图解码完成之间，预览容器盖一层半透明遮罩 + `Spinner`（共享
-  `PanelOverlay`，容器 `aria-busy`）：切换时不会先看到上一张图（2026-11-03 操作者裁定）。
-  `onLoad` / `onError` 都解除遮罩，加载失败也不会卡住转圈
+- 选中徽章卡内实时 `<img src="/api/app/badge?preview=1&style=…&theme=…&range=…&project=…&v=…">`：
+  客户端把该行已保存的展示参数带进查询（`v` 为变更计数，绕浏览器缓存），切风格 / 主题 /
+  范围 / 仓库即换参。令牌已明文存库，但仍走会话鉴权分支，因为预览必须①不受公开总开关影响、
+  ②吊销后仍可预览（正式链接已经不可用）
+- 换参后到新图解码完成之间，预览容器盖一层半透明遮罩 + `Spinner`（共享 `PanelOverlay`，
+  容器 `aria-busy`）：切换时不会先看到上一张图（2026-11-03 操作者裁定）。`onLoad` /
+  `onError` 都解除遮罩，加载失败也不会卡住转圈
 
 ### §7.4 README 片段复制（两版都给）
 
-- 单主题：`<a href="<origin>/u/<token>"><img src="<origin>/api/badge?token=…&style=…&theme=…" alt="…"></a>`
+- 单主题：`<a href="<origin>/u/<token>"><img src="<origin>/api/badge?token=<token>" alt="…"></a>`
 - 双主题：`<picture>` + `<source media="(prefers-color-scheme: dark)">`（GitHub 现行推荐
   写法，README 里的 prefers-color-scheme 跟随访客的 GitHub 主题设置；`#gh-*-mode-only`
-  片段为其旧式替代，不再输出）
+  片段为其旧式替代，不再输出）。两条 URL 只额外带 `theme=dark|light`
 - `<origin>` 用部署自身 origin（自部署各自填）
-- 令牌只在生成/重置后的一次性揭示弹窗里填入片段；此后卡片内的片段以
-  `YOUR_BADGE_TOKEN` 占位，由操作者替换为自己保存的令牌（遗失则重置）。令牌行说明与
-  重置确认正文都写明「明文只显示一次」「重置成功会直接给出填好新令牌的片段」；占位片段的
-  复制成功提示改为提醒替换占位符，避免直接贴进 README 后得到坏图。
+- 片段**只带 `token`**：风格 / 主题 / 范围 / 仓库存在徽章行里，设置页改完对已嵌入徽章即时
+  生效，README 永远不用跟着改
+- 令牌任何时候都可用：列表与详情显示末四位，复制按钮与片段给出完整链接；不再有一次性揭示
+  或 `YOUR_BADGE_TOKEN` 占位符
 
 ## §8 缓存与滥用面
 
-- 成功响应按 §2.2 缓存；GitHub camo 尊重 Cache-Control（shields.io 同款打法）
-- 单飞加载防击穿：badge 自有缓存键 `(user_id, scope, project, range)`——style/theme
-  只影响渲染不进缓存键
-- 令牌 24 字节熵、可随时吊销；暴露面只有聚合数字；无写路径、无明细泄露
+- 成功响应按 §2.2 缓存；GitHub camo 尊重 Cache-Control（shields.io 同款打法）。吊销 / 删除
+  之后的旧图最多按 CDN 窗口（`s-maxage=600` + `stale-while-revalidate=1800`）滞后消失
+- 单飞加载防击穿：badge 自有缓存键 `(user_id, scope, project, range)`——徽章行内值与查询串
+  最终都归一到这四个维度，style/theme 只影响渲染不进缓存键；配置变更调用
+  `invalidateBadgeData(userId)`
+- 每枚令牌 24 字节熵、可随时吊销或删除、账号上限 10 枚；暴露面只有聚合数字；无写路径、
+  无明细泄露
 - v1 不做按 IP 限流（观察后议）
 
 ## §9 golden 测试
 
-> **状态**：本节测试与本文档同步落地（spec-first）。三个文件对实现模块做**条件
-> 加载——存在则跑、缺失则整文件 skip**，`pnpm verify` 在 P2 落地前保持绿；实现
-> 落地后无需改测试自动激活。断言即本文档的可执行形态，实现必须原样满足。
+> **状态**：本节测试与本文档同步落地（spec-first）。测试文件对实现模块做**条件加载——存在则
+> 跑、缺失则整文件 skip**，`pnpm verify` 在 P2 落地前保持绿；实现落地后无需改测试自动激活。
+> 断言即本文档的可执行形态，实现必须原样满足。
 
 | 文件 | 覆盖 |
 |---|---|
-| `tests/unit/badge-params.test.ts` | §2.1 参数默认值/非法值矩阵、§2.3 bad_request 分类 |
+| `tests/unit/badge-params.test.ts` | §2.1 参数缺省 → `null`（交还行内默认）、非法值矩阵、§2.3 bad_request 分类（含 `scope` 退役） |
 | `tests/unit/badge-svg.test.ts` | §5 渲染器：确定性、XML 转义、截断、隐私不变量（无 script/外链/NaN）、两个 scope 共用区块、auto 媒体查询、零态渲染、品牌区站点行存在且 compact 不含（P6）；字节级快照（`toMatchSnapshot`）在 P2 实现时随操作者过目落盘 |
-| `tests/contract/badge.test.ts` | §2.2 响应头矩阵、§2.3 降级矩阵、方法守卫、隐私清扫（响应不含令牌/哈希/user_id）、§7.1 配置端点守卫与形状（GET 响应**不含** `showHeatmap` / `showAchievements`）、两个 scope 都内联头像（P6） |
+| `tests/contract/badge.test.ts` | §2.2 响应头矩阵、§2.3 降级矩阵（吊销与查无同表现）、参数覆盖行内默认、方法守卫、隐私清扫（公开响应不含令牌/user_id）、§7.1 配置端点守卫与形状（GET 含明文令牌、**不含** `hasToken` / `tokenLast4`）、两个 scope 都内联头像（P6） |
+| `tests/contract/badge-settings.test.ts` | §7.1 多枚模型：GET 形状、POST 新增 / 首枚建行快照 / 10 枚上限 `409`、PATCH 吊销与恢复同链接、展示参数即时作用于公开链接、DELETE 硬删、跨用户 `404`、`knownProjects`、会话预览 |
 | `tests/unit/public-page-data.test.ts`（P9 新增） | §4.7 / §6：全历史日桶投影、编年分段、全历史分位数分级、`PublicPageData` 形状、空态、10 年上限 |
 
 - canonical fixtures（附录 A）是单测与实现的共同输入；契约测试经 FakeSupabase
-  播种 `token_public_badges` / `token_usage_hourly` / `token_sessions`
+  播种 `token_public_badge_settings` / `token_public_badges` / `token_usage_hourly` /
+  `token_sessions`
+- **2026-11-13 多枚模型重置**：旧「单令牌 + sha256 + 一次性揭示」的 golden 全部重写为
+  行模型（`id` 主键、`token` unique 明文、`revoked_at`）；FakeSupabase 两表夹具同步。
+  同一文件里保留了 `scope` 退役断言（出现即 bad request）。
 - P2 落地修订（2026-11-02，操作者逐条批准）：① 转义用例期望值补上漏写的 `&amp;`
   （`'a<b>&"c'` 的正确转义为 `a&lt;b&gt;&amp;&quot;c`）；② 外链断言精确豁免 SVG
-  命名空间声明（§5.1）。测试基建同步：FakeSupabase 注册 `token_public_badges`，
-  契约 fixture 补 `token_last4`（§3.1）；其余断言原样
+  命名空间声明（§5.1）。测试基建同步：FakeSupabase 注册 `token_public_badges`；
+  该夹具与 `token_last4` 字段已在 2026-11-13 多枚模型重置中作废（见上）
 - P3 修订（2026-11-02，操作者批准）：③ 账户徽章改仪表盘口径（§4.1），契约用例的
   成本期望由 `$1,318.40` 改为同一 fixture 的读时定价结果 `$111,721`；fixture 补播种
   一台活跃设备（canonicalRows 只保留活跃设备）。仓库徽章与 `knownProjects` 同步按
@@ -675,9 +724,10 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 
 | 面 | 文件 |
 | --- | --- |
-| 迁移 | `supabase/migrations/20261101000000_token_public_badges.sql`（建表）、`20261105000000_token_public_badges_sections.sql`（分区字段） |
+| 迁移 | `supabase/migrations/20261113000000_token_public_badges_reset.sql`（drop 旧表）、`20261113000001_token_public_badge_rows.sql`（settings + 每枚徽章两表） |
 | 徽章端点 | `src/app/api/badge/route.ts`；`src/lib/badge/{types,params,data,render,marks,format}.ts` |
-| 配置端点 | `src/app/api/app/badge/route.ts`；Settings 卡片 `src/components/settings/badge-card.tsx` |
+| 配置端点 | `src/app/api/app/badge/route.ts`（GET/POST/PUT + 预览）、`src/app/api/app/badge/links/[id]/route.ts`（PATCH/DELETE）；共享层 `src/lib/badge/{store,input,session,limits}.ts` |
+| Settings 卡片 | `src/components/settings/badge-card.tsx`（编排）、`badge-settings-card.tsx`、`badge-links-card.tsx`、`badge-link-row.tsx`、`badge-detail-card.tsx`、`badge-dialogs.tsx`、`badge-snippet-section.tsx`、`badge-helpers.ts` |
 | 公开页 | `src/app/u/[token]/page.tsx`；`src/components/u/*`；`src/lib/public-page/*`；`src/lib/copy/public-page.ts` |
 | 测试 | `tests/unit/u-page-privacy.test.ts`、`tests/unit/heatmap-alignment.test.ts`、badge / badge-settings 契约测试 |
 

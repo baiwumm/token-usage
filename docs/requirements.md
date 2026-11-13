@@ -16,13 +16,13 @@
 | Sessions | `/sessions` | 会话列表与详情：按时间/设备/来源/项目筛选，展示时长、token、成本、模型拆分；仅设备级来源；支持按当前筛选导出 CSV |
 | 项目 | `/projects` | 项目维度用量：按工作目录 basename 归因；口径开关 `NEXT_PUBLIC_PROJECTS_CALIBER`（sessions / hourly），见 `docs/ui-spec.md`「项目（`/projects`）」节 |
 | 采集记录 | `/sync-runs` | 每轮 sync 的运行记录（触发方式、结果、耗时、解析文件数与上报量） |
-| 设置 | `/settings` | 账户资料、改密、头像、外观偏好（主题/语言/货币/Token 显示/单位/分组）、徽章配置、设备列表与吊销；退出登录在应用壳用户菜单 |
+| 设置 | `/settings` | 账户资料、改密、头像、外观偏好（主题/语言/货币/Token 显示/单位/分组）、公开徽章（`?section=badges`，每账户最多 10 枚，可新增/吊销/恢复/删除）、设备列表与吊销；退出登录在应用壳用户菜单 |
 | wrapped | `/wrapped` | 年度回顾（功能对齐旧版，视觉简化） |
 | 成就 | `/achievements` | 20 条成就 × 5 档（铜/银/金/钻/王者），账号级、只升不降；页头双口径（段位合计 x/{5×20} + 已解锁 y/20）；分类栅格、进度与达成日期、五档详情时间线、年度回顾独立成就卡；读时计算；仅 `token_achievement_seen` 存账号级已读水位 |
 | 配对 | `/device` | 页面批准 CLI 配对码 |
 | 公开页 | `/u/<token>` | **公开**（无需登录）：徽章令牌持有者可见的用量页，规范见 `docs/badge.md` |
 | CLI API | `/api/functions/token-usage-*` | CLI 面 9 端点 + Dashboard 面若干端点（`docs/cli-contract.md` §0 索引） |
-| 公开徽章 API | `/api/badge` | 公开 SVG 徽章端点（令牌即凭证），规范见 `docs/badge.md` |
+| 公开徽章 API | `/api/badge` | 公开 SVG 徽章端点（令牌即凭证，一行一枚），规范见 `docs/badge.md` |
 | 仪表盘内部 API | `/api/app/*` | 应用自有接口（非契约面，随 UI 自由演进） |
 | 产品落地页 | token-usage.cc | 仓库内 `apps/landing`：纯静态单页（产品介绍、自部署入口、公开页演示），暗色单主题、中文单语、`output: "export"`；托管于腾讯云 EdgeOne Pages，对外口径为 Vercel；接线见 `apps/landing/README.md` |
 | 开源自部署 | — | 中文部署指南、迁移脚本、Deploy to Vercel 按钮 |
@@ -30,7 +30,7 @@
 **路由约定**：仪表盘挂 `/` 且需要登录；除 `/login`、`/auth/callback`、公开页 `/u/<token>` 与
 CLI API 外，所有页面未登录一律重定向到登录页，重定向须保留原始路径与查询参数（配对链接
 `?user_code=` 不得因跳转丢失），登录成功进入原目标（无 `?next=` 时缺省 `/`）。设置分区用
-`/settings?section=appearance|account|devices` 深链，不新增顶层路由。CLI API 走
+`/settings?section=appearance|account|devices|badges` 深链，不新增顶层路由。CLI API 走
 `docs/cli-contract.md` 自身的公开/鉴权规则，不受页面守卫影响。路由表变更需回写本表。
 
 ## 边界
@@ -53,7 +53,8 @@ CLI API 外，所有页面未登录一律重定向到登录页，重定向须保
 - 登录方式：邮箱密码、邮件魔法链接，可选 GitHub / Google OAuth（仅作已有账号的登录方式）；
   公开注册关闭。
 - 一账号多设备：设备令牌只存哈希、可即时吊销；跨设备数据按用户聚合、按设备可下钻。
-- 公开面：徽章令牌即凭证，可随时撤销；公开页与徽章只展示聚合数字，不暴露设备与账密信息。
+- 公开面：徽章令牌即凭证（一行一枚，最多 10 枚），可随时吊销 / 恢复 / 删除；公开页与徽章只展示
+  聚合数字，不暴露设备与账密信息。
 
 ## 数据模型
 
@@ -86,7 +87,8 @@ last-wins 语义跨版本保持不变（对账基线）。成就与段位不建�
   类成就标注「自 Sessions 数据可用起统计」；三态齐全、中英文案完整、375px 无横向滚动；阈值唯一
   真源是 `apps/web/src/lib/achievements/catalog.ts`，改阈值必须同步该文件、守卫测试与
   `docs/achievements-plan.md` §2。
-- **公开徽章与公开页**：SVG 输出确定、可缓存、无脚本；令牌可撤销；公开页无登录可用、noindex、
-  no-JS 可读、375px 与深浅主题正常。细则见 `docs/badge.md`。
+- **公开徽章与公开页**：SVG 输出确定、可缓存、无脚本；令牌可新增 / 吊销（同链接恢复）/
+  删除，展示参数存库且 URL 可覆盖；公开页无登录可用、noindex、no-JS 可读、375px 与深浅主题
+  正常。细则见 `docs/badge.md`。
 - **部署**：全新 Supabase / Vercel 账号按 `docs/deploy-guide.md` 从零跑通：建库 → 部署 → CLI
   配对 → 上报 → 仪表盘可见。

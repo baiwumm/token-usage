@@ -7,6 +7,7 @@ export interface SettingsCopy {
   sectionAccount: string;
   sectionAppearance: string;
   sectionDevices: string;
+  sectionBadges: string;
   profileHeading: string;
   profileHint: string;
   profileNameLabel: string;
@@ -89,6 +90,7 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     sectionAccount: "账户",
     sectionAppearance: "偏好",
     sectionDevices: "设备",
+    sectionBadges: "公开徽章",
     avatarHeading: "头像",
     avatarHint: "上传图片作为头像；删除后显示名称首字。",
     passwordHeading: "密码",
@@ -172,6 +174,7 @@ export const SETTINGS_COPY: Record<"zh" | "en", SettingsCopy> = {
     sectionAccount: "Account",
     sectionAppearance: "Preferences",
     sectionDevices: "Devices",
+    sectionBadges: "Public badge",
     avatarHeading: "Avatar",
     avatarHint:
       "Upload an image as your avatar; deleting it falls back to your initial.",

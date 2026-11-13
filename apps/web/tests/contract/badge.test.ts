@@ -1,10 +1,9 @@
 // Spec-first golden contract tests for the public badge endpoint
-// (docs/badge.md §2) and the badge config endpoint (§7.1). The route modules
-// land with P2; while they are absent the suites skip themselves (see
-// tests/helpers/spec-first.ts) so `pnpm verify` stays green. Responses must
-// never carry the raw token, its hash or the user id (§1 privacy stance).
-
-import { createHash } from "node:crypto";
+// (docs/badge.md §2), its aggregate snapshot (§2.4) and the badge config
+// endpoint (§7.1). 2026-11-13 multi-badge model: the public link is
+// `?token=` plus optional overrides; absent display parameters fall back to
+// the badge row's stored defaults. Responses must never carry the raw token,
+// its hash or the user id (§1 privacy stance).
 
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,7 +30,7 @@ vi.mock("@/lib/auth/config", () => ({
       : null,
 }));
 
-import { FakeSupabase } from "../helpers/fake-supabase";
+import { FakeSupabase, type Row } from "../helpers/fake-supabase";
 import { loadSpecModule, unwrapSpecModule } from "../helpers/spec-first";
 import { DEVICE_A, USER_ID, initContractEnv } from "./helpers";
 
@@ -45,7 +44,6 @@ type BadgeAppRoute = {
   GET: (request: NextRequest) => Promise<Response>;
   POST: (request: NextRequest) => Promise<Response>;
   PUT: (request: NextRequest) => Promise<Response>;
-  DELETE: (request: NextRequest) => Promise<Response>;
 };
 
 const badgeRoute = await loadSpecModule<BadgeRoute>("../../src/app/api/badge/route");
@@ -59,7 +57,7 @@ const badgeAppRoute = await loadSpecModule<BadgeAppRoute>(
 const fake = new FakeSupabase();
 
 const BADGE_TOKEN = `tu_badge_${"a".repeat(32)}`;
-const BADGE_HASH = createHash("sha256").update(BADGE_TOKEN).digest("hex");
+const BADGE_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const BADGE_URL = "http://localhost/api/badge";
 const DATA_URL = "http://localhost/api/badge/data";
 const APP_URL = "http://localhost/api/app/badge";
@@ -77,16 +75,27 @@ function jsonPostPut(method: string, body: unknown): NextRequest {
 }
 
 function seedBadgeScenario(): void {
-  fake.table("token_public_badges").push({
+  fake.table("token_public_badge_settings").push({
     user_id: USER_ID,
-    token_hash: BADGE_HASH,
-    token_last4: BADGE_TOKEN.slice(-4),
     enabled: true,
     display_name: "Ming Wei",
     timezone: "Asia/Shanghai",
     allowed_projects: ["token-usage"],
     created_at: "2026-10-01T00:00:00.000Z",
     updated_at: "2026-10-01T00:00:00.000Z",
+  });
+  fake.table("token_public_badges").push({
+    id: BADGE_ID,
+    user_id: USER_ID,
+    token: BADGE_TOKEN,
+    label: "README 徽章",
+    style: "panel",
+    theme: "auto",
+    range: "all",
+    project: null,
+    created_at: "2026-10-01T00:00:00.000Z",
+    updated_at: "2026-10-01T00:00:00.000Z",
+    revoked_at: null,
   });
 
   // The badge reads the dashboard's canonical rows, which keep active
@@ -190,6 +199,10 @@ function seedBadgeScenario(): void {
   );
 }
 
+function badgeRow(): Row {
+  return fake.table("token_public_badges")[0] as Row;
+}
+
 beforeAll(async () => {
   initContractEnv(await fake.listen());
 });
@@ -230,22 +243,42 @@ describe.skipIf(!badgeRoute)("GET /api/badge (docs/badge.md §2)", () => {
     expect(unknownToken.headers.get("cache-control")).toBe("no-store");
     expect(await unknownToken.text()).toContain("badge unavailable");
 
-    (fake.table("token_public_badges")[0] as { enabled: boolean }).enabled = false;
+    // Revoked and unknown answer identically — existence is not revealed.
+    badgeRow().revoked_at = "2026-11-01T00:00:00.000Z";
+    const revoked = await GET(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`));
+    expect(revoked.headers.get("cache-control")).toBe("no-store");
+    expect(await revoked.text()).toContain("badge unavailable");
+
+    badgeRow().revoked_at = null;
+    (fake.table("token_public_badge_settings")[0] as Row).enabled = false;
     const disabled = await GET(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`));
     expect(disabled.headers.get("cache-control")).toBe("no-store");
     expect(await disabled.text()).toContain("badge disabled");
 
     const unknownProject = await GET(
-      new Request(`${BADGE_URL}?token=${BADGE_TOKEN}&scope=repo&project=nope`),
+      new Request(`${BADGE_URL}?token=${BADGE_TOKEN}&project=nope`),
     );
     expect(unknownProject.status).toBe(200);
     expect(await unknownProject.text()).toContain("unknown project");
+  });
 
-    const badParams = await GET(
-      new Request(`${BADGE_URL}?token=${BADGE_TOKEN}&style=banner`),
-    );
-    expect(badParams.status).toBe(200);
-    expect(await badParams.text()).toContain("bad request");
+  it("rejects invalid parameters, including the retired scope (§2.1)", async () => {
+    const { GET } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
+
+    for (const query of [
+      "style=banner",
+      "theme=sepia",
+      "range=7d",
+      // Retired 2026-11-13: an old embed is as dead as its token.
+      "scope=repo&project=token-usage",
+    ]) {
+      const res = await GET(
+        new Request(`${BADGE_URL}?token=${BADGE_TOKEN}&${query}`),
+      );
+
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain("bad request");
+    }
   });
 
   it("renders an allow-listed repo badge without cross-project leakage (§4.2)", async () => {
@@ -263,6 +296,37 @@ describe.skipIf(!badgeRoute)("GET /api/badge (docs/badge.md §2)", () => {
     expect(svg).not.toContain("other-repo");
   });
 
+  it("uses the badge row's stored defaults and lets the query override them", async () => {
+    const { GET } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
+
+    Object.assign(badgeRow(), {
+      project: "token-usage",
+      style: "panel",
+      theme: "light",
+      range: "all",
+    });
+
+    // Bare link: row values win over the built-in defaults.
+    const bare = await (
+      await GET(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`))
+    ).text();
+
+    expect(bare).toContain("TOTAL USAGE · TOKEN-USAGE");
+    expect(bare).toContain('stop-color="#ffffff"'); // light palette
+
+    // Query overrides the row (blog embeds may pin one style).
+    const overridden = await (
+      await GET(
+        new Request(
+          `${BADGE_URL}?token=${BADGE_TOKEN}&theme=dark&style=compact&project=token-usage`,
+        ),
+      )
+    ).text();
+
+    expect(overridden).toContain('height="20"'); // compact card
+    expect(overridden).not.toContain('stop-color="#ffffff"');
+  });
+
   it("inlines the owner avatar on both scopes (§5.2)", async () => {
     const { GET } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
     const png = Buffer.from("89504e470d0a1a0a", "hex");
@@ -274,8 +338,6 @@ describe.skipIf(!badgeRoute)("GET /api/badge (docs/badge.md §2)", () => {
     });
     fake.storageObjects.set("owner.png", { type: "image/png", body: png });
 
-    // The account badge carried no avatar until 2026-11-03: the user branch
-    // returned the aggregates without `avatarDataUri`.
     const account = await GET(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`));
 
     expect(await account.text()).toContain(
@@ -283,9 +345,7 @@ describe.skipIf(!badgeRoute)("GET /api/badge (docs/badge.md §2)", () => {
     );
 
     const repo = await GET(
-      new Request(
-        `${BADGE_URL}?token=${BADGE_TOKEN}&scope=repo&project=token-usage`,
-      ),
+      new Request(`${BADGE_URL}?token=${BADGE_TOKEN}&project=token-usage`),
     );
 
     expect(await repo.text()).toContain("data:image/png;base64,");
@@ -341,20 +401,21 @@ describe.skipIf(!badgeRoute)("GET /api/badge (docs/badge.md §2)", () => {
     expect(options.status).toBe(204);
   });
 
-  it("never leaks the token, its hash or the user id in any response (§1)", async () => {
+  it("never leaks the token or the user id in any response (§1)", async () => {
     const { GET, POST } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
 
     const responses = [
       await GET(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`)),
       await GET(new Request(`${BADGE_URL}?token=nope`)),
-      await GET(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}&scope=repo&project=token-usage`)),
+      await GET(
+        new Request(`${BADGE_URL}?token=${BADGE_TOKEN}&project=token-usage`),
+      ),
       await POST(),
     ];
 
     for (const res of responses) {
       const body = await res.text();
       expect(body).not.toContain(BADGE_TOKEN);
-      expect(body).not.toContain(BADGE_HASH);
       expect(body).not.toContain(USER_ID);
     }
   });
@@ -425,7 +486,7 @@ describe.skipIf(!badgeDataRoute)(
       expect(body.series).toHaveLength(30);
     });
 
-    it("rejects junk tokens with 400 and hides unknown or disabled ones behind 404 (§2.4.3)", async () => {
+    it("rejects junk tokens with 400 and hides unknown, revoked or disabled ones behind 404 (§2.4.3)", async () => {
       const { GET } = unwrapSpecModule(
         badgeDataRoute,
         "app/api/badge/data/route",
@@ -445,8 +506,13 @@ describe.skipIf(!badgeDataRoute)(
       expect(unknown.status).toBe(404);
       expect(await unknown.json()).toEqual({ error: "badge unavailable" });
 
-      (fake.table("token_public_badges")[0] as { enabled: boolean }).enabled =
-        false;
+      badgeRow().revoked_at = "2026-11-01T00:00:00.000Z";
+      const revoked = await GET(new Request(`${DATA_URL}?token=${BADGE_TOKEN}`));
+      expect(revoked.status).toBe(404);
+      expect(await revoked.json()).toEqual({ error: "badge unavailable" });
+
+      badgeRow().revoked_at = null;
+      (fake.table("token_public_badge_settings")[0] as Row).enabled = false;
       const disabled = await GET(
         new Request(`${DATA_URL}?token=${BADGE_TOKEN}`),
       );
@@ -454,7 +520,7 @@ describe.skipIf(!badgeDataRoute)(
       expect(await disabled.json()).toEqual({ error: "badge unavailable" });
     });
 
-    it("answers 405/204 and never echoes the token, hash or user id (§2.4.3-4)", async () => {
+    it("answers 405/204 and never echoes the token or user id (§2.4.3-4)", async () => {
       const { GET, POST, OPTIONS } = unwrapSpecModule(
         badgeDataRoute,
         "app/api/badge/data/route",
@@ -470,7 +536,6 @@ describe.skipIf(!badgeDataRoute)(
       ).text();
 
       expect(body).not.toContain(BADGE_TOKEN);
-      expect(body).not.toContain(BADGE_HASH);
       expect(body).not.toContain(USER_ID);
       expect(body).not.toContain("data:image/");
     });
@@ -486,7 +551,7 @@ describe.skipIf(!badgeAppRoute)("/api/app/badge config (docs/badge.md §7.1)", (
     expect(await res.json()).toEqual({ error: "Unauthorized" });
   });
 
-  it("GET returns the config shape without the raw token", async () => {
+  it("GET returns the config shape and every readable token", async () => {
     const { GET } = unwrapSpecModule(badgeAppRoute, "app/api/app/badge/route");
     auth.user = { id: USER_ID, user_metadata: { display_name: "Ming Wei" } };
 
@@ -498,34 +563,15 @@ describe.skipIf(!badgeAppRoute)("/api/app/badge config (docs/badge.md §7.1)", (
       timezone: "Asia/Shanghai",
       allowedProjects: ["token-usage"],
       displayName: "Ming Wei",
-      hasToken: true,
-      tokenLast4: BADGE_TOKEN.slice(-4),
     });
+    expect(body.badges).toHaveLength(1);
+    expect(body.badges[0].token).toBe(BADGE_TOKEN);
     // 2026-11-05: the public page section switches were removed from the
     // config surface; heatmap and achievements are always on.
     expect(body).not.toHaveProperty("showHeatmap");
     expect(body).not.toHaveProperty("showAchievements");
-    expect(JSON.stringify(body)).not.toContain(BADGE_TOKEN);
-  });
-
-  it("POST generate returns the token exactly once and rotates on the next call", async () => {
-    const { POST } = unwrapSpecModule(badgeAppRoute, "app/api/app/badge/route");
-    auth.user = { id: USER_ID, user_metadata: { display_name: "Ming Wei" } };
-
-    const first = await POST(jsonPostPut("POST", { action: "generate" }));
-    expect(first.status).toBe(200);
-    const firstBody = await first.json();
-    expect(firstBody.token).toMatch(/^tu_badge_[A-Za-z0-9_-]{32}$/);
-
-    const second = await POST(jsonPostPut("POST", { action: "generate" }));
-    const secondBody = await second.json();
-    expect(secondBody.token).toMatch(/^tu_badge_[A-Za-z0-9_-]{32}$/);
-    expect(secondBody.token).not.toBe(firstBody.token);
-
-    // Rotation invalidates the previous token immediately (§3.2).
-    const { GET: badgeGet } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
-    const oldBadge = await badgeGet(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`));
-    expect(await oldBadge.text()).toContain("badge unavailable");
+    expect(body).not.toHaveProperty("hasToken");
+    expect(body).not.toHaveProperty("tokenLast4");
   });
 
   it("PUT updates the allowlist and normalizes an invalid timezone to UTC", async () => {
@@ -556,7 +602,7 @@ describe.skipIf(!badgeAppRoute)("/api/app/badge config (docs/badge.md §7.1)", (
     expect(await res.json()).toEqual({ error: expect.any(String) });
   });
 
-  it("PUT rewrites the public name without touching the token (§7.1)", async () => {
+  it("PUT rewrites the public name without touching the tokens (§7.1)", async () => {
     const { GET, PUT } = unwrapSpecModule(badgeAppRoute, "app/api/app/badge/route");
     auth.user = { id: USER_ID, user_metadata: { display_name: "Ming Wei" } };
 
@@ -568,6 +614,7 @@ describe.skipIf(!badgeAppRoute)("/api/app/badge config (docs/badge.md §7.1)", (
 
     const body = await (await GET(new NextRequest(APP_URL))).json();
     expect(body.displayName).toBe("Octocat");
+    expect(body.badges[0].token).toBe(BADGE_TOKEN);
 
     // The public surface picks the rewritten snapshot up; the token is intact.
     const { GET: badgeGet } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
@@ -613,17 +660,5 @@ describe.skipIf(!badgeAppRoute)("/api/app/badge config (docs/badge.md §7.1)", (
     const res = await PUT(jsonPostPut("PUT", { displayName: 42 }));
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: expect.any(String) });
-  });
-
-  it("DELETE revokes: badge renders disabled afterwards", async () => {
-    const { DELETE } = unwrapSpecModule(badgeAppRoute, "app/api/app/badge/route");
-    auth.user = { id: USER_ID, user_metadata: { display_name: "Ming Wei" } };
-
-    const del = await DELETE(new NextRequest(APP_URL, { method: "DELETE" }));
-    expect(del.status).toBe(200);
-
-    const { GET: badgeGet } = unwrapSpecModule(badgeRoute, "app/api/badge/route");
-    const badge = await badgeGet(new Request(`${BADGE_URL}?token=${BADGE_TOKEN}`));
-    expect(await badge.text()).toContain("badge disabled");
   });
 });
