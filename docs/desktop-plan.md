@@ -536,9 +536,10 @@ D11 落地、会话内项目 / 模型筛选随 §12.14 落地、读时计价随 
   修正成本分析弹窗与 `queue-lines.ts` 的读时计价口径文案、把托盘未注册时的
   CloseRequested 从 `minimize()` 改为不拦截（补上退出路径）、补 `lib/version.test.ts`，
   并回写 §1 / §4 / §9 / §12 / ui-spec 的陈旧条目与 CHANGELOG 0.3.0 的 High 标签矛盾。
-  **上述 2026-11-13 改动未纳入 `desktop-v0.4.0` tag（tag 指向 `47a9f39`），随下一版带走。**
+  **上述 2026-11-13 改动未纳入 `desktop-v0.4.0` tag（tag 指向 `47a9f39`），已随
+  `desktop-v0.4.1` 带走。** 该 draft Release 始终未发布，2026-11-13 被 0.4.1 取代。
 
-- **0.4.1 设置改版（2026-11-13 立项并完成，待操作者安装验收）**：四项合并为同一版本——
+- **0.4.1 设置改版（2026-11-13 立项、开发并验收通过，已发布）**：四项合并为同一版本——
   ① 「卡片显示」五个 `Switch` 改 `ToggleButtonGroup selectionMode="multiple" size="sm"`
   （顺序照监控盘渲染：热力图 / 趋势 / Top 模型 / 来源 / 项目；与 `Label` 同行右对齐、
   窄窗换行）；② 「当前版本」改 `Chip size="sm" variant="soft"`；③ 页头「跟随系统」图标
@@ -556,14 +557,16 @@ D11 落地、会话内项目 / 模型筛选随 §12.14 落地、读时计价随 
   `cargo clippy --release --all-targets -- -D warnings` 全绿；本地 NSIS 包
   `src-tauri/target/release/bundle/nsis/Token Usage_0.4.1_x64-setup.exe`
   （复核修复后重出包 4,842,436 B，覆盖同版本旧包）已产出，末步因无
-  `TAURI_SIGNING_PRIVATE_KEY` 未生成 `.sig`
-  （退出码 1，属预期）。**本轮只出本地 NSIS 包供安装验收，不推 main / 不打 tag /
-  不 publish**；`desktop-v0.4.0` draft 保持原状。
+  `TAURI_SIGNING_PRIVATE_KEY` 未生成 `.sig`（退出码 1，属预期）。
+  **操作者 2026-11-13 安装验收通过后提交、推 main 并打 `desktop-v0.4.1`，CI 出
+  draft Release，同日 publish（`--latest=false`，不抢 CLI 的 latest 标记），
+  `desktop-latest/latest.json` 随 `release: published` 覆盖为 0.4.1**；
+  `desktop-v0.4.0` draft 始终未发布，已被本版取代。
 
 - **0.4.1 同版复核修复（2026-11-13，随本地包一起验收）**：操作者问「今天会话数为 0」，
   只读排查确认属预期——当天 23 条小时桶来自 workbuddy / minimax-code / trae，均不在
   会话侧车 8 类扫描来源内；侧车 219 行、最新 `ended_at` 为 `2026-11-12T10:22Z`，
-  7D / 30D 分别有 27 / 99 条。两项复核修复并入 0.4.1（尚未发布，重出本地包覆盖）：
+  7D / 30D 分别有 27 / 99 条。两项复核修复并入 0.4.1（随本版一并发布，重出本地包覆盖）：
   ① 会话空态由两分改三分（无会话元数据 / 当前时间范围没有会话 / 筛选无结果），
   **预设时间范围不再算筛选**，`hasNarrowingFilters` 只认来源 / 项目 / 模型（桌面）或
   自定义起止时间 / 设备 / 来源（web），同步回写 ui-spec 空态规范与 web 中英文案；
@@ -739,7 +742,8 @@ ListUl / Medal）；③ CLI 版本 Chip 点击可探测 npm 最新版，是最�
   （纯逻辑）。
 - 实现时把新卡片 anatomy 回写 `docs/ui-spec.md`「桌面端」节；AGENTS 的 UI 规则不变。
 - 每期 bump 三处 version + CHANGELOG，tag `desktop-v0.2.0` / `desktop-v0.3.0` /
-  `desktop-v0.4.0`。（2026-11-12 复核后，安装/升级不再需要给 exe 打完整性标签，见 §11。）
+  `desktop-v0.4.0` / `desktop-v0.4.1`。（2026-11-12 复核后，安装/升级不再需要给 exe 打
+  完整性标签，见 §11。）
 
 ### 12.8 放行状态
 
@@ -752,9 +756,8 @@ D8 原范围（维护操作 / 复制按钮）被 D9–D11 吸收：维护折叠�
 **§12.14 三项（会话项目 / 模型筛选、设置目录入口、托盘周期切换）已于 2026-11-12 交付，
 经三轮操作者反馈修正（§12.14.1–.3）后本地 0.4.0 安装包验收通过**；`desktop-v0.4.0`
 tag 于 2026-11-13 推送、CI 出 draft Release，publish 仍由操作者在 Release 页放行。
-**0.4.1 设置改版（四项合并，见 §10）已完成开发并验收通过；同版复核修复（会话空态
-三分 + `read_tracker_head`）已并入、重出本地 NSIS 包供复验，未推 main / 未打 tag /
-未 publish。**
+**0.4.1 设置改版（四项合并，见 §10）与同版复核修复（会话空态三分 + `read_tracker_head`）
+已完成开发、操作者安装验收通过，并已随 `desktop-v0.4.1` 发布（2026-11-13）。**
 
 ### 12.10 D9（2026-11-11，操作者八点需求的第 1/2/3/7 项）：头部改造 + 四统计卡 + 热力图对齐
 
