@@ -3,12 +3,12 @@
 // Historical project attribution backfill (2026-11-04): the split must
 // reproduce the original hourly aggregate exactly, skip anything ambiguous,
 // and only emit rows the contract accepts. These tests cover the pure
-// projection used by scripts/admin/project-backfill.cjs.
+// projection used by scripts/archive/project-backfill.cjs.
 
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 
-const { buildProjectBackfill } = require("../../../scripts/admin/project-backfill-core.cjs");
+const { buildProjectBackfill } = require("../../../scripts/archive/project-backfill-core.cjs");
 
 const HOUR = "2026-08-25T01:00:00.000Z";
 

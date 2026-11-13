@@ -15,8 +15,8 @@
  * unattributed bucket on the server (including an explicit zero residual).
  *
  * Usage:
- *   node scripts/admin/project-backfill.cjs            # dry run (default)
- *   node scripts/admin/project-backfill.cjs --apply    # append split rows
+ *   node scripts/archive/project-backfill.cjs            # dry run (default)
+ *   node scripts/archive/project-backfill.cjs --apply    # append split rows
  *
  * `--apply` acquires the same sync.lock as the collector, writes a timestamped
  * backup next to queue.jsonl, then atomically replaces the queue with the old
@@ -142,7 +142,7 @@ function appendQueueRows(queuePath, rows) {
 async function main() {
   if (hasFlag("--help") || hasFlag("-h")) {
     console.log(
-      "Usage: node scripts/admin/project-backfill.cjs [--apply]\n" +
+      "Usage: node scripts/archive/project-backfill.cjs [--apply]\n" +
         "  default: dry run; --apply: append split rows to queue.jsonl",
     );
     return;

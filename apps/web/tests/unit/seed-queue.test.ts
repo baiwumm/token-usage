@@ -1,4 +1,4 @@
-// Unit tests for the queue reconciliation parser (scripts/selfhost/seed-queue.cjs).
+// Unit tests for the queue reconciliation parser (scripts/archive/seed-queue.cjs).
 // The last-wins bucket map it computes is the reconciliation baseline: it must
 // equal both what the tables hold after seeding and what account-summary reports.
 
@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { parseQueue } = require("../../../../scripts/selfhost/seed-queue.cjs") as {
+const { parseQueue } = require("../../../../scripts/archive/seed-queue.cjs") as {
   parseQueue: (text: string) => {
     buckets: Array<Record<string, unknown>>;
     states: Array<Record<string, unknown>>;
