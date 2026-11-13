@@ -9,8 +9,19 @@
 
 import { cn, toast } from "@heroui/react";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 
+import {
+  getCollapsedServerSnapshot,
+  getCollapsedSnapshot,
+  setCollapsedPreference,
+  subscribeCollapsed,
+} from "./collapse-state";
 import { MobileDrawer } from "./mobile-drawer";
 import { firstNameOf, titleForPath } from "./page-title";
 import { Sidebar } from "./sidebar";
@@ -25,8 +36,6 @@ import { useProfile } from "@/lib/auth/profile";
 import { NAV_COPY } from "@/lib/copy/nav";
 import { useLocale } from "@/lib/copy/locale";
 
-const COLLAPSE_KEY = "token-usage.sidebar-collapsed";
-
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -34,31 +43,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const copy = NAV_COPY[locale];
   const hour = useLocalHour();
   const { profile } = useProfile();
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = useSyncExternalStore(
+    subscribeCollapsed,
+    getCollapsedSnapshot,
+    getCollapsedServerSnapshot,
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
-  useEffect(() => {
-    try {
-      setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === "1");
-    } catch {
-      // storage unavailable — default expanded
-    }
-  }, []);
-
   const toggleCollapsed = useCallback(() => {
-    setCollapsed((previous) => {
-      const next = !previous;
-
-      try {
-        window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
-      } catch {
-        // best effort
-      }
-
-      return next;
-    });
+    setCollapsedPreference(!getCollapsedSnapshot());
   }, []);
 
   const requestSignOut = useCallback(() => setSignOutOpen(true), []);

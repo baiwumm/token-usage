@@ -794,9 +794,21 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
 - 以仪表盘为视觉与行为基准：其余页面复用其模式，不自创；确需偏离时先回写本文。
 - App Shell：
   - 桌面侧边栏自顶向下为品牌、胶囊导航、底部用户块（头像 + 名称 + 下拉：账户设置 / 退出登录）；
-    侧边栏无背景色与右边框，与页面共用底色。折叠态 76px 仅留图标，状态存 localStorage。退出
-    登录只保留用户块下拉一处（含确认对话框）。导航项：仪表盘、Sessions、项目、采集记录、
-    年度回顾、成就、设置；Sessions 位于仪表盘之后，使用 `ListUl` 图标。
+    侧边栏无背景色与右边框，与页面共用底色。折叠态 76px 仅留图标，状态存 localStorage，经
+    `useSyncExternalStore` 读取（`app-shell/collapse-state.ts`：服务端快照固定展开，客户端路由
+    切换的首帧即取到真实值，菜单切换不闪展开态；硬刷新由 hydration 后校正，跨标签页由
+    `storage` 事件同步）。退出登录只保留用户块下拉一处（含确认对话框）。导航项：仪表盘、
+    Sessions、项目、采集记录、年度回顾、成就、设置；Sessions 位于仪表盘之后，使用 `ListUl`
+    图标。
+  - 侧栏用户块与顶栏问候语共用 `useProfile()`；profile 存在单例 store
+    （`stores/profile-store.ts`）而非 hook 局部 state。`AppShell` 由各页面各自组合、菜单切换会
+    整体重挂载，store 让头像 / 名称 / 邮箱直接命中缓存，不重放 `?` + `…` 占位，也不重复请求
+    `auth.getUser()`；全应用只保留一个 `onAuthStateChange` 订阅（`USER_UPDATED` / `SIGNED_IN` /
+    `SIGNED_OUT`）。
+  - 导航 pending：点击导航项后，若目标路由持续 pending 超过 150ms，当前项图标淡出、同位换成
+    `Spinner`（`useLinkStatus`，`nav-items.tsx`）；命中 prefetch 的瞬时切换不出现。图标位固定
+    `size-4.5` 不产生位移，`prefers-reduced-motion` 下关闭淡入淡出与旋转。只覆盖 `Link` 导航，
+    不覆盖筛选器的 `router.replace`。
   - 顶栏持有页面标题（仪表盘为按时段的问候语，其余页面取菜单名），页面正文不再重复标题；顶栏
     无下边框，底色与页面一致；右侧固定为 GitHub / 语言 / 主题色 / 明暗切换 / 配对设备主操作。
     四个图标控件均带 `Tooltip`（底部、带箭头）：GitHub 用 `Button` 打开新标签（RAC `Link` 不

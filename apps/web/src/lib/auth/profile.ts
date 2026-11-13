@@ -3,38 +3,19 @@
 // User profile state (display name + avatar) stored in Supabase auth
 // user_metadata — editable from Settings, shown in the app shell sidebar.
 // The updateUser call is auth traffic (exempted browser Supabase usage).
+// The profile itself lives in a singleton store so the app shell does not
+// replay its placeholder on every menu switch (see stores/profile-store.ts).
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 
 import { authBrowserClient } from "@/lib/auth/browser";
+import {
+  useProfileStore,
+  type Profile,
+  type ProfileMeta,
+} from "@/stores/profile-store";
 
-export interface Profile {
-  email: string | null;
-  displayName: string;
-  avatarUrl: string | null;
-}
-
-interface ProfileMeta {
-  display_name?: string;
-  avatar_url?: string;
-  // Custom avatar reference written by useAvatarUpload. avatar_url is a
-  // provider-owned key — every GitHub/Google OAuth login overwrites it with
-  // the provider's picture (Supabase syncs provider metadata at each login),
-  // so the uploaded avatar must live under a key no provider touches.
-  custom_avatar_url?: string;
-}
-
-// Single source of truth for avatar display across the app (sidebar,
-// settings, wrapped): the upload-written custom key wins; the legacy
-// provider-owned key only serves accounts that never logged in with OAuth
-// (its value may be a provider URL, which the badge/public-page pipeline
-// rejects via its own-bucket allowlist).
-function profileAvatarUrl(meta: ProfileMeta | undefined): string | null {
-  if (meta?.custom_avatar_url) return String(meta.custom_avatar_url);
-  if (meta?.avatar_url) return String(meta.avatar_url);
-
-  return null;
-}
+export type { Profile } from "@/stores/profile-store";
 
 /**
  * Profile for the signed-in user, kept fresh via the USER_UPDATED auth event
@@ -47,51 +28,12 @@ export function useProfile(): {
     avatar_url?: string;
   }) => Promise<{ error: string | null }>;
 } {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const profile = useProfileStore((state) => state.profile);
+  const ensureLoaded = useProfileStore((state) => state.ensureLoaded);
 
   useEffect(() => {
-    const supabase = authBrowserClient();
-
-    if (!supabase) return;
-
-    const read = (
-      user: {
-        email?: string | null;
-        user_metadata?: ProfileMeta;
-      } | null,
-    ) => {
-      if (!user) {
-        setProfile(null);
-
-        return;
-      }
-      setProfile({
-        email: user.email ?? null,
-        displayName: String(user.user_metadata?.display_name || ""),
-        avatarUrl: profileAvatarUrl(user.user_metadata),
-      });
-    };
-
-    void (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      read(user);
-    })();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "USER_UPDATED" || event === "SIGNED_IN") {
-        read(session?.user ?? null);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+    ensureLoaded();
+  }, [ensureLoaded]);
 
   const updateProfile = useCallback(
     async (data: { display_name?: string; avatar_url?: string | null }) => {

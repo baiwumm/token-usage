@@ -11,8 +11,15 @@ import {
   ListUl,
   Medal,
 } from "@gravity-ui/icons";
-import { Chip, Focusable, Tooltip, Typography, cn } from "@heroui/react";
-import Link from "next/link";
+import {
+  Chip,
+  Focusable,
+  Spinner,
+  Tooltip,
+  Typography,
+  cn,
+} from "@heroui/react";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 import { NAV_COPY, NAV_ITEMS } from "@/lib/copy/nav";
@@ -30,6 +37,45 @@ const NAV_ICONS = {
 
 const NAV_ITEM_BASE =
   "group flex h-9 items-center gap-2.5 rounded-3xl text-sm transition-colors";
+
+type NavIconComponent = (typeof NAV_ICONS)[keyof typeof NAV_ICONS];
+
+/**
+ * Icon slot of a nav item. useLinkStatus only reports the navigation started
+ * by its own <Link>, so this must stay inside the link's children. The 150ms
+ * delay keeps instant, prefetched transitions from flashing a spinner.
+ */
+function NavItemIcon({
+  active,
+  icon: Icon,
+}: {
+  active: boolean;
+  icon: NavIconComponent;
+}) {
+  const { pending } = useLinkStatus();
+
+  return (
+    <span className="relative flex size-4.5 shrink-0 items-center justify-center">
+      <Icon
+        aria-hidden="true"
+        className={cn(
+          "size-4.5 transition-opacity duration-150 motion-reduce:transition-none",
+          active ? "text-foreground" : "text-muted group-hover:text-foreground",
+          pending && "opacity-0 delay-150",
+        )}
+      />
+      <Spinner
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0 m-auto size-4.5 transition-opacity duration-150 motion-reduce:transition-none",
+          pending ? "opacity-100 delay-150" : "opacity-0",
+        )}
+        color="current"
+        size="sm"
+      />
+    </span>
+  );
+}
 
 /** Pill navigation shared by the desktop sidebar and the mobile drawer. */
 export function NavItems({
@@ -53,7 +99,6 @@ export function NavItems({
           item.href === "/"
             ? pathname === "/" || pathname === "/dashboard"
             : pathname === item.href || pathname.startsWith(`${item.href}/`);
-        const Icon = NAV_ICONS[item.key];
         const label = copy[item.key];
         const showBadge = "badge" in item && item.badge;
 
@@ -64,17 +109,7 @@ export function NavItems({
             ? "bg-surface text-surface-foreground font-medium"
             : "text-foreground/65 hover:bg-default hover:text-foreground",
         );
-        const icon = (
-          <Icon
-            aria-hidden="true"
-            className={cn(
-              "size-4.5 shrink-0",
-              active
-                ? "text-foreground"
-                : "text-muted group-hover:text-foreground",
-            )}
-          />
-        );
+        const icon = <NavItemIcon active={active} icon={NAV_ICONS[item.key]} />;
 
         // Collapsed rail: the native title is replaced by a HeroUI Tooltip.
         // The tooltip root feeds hover/focus through React Aria's
