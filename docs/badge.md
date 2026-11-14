@@ -19,6 +19,9 @@
 5. 隐私：公开聚合用量、近一年逐日用量（含 tooltip 来源明细）与已解锁成就详情；公开响应永不
    包含会话明细、提示词、正文、绝对路径、email、user_id、设备标识、令牌本身。
 6. Token 数值随访客偏好（`useFormat().formatTokens`），成本与占比固定 USD 口径（§4.5）。
+7. 公开页引用的静态资源**不得落在登录守卫的页面前缀下**：成就插画固定走
+   `/achievement-art/<id>.png`（刻意避开受保护的 `/achievements` 页面路径）。路径撞车时匿名
+   访客的图片请求会被 307 到 `/login`，徽章静默降级为参数化 SVG（§6.5）。
 
 ## §1 定位与隐私立场
 
@@ -610,6 +613,11 @@ export interface RenderOptions { style: BadgeStyle; theme: BadgeTheme }
 - 徽章资产复用 `achievement-medallion.tsx` / `achievement-tiers.ts` 与既有 PNG；徽章放大到
   `size-20 md:size-24`，外层用 HeroUI `Button variant="ghost"`；格内段位用共享的
   `achievement-tier-badge.tsx` 金属渐变标签（同 `/achievements` 墙格，2026-11-06 起替换纯文本）。
+- **资产路径（2026-11-14 修复）**：插画固定为 `/achievement-art/<id>.png`
+  （`apps/web/public/achievement-art/`），刻意避开受登录守卫保护的 `/achievements` 页面前缀。
+  `/u/<token>` 是匿名页，资源一旦落在守卫前缀下会被 307 到 `/login`，`<img>` 解码失败后
+  `achievement-medallion.tsx` 回退参数化 SVG，表现为「线上徽章与本地长得不一样」而非报错。
+  守卫测试锁定该约束。
 - 无解锁条目时渲染空态文案；公开页始终计算并投影，无开关（§3.5）。
 
 ### §6.6 数字动画（2026-11-05 操作者指定 NumberFlow）

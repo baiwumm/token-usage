@@ -1,5 +1,10 @@
 # 成就徽章插画（achievement artwork）
 
+本目录是 `apps/web/public/achievement-art/`，对外 URL 前缀 `/achievement-art/`。
+**不要再改回 `/achievements/`**：那是需要登录的成就页路由，`src/proxy.ts` 的页面守卫
+会把匿名请求的静态资源一并 307 到 `/login`，公开页 `/u/<token>` 的徽章会静默降级成
+参数化 SVG 兜底图。守卫测试 `tests/unit/achievements-catalog.test.ts` 锁定这条约束。
+
 每条成就一张 256×256 PNG 透明徽章（调色板量化，17–30 KB / 张，共 20 张），
 文件名为成就 id（与 `apps/web/src/lib/achievements/catalog.ts` 的 `ACHIEVEMENTS[].id`
 一一对应）：

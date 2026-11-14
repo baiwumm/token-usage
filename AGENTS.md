@@ -105,6 +105,11 @@ workspace）。开源、可自部署；每个实例只写自己的 Supabase，�
    出现在历史记录与迁移事实中（旧域名、旧表名、旧计划任务名），对外路径与配置一律 `token-usage`。
 10. **上游署名**只出现在根 `LICENSE`、根 `THIRD_PARTY_NOTICES.md` 与 `packages/cli/` 的两份同名
    文件；README、docs 与 UI 文案只指向它们，不重复罗列上游名。
+11. **静态资源路径**：`apps/web/public/` 下的资源目录不得与 `apps/web/src/proxy.ts` 的
+   `PROTECTED_PAGES` 页面前缀同名。页面守卫按前缀匹配，撞车会让匿名访客（含公开页
+   `/u/<token>`）的图片请求 307 到 `/login` 并静默降级。成就插画因此固定在
+   `public/achievement-art/` → `/achievement-art/<id>.png`；守卫见
+   `apps/web/tests/unit/achievements-catalog.test.ts` 与 `tests/contract/route-guard.test.ts`。
 
 ## 闸门、分支与提交
 

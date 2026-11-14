@@ -23,7 +23,7 @@ const ARTWORK_DIR = join(
   "..",
   "..",
   "public",
-  "achievements",
+  "achievement-art",
 );
 
 /** Minimal PNG reader: enough for the palette/RGBA art the pipeline writes. */

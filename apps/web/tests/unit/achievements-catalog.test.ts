@@ -3,7 +3,7 @@
 // metric is on the monotone whitelist, and every card/icon/copy key resolves.
 // These tests intentionally read the catalog instead of a copy of the tiers.
 
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -24,6 +24,7 @@ import {
   tierForValue,
   tierKeyForTier,
 } from "@/lib/achievements/catalog";
+import { PROTECTED_PAGES } from "@/proxy";
 
 const THRESHOLD_COUNT = 5;
 
@@ -156,26 +157,42 @@ describe("copy and icons", () => {
 });
 
 describe("artwork", () => {
-  it("points every achievement at its own bitmap under /achievements", () => {
+  const publicDir = join(import.meta.dirname, "..", "..", "public");
+  const artworkDir = join(publicDir, "achievement-art");
+
+  it("points every achievement at its own bitmap under /achievement-art", () => {
     for (const achievement of ACHIEVEMENTS) {
-      expect(achievement.art).toBe(`/achievements/${achievement.id}.png`);
+      expect(achievement.art).toBe(`/achievement-art/${achievement.id}.png`);
     }
   });
 
-  it("ships one PNG per achievement id", () => {
-    const artworkDir = join(
-      import.meta.dirname,
-      "..",
-      "..",
-      "public",
-      "achievements",
-    );
+  it("ships exactly one PNG per achievement id", () => {
+    expect(
+      readdirSync(artworkDir)
+        .filter((file) => file.endsWith(".png"))
+        .sort(),
+    ).toEqual(ACHIEVEMENTS.map((entry) => `${entry.id}.png`).sort());
 
     for (const achievement of ACHIEVEMENTS) {
-      const file = join(artworkDir, `${achievement.id}.png`);
-
-      expect(existsSync(file), file).toBe(true);
+      expect(existsSync(join(artworkDir, `${achievement.id}.png`))).toBe(true);
     }
+  });
+
+  it("keeps artwork out of every login-guarded page prefix", () => {
+    // /u/<token> is anonymous: an asset under a guarded prefix gets 307'd to
+    // /login and silently degrades to the parametric SVG fallback badge.
+    for (const achievement of ACHIEVEMENTS) {
+      for (const page of PROTECTED_PAGES) {
+        expect(
+          achievement.art === page || achievement.art.startsWith(`${page}/`),
+          `${achievement.id}: ${achievement.art} collides with ${page}`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("leaves no legacy public/achievements directory behind", () => {
+    expect(existsSync(join(publicDir, "achievements"))).toBe(false);
   });
 });
 

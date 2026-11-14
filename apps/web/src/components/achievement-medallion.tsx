@@ -1,6 +1,6 @@
 "use client";
 
-// The achievement badge: the generated coin artwork in `public/achievements/`
+// The achievement badge: the generated coin artwork in `public/achievement-art/`
 // framed by a metal ring that carries the tier (bronze → silver → gold →
 // diamond → king). The artwork itself is tier-agnostic — one image per
 // achievement, reused across the five tiers — so the ring is the only tier

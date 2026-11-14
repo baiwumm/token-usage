@@ -83,12 +83,12 @@ export function FeatureGrid() {
 
 // 三枚真实成就币（apps/web 同款 PNG 资产）。
 const COINS = [
-  { file: "/achievements/token_titan.png", label: "token_titan 成就币" },
+  { file: "/achievement-art/token_titan.png", label: "token_titan 成就币" },
   {
-    file: "/achievements/marathon_session.png",
+    file: "/achievement-art/marathon_session.png",
     label: "marathon_session 成就币",
   },
-  { file: "/achievements/streak.png", label: "streak 成就币" },
+  { file: "/achievement-art/streak.png", label: "streak 成就币" },
 ];
 
 function AchievementCoins() {

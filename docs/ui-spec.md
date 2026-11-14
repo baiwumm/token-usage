@@ -416,7 +416,7 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
   带 42 %，标签与进度条 120° / 55 %），配深色字 + 内高光阴影
   （`inset 0 1px 1px rgba(255,255,255,0.4)`）——窄高光带才是「金属感」的来源。`王者` 为第五档，
   按同一配方取紫水晶色。未解锁段位用中性灰坡道；颜色不是唯一信息，段位同时以文字显示。
-- 徽章视觉（`achievement-medallion.tsx`）：位图插画 `public/achievements/<id>.png`（256×256 透明
+- 徽章视觉（`achievement-medallion.tsx`）：位图插画 `public/achievement-art/<id>.png`（256×256 透明
   PNG，自有生成资产；风格模板与生成脚本见 `scripts/admin/achievement-assets/`）。插画与段位无关：
   段位由徽章外的金属外环表达（五色，外环占徽章直径 6 %），同一张图复用五档；徽章内部几何全部按
   比例（外环 6 %、裁切 5 %），尺寸由 CSS 决定（`w-24 md:w-28`）。
@@ -426,7 +426,11 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
   `tests/unit/achievement-art-fit.test.ts` 直接解 PNG 的 alpha 圆盘重测半径，资产重生成后表对不上
   就会失败。未解锁态灰化 + 右下角锁标；图片加载失败时回退 `achievement-art.tsx` 的参数化 SVG 徽章
   （`<img onError>` + 挂载后检查 `naturalWidth`，覆盖「SSR 首屏就已 404、onError 收不到事件」的
-  情况），页面不得出现空徽章位。`prefers-reduced-motion` 下无动效。
+  情况），页面不得出现空徽章位。插画目录固定为 `public/achievement-art/`
+  （URL `/achievement-art/<id>.png`），**不得**放回 `/achievements/`：那是受登录守卫保护的页面
+  前缀，匿名访客的公开页图片请求会被 307 到 `/login` 并静默降级成 SVG 兜底图
+  （2026-11-14 修复，守卫测试见 `tests/unit/achievements-catalog.test.ts`）。
+  `prefers-reduced-motion` 下无动效。
 - 详情：点击墙格打开 `Modal`（`achievement-dialog.tsx`）：头部为可拖拽翻面的 3D 硬币
   （`achievement-coin.tsx`，176px；正面 = 位图徽章，背面 = 段位金属盘 + 段位名 + 达成日（单行不
   折行），未解锁显示「尚未解锁」+ 下一档阈值；币缘堆叠环、机刻纹、双面高光扫掠与地面投影）。弹窗
@@ -449,7 +453,7 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
   张 PNG（所见即所得），右侧「复制图片 / 下载 PNG」与隐私说明；渲染中显示 `Spinner`，失败给
   「卡片渲染失败，请重新打开」并可重试。卡片由 Canvas 2D 引擎
   `components/share-card/achievement.ts` 绘制，尺寸 1080×1350：深色底 + 段位径向光晕、右上角显示
-  名称、居中徽章（同源 `/achievements/<id>.png`，加载失败画金属盘 + 首字母占位，导出不中断）、
+  名称、居中徽章（同源 `/achievement-art/<id>.png`，加载失败画金属盘 + 首字母占位，导出不中断）、
   段位渐变标签、名称与描述、当前值、达成日、底部落款；等待 `document.fonts.ready` 后再画；只含
   聚合数据（名称 / 描述 / 段位 / 当前值 / 达成日 / handle），不含行级信息；文件名
   `token-usage-<id>-<tier>.png`。

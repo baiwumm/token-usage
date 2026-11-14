@@ -10,6 +10,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { ACHIEVEMENTS } from "@/lib/achievements/catalog";
 import { PROTECTED_PAGES, config, proxy } from "@/proxy";
 
 import { FakeSupabase } from "../helpers/fake-supabase";
@@ -126,6 +127,12 @@ describe("public pages", () => {
 			expectNext(await proxy(guardRequest(path)));
 		},
 	);
+
+	it("never guards achievement artwork (anonymous /u/<token> visitors need it)", async () => {
+		for (const entry of ACHIEVEMENTS) {
+			expectNext(await proxy(guardRequest(entry.art)));
+		}
+	});
 });
 
 describe("page guard redirects", () => {

@@ -49,7 +49,7 @@ describe("buildAchievementShareData", () => {
       tierName: "黄金",
       valueLabel: "tokens:12000000000",
       achievedDay: "2026-05-06",
-      art: "/achievements/token_titan.png",
+      art: "/achievement-art/token_titan.png",
       handle: "小北",
       locale: "zh",
     });

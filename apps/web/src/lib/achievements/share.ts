@@ -23,7 +23,7 @@ export type AchievementShareData = {
   valueLabel: string;
   /** Local day the current tier landed, when known. */
   achievedDay: string | null;
-  /** Bitmap artwork path (`/achievements/<id>.png`). */
+  /** Bitmap artwork path (`/achievement-art/<id>.png`). */
   art: string;
   /** Display name on the card; falls back to the copy module's default. */
   handle: string;

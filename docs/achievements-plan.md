@@ -99,6 +99,7 @@ reasoning 覆盖率 31.4%，低于 50% 门槛；覆盖率提升后复议，不�
 ### 3.2 模块布局
 
 ```text
+apps/web/public/achievement-art/  # 20 张徽章插画（URL 避开受保护页面前缀）
 apps/web/src/lib/achievements/
   catalog.ts      # 阈值唯一真源、分类、指标 kind、文案 key、art 路径
   compute.ts      # 纯函数：输入数据 → 成就进度
@@ -217,7 +218,8 @@ heatmap、sessions 的时区语义一致；`now` 由调用方注入（路由传 
 - **compute 单测**：五类指标边界值、时区日界、跨月 / 跨年 streak、周末 / 夜间计数、去重计数、
   吊销设备不清零、`achieved_at` 回推、单调性（追加数据 tier 不降）、固定 `now`。
 - **catalog 守卫**：id 唯一；阈值长度 5 且严格递增；kind ∈ 单调白名单；每条有 zh/en 文案；
-  图标 key 可解析；`art` 与资产文件一一对应。
+  图标 key 可解析；`art` 与资产文件一一对应；`art` 不落在任何受保护页面前缀下（匿名公开页
+  可直取图片），且不存在遗留的 `public/achievements/` 目录。
 - **highlights 单测**：排序与并列、`unlocksSince` 的 `null` / 新旧水位、`countUnlocked`、
   `isDayKey` 拒绝非法日期。
 - **分享卡投影单测**：字段、zh/en 段位名、空 handle 回退、未解锁 / 未知 id → `null`、文件名。
@@ -249,6 +251,8 @@ heatmap、sessions 的时区语义一致；`now` 由调用方注入（路由传 
 
 - 阈值变更：`catalog.ts` + 守卫测试 + 本文 §2 表格。
 - 版式变更：`docs/ui-spec.md`「成就」节。
-- 新增成就：`apps/web/public/achievements/<id>.png` + `apps/web/public/achievements/README.md`
-  的资产清单。
+- 新增成就：`apps/web/public/achievement-art/<id>.png` + `apps/web/public/achievement-art/README.md`
+  的资产清单。资产 URL 不得落在 `src/proxy.ts` 的 `PROTECTED_PAGES` 前缀下——公开页
+  `/u/<token>` 的匿名访客必须能直取图片；守卫测试见
+  `apps/web/tests/unit/achievements-catalog.test.ts` 与 `tests/contract/route-guard.test.ts`。
 - 需求范围变更：`docs/requirements.md`「范围」表。

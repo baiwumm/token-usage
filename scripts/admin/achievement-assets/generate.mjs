@@ -7,7 +7,7 @@
 //      centered, bright-rimmed disc of 70–95 % of the frame width.
 //   3. Failed QA → retry with the next seed (up to 4 attempts).
 //   4. Circular alpha cut (the coin becomes a transparent disc) and a
-//      box-filter downscale to 256px → apps/web/public/achievements/<id>.png
+//      box-filter downscale to 256px → apps/web/public/achievement-art/<id>.png
 //
 // Requirements (NOT runtime dependencies of the app — see README.md):
 //   - the `mmx` CLI on PATH (MiniMax image generation)
@@ -28,7 +28,7 @@ import { PNG } from "pngjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..", "..", "..");
-const OUT_DIR = join(ROOT, "apps", "web", "public", "achievements");
+const OUT_DIR = join(ROOT, "apps", "web", "public", "achievement-art");
 const WORK = join(HERE, ".work");
 
 const manifest = JSON.parse(

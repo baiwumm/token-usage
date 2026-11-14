@@ -119,7 +119,7 @@ CJS `require()` 加载它 → Turbopack 在 `globals.css` 上报
   （OFL-1.1，见 globals.css 头注）。
 - `public/share-cards/*.png`：由 apps/web 的 Canvas 分享卡引擎以 mock 数据
   导出（四风格：特刊/小票/霓虹/唱片），非操作者真实数据。
-- `public/brand-logos/`、`public/achievements/`：从 apps/web public 复制的
+- `public/brand-logos/`、`public/achievement-art/`：从 apps/web public 复制的
   子集，更新时两边同步。
 - `public/beian/icp.png` / `public/beian/police.png`：页脚备案图标（14px 展示），
   取自操作者站点通用素材；换号时只改 `src/lib/copy.ts` 的 `footer.beian` 文案。

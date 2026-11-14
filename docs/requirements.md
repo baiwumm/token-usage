@@ -33,6 +33,11 @@ CLI API 外，所有页面未登录一律重定向到登录页，重定向须保
 `/settings?section=appearance|account|devices|badges` 深链，不新增顶层路由。CLI API 走
 `docs/cli-contract.md` 自身的公开/鉴权规则，不受页面守卫影响。路由表变更需回写本表。
 
+**静态资源路径**：`apps/web/public/` 下的资源目录一律避开上述受保护页面前缀；页面守卫按前缀
+匹配（`/achievements/:path*`），资源目录若与页面路由同名，匿名访客（尤其公开页 `/u/<token>`）
+的图片请求会被 307 到登录页，浏览器解码失败后静默降级。成就插画因此固定在
+`public/achievement-art/` → `/achievement-art/<id>.png`，规范见 `docs/achievements-plan.md` §7。
+
 ## 边界
 
 - **不做**：排行榜、上游云端成就（依赖排名与全局编号）、pet/quota 桌面 widget、`/selfhost` 降级页、

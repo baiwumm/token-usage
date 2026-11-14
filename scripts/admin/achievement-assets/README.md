@@ -1,6 +1,6 @@
 # 成就徽章资产生成（achievement-assets）
 
-重新生成 `apps/web/public/achievements/*.png`（18 张成就徽章插画）的流水线。
+重新生成 `apps/web/public/achievement-art/*.png`（18 张成就徽章插画）的流水线。
 **这是离线资产生成脚本，不参与 web 应用构建**（`apps/web` 的 `verify` 不覆盖它）。
 
 ## 组成
@@ -26,7 +26,7 @@
 ## 用法
 
 ```bash
-# 全量重生成（会覆盖 apps/web/public/achievements/*.png）
+# 全量重生成（会覆盖 apps/web/public/achievement-art/*.png）
 node scripts/admin/achievement-assets/generate.mjs
 
 # 只重生成某几条
@@ -47,7 +47,7 @@ node scripts/admin/achievement-assets/generate.mjs --optimize-only
    - 画面四边必须是纯黑虚空（边框平均亮度 ≤ 18）；
    - 硬币外接圆必须正圆（宽高差 ≤ 8 % 画幅）、居中（偏移 ≤ 5 %）、占幅 70–95 %。
 3. **圆形 alpha 裁切**：以硬币外接圆为圆心做 1px 羽化的圆形蒙版，黑色虚空变透明。
-4. **缩放**：盒式滤波降到 256×256，写 `apps/web/public/achievements/<id>.png`
+4. **缩放**：盒式滤波降到 256×256，写 `apps/web/public/achievement-art/<id>.png`
    （RGBA PNG，`deflateLevel: 9`）。
 5. **量化（可选）**：装了 `sharp` 时再做一次调色板量化（256 色 + alpha），
    单张落到 17–30 KB；没装就跳过，文件偏大但显示效果一致。
