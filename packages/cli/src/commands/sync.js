@@ -369,6 +369,9 @@ const DSH_LEGACY_SOURCE_MIGRATION_KEY = "deepseekHarnessSourceMigration_2026_08"
 // lower, and the wipe helpers below now preserve hours older than the live
 // rebuild floor so a future re-key cannot repeat the loss.
 const AUTO_SYNC_SOURCE_ALIASES = new Map([
+  // The integration is labelled AStudio everywhere in the CLI; `acode` is only
+  // the collector id, so both spellings must reach the same scanner.
+  ["astudio", "acode"],
   ["code", "every-code"],
   ["commandcode", "command-code"],
   ["deepseek", "dsh"],
@@ -414,6 +417,10 @@ const AUTO_SYNC_SOURCES = new Set([
   "opencode",
   "openclaw",
   "pi",
+  // The parser existed but the id was missing here, so normalizeSyncSource()
+  // rejected `--source prime-agent` and every auto/background run skipped the
+  // source entirely.
+  "prime-agent",
   "qoder",
   "qoder-cn",
   "reasonix",
