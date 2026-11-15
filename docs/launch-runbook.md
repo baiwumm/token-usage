@@ -56,4 +56,4 @@
 - CLI 走 tag 流水线：`.github/workflows/release-cli.yml` 在 `cli-v*` tag 上校验版本与 main 祖先、
   跑 `pnpm verify`、`npm publish --provenance` 并生成 GitHub Release；操作步骤见
   [`docs/cli-release.md`](cli-release.md)。
-- 桌面端发版见 [`docs/desktop-plan.md`](desktop-plan.md) §11。
+- 桌面端发版见 [`docs/desktop-plan.md`](desktop-plan.md) §9。

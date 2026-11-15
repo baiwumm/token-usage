@@ -44,6 +44,9 @@ webview 用 localStorage 缓存「这台机器配过对」以免每次启动跑 
 
 只读命令：`read_tracker_head(rel, max_bytes)`（头部 ≤512 KiB，canonical 目录守卫），
 用于最近会话——sidecar 按 `ended_at` 倒序重写（最新行在最前），尾读只会拿到最旧行。
+`read_tracker_tail(rel, max_bytes)`（尾部 ≤2 MiB，返回 `{text, file_size}`）是 queue.jsonl
+容量墙回退：queue 是只增的 last-wins 基线，超过 8 MiB 整读上限时监控盘改聚合最新尾部窗口，
+`file_size` 保住 `queue.state.json` 偏移的整文件语义（pending 字节数照旧正确）。
 
 ## 4. UI 与命名
 
@@ -136,6 +139,10 @@ typescript / vitest 组与 web 同版本，Tailwind 走 `@tailwindcss/postcss`�
 - **托盘注册**：充分条件是**应用进程完整性级别 ≥ 任务栏进程**。从 explorer 启动天然满足；
   手动对 exe 打 High 标签只是历史兜底手段，不是安装或升级后的必做步骤。只有应用被低完整性
   父进程拉起时才缺托盘，此时降级为「关窗只最小化」并在监控盘顶部显示 `TrayNote`。
+- **队列容量墙**：queue.jsonl 是只增的 last-wins 基线，超过 `read_tracker_file` 的 8 MiB 整读
+  上限后监控盘改用 `read_tracker_tail` 聚合最新 2 MiB 尾部窗口（最近窗口数据完整，「总计」口径
+  偏小），并在监控盘顶部显示 `QueuePartialNote` 警示条引导 `tokenusage reconcile`；不再静默
+  降级为全空。
 - **系统通知**：依赖系统通知管道；验收时先确认系统通知总开关（UAC 关闭 + 管理员 shell 的机器
   上尤其容易整体关闭）。
 - **macOS / Linux**：Tauri 可出包，但尚无真机验证。

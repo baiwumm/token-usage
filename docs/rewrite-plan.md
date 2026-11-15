@@ -133,7 +133,7 @@ zstd 用 Node 内置）。
 （动效全 CSS）、`recharts`（趋势为手绘 SVG）。
 
 **`apps/desktop`**：web 子集（`react` / `react-dom` / `@heroui/react` / `@heroui/styles` /
-`@gravity-ui/icons` / `clsx` / `recharts` / `@number-flow/react`）+ `@tauri-apps/api` 与
+`@gravity-ui/icons` / `recharts` / `@number-flow/react`）+ `@tauri-apps/api` 与
 `@tauri-apps/plugin-notification` / `@tauri-apps/plugin-autostart`；devDeps 增
 `vite` / `@vitejs/plugin-react` / `@tauri-apps/cli`。Rust crate（`tauri` 2、`tauri-build`、
 `tauri-plugin-*`）走 cargo，不进 pnpm lockfile。
