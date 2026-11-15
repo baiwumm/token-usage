@@ -28,11 +28,10 @@
 // payload's totals.attributed_tokens + totals.unattributed_tokens because the
 // row set here is identical to the one the list aggregates.
 
-import type { RestRow } from "./supabase-rest";
-
 import { loadAccountUsage, loadSessionRows } from "./account-data";
 import { jsonResponse } from "./http";
 import { addDays, dayStartIso, groupKeyOf, resolveWindow } from "./projects";
+import { sessionCostUsd } from "./session-cost";
 
 import { canonicalSource } from "@/lib/sources";
 import {
@@ -204,38 +203,6 @@ export function mergeSources(
   return list;
 }
 
-// ---- Read-time cost for one session row (mirrors projects.ts, whose own
-// sessionCostUsd is private). One computeRowCost call per model entry. ----
-
-const SESSION_COST_KEYS = [
-  "input_tokens",
-  "cached_input_tokens",
-  "cache_creation_input_tokens",
-  "output_tokens",
-  "reasoning_output_tokens",
-  "total_tokens",
-] as const;
-
-function sessionCostUsd(row: RestRow): number {
-  const source = String(row.source ?? "");
-  const rawModels: unknown = row.models;
-
-  if (!Array.isArray(rawModels)) return 0;
-  const models: unknown[] = rawModels;
-  let sum = 0;
-
-  for (const raw of models) {
-    if (!raw || typeof raw !== "object") continue;
-    const record = raw as Record<string, unknown>;
-    const costRow: Record<string, unknown> = { source, model: record.model };
-
-    for (const key of SESSION_COST_KEYS) costRow[key] = numberOr0(record[key]);
-    sum += computeRowCost(costRow);
-  }
-
-  return sum;
-}
-
 // ---- Normalized row shared by both calibers ----
 
 interface DetailRow {
@@ -298,7 +265,7 @@ async function collectSessionRows(
       reasoning: numberOr0(row.reasoning_output_tokens),
       // A session row IS one conversation; sessions have no per-bucket count.
       conversations: 1,
-      costUsd: sessionCostUsd(row),
+      costUsd: sessionCostUsd(String(row.source ?? ""), row.models),
       credits: numberOr0(row.credits),
     });
   }

@@ -12,6 +12,7 @@ import {
 } from "./account-data";
 import { loadProjectProfiles } from "./project-profiles";
 import { select } from "./supabase-rest";
+import { sessionModelCostUsd } from "./session-cost";
 import { buildSessionsCsv, type SessionsCsvItem } from "./sessions-csv";
 
 import {
@@ -32,7 +33,6 @@ import {
   zonedDayKey,
   type TzContext,
 } from "@/lib/account/series";
-import { computeRowCost } from "@/lib/pricing";
 
 type SeriesArgs = {
   url: URL;
@@ -486,15 +486,6 @@ interface SessionWire {
   models: SessionModelWire[];
 }
 
-const SESSION_COST_KEYS = [
-  "input_tokens",
-  "cached_input_tokens",
-  "cache_creation_input_tokens",
-  "output_tokens",
-  "reasoning_output_tokens",
-  "total_tokens",
-] as const;
-
 function sessionModelsWire(
   rawModels: unknown,
   source: string,
@@ -506,10 +497,7 @@ function sessionModelsWire(
     if (!raw || typeof raw !== "object") return [];
     const record = raw as Record<string, unknown>;
     const tokens = numberOr0(record.total_tokens);
-    const row: Record<string, unknown> = { source, model: record.model };
-
-    for (const key of SESSION_COST_KEYS) row[key] = numberOr0(record[key]);
-    const cost = computeRowCost(row);
+    const cost = sessionModelCostUsd(source, record);
     const share =
       totalTokens > 0
         ? Math.round((tokens / totalTokens) * 10_000) / 10_000

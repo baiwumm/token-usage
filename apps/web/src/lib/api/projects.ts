@@ -12,6 +12,7 @@ import type { RestRow } from "./supabase-rest";
 
 import { loadSessionRows } from "./account-data";
 import { jsonResponse } from "./http";
+import { sessionCostUsd } from "./session-cost";
 
 import {
   boundRangeStart,
@@ -22,7 +23,6 @@ import {
   type TzContext,
 } from "@/lib/account/series";
 import { startOfDayUtcMs } from "@/lib/dashboard/ranges";
-import { computeRowCost } from "@/lib/pricing";
 
 const DAY_MS = 86_400_000;
 const DEFAULT_RANGE_DAYS = 7;
@@ -48,36 +48,6 @@ export interface ProjectWire {
    *  the first five as brand icons and folds the rest into "+N"; it is a
    *  display-only projection, never a second total. */
   sources: string[];
-}
-
-// Same token-column set the sessions series costs per model entry
-// (account-series-handlers.ts sessionModelsWire).
-const SESSION_COST_KEYS = [
-  "input_tokens",
-  "cached_input_tokens",
-  "cache_creation_input_tokens",
-  "output_tokens",
-  "reasoning_output_tokens",
-  "total_tokens",
-] as const;
-
-function sessionCostUsd(row: RestRow): number {
-  const source = String(row.source ?? "");
-  const rawModels = row.models;
-
-  if (!Array.isArray(rawModels)) return 0;
-  let sum = 0;
-
-  for (const raw of rawModels) {
-    if (!raw || typeof raw !== "object") continue;
-    const record = raw as Record<string, unknown>;
-    const costRow: Record<string, unknown> = { source, model: record.model };
-
-    for (const key of SESSION_COST_KEYS) costRow[key] = numberOr0(record[key]);
-    sum += computeRowCost(costRow);
-  }
-
-  return sum;
 }
 
 /** UTC instant of local midnight for a day key in the caller's tz context. */
@@ -376,7 +346,7 @@ export async function projectsPayloadForUser(
       sourceLabel,
       (group.sourceTokens.get(sourceLabel) ?? 0) + tokens,
     );
-    group.costUsd += sessionCostUsd(row);
+    group.costUsd += sessionCostUsd(String(row.source ?? ""), row.models);
     group.credits += numberOr0(row.credits);
     group.sessionCount += 1;
     group.dayTokens.set(dayKey, (group.dayTokens.get(dayKey) ?? 0) + tokens);
