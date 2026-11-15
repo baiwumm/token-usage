@@ -42,7 +42,8 @@ Tauri 2 托盘伴生工具：**本机采集视角的实时监控台 + CLI 操作
 webview 用 localStorage 缓存「这台机器配过对」以免每次启动跑 status；CLI 不在 PATH 时由缓存
 决定，只有 CLI 的回答能把它翻回未配对。
 
-只读命令：`read_tracker_tail(rel, max_bytes)`（尾部 ≤512 KiB，canonical 目录守卫），用于最近会话。
+只读命令：`read_tracker_head(rel, max_bytes)`（头部 ≤512 KiB，canonical 目录守卫），
+用于最近会话——sidecar 按 `ended_at` 倒序重写（最新行在最前），尾读只会拿到最旧行。
 
 ## 4. UI 与命名
 
@@ -59,12 +60,14 @@ webview 用 localStorage 缓存「这台机器配过对」以免每次启动跑 
 ## 5. 依赖
 
 **前端**：`react` / `react-dom` / `@heroui/react` / `@heroui/styles` / `@gravity-ui/icons` /
-`clsx` / `recharts` / `@number-flow/react` / `@tauri-apps/api` /
+`recharts` / `@number-flow/react` / `@tauri-apps/api` /
 `@tauri-apps/plugin-notification` / `@tauri-apps/plugin-autostart` /
 `@tauri-apps/plugin-updater` / `@tauri-apps/plugin-process`。
 
 **devDeps**：`vite` / `@vitejs/plugin-react` / `@tauri-apps/cli`；eslint / tailwind / prettier /
-typescript / vitest 组与 web 同版本，Tailwind 走 `@tailwindcss/postcss`。
+typescript / vitest 组与 web 同版本，Tailwind 走 `@tailwindcss/postcss`。另有
+`tokenusage-cli`（workspace）——不被 JS import，作用是让 dev 进程的 PATH 里有 `tokenusage`
+二进制（Rust 侧子进程调用在 `pnpm tauri dev` 下才能工作）。
 
 **Rust crate**（cargo，不进 pnpm lockfile，`Cargo.lock` 入库 + CI `--locked`）：`tauri` 2
 （tray-icon）+ `tauri-build` 2 + `tauri-plugin-notification` / `autostart` / `single-instance` /

@@ -1,4 +1,4 @@
-// Sessions view data layer (desktop-plan §12.13, web /sessions 移植轮): parses
+// Sessions view data layer (desktop-2026-11.md 附录（原 desktop-plan）§12.13, web /sessions 移植轮): parses
 // the CLI's local session sidecar (`session.queue.jsonl`) into the row shape
 // the sessions page shows, applies the same admission rules as the CLI's
 // upload mapping (session-upload.js mapSessionRow) so the local list matches

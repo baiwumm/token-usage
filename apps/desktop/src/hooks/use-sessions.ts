@@ -1,4 +1,4 @@
-// Sessions view hook (desktop-plan §12.13): reads the whole session sidecar
+// Sessions view hook (desktop-2026-11.md 附录（原 desktop-plan）§12.13): reads the whole session sidecar
 // through the Rust bridge (falling back to its HEAD when it exceeds the 8 MiB
 // whole-file cap — the sidecar is written newest-first), parses it into
 // upload-ruled rows and drives the filter / page / CSV-export state. Reads are

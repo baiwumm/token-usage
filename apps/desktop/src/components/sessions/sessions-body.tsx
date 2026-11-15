@@ -11,7 +11,7 @@ import { SessionsSummaryCards } from "@/components/sessions/sessions-summary-car
 import { SessionsTable } from "@/components/sessions/sessions-table";
 
 /**
- * Sessions view (desktop-plan §12.13): the web /sessions anatomy over the
+ * Sessions view (desktop-2026-11.md 附录（原 desktop-plan）§12.13): the web /sessions anatomy over the
  * local sidecar — filter bar, four totals cards, the list and the detail
  * dialog. Mounts read the sidecar once; the bar's refresh re-reads, matching
  * the web page's explicit refresh model.

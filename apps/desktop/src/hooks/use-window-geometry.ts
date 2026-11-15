@@ -1,4 +1,4 @@
-// Window geometry memory (desktop-plan §12.1, D11): the window position /
+// Window geometry memory (desktop-2026-11.md 附录（原 desktop-plan）§12.1, D11): the window position /
 // size / maximized flag persist in localStorage and restore before the
 // window shows. The config starts the window hidden (`visible: false`), this
 // hook applies the saved geometry, then calls show() — no startup jump; a

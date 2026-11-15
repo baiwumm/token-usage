@@ -74,7 +74,7 @@ export function MonitorBody() {
   useMonitorToasts({ cli, cliResolved, lastOutcome });
   const trayAvailable = useTrayAvailable();
 
-  // Tray period switch (desktop-plan §12.14): pick 今日 / 7D / 30D / 总计 from
+  // Tray period switch (desktop-2026-11.md 附录（原 desktop-plan）§12.14): pick 今日 / 7D / 30D / 总计 from
   // the tray menu and the header filter + tray usage line follow.
   useEffect(() => {
     let disposed = false;

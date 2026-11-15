@@ -22,7 +22,7 @@ import { PeriodFilter } from "@/components/monitor/period-filter";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LANDING_URL, webUrl } from "@/lib/links";
 
-/** The two top-level views the header toggles between (desktop-plan §12.13). */
+/** The two top-level views the header toggles between (desktop-2026-11.md 附录（原 desktop-plan）§12.13). */
 export type MonitorView = "monitor" | "sessions";
 
 function openInBrowser(url: string): void {

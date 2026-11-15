@@ -1,6 +1,6 @@
 // Web deep links. The desktop has no router of its own: every "open in web"
 // entry hands the paired instance's dashboard URL + a known path to the OS
-// browser (docs/desktop-plan.md §12.3). Unpaired machines get null so the UI
+// browser (docs/desktop-2026-11.md 附录（原 desktop-plan）§12.3). Unpaired machines get null so the UI
 // can hide the entry instead of inventing a host.
 
 export type WebPage = "dashboard" | "projects" | "sessions" | "achievements";

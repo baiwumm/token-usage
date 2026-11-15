@@ -37,7 +37,7 @@ const RANGE_OPTIONS: Array<{ id: SessionRange; label: string }> = [
  * filter look, no more `variant="secondary"` — and the project / model options
  * drop the session count so long names cannot widen (and overflow) the popover;
  * the popover is capped and its labels truncate. The web's device filter is
- * dropped — the local sidecar is this machine only (desktop-plan §12.13 /
+ * dropped — the local sidecar is this machine only (desktop-2026-11.md 附录（原 desktop-plan）§12.13 /
  * §12.14).
  */
 export function SessionsBar({

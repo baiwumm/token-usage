@@ -1,7 +1,7 @@
 // Read-only view over `project.repos.state.json`, which the CLI writes after
 // confirming a project's repository. Shape: `{version, confirmed: {key: url}}`.
 // The desktop never guesses a URL: a project without a confirmed entry simply
-// renders as its bare key (docs/desktop-plan.md §12.2).
+// renders as its bare key (docs/desktop-2026-11.md 附录（原 desktop-plan）§12.2).
 //
 // The two sides key projects differently: the queue's `project_key` is the
 // directory basename (`token-usage`), while the confirmed map is keyed by the

@@ -1,4 +1,4 @@
-// Share-card payload projection (desktop-plan §12.13, web dashboard
+// Share-card payload projection (desktop-2026-11.md 附录（原 desktop-plan）§12.13, web dashboard
 // share-input 移植): pure projection of the monitor snapshot into the
 // shared ShareCardData input (components/share-card). Calibers follow the
 // desktop's accepted D9/D10 rules — the heatmap is 本机口径 and follows the

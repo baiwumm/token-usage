@@ -1,4 +1,4 @@
-// Canvas share-card engine (web 同款移植, desktop-plan §12.13). Variants live
+// Canvas share-card engine (web 同款移植, desktop-2026-11.md 附录（原 desktop-plan）§12.13). Variants live
 // in sibling files and draw from ShareCardData only; the preview on the
 // dialog is the same data URL the actions export, so what you see is what
 // you get. The web's `<a download>` export is replaced by the Rust

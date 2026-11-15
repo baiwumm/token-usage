@@ -1,4 +1,4 @@
-// Year-wide activity heatmap data + grid geometry (desktop-plan §12.4, web
+// Year-wide activity heatmap data + grid geometry (desktop-2026-11.md 附录（原 desktop-plan）§12.4, web
 // 仪表盘「活跃热力图」移植轮 2026-11-11): local-day totals with per-day source
 // splits from the same last-wins queue baseline as the summary cards, laid
 // out as 53 Monday-aligned week columns the ported card renders directly.

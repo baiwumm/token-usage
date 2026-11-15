@@ -11,7 +11,7 @@ const OPTIONS: Array<{ id: UsagePeriod; label: string }> = [
 
 /**
  * One control drives the three mix cards; the summary tiles above stay fixed
- * (今日 / 近 7 天) so the two surfaces never disagree (desktop-plan §12.3).
+ * (今日 / 近 7 天) so the two surfaces never disagree (desktop-2026-11.md 附录（原 desktop-plan）§12.3).
  * Rendered as a connected ToggleButtonGroup so it reads as a single segmented
  * switch at 340 px. Buttons keep HeroUI's default (filled) variant: a ghost
  * unselected segment is the same color as the card behind it, so the control
