@@ -157,6 +157,15 @@ secret key 无前缀、绝不进浏览器包。
 
 契约冻结：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），其值取 publishable key。
 
+**SEO 与社交卡**（2026-11-15）：`apps/web/src/app/opengraph-image.tsx` 请求时渲染 1200×630
+社交卡（OG + Twitter `summary_large_image`），词标取 `TOKEN_USAGE_SITE_NAME`、域名取
+`TOKEN_USAGE_DASHBOARD_URL`；`src/lib/seo.ts` 显式声明 `og:image` / `twitter:image` 指向同一路由
+（页面级 `generateMetadata` 的 `openGraph` 会整块替换父段、把文件约定注入的图丢掉）。
+`app/robots.ts`
+默认不收录本域：只放行 `/login` 与 `/opengraph-image`，其余（含公开页 `/u/`，`docs/badge.md` §6）
+一律挡爬取，不产出 sitemap（没有应当收录的 URL）。卡片文案为 ASCII——Satori 不支持仓库内的
+woff2 子集字体，站名改为中文时卡片回退默认词标。
+
 ## 6. 风险与对冲
 
 | 风险 | 对冲 |

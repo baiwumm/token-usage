@@ -16,7 +16,13 @@ import {
 
 const FALLBACK_SITE_NAME = "TokenUsage";
 const FALLBACK_SITE_URL = "http://localhost:3000";
-const OG_IMAGE_PATH = "/web-app-manifest-512x512.png";
+
+// 社交卡由 `app/opengraph-image.tsx` 渲染（1200×630）。URL 仍在这里显式声明：
+// 页面级 generateMetadata 返回的 openGraph 会整块替换父段的 openGraph，根段按
+// 文件约定注入的图在子路由上会被丢掉（landing 能自动注入，是因为它的 layout 与
+// page 同段且 page 不再声明 openGraph）。指向同一个路由、尺寸对齐卡片即可。
+const OG_IMAGE_PATH = "/opengraph-image";
+const OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
 
 /**
  * Product name used in page titles (`<page> - <siteName>`) and the Apple web
@@ -75,6 +81,12 @@ export function createSiteMetadata(locale: Locale): Metadata {
     robots: {
       index: true,
       follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        // 不限制大图预览，社交卡按原始 1200×630 裁切。
+        "max-image-preview": "large",
+      },
     },
     appleWebApp: {
       title: siteName,
@@ -87,17 +99,10 @@ export function createSiteMetadata(locale: Locale): Metadata {
       url: "/",
       locale: openGraphLocale(locale),
       alternateLocale: [alternateOpenGraphLocale(locale)],
-      images: [
-        {
-          url: OG_IMAGE_PATH,
-          width: 512,
-          height: 512,
-          alt: siteName,
-        },
-      ],
+      images: [{ url: OG_IMAGE_PATH, ...OG_IMAGE_SIZE, alt: siteName }],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: siteName,
       description: copy.description,
       images: [OG_IMAGE_PATH],
@@ -140,17 +145,10 @@ export function createPageMetadata({
       url: path,
       locale: openGraphLocale(locale),
       alternateLocale: [alternateOpenGraphLocale(locale)],
-      images: [
-        {
-          url: OG_IMAGE_PATH,
-          width: 512,
-          height: 512,
-          alt: siteName,
-        },
-      ],
+      images: [{ url: OG_IMAGE_PATH, ...OG_IMAGE_SIZE, alt: fullTitle }],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: fullTitle,
       description: copy.description,
       images: [OG_IMAGE_PATH],
