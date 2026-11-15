@@ -11,6 +11,7 @@
 - **本机唯一"本地只有积分"的活跃源**：qoder-cn 新版 JSONL（`~/.qoder-cn/projects`），credits-only 行 token 记 0、conversation 照常、credits 进独立字段（2026-10-31 P1，`packages/cli/src/lib/rollout.js`）。
 - **行业事实（双重验证）**：订阅制工具的云端接口只有余额/百分比快照，**没有任何一家开放按 token 的消耗明细**——我们自己的 `lib/usage-limits.js` 覆盖 20 家、参照项目 12 个订阅渠道，结论一致。唯一例外是 Cursor 的 dashboard CSV 导出（逐事件 token 明细 + 真实美元成本），本项目已实现。
 - 改动任务共 2 批（Trae CN 接入 / credits 字段）+ 1 批 Sessions 遥测，均已完成，见 `docs/sources-capture-plan.md` §2；2026-11-05 的上游对齐修复见该文档 §2 表格末行。
+- **审计入口**（2026-11-15）：「某个来源到底有没有进来」不再需要临时扫队列——`tokenusage doctor` 的 `sources.coverage` 检查按 30 天窗口列出每个源的最新小时桶、桶数与 token 数，并把超过 7 天无新行的源单列为 silent（`packages/cli/src/lib/doctor.js` `checkSourceCoverage`）。最新桶整队列超过 7 天则降为 warn，因为闲置工具正常停写，与解析器坏了外观相同，必须由人判断。
 
 ## 2. 双平面原则（铁律）
 
@@ -53,6 +54,7 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 | 4 | **kiro（CLI 部分）** | 无真实 token：按 4 字符/token 估算（带 `usage_precision`）；credits 写 sidecar `~/.tokenusage/tracker/kiro-credits.json` 仅诊断、不入队列 | `rollout.js:8497`（`KIRO_CLI_CHARS_PER_TOKEN=4`）、:8600-8603 注释、:8832-8849、:9034+ | 未装（无 sidecar 文件） | 估算制先例，保持 |
 | 5 | **cursor** | 账户级 CSV 明细（§3） | `cursor-config.js` 全文件 | 未装，休眠 | 机制完整，不改 |
 | 6 | **trae-cn（账户级 API）** | opt-in：`TOKENUSAGE_TRAE_CN_USAGE=1`；凭据 `<APPDATA>/TRAE SOLO CN` 或 `<APPDATA>/Trae CN` 下 `User/globalStorage/storage.json` 的 `iCubeAuthInfo://icube.cloudide`（tc v5 解密）→ `POST https://api.trae.cn/trae/api/v1/pay/query_user_usage_group_by_session`，30 天窗会话快照（2026-11-05 起两个 CN app dir 都发现） | `trae-cn-config.js`、`rollout.js` `parseTraeCnApiIncremental`、`sync.js` | 无 `TRAE SOLO CN` 目录 → 通路无对象。注意：status 里的 "Trae SOLO plan: plan Free" 快照（`status.js`、`rollout.js`）是另一条 entitlement 通路，证明 Trae 系登录态可读 | 保持 opt-in 关闭 |
+| 7 | **freebuff（Freebuff CLI）** | 不做：本机只有项目级 `.freebuff/project-id`，没有会话日志、没有 token 记录，用量只存在于服务端；无可采集的本地事实，因此既无解析器也无队列行（2026-11-15 实测） | — | `~/.freebuff` 不存在，仅 `<repo>/.freebuff/project-id` | **不采集（无本地数据源）** |
 | 附 | workbuddy（SQLite `session_usage`） | 只有 used/size+credits，**刻意忽略**，JSONL 是权威 | `rollout.js:11018-11023,11141,11770` | 53 个 JSONL 正常在采 | 忽略正确，保持 |
 
 ## 5. 标准来源速览
@@ -92,4 +94,5 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 | kiro 估算 / credits sidecar | `rollout.js:8497,8600-8603,8832-8849,9034+` |
 | workbuddy SQLite 忽略 | `rollout.js:11018-11023,11141,11770` |
 | 云端限额面板（20 家） | `packages/cli/src/lib/usage-limits.js` 的 `getUsageLimits` 及 qoder-limits（含 Desktop 0.4.x `main.log` 的 `[Auth] [AccountUsage]` 摘要扫描 + provenance，2026-11-05）/ qoder-cn-cli-limits / grok-limits / zcode-limits 等；WorkBuddy 国内版与 AI 国际版各自独立（`workbuddy` / `workbuddyAi`，桌面端 IPC，2026-11-15）。读数由 `tokenusage status --limits`（opt-in，2026-11-05 接线；`--json` 的 `limits` 键）渲染为 plan + 各窗口 + credits + provenance；web 端仍无限额面板 |
+| 本机 baseline（2026-11-15） | `doctor` `sources.coverage`：30 天窗口 11 个源；队列最新桶 workbuddy（1 天前）；silent >7d：minimax-code / dsh / qoder-cn / trae / pi-minimax-cn 等 7 个（均为停用而非漏采）。逐源核验：opencode 5255 条消息（最后 2026-11-13 15:30，100 桶）、qoder-cn 306 桶（最后 11-02）、pi 最后 11-13、codex 本地 rollout 停于 2026-09-01（无新会话）、copilot/claude/cline 无近 7 天文件 |
 | 本机 baseline（2026-10-31） | qoder-cn：38 JSONL / 8397 usage 行 100% credits-only（≈0.64/条）、队列 conv=3146 token=0；Trae CN 库 17/18 行 token_usage（10-26~28，deepseek-v4.1-flash）；Qoder legacy 停写 2026-02-02；队列现有 source：zcode(331)/dsh(89)/opencode(56)/workbuddy(50)/codex(25)/qoder(21)/qoder-cn(14)/pi 系(10)/zed/minimax-code |

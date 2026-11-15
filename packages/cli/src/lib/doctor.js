@@ -3,7 +3,7 @@ const path = require("node:path");
 const { constants } = require("node:fs");
 
 const { readJsonStrict } = require("./fs");
-const { collectPricingCoverage } = require("./pricing-coverage");
+const { collectPricingCoverage, readLastWinsBuckets } = require("./pricing-coverage");
 
 async function buildDoctorReport({
   runtime = {},
@@ -23,6 +23,7 @@ async function buildDoctorReport({
     checks.push(await checkTrackerDir(paths.trackerDir));
     checks.push(await checkRuntimeCopy(paths.trackerDir));
     checks.push(await checkPricingCoverage(paths.trackerDir));
+    checks.push(await checkSourceCoverage(paths.trackerDir, now));
   }
   if (paths.configPath) {
     checks.push(await checkConfigJson(paths.configPath));
@@ -310,6 +311,95 @@ async function checkPricingCoverage(trackerDir) {
       detail: `coverage check failed: ${error?.message || error}`,
     };
   }
+}
+
+// "No new rows for a week" is the point where an idle-but-installed tool and a
+// broken parser look identical to a reader — sources.coverage names both.
+const STALE_SOURCE_MS = 7 * 86_400_000;
+
+// Every collection audit ends up asking the same question — "is this source
+// actually landing rows, or did its parser quietly stop finding data?" — and
+// the only way to answer it used to be an ad-hoc queue scan. Report the newest
+// bucket per source over a 30-day window so a silent source is visible in one
+// line; a queue whose newest bucket is over a week old is a warning, not a
+// disease, because idle tools legitimately stop writing.
+async function checkSourceCoverage(trackerDir, now = () => new Date()) {
+  const queuePath = path.join(trackerDir, "queue.jsonl");
+  const windowDays = 30;
+  const toMs = now().getTime();
+  const fromMs = toMs - windowDays * 86_400_000;
+  try {
+    const buckets = await readLastWinsBuckets({ queuePath, fromMs, toMs });
+    if (buckets.length === 0) {
+      return {
+        id: "sources.coverage",
+        status: "ok",
+        critical: false,
+        detail: `no local buckets in the last ${windowDays}d`,
+        meta: { window_days: windowDays, sources: [] },
+      };
+    }
+
+    const bySource = new Map();
+    for (const bucket of buckets) {
+      const entry = bySource.get(bucket.source) || {
+        source: bucket.source,
+        buckets: 0,
+        tokens: 0,
+        last_hour_start: bucket.hour_start,
+      };
+      entry.buckets += 1;
+      entry.tokens += bucket.total_tokens;
+      if (bucket.hour_start > entry.last_hour_start) entry.last_hour_start = bucket.hour_start;
+      bySource.set(bucket.source, entry);
+    }
+    const sources = [...bySource.values()].sort(
+      (a, b) => b.last_hour_start.localeCompare(a.last_hour_start) || a.source.localeCompare(b.source),
+    );
+
+    const newestMs = Date.parse(sources[0].last_hour_start);
+    const newestAgeMs = Number.isFinite(newestMs) ? Math.max(0, toMs - newestMs) : null;
+    const stale = sources.filter((entry) => {
+      const ms = Date.parse(entry.last_hour_start);
+      return Number.isFinite(ms) && toMs - ms > STALE_SOURCE_MS;
+    });
+
+    const parts = [
+      `${sources.length} source(s) in the last ${windowDays}d; newest ${sources[0].source}` +
+        (newestAgeMs === null ? "" : ` ${formatAge(newestAgeMs)} ago`),
+    ];
+    if (stale.length > 0) {
+      const shown = stale.slice(0, 5).map((entry) => {
+        const ms = Date.parse(entry.last_hour_start);
+        return `${entry.source} ${formatAge(Math.max(0, toMs - ms))}`;
+      });
+      parts.push(
+        `${stale.length} silent over ${STALE_SOURCE_MS / 86_400_000}d: ${shown.join(", ")}` +
+          (stale.length > shown.length ? ` (+${stale.length - shown.length} more)` : ""),
+      );
+    }
+
+    return {
+      id: "sources.coverage",
+      status: newestAgeMs !== null && newestAgeMs > STALE_SOURCE_MS ? "warn" : "ok",
+      critical: false,
+      detail: parts.join("; "),
+      meta: { window_days: windowDays, sources },
+    };
+  } catch (error) {
+    return {
+      id: "sources.coverage",
+      status: "warn",
+      critical: false,
+      detail: `source coverage check failed: ${error?.message || error}`,
+    };
+  }
+}
+
+function formatAge(ms) {
+  if (ms >= 86_400_000) return `${Math.floor(ms / 86_400_000)}d`;
+  if (ms >= 3_600_000) return `${Math.floor(ms / 3_600_000)}h`;
+  return `${Math.max(1, Math.floor(ms / 60_000))}m`;
 }
 
 // The init-copied runtime (`<trackerDir>/app`) is what notify hooks and the
