@@ -366,6 +366,7 @@ export function invalidateBadgeData(userId?: string): void {
   if (userId == null) {
     cache.clear();
     avatarCache.clear();
+    knownProjectsCache.clear();
 
     return;
   }
@@ -373,6 +374,7 @@ export function invalidateBadgeData(userId?: string): void {
     if (key.startsWith(`badge|${userId}|`)) cache.delete(key);
   }
   avatarCache.delete(userId);
+  knownProjectsCache.delete(userId);
 }
 
 export function loadBadgeData(
@@ -549,25 +551,82 @@ export async function findBadgeOwner(
 // Settings allowlist source (§7.2): the distinct non-empty project_keys of the
 // owner's sessions, busiest first — a projection of data the Sessions page
 // already shows, through the same single-flighted loader.
-export async function loadKnownProjects(userId: string): Promise<string[]> {
-  const toIso = new Date(Date.now() + DAY_MS).toISOString();
-  const { sessions, devices } = await loadSessionRows(
-    userId,
-    ALL_RANGE_FLOOR,
-    toIso,
+//
+// The window end is bucketed to the current UTC day plus a 2-day margin
+// (≥ the previous now+1d bound, so the included set only ever widens) and the
+// result carries a short single-flight of its own: GET /api/app/badge fires
+// once per protected-page mount through the top-bar public-page button, and a
+// per-millisecond window end allocated a fresh loadSessionRows key on every
+// request — the read-face window cache never hit, so each mount paid a full
+// token_sessions scan and left a full-row cache entry behind. Sessions change
+// slowly; 60s freshness matches the public-page payload (§4.7) and the badge
+// avatar precedents (§5.2).
+const KNOWN_PROJECTS_TTL_MS = 60_000;
+
+const knownProjectsCache = new Map<
+  string,
+  { expiresAt: number; value: Promise<string[]> }
+>();
+
+function knownProjectsWindowEnd(now: Date): string {
+  const dayStartUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
   );
-  const totals = new Map<string, number>();
 
-  for (const row of visibleSessions(sessions, devices)) {
-    const key = typeof row.project_key === "string" ? row.project_key : "";
+  return new Date(dayStartUtc + 2 * DAY_MS).toISOString();
+}
 
-    if (key) totals.set(key, (totals.get(key) ?? 0) + n0(row.total_tokens));
+function buildKnownProjects(userId: string, toIso: string): Promise<string[]> {
+  return (async () => {
+    const { sessions, devices } = await loadSessionRows(
+      userId,
+      ALL_RANGE_FLOOR,
+      toIso,
+    );
+    const totals = new Map<string, number>();
+
+    for (const row of visibleSessions(sessions, devices)) {
+      const key = typeof row.project_key === "string" ? row.project_key : "";
+
+      if (key) totals.set(key, (totals.get(key) ?? 0) + n0(row.total_tokens));
+    }
+
+    return [...totals.entries()]
+      .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+      .slice(0, MAX_KNOWN_PROJECTS)
+      .map(([key]) => key);
+  })();
+}
+
+export function loadKnownProjects(
+  userId: string,
+  now: Date = new Date(),
+): Promise<string[]> {
+  if (badgeCacheDisabled()) {
+    return buildKnownProjects(userId, knownProjectsWindowEnd(now));
   }
 
-  return [...totals.entries()]
-    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
-    .slice(0, MAX_KNOWN_PROJECTS)
-    .map(([key]) => key);
+  const hit = knownProjectsCache.get(userId);
+
+  if (hit && hit.expiresAt > Date.now()) return hit.value;
+
+  const value = buildKnownProjects(userId, knownProjectsWindowEnd(now));
+
+  // A failed load must not pin its rejection for the TTL window — same
+  // convention as every other cache in this module.
+  value.catch(() => {
+    const entry = knownProjectsCache.get(userId);
+
+    if (entry?.value === value) knownProjectsCache.delete(userId);
+  });
+  knownProjectsCache.set(userId, {
+    expiresAt: Date.now() + KNOWN_PROJECTS_TTL_MS,
+    value,
+  });
+
+  return value;
 }
 
 // ---------------------------------------------------------------------------
