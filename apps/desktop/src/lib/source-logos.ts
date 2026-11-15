@@ -7,6 +7,11 @@
 import type { SourceUsage } from "@/lib/queue-lines";
 
 const CANONICAL_RULES: Array<[test: string, id: string]> = [
+  // Claude Science is its own product id — the generic `claude` prefix rule
+  // below would otherwise swallow it (web parity, e7e62ba).
+  ["claude-science", "claude-science"],
+  // Legacy spelling of the AStudio integration; the collector id is `acode`.
+  ["astudio", "acode"],
   ["pi-zai-coding-cn", "pi"],
   ["pi-stepfun", "pi"],
   ["pi", "pi"],
@@ -30,6 +35,10 @@ const CANONICAL_RULES: Array<[test: string, id: string]> = [
 const SOURCE_LABELS: Record<string, string> = {
   zcode: "ZCode",
   codex: "Codex",
+  // Claude Code is the highest-volume source for most installs; without this
+  // entry its rows rendered the raw id on a letter tile (web parity).
+  claude: "Claude Code",
+  "claude-science": "Claude Science",
   opencode: "OpenCode",
   cursor: "Cursor",
   trae: "Trae",
@@ -62,7 +71,14 @@ const SOURCE_LABELS: Record<string, string> = {
   openclaw: "OpenClaw",
   hermes: "Hermes",
   kilo: "Kilo",
-  acode: "ACode",
+  // The CLI (init/status/SUPPORTED_PROVIDERS) calls this integration AStudio;
+  // `acode` is only the collector id. Display copy follows the CLI (web
+  // parity, e7e62ba — the desktop label used to lag behind as "ACode").
+  acode: "AStudio",
+  craft: "Craft Agents",
+  roocode: "Roo Code",
+  "prime-agent": "Prime Agent",
+  "workbuddy-ai": "WorkBuddy AI",
   anythingllm: "AnythingLLM",
   unsloth: "Unsloth",
   zed: "Zed",
@@ -73,6 +89,9 @@ const SOURCE_LABELS: Record<string, string> = {
 const SOURCE_LOGOS: Record<string, string> = {
   zcode: "zcode.svg",
   codex: "codex.svg",
+  claude: "claude-code.svg",
+  "claude-science": "claude-code.svg",
+  "workbuddy-ai": "workbuddy.svg",
   opencode: "opencode.svg",
   cursor: "cursor.svg",
   trae: "trae.svg",

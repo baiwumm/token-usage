@@ -10,6 +10,8 @@
 //   tracker_paths       — home / tracker dir / hostname for labels
 //   read_tracker_file   — scoped read of ~/.tokenusage/tracker/<rel> (None if
 //                         missing, 8 MiB cap, canonicalized prefix check)
+//   read_tracker_head   — newest-first sidecar head (≤512 KiB, whole rows
+//                         only; the tail variant died with the 0.4.1 head read)
 //   read_instance_config— config.json filtered to baseUrl / dashboardUrl /
 //                         machineId (never deviceToken / anonKey)
 //   cli_info            — `tokenusage --version` presence probe
@@ -146,8 +148,12 @@ fn open_url(url: &str) -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
-        gui_command("cmd")
-            .args(["/C", "start", "", url])
+        // explorer.exe hands the URL to ShellExecute directly, so `&` / `^` /
+        // `%` inside a query string cannot re-enter cmd's parser the way they
+        // could behind `cmd /C start` (the URL check above never allowed
+        // whitespace, but cmd metacharacters were not excluded).
+        Command::new("explorer")
+            .arg(url)
             .spawn()
             .map(|_| ())
             .map_err(|e| e.to_string())
@@ -261,52 +267,6 @@ fn read_tracker_file(app: AppHandle, rel_path: String) -> Result<Option<String>,
         .map_err(|e| e.to_string())
 }
 
-/// Read only the tail of a tracker file: `session.queue.jsonl` grows to a few
-/// MB while the monitor needs the newest rows. Same canonical guard as
-/// `read_tracker_file`; a truncated read drops the partial first line, so the
-/// caller only ever receives whole JSONL rows. Cap: 512 KiB (D7).
-#[tauri::command]
-fn read_tracker_tail(
-    app: AppHandle,
-    rel_path: String,
-    max_bytes: Option<u64>,
-) -> Result<Option<String>, String> {
-    use std::io::{Read, Seek, SeekFrom};
-
-    const MAX_TAIL_BYTES: u64 = 512 * 1024;
-    let tracker = tracker_dir(&app)?;
-    let tracker_canonical = match tracker.canonicalize() {
-        Ok(path) => path,
-        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(None),
-        Err(err) => return Err(err.to_string()),
-    };
-    let target = tracker.join(&rel_path);
-    let canonical = match target.canonicalize() {
-        Ok(path) => path,
-        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(None),
-        Err(err) => return Err(err.to_string()),
-    };
-    if !canonical.starts_with(&tracker_canonical) {
-        return Err("path outside tracker dir".into());
-    }
-    let meta = std::fs::metadata(&canonical).map_err(|e| e.to_string())?;
-    let cap = max_bytes.unwrap_or(MAX_TAIL_BYTES).min(MAX_TAIL_BYTES);
-    let start = meta.len().saturating_sub(cap);
-    let mut file = std::fs::File::open(&canonical).map_err(|e| e.to_string())?;
-    file.seek(SeekFrom::Start(start))
-        .map_err(|e| e.to_string())?;
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).map_err(|e| e.to_string())?;
-    if start > 0 {
-        match buffer.iter().position(|byte| *byte == b'\n') {
-            Some(position) => buffer.drain(..=position),
-            // No complete line inside the tail window yet.
-            None => return Ok(None),
-        };
-    }
-    Ok(Some(String::from_utf8_lossy(&buffer).into_owned()))
-}
-
 /// Read only the head of a tracker file. `session.queue.jsonl` is rewritten in
 /// descending `ended_at` order (newest rows FIRST), so the tail read used for
 /// append-only logs would return the OLDEST sessions. Same canonical guard and
@@ -348,6 +308,14 @@ fn read_tracker_head(
     }
 
     // A truncated read ends mid-line (or mid-UTF8) — keep complete rows only.
+    // A window ending exactly on a newline keeps that complete row (strip the
+    // trailing terminator); anything else drops the partial tail after the
+    // last newline. The old rfind-on-raw-text logic lost the final complete
+    // row whenever the window landed exactly on a line boundary, and kept
+    // re-losing it on every read until the file grew past the boundary.
+    if let Some(stripped) = text.strip_suffix('\n') {
+        return Ok(Some(stripped.to_string()));
+    }
     Ok(match text.rfind('\n') {
         Some(position) if position > 0 => Some(text[..position].to_string()),
         _ => None,
@@ -500,7 +468,7 @@ fn validate_export_filename(filename: &str) -> Result<(&str, &str), String> {
 }
 
 /// Save user-initiated exports (share-card PNG) to the OS Downloads folder —
-/// the desktop counterpart of the web's `<a download>` (desktop-plan §12.13).
+/// the desktop counterpart of the web's `<a download>` (desktop-2026-11.md 附录（原 desktop-plan）§12.13).
 /// A name collision suffixes `-2`, `-3`, … instead of overwriting.
 #[tauri::command]
 fn save_to_downloads(
@@ -790,8 +758,13 @@ struct DeviceLoginPoll {
 async fn device_login_start(state: State<'_, DeviceLoginState>) -> Result<(), String> {
     let mut guard = lock(&state.0);
     if let Some(active) = guard.as_mut() {
-        if matches!(active.child.try_wait(), Ok(None)) {
-            return Err("device login is already running".into());
+        match active.child.try_wait() {
+            // Confirmed alive: refuse the second spawn (a stray child would
+            // race the first one for config.json).
+            Ok(None) => return Err("device login is already running".into()),
+            // Exited, or the pipe state is unreadable — either way the slot
+            // must not leak the old child, so the replacement below takes it.
+            Ok(Some(_)) | Err(_) => kill_process_tree(&mut active.child),
         }
     }
     let mut command = build_cli_command(&["device-login".to_string(), "--json".to_string()]);
@@ -916,7 +889,9 @@ fn update_tray(handles: State<TrayHandles>, labels: TrayLabels) -> Result<(), St
         item.set_checked(labels.period == key)
             .map_err(|e| e.to_string())?;
     }
-    *handles.paused.lock().map_err(|e| e.to_string())? = labels.paused;
+    // Same poison-tolerant lock as the tray menu reads: a poisoned mutex must
+    // never wedge a label push.
+    *lock(&handles.paused) = labels.paused;
     Ok(())
 }
 
@@ -960,7 +935,7 @@ fn tray_status(app: AppHandle) -> bool {
 fn create_tray(app: &tauri::App) -> tauri::Result<()> {
     let metric = MenuItem::with_id(app, "tray-metric", "今日 tokens：…", false, None::<&str>)?;
     let status = MenuItem::with_id(app, "tray-status", "采集：正常", false, None::<&str>)?;
-    // Period switch (desktop-plan §12.14): the menu mirrors the header's
+    // Period switch (desktop-2026-11.md 附录（原 desktop-plan）§12.14): the menu mirrors the header's
     // 今日 / 7D / 30D / 总计 filter and writes the same preference.
     // Check items instead of plain entries: the menu must say which period is
     // active (operator 2026-11-12 round 2). Default follows the preference
@@ -1104,7 +1079,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             tracker_paths,
             read_tracker_file,
-            read_tracker_tail,
             read_tracker_head,
             read_instance_config,
             cli_info,

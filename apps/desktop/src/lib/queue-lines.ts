@@ -95,16 +95,17 @@ function asNumber(value: unknown): number {
 }
 
 /**
- * Read-time cost for one bucket row: the web engine's own rule — an
- * authoritative positive reporter value wins, everything else is priced from
- * the vendored snapshot (0 for local/subscription sources). The engine reads
- * the WIRE field names (`input_tokens`, `cached_input_tokens`, …), so the
- * camelCase row is re-keyed here; `computeRowCost`'s internal WeakMap keys off
- * the object identity, and this re-keyed view is created per call — the
- * desktop aggregates whole files, so the cost is memoized on the row below.
+ * Read-time cost for one bucket row: the web engine's own rule, unchanged —
+ * only grok/cline's authoritative positive reporter value wins; every other
+ * source is priced from the vendored snapshot (0 for local/subscription
+ * sources) even when the collector wrote a positive `total_cost_usd`. The
+ * engine reads the WIRE field names (`input_tokens`, `cached_input_tokens`,
+ * …), so the camelCase row is re-keyed here; `computeRowCost`'s internal
+ * WeakMap keys off the object identity, and this re-keyed view is created per
+ * call — the desktop aggregates whole files, so the cost is memoized on the
+ * row below.
  */
 export function rowCostUsd(row: QueueBucketRow): number {
-  if (row.totalCostUsd > 0) return row.totalCostUsd;
   const cached = costCache.get(row);
 
   if (cached !== undefined) return cached;
@@ -181,9 +182,10 @@ export function parseQueueLine(line: string): QueueBucketRow | null {
 
 /**
  * Last-wins bucket map over the whole file, then a window filter. Buckets
- * outside `[windowStartMs, nowMs)` are dropped AFTER dedup — mirroring the
+ * outside `[windowStartMs, nowMs]` are dropped AFTER dedup — mirroring the
  * reconcile baseline semantics (dedup on the full file, windows filter the
- * deduplicated set).
+ * deduplicated set). The upper bound is inclusive: the bucket landing on
+ * `nowMs` itself is the current hour's in-progress baseline.
  */
 /** Last-wins bucket rows for the whole file (the reconcile baseline). */
 export function dedupeQueue(text: string): QueueBucketRow[] {
