@@ -4,6 +4,11 @@
 // the database keep the collector-reported source strings.
 
 const CANONICAL_RULES: Array<[test: string, id: string]> = [
+  // Claude Science is its own product id — the generic `claude` prefix rule
+  // below would otherwise swallow it. It shares the Claude mark.
+  ["claude-science", "claude-science"],
+  // Legacy spelling of the AStudio integration; the collector id is `acode`.
+  ["astudio", "acode"],
   ["pi-zai-coding-cn", "pi"],
   ["pi-stepfun", "pi"],
   ["pi", "pi"],
@@ -33,6 +38,10 @@ const CANONICAL_RULES: Array<[test: string, id: string]> = [
 const SOURCE_LABELS: Record<string, string> = {
   zcode: "ZCode",
   codex: "Codex",
+  // Claude Code is the highest-volume source for most installs; without these
+  // entries its rows rendered the raw id on a letter tile.
+  claude: "Claude Code",
+  "claude-science": "Claude Science",
   opencode: "OpenCode",
   cursor: "Cursor",
   trae: "Trae",
@@ -52,6 +61,10 @@ const SOURCE_LABELS: Record<string, string> = {
   workbuddy: "WorkBuddy",
   codebuddy: "CodeBuddy",
   "command-code": "Command Code",
+  "workbuddy-ai": "WorkBuddy AI",
+  craft: "Craft Agents",
+  roocode: "Roo Code",
+  "prime-agent": "Prime Agent",
   kiro: "Kiro",
   devin: "Devin",
   droid: "Droid",
@@ -65,7 +78,9 @@ const SOURCE_LABELS: Record<string, string> = {
   openclaw: "OpenClaw",
   hermes: "Hermes",
   kilo: "Kilo",
-  acode: "ACode",
+  // The CLI (init/status/SUPPORTED_PROVIDERS) calls this integration AStudio;
+  // `acode` is only the collector id. Display copy follows the CLI.
+  acode: "AStudio",
   anythingllm: "AnythingLLM",
   unsloth: "Unsloth",
   zed: "Zed",
@@ -76,6 +91,9 @@ const SOURCE_LABELS: Record<string, string> = {
 const SOURCE_LOGOS: Record<string, string> = {
   zcode: "zcode.svg",
   codex: "codex.svg",
+  claude: "claude-code.svg",
+  "claude-science": "claude-code.svg",
+  "workbuddy-ai": "workbuddy.svg",
   opencode: "opencode.svg",
   cursor: "cursor.svg",
   trae: "trae.svg",
@@ -109,6 +127,14 @@ const SOURCE_LOGOS: Record<string, string> = {
   stepfun: "stepfun.png",
   minimax: "minimax.svg",
 };
+
+/**
+ * Sources that deliberately keep the deterministic letter tile: no upstream
+ * brand file exists for them (checked against the upstream dashboard's
+ * public/brand-logos on 2026-11-15), so shipping one would mean inventing a
+ * mark. They still get a display label, never the raw id:
+ * droid, dumate, every-code, goose, muse, omo, craft, roocode, prime-agent.
+ */
 
 /** White-on-transparent marks that need a backdrop to read on light cards. */
 const WHITE_LOGOS = new Set<string>([]);

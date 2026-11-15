@@ -18,6 +18,12 @@ describe("canonicalSource", () => {
     expect(canonicalSource("command_code")).toBe("command-code");
   });
 
+  it("keeps Claude Science separate from Claude Code", () => {
+    expect(canonicalSource("claude-code")).toBe("claude");
+    expect(canonicalSource("claude-science")).toBe("claude-science");
+    expect(canonicalSource("astudio")).toBe("acode");
+  });
+
   it("folds MiniMax source ids onto the minimax id", () => {
     expect(canonicalSource("minimax-code")).toBe("minimax");
     expect(canonicalSource("MiniMax")).toBe("minimax");
@@ -28,6 +34,23 @@ describe("source logo and label", () => {
   it("resolves the MiniMax mark and display label", () => {
     expect(sourceLogoFile("minimax-code")).toBe("/brand-logos/minimax.svg");
     expect(sourceDisplayLabel("minimax-code")).toBe("MiniMax");
+  });
+
+  it("resolves the Claude marks and the CLI-aligned AStudio label", () => {
+    expect(sourceLogoFile("claude")).toBe("/brand-logos/claude-code.svg");
+    expect(sourceDisplayLabel("claude-code")).toBe("Claude Code");
+    expect(sourceDisplayLabel("claude-science")).toBe("Claude Science");
+    expect(sourceLogoFile("claude-science")).toBe("/brand-logos/claude-code.svg");
+    expect(sourceDisplayLabel("acode")).toBe("AStudio");
+  });
+
+  it("labels sources that have no brand file instead of exposing the raw id", () => {
+    expect(sourceDisplayLabel("workbuddy-ai")).toBe("WorkBuddy AI");
+    expect(sourceLogoFile("workbuddy-ai")).toBe("/brand-logos/workbuddy.svg");
+    expect(sourceDisplayLabel("roocode")).toBe("Roo Code");
+    expect(sourceDisplayLabel("craft")).toBe("Craft Agents");
+    expect(sourceDisplayLabel("prime-agent")).toBe("Prime Agent");
+    expect(sourceLogoFile("roocode")).toBeNull();
   });
 
   it("returns null for sources without a shipped logo", () => {
