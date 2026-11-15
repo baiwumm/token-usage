@@ -59,13 +59,13 @@ async function resolveCredentials({ home }) {
     }
   }
 
-  return { baseUrl, deviceToken };
+  return { baseUrl, deviceToken, httpTimeoutMs: runtime.httpTimeoutMs };
 }
 
 async function cmdProjectProfiles(argv = [], context = {}) {
   parseArgs(argv);
   const home = context.home || os.homedir();
-  const { baseUrl, deviceToken } = await resolveCredentials({ home });
+  const { baseUrl, deviceToken, httpTimeoutMs } = await resolveCredentials({ home });
 
   if (!baseUrl || !deviceToken) {
     throw new UsageError("This machine is not paired yet.", {
@@ -75,6 +75,9 @@ async function cmdProjectProfiles(argv = [], context = {}) {
   }
 
   const res = await fetchFunctionResponse(functionUrlFor(baseUrl, SLUG), {
+    // The desktop blocks on this call: without a timeout a half-open network
+    // would hang the panel until the process is killed.
+    ...(httpTimeoutMs > 0 ? { signal: AbortSignal.timeout(httpTimeoutMs) } : {}),
     headers: {
       Accept: "application/json",
       Authorization: `Bearer ${deviceToken}`,
