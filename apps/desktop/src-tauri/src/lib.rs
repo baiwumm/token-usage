@@ -313,32 +313,47 @@ fn read_tracker_tail(
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).map_err(|e| e.to_string())?;
     let file_size = meta.len();
-    if start > 0 {
-        match buffer.iter().position(|byte| *byte == b'\n') {
-            Some(position) => {
-                buffer.drain(..=position);
-            }
-            // No complete line inside the tail window yet.
-            None => {
-                return Ok(Some(TailRead {
-                    text: None,
-                    file_size,
-                }))
-            }
-        };
-    }
-    let text = String::from_utf8_lossy(&buffer).into_owned();
+    let text = tail_whole_rows(buffer, start > 0);
 
-    Ok(Some(TailRead {
-        text: (!text.is_empty()).then_some(text),
-        file_size,
-    }))
+    Ok(Some(TailRead { text, file_size }))
 }
 
 #[derive(Serialize)]
 struct TailRead {
     text: Option<String>,
     file_size: u64,
+}
+
+/// Whole JSONL rows from a tail window: when the window starts mid-file the
+/// partial first line is dropped (up to and including its newline); no
+/// complete line inside the window yields None. Pure — unit-tested.
+fn tail_whole_rows(mut buffer: Vec<u8>, had_prefix: bool) -> Option<String> {
+    if had_prefix {
+        let position = buffer.iter().position(|byte| *byte == b'\n')?;
+        buffer.drain(..=position);
+    }
+    let text = String::from_utf8_lossy(&buffer).into_owned();
+
+    (!text.is_empty()).then_some(text)
+}
+
+/// Whole JSONL rows from a head read. A window ending exactly on a newline
+/// keeps that complete row (strip the trailing terminator); anything else
+/// drops the partial tail after the last newline. A full-file read returns the
+/// text verbatim — an empty file reads as an empty string, matching the whole
+/// file's own parse. Pure — unit-tested (the old rfind-on-raw-text logic lost
+/// the final complete row whenever the window landed exactly on a line
+/// boundary, which is what these tests pin).
+fn head_whole_rows(text: String, whole_file: bool) -> Option<String> {
+    if whole_file {
+        return Some(text);
+    }
+    if let Some(stripped) = text.strip_suffix('\n') {
+        return Some(stripped.to_string());
+    }
+    text.rfind('\n').and_then(|position| {
+        (position > 0).then(|| text[..position].to_string())
+    })
 }
 
 /// Read only the head of a tracker file. `session.queue.jsonl` is rewritten in
@@ -377,23 +392,8 @@ fn read_tracker_head(
     let mut buffer = vec![0u8; to_read as usize];
     file.read_exact(&mut buffer).map_err(|e| e.to_string())?;
     let text = String::from_utf8_lossy(&buffer).into_owned();
-    if to_read == meta.len() {
-        return Ok(Some(text));
-    }
 
-    // A truncated read ends mid-line (or mid-UTF8) — keep complete rows only.
-    // A window ending exactly on a newline keeps that complete row (strip the
-    // trailing terminator); anything else drops the partial tail after the
-    // last newline. The old rfind-on-raw-text logic lost the final complete
-    // row whenever the window landed exactly on a line boundary, and kept
-    // re-losing it on every read until the file grew past the boundary.
-    if let Some(stripped) = text.strip_suffix('\n') {
-        return Ok(Some(stripped.to_string()));
-    }
-    Ok(match text.rfind('\n') {
-        Some(position) if position > 0 => Some(text[..position].to_string()),
-        _ => None,
-    })
+    Ok(head_whole_rows(text, to_read == meta.len()))
 }
 
 #[tauri::command]
@@ -1201,4 +1201,147 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- head_whole_rows: the cut rules read_tracker_head (0.4.2) serves the
+    // newest-first session sidecar with. The boundary case here is exactly the
+    // bug the 2026-11-15 audit fixed: a window landing on a newline used to
+    // lose that final complete row on every read. ---
+
+    #[test]
+    fn head_keeps_the_last_complete_row_when_the_window_lands_on_a_newline() {
+        let text = "row1\nrow2\nrow3\n".to_string();
+
+        assert_eq!(head_whole_rows(text, false), Some("row1\nrow2\nrow3".into()));
+    }
+
+    #[test]
+    fn head_drops_a_partial_final_line() {
+        let text = "row1\nrow2\nrow3_par".to_string();
+
+        assert_eq!(head_whole_rows(text, false), Some("row1\nrow2".into()));
+    }
+
+    #[test]
+    fn head_returns_none_when_the_first_line_is_cut_with_no_newline() {
+        assert_eq!(head_whole_rows("row1_par".to_string(), false), None);
+    }
+
+    #[test]
+    fn head_full_file_read_returns_the_text_verbatim() {
+        assert_eq!(
+            head_whole_rows("row1\nrow2\n".to_string(), true),
+            Some("row1\nrow2\n".into())
+        );
+        // An empty file reads as an empty string, matching the whole file.
+        assert_eq!(head_whole_rows(String::new(), true), Some(String::new()));
+    }
+
+    // --- tail_whole_rows: the capacity-wall window over the append-order
+    // queue baseline. The window starts mid-file whenever the queue passed
+    // the whole-read cap, so the first (partial) line must go. ---
+
+    #[test]
+    fn tail_drops_the_partial_first_line() {
+        let buffer = b"..older\nrow1\nrow2\nrow3_par".to_vec();
+
+        assert_eq!(
+            tail_whole_rows(buffer, true),
+            Some("row1\nrow2\nrow3_par".into())
+        );
+    }
+
+    #[test]
+    fn tail_drops_the_partial_first_line_even_when_it_is_the_only_content() {
+        assert_eq!(tail_whole_rows(b"row1_par".to_vec(), true), None);
+        // The partial first line ends the window: draining it leaves nothing.
+        assert_eq!(tail_whole_rows(b"older\nrow1\n".to_vec(), true), Some("row1\n".into()));
+    }
+
+    #[test]
+    fn tail_window_starting_at_zero_keeps_everything() {
+        assert_eq!(
+            tail_whole_rows(b"row1\nrow2\n".to_vec(), false),
+            Some("row1\nrow2\n".into())
+        );
+        assert_eq!(tail_whole_rows(Vec::new(), false), None);
+    }
+
+    // --- validate_export_filename: the save_to_downloads / save_file_as
+    // guard. No separator, no traversal, no metacharacters may pass. ---
+
+    #[test]
+    fn export_filename_accepts_the_shapes_we_emit() {
+        assert_eq!(
+            validate_export_filename("token-usage-20261115.png"),
+            Ok(("token-usage-20261115", "png"))
+        );
+        assert_eq!(
+            validate_export_filename("token-usage-sessions-20261101-20261115.csv"),
+            Ok(("token-usage-sessions-20261101-20261115", "csv"))
+        );
+    }
+
+    #[test]
+    fn export_filename_rejects_separators_and_metacharacters() {
+        assert!(validate_export_filename("../evil.png").is_err());
+        assert!(validate_export_filename("a/b.png").is_err());
+        assert!(validate_export_filename("a b.png").is_err());
+        assert!(validate_export_filename("a&b.png").is_err());
+        assert!(validate_export_filename(".png").is_err());
+        assert!(validate_export_filename("noext").is_err());
+        let long = format!("{}.png", "a".repeat(118));
+        assert!(validate_export_filename(&long).is_err());
+    }
+
+    // --- whitelist_auth: the device-login bridge drops everything outside the
+    // display fields; the device_code in the authorize blob must never reach
+    // the webview (whoever holds it could mint the device token). ---
+
+    #[test]
+    fn whitelist_auth_keeps_display_fields_only() {
+        let value = serde_json::json!({
+            "device_code": "SECRET",
+            "user_code": "ABCD-1234",
+            "verification_uri": "https://dashboard.test/device",
+            "verification_uri_complete": "https://dashboard.test/device?user_code=ABCD-1234",
+            "expires_in": 900,
+            "interval": 5
+        });
+        let auth = whitelist_auth(&value).expect("authorize blob should pass");
+
+        assert_eq!(auth.user_code, "ABCD-1234");
+        assert_eq!(auth.verification_uri, "https://dashboard.test/device");
+        assert_eq!(
+            auth.verification_uri_complete.as_deref(),
+            Some("https://dashboard.test/device?user_code=ABCD-1234")
+        );
+        assert_eq!(auth.expires_in_sec, Some(900));
+    }
+
+    #[test]
+    fn whitelist_auth_tolerates_fractional_expires_in_but_not_garbage() {
+        let value =
+            serde_json::json!({ "user_code": "A", "verification_uri": "u", "expires_in": 899.9 });
+
+        assert_eq!(whitelist_auth(&value).unwrap().expires_in_sec, Some(899));
+        let value =
+            serde_json::json!({ "user_code": "A", "verification_uri": "u", "expires_in": -1.0 });
+
+        assert_eq!(whitelist_auth(&value).unwrap().expires_in_sec, None);
+    }
+
+    #[test]
+    fn whitelist_auth_requires_user_code_and_uri() {
+        let value = serde_json::json!({ "verification_uri": "u" });
+        assert!(whitelist_auth(&value).is_none());
+        let value = serde_json::json!({ "user_code": "A" });
+        assert!(whitelist_auth(&value).is_none());
+        let value = serde_json::json!({ "user_code": "  ", "verification_uri": "u" });
+        assert!(whitelist_auth(&value).is_none());
+    }
 }

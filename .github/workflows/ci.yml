@@ -98,3 +98,7 @@ jobs:
       - name: cargo check
         run: cargo check --locked
         working-directory: apps/desktop/src-tauri
+
+      - name: cargo test
+        run: cargo test --locked
+        working-directory: apps/desktop/src-tauri
