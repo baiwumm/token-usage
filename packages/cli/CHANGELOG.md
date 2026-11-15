@@ -6,6 +6,33 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.6.0
+
+2026-11-15。来源覆盖面的补齐 + 采集可诊断性。零契约变更（`docs/cli-contract.md` 未动），
+服务端无需同步升级；对账基线（`queue.jsonl` last-wins）与队列文件格式不变。
+
+- **`doctor` 新增 `sources.coverage`**：按 30 天窗口列出每个来源的最新小时桶、桶数与 token
+  数，并把超过 7 天没有新行的源单列为 `silent`；只有整条队列都超过 7 天才降为 warn——闲置
+  工具正常停写，与解析器坏掉外观一致，必须由人判断。此前回答「这个来源到底采到没有」只能
+  临时扫队列。
+- **WorkBuddy 限额接入 `status --limits`**（`workbuddy` / `workbuddyAi` 两个键）：国内版与
+  AI 国际版各走自己桌面端的本地计费代理（wbipc），互不借用对方的 socket；订阅窗口取自配额
+  汇总，奖励 credits 不算配额窗口；provider 预算耗尽时 abort 会拆掉 IPC socket。plan 标签
+  原样透传（`Ultimate` / `Advanced` / `STANDARD` / `Free`），共享的 Title-Case 归一化会把
+  `Free` 吞掉，因此与 grok / commandCode 同路跳过。
+- **prime-agent 进入源注册表**：解析器早已存在但 id 没注册，`--source prime-agent` 直接报未知
+  id，auto / background 同步也整源跳过，只有不带筛选的手动 `sync` 才采得到。同时补
+  `astudio → acode` 别名——CLI 里集成叫 AStudio，`acode` 只是采集器 id。
+- **`sync --timing`**：打印扫描 / 上传 / 会话三段的耗时，长会话机器的慢环节不再靠猜。
+- **旗标解析收敛为声明式 spec**：未知旗标统一走 `UsageError`（退出码 2），`--json` 下错误
+  面与成功面同构；`project-profiles` 的请求补超时，避免桌面端调用挂死。
+- **内部重构（无行为变化）**：八套 limits 的重复原语收敛到 `lib/limits-core`；队列抽排与
+  批次读取、Codex / Grok / Zcode / Mimo / Droid / legacy 修复族各自拆成独立模块；`fs` 调用
+  统一到 promises 版。
+
+升级说明：无需任何动作，随下次计划任务自动生效。想让运行时副本也拿到本版，跑一次
+`tokenusage init --yes --no-integrations --no-open`，随后 `tokenusage doctor` 应全 OK。
+
 ## 0.5.5
 
 2026-11-11。新增只读子命令 `tokenusage project-profiles`（契约 §2.13），供桌面端伴生工具
