@@ -87,6 +87,7 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 | `--wait-for-lock` | 遇并发 sync 等待而不是跳过 |
 | `--background` / `--lightweight` | 精简扫描档 |
 | `--repair-grok` | 从会话快照重建 Grok 行 |
+| `--timing` | 在交互式汇总里打印分阶段耗时（扫描 / 上传 / 会话） |
 
 可用 `--source` id 见 `tokenusage sync --help` 的来源清单。
 </details>

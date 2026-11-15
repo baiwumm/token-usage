@@ -754,6 +754,16 @@ async function cmdSync(argv, context = {}) {
     // try/finally so an auxiliary diagnostic never strands the sync lock.
     await clearSyncSkip(trackerDir);
     progress = !opts.auto ? createProgress({ stream: process.stdout }) : null;
+    // `--timing`: coarse phase durations for the interactive summary. Purely
+    // diagnostic — nothing is persisted, and auto runs never print it.
+    const phaseTimings = opts.timing ? [] : null;
+    let phaseMarkMs = syncStartedAtMs;
+    const markPhase = (label) => {
+      if (!phaseTimings) return;
+      const now = Date.now();
+      phaseTimings.push({ label, ms: now - phaseMarkMs });
+      phaseMarkMs = now;
+    };
     // Every auto-flavored run (scheduled task, hooks, retry, watch) self-logs:
     // a hidden TTY-less task has no other trail, so --from-scheduled must not
     // fall through to the interactive stdout summary below.
@@ -3925,6 +3935,8 @@ async function cmdSync(argv, context = {}) {
       if (uploadError) syncRun.setOutcome({ result: "partial", errorCode: "upload_failed" });
     }
 
+    markPhase("scan + hourly upload");
+
     // Session metadata upload (docs/cli-contract.md section 2.4 `sessions`):
     // strictly-newer-than-watermark increments, batches of <=200, best-effort —
     // an hourly-bucket sync must not be reported as failed by a sessions error.
@@ -4051,6 +4063,8 @@ async function cmdSync(argv, context = {}) {
       }
     }
 
+    markPhase("sessions + projects");
+
     if (!autoishSync) {
       const codexRecordOnlyWarning = formatRecordOnlyWarning(countRecordOnlyFiles(cursors));
       const deviceIdentity = buildDeviceIdentity({ config: runtimeConfig, hostname: os.hostname() });
@@ -4069,6 +4083,14 @@ async function cmdSync(argv, context = {}) {
           warning: codexRecordOnlyWarning,
         }).join("\n"),
       );
+      if (phaseTimings) {
+        process.stdout.write(
+          // Start-to-finish total is intentionally the last column: the phases
+          // above are sequential, so any gap shows up there.
+          `- Timing: ${phaseTimings.map((p) => `${p.label} ${formatDuration(p.ms)}`).join(" | ")}` +
+            ` | total ${formatDuration(Date.now() - syncStartedAtMs)}\n`,
+        );
+      }
     } else {
       autoLog(
         `Auto sync finished — parsed ${totalParsed} files, +${totalBuckets} buckets, ` +
@@ -4137,6 +4159,7 @@ function parseArgs(argv) {
     allLocalSources: false,
     repairGrok: false,
     noSessions: false,
+    timing: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -4157,6 +4180,7 @@ function parseArgs(argv) {
     else if (a === "--publish-account") out.publishAccount = true;
     else if (a === "--all-local-sources") out.allLocalSources = true;
     else if (a === "--repair-grok") out.repairGrok = true;
+    else if (a === "--timing") out.timing = true;
     else throw unknownOptionError(a, "sync");
   }
   return out;

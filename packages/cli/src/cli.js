@@ -90,6 +90,7 @@ const COMMANDS = [
       "  --drain                     Upload the whole backlog (higher batch ceiling)",
       "  --no-sessions               Skip the session metadata upload (hourly buckets only)",
       "  --publish-account           Publish account-level sources (cursor / trae-cn) locally",
+      "  --timing                    Print per-phase durations (scan / upload / sessions)",
       "  --all-local-sources         Scan every local source, including background-only ones",
       "  --auto                      Auto flavor (honors pause + cloud-sync preference)",
       "  --from-notify|--from-openclaw|--from-retry|--from-scheduled",
