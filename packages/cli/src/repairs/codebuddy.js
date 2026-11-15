@@ -4,7 +4,7 @@
 // commands/sync.js. Rebuilds CodeBuddy history from the discoverable sources
 // and retracts keys the rebuild cannot reproduce.
 
-const fs = require("node:fs");
+const fs = require("node:fs/promises");
 const path = require("node:path");
 
 const { ensureDir } = require("../lib/fs");

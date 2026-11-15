@@ -5,7 +5,7 @@
 // usage-lineage repair, plus the snapshot/lineage scanners and the max-totals
 // helpers they share. All are one-shot corrections keyed by cursors.migrations.
 
-const fs = require("node:fs");
+const fs = require("node:fs/promises");
 const fssync = require("node:fs");
 const path = require("node:path");
 const {

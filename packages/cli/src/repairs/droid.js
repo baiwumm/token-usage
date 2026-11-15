@@ -4,7 +4,7 @@
 // session could be counted twice when the same conversation appeared under two
 // session ids, inflating history until this rebuild retracts the duplicate.
 
-const fs = require("node:fs");
+const fs = require("node:fs/promises");
 const fssync = require("node:fs");
 const path = require("node:path");
 const {

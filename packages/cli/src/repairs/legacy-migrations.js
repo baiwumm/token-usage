@@ -5,7 +5,7 @@
 // rewrite local aggregation state once (keyed by cursors.migrations) so the
 // forward reader starts from a clean baseline.
 
-const fs = require("node:fs");
+const fs = require("node:fs/promises");
 const path = require("node:path");
 
 const { ensureDir } = require("../lib/fs");

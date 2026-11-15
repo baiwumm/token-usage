@@ -4,7 +4,7 @@
 // rebuild (queue + hourly state from the raw transcript set), claude-mem
 // observer-file re-inclusion and the claude-mem row relabel.
 
-const fs = require("node:fs");
+const fs = require("node:fs/promises");
 const readline = require("node:readline");
 const fssync = require("node:fs");
 const path = require("node:path");

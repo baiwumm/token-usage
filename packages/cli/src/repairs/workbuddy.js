@@ -4,7 +4,7 @@
 // SQLite fallback counted the bounded context snapshot as cumulative input;
 // this rebuilds WorkBuddy buckets from JSONL/trace sources.
 
-const fs = require("node:fs");
+const fs = require("node:fs/promises");
 const path = require("node:path");
 
 const { ensureDir } = require("../lib/fs");
