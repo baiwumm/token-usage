@@ -22,7 +22,7 @@ export const INSTALL_COMMAND = "npm i -g tokenusage-cli";
 export type PairingGate =
   { kind: "checking" } | { kind: "paired" } | { kind: "unpaired" };
 
-export interface AuthCode {
+interface AuthCode {
   userCode: string;
   verificationUri: string;
   /** `/device?user_code=…` deep link, when the CLI returned one. */

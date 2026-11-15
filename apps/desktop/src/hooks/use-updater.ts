@@ -12,7 +12,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type UpdaterStatus = "idle" | "checking" | "downloading";
+type UpdaterStatus = "idle" | "checking" | "downloading";
 
 export interface UpdaterState {
   status: UpdaterStatus;

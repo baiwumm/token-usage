@@ -25,7 +25,7 @@ export const SUPPORTED_CURRENCIES: readonly CurrencyCode[] = [
   "HKD",
 ];
 
-export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
+const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   USD: "$",
   EUR: "€",
   GBP: "£",
@@ -34,7 +34,7 @@ export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   HKD: "HK$",
 };
 
-export interface FxSnapshot {
+interface FxSnapshot {
   as_of: string;
   /** Units of the currency per 1 USD. */
   rates: Record<string, number>;
@@ -67,7 +67,7 @@ export const DEFAULT_DISPLAY_FORMAT: DisplayFormat = {
   tokenGrouping: 3,
 };
 
-export function isSupportedCurrency(value: unknown): value is CurrencyCode {
+function isSupportedCurrency(value: unknown): value is CurrencyCode {
   return (
     typeof value === "string" &&
     SUPPORTED_CURRENCIES.includes(value as CurrencyCode)
@@ -238,7 +238,7 @@ function costFormatter(currency: CurrencyCode): Intl.NumberFormat {
 }
 
 /** USD → display currency. Storage stays USD; only the presentation changes. */
-export function convertCost(valueUsd: number, format: DisplayFormat): number {
+function convertCost(valueUsd: number, format: DisplayFormat): number {
   return valueUsd * (BUILT_IN_FX.rates[format.currency] ?? 1);
 }
 

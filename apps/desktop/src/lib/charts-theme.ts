@@ -25,7 +25,7 @@ const COMPOSITION_COLORS = {
   output: "var(--color-chart-2)",
 } as const;
 
-export type CompositionKey = keyof typeof COMPOSITION_COLORS;
+type CompositionKey = keyof typeof COMPOSITION_COLORS;
 
 export function compositionColor(key: CompositionKey): string {
   return COMPOSITION_COLORS[key];

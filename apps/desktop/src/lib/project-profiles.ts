@@ -20,7 +20,7 @@ export interface ProjectProfile {
   logo_upload_url: string | null;
 }
 
-export interface ProjectProfilesPayload {
+interface ProjectProfilesPayload {
   profiles: ProjectProfile[];
 }
 

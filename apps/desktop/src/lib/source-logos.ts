@@ -126,9 +126,6 @@ const SOURCE_LOGOS: Record<string, string> = {
   minimax: "minimax.svg",
 };
 
-/** White-on-transparent marks that need a backdrop to read on light cards. */
-const WHITE_LOGOS = new Set<string>([]);
-
 /**
  * Light-theme logo files that ship a dark-theme twin: the twin lives next to
  * the light file as `<name>-dark.<same ext>` under public/brand-logos, and
@@ -236,10 +233,6 @@ export function darkLogoFile(file: string): string | null {
   return dot === -1
     ? null
     : `/brand-logos/${base.slice(0, dot)}-dark${base.slice(dot)}`;
-}
-
-export function logoNeedsBackdrop(file: string): boolean {
-  return WHITE_LOGOS.has(file.replace(/^\/brand-logos\//, ""));
 }
 
 // Deterministic letter-tile palette for sources without a shipped logo.

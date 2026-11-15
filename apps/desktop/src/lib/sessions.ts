@@ -50,17 +50,10 @@ export interface SessionRow {
 /** Presets mirror the usage header (2026-11-12: 90D replaced by 总计). */
 export type SessionRange = "today" | "7d" | "30d" | "all";
 
-export const SESSION_RANGE_PRESETS: readonly SessionRange[] = [
-  "today",
-  "7d",
-  "30d",
-  "all",
-];
-
 export const DEFAULT_PAGE_SIZE = 20;
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
-export const CSV_COLUMNS = [
+const CSV_COLUMNS = [
   "ended_at",
   "started_at",
   "source",
@@ -321,7 +314,7 @@ export interface SessionsTotals {
 }
 
 /** Facet filters of the sessions bar; empty string = "全部". */
-export interface SessionFilters {
+interface SessionFilters {
   source?: string;
   project?: string;
   model?: string;
@@ -466,7 +459,7 @@ export function withSelectedFacet(
   return [{ key: selected, sessions: 0 }, ...facets];
 }
 
-export interface SessionsPage {
+interface SessionsPage {
   rows: SessionRow[];
   total: number;
   offset: number;

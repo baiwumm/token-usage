@@ -62,7 +62,7 @@ async function readWholeSidecar(): Promise<{
   }
 }
 
-export interface SessionsState {
+interface SessionsState {
   loading: boolean;
   refreshing: boolean;
   /** True when only the newest head is shown (sidecar over the whole cap). */

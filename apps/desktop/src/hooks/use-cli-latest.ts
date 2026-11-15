@@ -11,7 +11,7 @@ import { compareVersions } from "@/lib/version";
 const REGISTRY_URL = "https://registry.npmjs.org/tokenusage-cli/latest";
 const TIMEOUT_MS = 8_000;
 
-export type CliLatestState =
+type CliLatestState =
   | { kind: "idle" }
   | { kind: "checking" }
   | { kind: "latest" }

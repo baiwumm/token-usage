@@ -66,7 +66,7 @@ function describeOutcome(outcome: CliRunOutcome): {
   return { text: `${label}完成`, tone: "success" };
 }
 
-export interface MonitorToastsInput {
+interface MonitorToastsInput {
   cli: CliStatus;
   /** False while the first `--version` probe is still in flight. */
   cliResolved: boolean;

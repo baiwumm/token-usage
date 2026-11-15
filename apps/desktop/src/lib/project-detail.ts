@@ -9,7 +9,7 @@ import type { QueueBucketRow } from "@/lib/queue-lines";
 import { canonicalSource, sourceDisplayLabel } from "@/lib/source-logos";
 import { localDayKey, rowCostUsd } from "@/lib/queue-lines";
 
-export interface ProjectDetailSource {
+interface ProjectDetailSource {
   /** Canonical source id. */
   id: string;
   /** Display label (规范名) for the row. */
@@ -20,7 +20,7 @@ export interface ProjectDetailSource {
   share: number;
 }
 
-export interface ProjectDetailDay {
+interface ProjectDetailDay {
   day: string;
   tokens: number;
   costUsd: number;

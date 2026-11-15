@@ -28,7 +28,7 @@ export type CuratedTables = {
   fuzzy: Array<{ match: string; ref: string }>;
 };
 
-export type LookupResult =
+type LookupResult =
   | { hit: true; source: string; value: Rates }
   | { hit: false; source: string; value: null };
 
@@ -44,7 +44,7 @@ const SUFFIX_STRIP_PATTERNS = [
   /-fast$/,
 ];
 
-export function stripReasoningSuffix(model: string): string {
+function stripReasoningSuffix(model: string): string {
   for (const re of SUFFIX_STRIP_PATTERNS) {
     if (re.test(model)) return model.replace(re, "");
   }
@@ -68,7 +68,7 @@ function normalizeModelSlug(model: string, keepSlash = false): string {
     .replace(/-{2,}/g, "-");
 }
 
-export function normalizeAntigravityModel(
+function normalizeAntigravityModel(
   model: string | null | undefined,
 ): string | null | undefined {
   if (!model || typeof model !== "string") return model;
@@ -102,7 +102,7 @@ export function normalizeAntigravityModel(
 // Zed stores model names inconsistently across versions and providers; see the
 // reference matcher for the rationale. "fast" must NOT be stripped here (it is
 // part of `grok-code-fast-1`).
-export function normalizeZedModel(
+function normalizeZedModel(
   model: string | null | undefined,
 ): string | null | undefined {
   if (!model || typeof model !== "string") return model;
@@ -117,7 +117,7 @@ export function normalizeZedModel(
 
 // Claude desktop/CLI sometimes reports display-style names; relays add
 // provider path prefixes. Normalize lookup-only; raw names stay in storage.
-export function normalizeClaudeModel(
+function normalizeClaudeModel(
   model: string | null | undefined,
 ): string | null | undefined {
   if (!model || typeof model !== "string") return model;
@@ -147,7 +147,7 @@ export function normalizeClaudeModel(
 }
 
 // Cursor decorates model ids with reasoning effort; preserve Fast SKUs.
-export function normalizeCursorModel(
+function normalizeCursorModel(
   model: string | null | undefined,
 ): string | null | undefined {
   if (!model || typeof model !== "string") return model;
@@ -183,7 +183,7 @@ export function normalizeCursorModel(
 
 // WorkBuddy's auto-router records the literal "auto"; map to its default
 // Tencent Hunyuan model instead of Cursor's Composer alias.
-export function normalizeWorkbuddyModel(
+function normalizeWorkbuddyModel(
   model: string | null | undefined,
 ): string | null | undefined {
   if (typeof model === "string" && model.trim().toLowerCase() === "auto") {
@@ -193,7 +193,7 @@ export function normalizeWorkbuddyModel(
   return model;
 }
 
-export function normalizeIFlytekMaasModel(
+function normalizeIFlytekMaasModel(
   model: string | null | undefined,
 ): string | null | undefined {
   if (!model || typeof model !== "string") return model;
@@ -207,7 +207,7 @@ export function normalizeIFlytekMaasModel(
 
 // Unsloth Studio mixes local engines and paid providers; sentinel prevents
 // the reverse-substring matcher from billing a local model as a cloud SKU.
-export function normalizeUnslothModel(
+function normalizeUnslothModel(
   model: string | null | undefined,
 ): string | null | undefined {
   if (typeof model !== "string") return model;
@@ -508,7 +508,7 @@ function roundToTenDecimals(n: number): number {
   return Math.round(n * 1e10) / 1e10;
 }
 
-export function convertLitellmEntry(entry: unknown): Rates | null {
+function convertLitellmEntry(entry: unknown): Rates | null {
   if (!entry || typeof entry !== "object") return null;
   const record = entry as Record<string, unknown>;
   const out: Rates = {};

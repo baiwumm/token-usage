@@ -3,7 +3,7 @@
 // browser (docs/desktop-2026-11.md 附录（原 desktop-plan）§12.3). Unpaired machines get null so the UI
 // can hide the entry instead of inventing a host.
 
-export type WebPage = "dashboard" | "projects" | "sessions" | "achievements";
+type WebPage = "dashboard" | "projects" | "sessions" | "achievements";
 
 /** This app's own repository (header entry + install guide). */
 export const REPO_URL = "https://github.com/baiwumm/token-usage";

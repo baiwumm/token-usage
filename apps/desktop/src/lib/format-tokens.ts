@@ -32,11 +32,6 @@ export function setFormatPreferences(prefs: Preferences): void {
   };
 }
 
-/** Read-only view for tests and derived helpers. */
-export function getFormatPreferences(): DisplayFormat {
-  return { ...activeFormat };
-}
-
 export function formatTokens(tokens: number): string {
   return formatTokensWith(tokens, activeFormat);
 }
