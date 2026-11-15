@@ -9,6 +9,8 @@
 //   - Monthly buckets stay UTC.
 //   - Cost is computed at read time by the vendored static pricing engine.
 
+import { fromAbsolute } from "@internationalized/date";
+
 import {
   computeRowCost,
   getModelPricingInfo,
@@ -43,41 +45,15 @@ export function parseTzContext(searchParams: URLSearchParams): TzContext {
   };
 }
 
-// One Intl.DateTimeFormat per zone id: bucketing would otherwise construct
-// one per row, and construction dominates that loop. Zone strings come from
-// callers, so the table caps itself.
-const zonedFormatters = new Map<string, Intl.DateTimeFormat>();
-const ZONED_FORMATTER_CAP = 64;
+// Zone conversion runs through @internationalized/date (already in the
+// dependency budget): fromAbsolute keeps its own per-zone formatter cache and
+// owns the DST rules, so the hand-rolled formatter table and the h23/h24
+// quirks it guarded against are gone. Per-zone cache entries are bounded by
+// the IANA catalog itself — an unresolvable string throws and never lands.
 
-function zonedFormatter(timeZone: string): Intl.DateTimeFormat | null {
-  const hit = zonedFormatters.get(timeZone);
-
-  if (hit) return hit;
-  try {
-    const formatter = new Intl.DateTimeFormat("en-CA", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hourCycle: "h23",
-    });
-
-    if (zonedFormatters.size >= ZONED_FORMATTER_CAP) zonedFormatters.clear();
-    zonedFormatters.set(timeZone, formatter);
-
-    return formatter;
-  } catch {
-    // Invalid zone id: callers fall through to the numeric offset.
-    return null;
-  }
-}
-
-// UTC timestamp → the caller's local wall-clock parts: IANA zone via Intl when
-// valid, else the fixed numeric offset, else UTC — the fallback is fixed so
-// the bucket day never depends on the server's own timezone.
+// UTC timestamp → the caller's local wall-clock parts: IANA zone via the
+// library when valid, else the fixed numeric offset, else UTC — the fallback
+// is fixed so the bucket day never depends on the server's own timezone.
 export function zonedParts(
   date: Date | string,
   context: Partial<TzContext> = {},
@@ -88,23 +64,17 @@ export function zonedParts(
   const { timeZone, offsetMinutes } = context;
 
   if (timeZone) {
-    const formatter = zonedFormatter(timeZone);
+    try {
+      const zoned = fromAbsolute(ms, timeZone);
 
-    if (formatter) {
-      const parts = formatter.formatToParts(new Date(ms));
-      const values: Record<string, string> = {};
-
-      for (const part of parts)
-        if (part.type && part.value) values[part.type] = part.value;
-      const out = {
-        year: Number(values.year),
-        month: Number(values.month),
-        day: Number(values.day),
-        hour: Number(values.hour),
+      return {
+        year: zoned.year,
+        month: zoned.month,
+        day: zoned.day,
+        hour: zoned.hour,
       };
-
-      if ([out.year, out.month, out.day, out.hour].every(Number.isFinite))
-        return out;
+    } catch {
+      // Invalid zone id: callers fall through to the numeric offset.
     }
   }
   if (Number.isFinite(offsetMinutes)) {

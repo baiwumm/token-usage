@@ -1,10 +1,16 @@
+import { fromDate, parseDateTime, toZoned } from "@internationalized/date";
+
 // Timezone + range math for the dashboard. Pure functions, unit-tested.
 //
 // The contract endpoints filter on ABSOLUTE timestamps (from/to ISO) and
 // bucket days using the tz/tz_offset_minutes params, so "last 7 local days"
-// needs the UTC instant of local midnight in the selected IANA zone. Intl is
-// the only tz source (date-fns alone cannot convert zones; date-fns-tz is not
-// in the dependency budget).
+// needs the UTC instant of local midnight in the selected IANA zone. Zone
+// conversion goes through @internationalized/date (already in the dependency
+// budget for the HeroUI date pickers): its per-zone formatter cache and DST
+// disambiguation replace the hand-rolled noon-anchor/offset tables, which
+// were the classic fragile territory (nonexistent local midnights, the
+// hour12 "24:00" quirk). Pure calendar arithmetic (addDays, the "all"
+// sentinel) stays on plain UTC math — no zone knowledge involved.
 
 export type RangePreset = "today" | "7d" | "30d" | "90d" | "all";
 
@@ -43,55 +49,44 @@ export const PRESET_DAYS: Record<
  */
 export const ALL_RANGE_START = "2000-01-01";
 
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
 /** YYYY-MM-DD for the given instant in the target zone. */
 export function dayKeyInTz(date: Date, timeZone: string): string {
-  // en-CA formats as YYYY-MM-DD.
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
+  const zoned = fromDate(date, timeZone);
+
+  return `${zoned.year}-${pad2(zoned.month)}-${pad2(zoned.day)}`;
 }
 
 /** Minutes EAST of UTC for the zone at the given instant (DST-aware). */
 export function tzOffsetMinutes(date: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour12: false,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).formatToParts(date);
-  const get = (type: string): number =>
-    Number(parts.find((part) => part.type === type)?.value ?? "0");
-  const asUtc = Date.UTC(
-    get("year"),
-    get("month") - 1,
-    get("day"),
-    get("hour") % 24,
-    get("minute"),
-    get("second"),
-  );
-
-  return Math.round((asUtc - date.getTime()) / 60_000);
+  return fromDate(date, timeZone).offset / 60_000;
 }
 
 /**
  * UTC millisecond instant of local midnight (00:00) for a day key in the
- * zone. Noon-anchored first guess keeps the offset lookup clear of DST
- * boundaries; one refinement pass handles the residual.
+ * zone. The library owns DST semantics: a midnight swallowed by a spring-
+ * forward transition resolves with the standard "compatible" rule instead of
+ * the previous noon-anchor + one-refinement guess, and an invalid zone id
+ * throws (callers taking user input degrade around it).
  */
 export function startOfDayUtcMs(dayKey: string, timeZone: string): number {
-  const noon = Date.parse(`${dayKey}T12:00:00Z`);
-  const guess = tzOffsetMinutes(new Date(noon), timeZone);
-  const instant = Date.parse(`${dayKey}T00:00:00Z`) - guess * 60_000;
-  const refined = tzOffsetMinutes(new Date(instant), timeZone);
+  return toZoned(parseDateTime(`${dayKey}T00:00`), timeZone)
+    .toDate()
+    .getTime();
+}
 
-  return Date.parse(`${dayKey}T00:00:00Z`) - refined * 60_000;
+/** Whether the string names a zone Intl can resolve (used to sanitize URL input). */
+export function isValidTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value });
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function addDays(dayKey: string, days: number): string {
