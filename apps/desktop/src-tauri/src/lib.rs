@@ -351,9 +351,8 @@ fn head_whole_rows(text: String, whole_file: bool) -> Option<String> {
     if let Some(stripped) = text.strip_suffix('\n') {
         return Some(stripped.to_string());
     }
-    text.rfind('\n').and_then(|position| {
-        (position > 0).then(|| text[..position].to_string())
-    })
+    text.rfind('\n')
+        .and_then(|position| (position > 0).then(|| text[..position].to_string()))
 }
 
 /// Read only the head of a tracker file. `session.queue.jsonl` is rewritten in
@@ -1216,7 +1215,10 @@ mod tests {
     fn head_keeps_the_last_complete_row_when_the_window_lands_on_a_newline() {
         let text = "row1\nrow2\nrow3\n".to_string();
 
-        assert_eq!(head_whole_rows(text, false), Some("row1\nrow2\nrow3".into()));
+        assert_eq!(
+            head_whole_rows(text, false),
+            Some("row1\nrow2\nrow3".into())
+        );
     }
 
     #[test]
@@ -1259,7 +1261,10 @@ mod tests {
     fn tail_drops_the_partial_first_line_even_when_it_is_the_only_content() {
         assert_eq!(tail_whole_rows(b"row1_par".to_vec(), true), None);
         // The partial first line ends the window: draining it leaves nothing.
-        assert_eq!(tail_whole_rows(b"older\nrow1\n".to_vec(), true), Some("row1\n".into()));
+        assert_eq!(
+            tail_whole_rows(b"older\nrow1\n".to_vec(), true),
+            Some("row1\n".into())
+        );
     }
 
     #[test]
