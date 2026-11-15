@@ -955,3 +955,32 @@ vite build）；本地重建 NSIS 安装包（无签名密钥，`.sig` 仍由 CI
 旧 key 过滤，空结果走既有「清除筛选」空态）。
 
 测试：`lib/sessions.test.ts` 新增 1 例（共 135 例）。门禁同上全绿，并重打 0.4.0 安装包。
+
+### 15 0.4.2 维护与加固（2026-11-15 发版，2026-11-16 操作者验收通过）
+
+全量审查轮的落地面（web 侧同步见 `docs/deploy-guide.md` 迁移清单与
+`apps/desktop/CHANGELOG.md` 0.4.2 节）：
+
+- **队列容量墙**：queue.jsonl 是只增的 last-wins 基线，超过 8 MiB 整读上限后监控盘
+  此前会静默降级为全空。改为 `read_tracker_tail` 聚合最近 2 MiB 尾部窗口（最近窗口
+  完整、总计口径偏小），页头下方显示 `QueuePartialNote` 警示条引导
+  `tokenusage reconcile`；迁移补两张大表的 `(user_id, updated_at)` 索引。
+- **会话视图丢行**：`read_tracker_head` 的截断窗口恰好落在行尾时，旧 rfind 逻辑把最后
+  一行的换行符当截断标记，每次读都丢一行完整会话——抽出 `head_whole_rows` /
+  `tail_whole_rows` 纯函数并以 12 个 Rust 用例钉住（CI rust-gate 补 `cargo test --locked`）。
+- **来源显示名**：ACode 更名 AStudio（跟随 CLI），补 Claude Code / Claude Science 名称
+  与图标映射（对齐 web e7e62ba）。
+- **open_url 加固**：Windows 打开外部链接从 `cmd /C start` 改为 explorer.exe 直通
+  ShellExecute——URL 中的 `&` / `^` / `%` 等元字符不再可能重入 cmd 解析器。
+- 导出面收敛：29 个单文件引用符号内部化，WHITE_LOGOS 死开关与 brand-logo 的
+  backdrop 永假分支删除。
+
+门禁：desktop verify 157 例 + Rust 12 例 + web 698 例全绿（web 侧含时区迁移
+`@internationalized/date`、knownProjects 60s 缓存、账号快照增量水位与
+sessionCostUsd 收敛）。发版流水线 `desktop-v0.4.2` tag → draft → 操作者 publish →
+updater 端点生效；生产实例已应用水位索引迁移（经 session pooler，region
+ap-northeast-2）。
+
+验收：操作者更新安装包后 **open_url 验收全部通过**（托盘仪表盘 / 页头仪表盘 /
+落地页三入口浏览器均正常弹开）；监控盘顶部无容量墙警示条（当前队列约 3.5 MiB，
+预期内）。
