@@ -924,13 +924,23 @@ async function cmdSync(argv, context = {}) {
       : null;
 
     const autoSourceScope = resolveAutoSourceScope(opts);
+    // `--source` on a manual run has to be a real scan filter. It used to only
+    // validate the id (and scope auto/notify retries through
+    // resolveAutoSourceScope), so `sync --source zed` still walked every
+    // provider tree and reported ~32k parsed files — the documented "scan a
+    // single provider" was true only for hooks, which always pass `--auto`.
+    const manualSourceScope = resolveManualSourceScope(opts);
     // --background controls local scan breadth; --drain only controls upload
     // depth and lock priority. Plain `sync --drain` remains a full source scan.
     const isBackgroundLightweightSync = opts.auto && opts.background;
     const isBackgroundAllLocalSync = isBackgroundLightweightSync && opts.allLocalSources;
-    const isFullSourceScan = !autoSourceScope && !isBackgroundLightweightSync;
+    // A single-source run is not a full scan: the cross-source repairs below
+    // rebuild queue rows from the parsed file set, so feeding them one source's
+    // files could make them treat the other sources' buckets as stale.
+    const isFullSourceScan = !autoSourceScope && !manualSourceScope && !isBackgroundLightweightSync;
     const sourceAllowed = (...sources) => {
       if (Array.isArray(context.scanSources) && !sources.some(source => context.scanSources.includes(source))) return false;
+      if (manualSourceScope) return sources.includes(manualSourceScope);
       if (isBackgroundLightweightSync) {
         if (autoSourceScope) {
           return (
@@ -4193,6 +4203,14 @@ function parseArgs(argv) {
   return out;
 }
 
+// Manual (`sync --source <id>`) scan scope. Kept separate from
+// resolveAutoSourceScope: that one deliberately returns null unless `--auto` is
+// set, which is how the flag ended up validated-but-unused on plain syncs.
+function resolveManualSourceScope(opts) {
+  if (!opts || opts.auto) return null;
+  return normalizeSyncSource(opts.source);
+}
+
 function resolveAutoSourceScope(opts) {
   if (!opts?.auto) return null;
   if (opts.fromOpenclaw) return "openclaw";
@@ -4301,6 +4319,7 @@ module.exports = {
   readQueueBatch,
   drainQueueToCloud,
   normalizeSyncSource,
+  resolveManualSourceScope,
   parseSyncSourceArg,
   formatSyncSourceList,
   zcodeRowTotals,

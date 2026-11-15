@@ -23,6 +23,11 @@
 - **prime-agent 进入源注册表**：解析器早已存在但 id 没注册，`--source prime-agent` 直接报未知
   id，auto / background 同步也整源跳过，只有不带筛选的手动 `sync` 才采得到。同时补
   `astudio → acode` 别名——CLI 里集成叫 AStudio，`acode` 只是采集器 id。
+- **修复 `sync --source <id>` 实际未限制扫描**：手动单源同步此前只校验了 id，随后仍然遍历全部来源
+  （`--json` 里恒定 ~32,000 parsed files、固定 ~1.8s 底噪）；真正的源筛选只对带 `--auto` 的 hook/
+  重试生效。现在 `--source` 也收窄扫描范围（本机实测 `--source kiro` / `--source zed` 从 31,785 个
+  文件 / 1.8s 降到 0 个 / 0.4s），且单源运行不再跑跨源修复——这些修复会用解析到的文件集重建
+  队列行，只喂一个来源可能把其它来源的桶当成过期数据。全量 `sync` 行为不变。
 - **`sync --timing`**：打印扫描 / 上传 / 会话三段的耗时，长会话机器的慢环节不再靠猜。
 - **旗标解析收敛为声明式 spec**：未知旗标统一走 `UsageError`（退出码 2），`--json` 下错误
   面与成功面同构；`project-profiles` 的请求补超时，避免桌面端调用挂死。

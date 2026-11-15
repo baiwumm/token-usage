@@ -7,7 +7,12 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 
-const { formatSyncSourceList, normalizeSyncSource, parseSyncSourceArg } = require("../src/commands/sync");
+const {
+  formatSyncSourceList,
+  normalizeSyncSource,
+  parseSyncSourceArg,
+  resolveManualSourceScope,
+} = require("../src/commands/sync");
 
 test("prime-agent is a selectable source, not just a parser", () => {
   assert.equal(normalizeSyncSource("prime-agent"), "prime-agent");
@@ -23,4 +28,17 @@ test("the AStudio label and the acode collector id resolve to one source", () =>
 test("unknown ids still fail loudly instead of degrading to a full scan", () => {
   assert.equal(normalizeSyncSource("totally-unknown-cli"), null);
   assert.throws(() => parseSyncSourceArg("totally-unknown-cli"), /Unknown --source value/);
+});
+
+// `sync --source <id>` used to validate the id and then scan every provider
+// anyway: the filter only ever reached auto/notify runs through
+// resolveAutoSourceScope. A manual run must scope the scan to the chosen id.
+test("a manual --source narrows the scan, aliases included", () => {
+  assert.equal(resolveManualSourceScope({ source: "zed" }), "zed");
+  assert.equal(resolveManualSourceScope({ source: "astudio" }), "acode");
+  assert.equal(resolveManualSourceScope({}), null, "no --source stays a full scan");
+});
+
+test("auto runs keep their own scope resolution", () => {
+  assert.equal(resolveManualSourceScope({ auto: true, source: "claude" }), null);
 });
