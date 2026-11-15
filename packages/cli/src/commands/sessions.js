@@ -8,41 +8,29 @@
 // exporting the wrong shape to the wrong file.
 
 const { writeFileAtomic } = require("../lib/fs");
-const { UsageError, unknownOptionError } = require("../lib/cli-errors");
+const { UsageError } = require("../lib/cli-errors");
+const { parseFlags } = require("../lib/cli-flags");
 const { buildSessionAnalytics, summarizeSessions, sessionsToCsv } = require("../lib/session-analytics");
 const { buildGitOutcomes } = require("../lib/git-outcomes");
 
 const FORMATS = new Set(["json", "csv"]);
-const VALUE_FLAGS = new Set(["--format", "--out", "--from", "--to"]);
-const BOOLEAN_FLAGS = new Set(["--csv", "--refresh", "--no-git"]);
+
+const SESSIONS_FLAGS = {
+  command: "sessions",
+  defaults: { format: null, out: null, from: null, to: null, refresh: false, git: true },
+  flags: [
+    { flag: "--format", key: "format", kind: "value", parse: (raw) => String(raw).trim().toLowerCase() },
+    { flag: "--out", key: "out", kind: "value" },
+    { flag: "--from", key: "from", kind: "value" },
+    { flag: "--to", key: "to", kind: "value" },
+    { flag: "--csv", key: "format", const: "csv" },
+    { flag: "--refresh", key: "refresh" },
+    { flag: "--no-git", key: "git", const: false },
+  ],
+};
 
 function parseArgs(args = []) {
-  const out = { format: null, out: null, from: null, to: null, refresh: false, git: true };
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (VALUE_FLAGS.has(a)) {
-      const value = args[i + 1];
-      if (value == null || value === "" || value.startsWith("--")) {
-        throw new UsageError(`${a} requires a value`, {
-          code: "MISSING_VALUE",
-          hint: "Run `tokenusage sessions --help` for supported options.",
-        });
-      }
-      i += 1;
-      if (a === "--format") out.format = value.trim().toLowerCase();
-      else if (a === "--out") out.out = value;
-      else if (a === "--from") out.from = value;
-      else out.to = value;
-      continue;
-    }
-    if (BOOLEAN_FLAGS.has(a)) {
-      if (a === "--csv") out.format = "csv";
-      else if (a === "--refresh") out.refresh = true;
-      else out.git = false;
-      continue;
-    }
-    throw unknownOptionError(a, "sessions");
-  }
+  const out = parseFlags(args, SESSIONS_FLAGS);
   if (out.format == null) out.format = "json";
   if (!FORMATS.has(out.format)) {
     throw new UsageError(`Unknown --format: ${out.format}`, {
@@ -69,4 +57,4 @@ async function cmdSessions(args = []) {
   }
 }
 
-module.exports = { cmdSessions, parseArgs };
+module.exports = { cmdSessions, parseArgs, flagSpec: SESSIONS_FLAGS };

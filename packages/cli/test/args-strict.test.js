@@ -137,3 +137,59 @@ test("the selectable integration list is the hook-writing subset", () => {
   assert.ok(!ids.includes("cursor"), "passive readers are never gated");
   assert.equal(new Set(ids).size, ids.length, "ids must be unique");
 });
+
+test("every command rejects a typo as a UsageError instead of a crash", () => {
+  // These five used to throw a bare Error → exit 1 + "Re-run with --debug",
+  // which read as an internal failure for what is a plain user typo.
+  const parsers = {
+    pause: require("../src/commands/pause").parseArgs,
+    diagnostics: require("../src/commands/diagnostics").parseArgs,
+    doctor: require("../src/commands/doctor").parseArgs,
+    "device-login": require("../src/commands/device-login").parseArgs,
+  };
+
+  for (const [name, parse] of Object.entries(parsers)) {
+    assert.throws(
+      () => parse(["--bogus"]),
+      (error) => {
+        assert.ok(isUsageError(error), `${name} must throw a UsageError`);
+        assert.equal(error.code, "UNKNOWN_OPTION");
+        assert.match(error.hint, new RegExp(`${name} --help`));
+        return true;
+      },
+      `${name} must reject --bogus`,
+    );
+  }
+});
+
+test("value flags fail loudly instead of being silently dropped", () => {
+  const cases = [
+    ["diagnostics", require("../src/commands/diagnostics").parseArgs, "--out"],
+    ["doctor", require("../src/commands/doctor").parseArgs, "--out"],
+    ["device-login", require("../src/commands/device-login").parseArgs, "--base-url"],
+  ];
+
+  for (const [name, parse, flag] of cases) {
+    assert.throws(
+      () => parse([flag]),
+      (error) => {
+        assert.ok(isUsageError(error));
+        assert.equal(error.code, "MISSING_VALUE");
+        return true;
+      },
+      `${name} ${flag} without a value must fail`,
+    );
+  }
+});
+
+test("pause/resume accept only --json (a typo must not change collection state)", () => {
+  const { parseArgs: parsePause } = require("../src/commands/pause");
+
+  assert.deepEqual(parsePause([]), { json: false });
+  assert.deepEqual(parsePause(["--json"]), { json: true });
+  assert.throws(() => parsePause(["--bogus"]), (error) => {
+    assert.ok(isUsageError(error));
+    assert.equal(error.code, "UNKNOWN_OPTION");
+    return true;
+  });
+});

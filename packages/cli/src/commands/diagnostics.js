@@ -2,6 +2,7 @@ const path = require("node:path");
 
 const { writeFileAtomic, chmod600IfPossible } = require("../lib/fs");
 const { collectTrackerDiagnostics } = require("../lib/diagnostics");
+const { parseFlags } = require("../lib/cli-flags");
 
 async function cmdDiagnostics(argv = []) {
   const opts = parseArgs(argv);
@@ -18,21 +19,20 @@ async function cmdDiagnostics(argv = []) {
   process.stdout.write(json);
 }
 
-function parseArgs(argv) {
-  const out = {
-    out: null,
-    compact: false,
-  };
+// `--compact` / `--pretty` were accepted but undocumented; the spec below is
+// the single source `tokenusage diagnostics --help` and the surface test read.
+const DIAGNOSTICS_FLAGS = {
+  command: "diagnostics",
+  defaults: { out: null, compact: false },
+  flags: [
+    { flag: "--out", key: "out", kind: "value" },
+    { flag: "--compact", key: "compact" },
+    { flag: "--pretty", key: "compact", const: false },
+  ],
+};
 
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--out") out.out = argv[++i] || null;
-    else if (a === "--compact") out.compact = true;
-    else if (a === "--pretty") out.compact = false;
-    else throw new Error(`Unknown option: ${a}`);
-  }
-
-  return out;
+function parseArgs(argv = []) {
+  return parseFlags(argv, DIAGNOSTICS_FLAGS);
 }
 
-module.exports = { cmdDiagnostics };
+module.exports = { cmdDiagnostics, parseArgs, flagSpec: DIAGNOSTICS_FLAGS };

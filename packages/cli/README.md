@@ -100,9 +100,9 @@ tokenusage sync --drain    # 首次/积压补传（更大的批处理预算）
 | `reconcile` | `--days <n>`（默认 7，上限 366）、`--from` / `--to`（UTC 日历日，裸日期含当天整天）、`--limit <n>`（1–2000）、`--json` |
 | `status` | `--diagnostics`（含路径 / 光标 / WSL·Kiro 探针）、`--json`、`--light`（无 ANSI 的 ASCII 表）、`--limits`（各家配额面板，会读本机凭据并访问厂商 API）、`--no-spinner`、`--probe-keychain` / `--probe-keychain-details`（macOS） |
 | `doctor` | `--json`、`--out <file>`、`--base-url <url>` |
-| `diagnostics` | `--out <file>` |
+| `diagnostics` | `--out <file>`、`--compact` / `--pretty`（单行 / 缩进 JSON，默认缩进） |
 | `sessions` | `--from` / `--to`、`--format json\|csv`（或 `--csv`）、`--out <file>`（原子写，0600）、`--refresh`、`--no-git` |
-| `device-login` | `--json`、`--base-url <url>` |
+| `device-login` | `--json`、`--base-url <url>`、`--dashboard-url <url>`、`--anon-key <key>` / `--anon-key-file <path>` |
 </details>
 
 ### 只补传积压、不重扫本地日志

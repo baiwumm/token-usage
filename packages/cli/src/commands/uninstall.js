@@ -2,6 +2,7 @@ const os = require("node:os");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 const { expandHome } = require("../lib/scan-roots");
+const { parseFlags } = require("../lib/cli-flags");
 
 const {
   restoreCodexNotify,
@@ -290,17 +291,17 @@ function formatOmpHookRemoveLine(ompHookRemove) {
   return "- oh-my-pi notify extension: no change";
 }
 
-function parseArgs(argv) {
-  const out = { purge: false };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--purge") out.purge = true;
-    else throw new Error(`Unknown option: ${a}`);
-  }
-  return out;
+const UNINSTALL_FLAGS = {
+  command: "uninstall",
+  defaults: { purge: false },
+  flags: [{ flag: "--purge", key: "purge" }],
+};
+
+function parseArgs(argv = []) {
+  return parseFlags(argv, UNINSTALL_FLAGS);
 }
 
-module.exports = { cmdUninstall, formatOmpHookRemoveLine };
+module.exports = { cmdUninstall, formatOmpHookRemoveLine, parseArgs, flagSpec: UNINSTALL_FLAGS };
 
 async function isFile(p) {
   try {

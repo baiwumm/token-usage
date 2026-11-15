@@ -24,22 +24,25 @@ const { readJson } = require("../lib/fs");
 const { cloudUsageResetBlocksUpload } = require("../lib/cloud-usage-reset");
 const { compactPendingQueue } = require("../lib/upload-queue");
 const { resolveRuntimeConfig } = require("../lib/runtime-config");
-const { UsageError, unknownOptionError } = require("../lib/cli-errors");
+const { UsageError } = require("../lib/cli-errors");
+const { parseFlags } = require("../lib/cli-flags");
 const { acquireSyncLock, drainQueueToCloud } = require("./sync");
 
 const BATCH_SIZE = 200;
 const MAX_BATCHES = 5;
 const MAX_BATCHES_DRAIN = 100;
 
-function parseArgs(argv) {
-  const out = { drain: false, json: false };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--drain" || a === "--force") out.drain = true;
-    else if (a === "--json") out.json = true;
-    else throw unknownOptionError(a, "upload");
-  }
-  return out;
+const UPLOAD_FLAGS = {
+  command: "upload",
+  defaults: { drain: false, json: false },
+  flags: [
+    { flag: "--drain", aliases: ["--force"], key: "drain" },
+    { flag: "--json", key: "json" },
+  ],
+};
+
+function parseArgs(argv = []) {
+  return parseFlags(argv, UPLOAD_FLAGS);
 }
 
 async function pendingBytes(queuePath, queueStatePath) {
@@ -68,9 +71,12 @@ async function cmdUpload(argv, options = {}) {
     });
   }
 
+  // baseUrl 用解析后的 runtime：自托管实例地址通常来自 config.json 或
+  // --base-url，只读旧 INSFORGE env 会让 marker 的 base 永远不匹配，重置过的
+  // 队列永远无法通过 `upload` 收尾（sync 已在用运行时值）。
   const canUpload = () => !cloudUsageResetBlocksUpload(trackerDir, {
     ownerId: process.env.TOKENUSAGE_CLOUD_OWNER_ID,
-    baseUrl: process.env.TOKENUSAGE_INSFORGE_BASE_URL,
+    baseUrl: runtime.baseUrl || process.env.TOKENUSAGE_INSFORGE_BASE_URL,
     deviceId: process.env.TOKENUSAGE_CLOUD_DEVICE_ID,
   });
   if (!canUpload()) {
@@ -148,4 +154,4 @@ async function cmdUpload(argv, options = {}) {
   );
 }
 
-module.exports = { cmdUpload, parseArgs };
+module.exports = { cmdUpload, parseArgs, flagSpec: UPLOAD_FLAGS };

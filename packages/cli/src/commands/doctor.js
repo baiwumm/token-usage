@@ -9,6 +9,7 @@ const { resolveDeviceTokenPresence } = require("../lib/cloud-device-token");
 const { resolveLocalDeviceIdentity } = require("../lib/device-identity");
 const { buildDoctorReport } = require("../lib/doctor");
 const { inspectAutoSyncSchedule } = require("../lib/scheduled-task");
+const { parseFlags } = require("../lib/cli-flags");
 
 async function cmdDoctor(argv = []) {
   const opts = parseArgs(argv);
@@ -88,16 +89,18 @@ async function cmdDoctor(argv = []) {
   }
 }
 
-function parseArgs(argv) {
-  const out = { json: false, out: null, baseUrl: null };
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
-    if (arg === "--json") out.json = true;
-    else if (arg === "--out") out.out = argv[++i] || null;
-    else if (arg === "--base-url") out.baseUrl = argv[++i] || null;
-    else throw new Error(`Unknown option: ${arg}`);
-  }
-  return out;
+const DOCTOR_FLAGS = {
+  command: "doctor",
+  defaults: { json: false, out: null, baseUrl: null },
+  flags: [
+    { flag: "--json", key: "json" },
+    { flag: "--out", key: "out", kind: "value" },
+    { flag: "--base-url", key: "baseUrl", kind: "value" },
+  ],
+};
+
+function parseArgs(argv = []) {
+  return parseFlags(argv, DOCTOR_FLAGS);
 }
 
 function renderHumanReport(report) {
@@ -125,4 +128,4 @@ function isPlainObject(value) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-module.exports = { cmdDoctor };
+module.exports = { cmdDoctor, parseArgs, flagSpec: DOCTOR_FLAGS };

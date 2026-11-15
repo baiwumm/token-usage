@@ -20,13 +20,36 @@ const {
   setAutoSyncEnabled,
   formatScheduleToggle,
 } = require("../lib/scheduled-task");
+const { parseFlags } = require("../lib/cli-flags");
 
-async function cmdPause() {
+// pause/resume used to receive no argv at all, so `tokenusage pause --json`
+// (or any typo) silently paused collection and exited 0 — the one command
+// where a surprise state change is worst. `--json` is the only accepted flag;
+// every other command already offers it for script consumption.
+const PAUSE_FLAGS = {
+  command: "pause",
+  defaults: { json: false },
+  flags: [{ flag: "--json", key: "json" }],
+};
+
+function parseArgs(argv = [], command = "pause") {
+  return parseFlags(argv, { ...PAUSE_FLAGS, command });
+}
+
+async function cmdPause(argv = []) {
+  const opts = parseArgs(argv, "pause");
   const { trackerDir } = await resolveTrackerPaths({ home: os.homedir() });
   const alreadyPaused = isCollectionPaused(trackerDir);
 
   await setCollectionPaused(trackerDir, true);
   const schedule = setAutoSyncEnabled(false);
+
+  if (opts.json) {
+    process.stdout.write(
+      `${JSON.stringify({ ok: true, paused: true, already_paused: alreadyPaused, schedule })}\n`,
+    );
+    return;
+  }
 
   process.stdout.write(
     [
@@ -42,12 +65,20 @@ async function cmdPause() {
   );
 }
 
-async function cmdResume() {
+async function cmdResume(argv = []) {
+  const opts = parseArgs(argv, "resume");
   const { trackerDir } = await resolveTrackerPaths({ home: os.homedir() });
   const wasPaused = isCollectionPaused(trackerDir);
 
   await setCollectionPaused(trackerDir, false);
   const schedule = setAutoSyncEnabled(true);
+
+  if (opts.json) {
+    process.stdout.write(
+      `${JSON.stringify({ ok: true, paused: false, was_paused: wasPaused, schedule })}\n`,
+    );
+    return;
+  }
 
   process.stdout.write(
     [
@@ -62,4 +93,4 @@ async function cmdResume() {
   );
 }
 
-module.exports = { cmdPause, cmdResume };
+module.exports = { cmdPause, cmdResume, parseArgs, flagSpec: PAUSE_FLAGS };

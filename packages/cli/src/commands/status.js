@@ -6,6 +6,7 @@ const pkg = require("../../package.json");
 const { resolveDumateDbPaths } = require("../lib/dumate");
 
 const { readJson } = require("../lib/fs");
+const { parseFlags } = require("../lib/cli-flags");
 const { readCursorStateSummary } = require("../lib/cursor-store");
 const {
   readCodexNotify,
@@ -1725,8 +1726,9 @@ function formatUsageLimitRows(limits) {
   return rows;
 }
 
-function parseArgs(argv) {
-  const out = {
+const STATUS_FLAGS = {
+  command: "status",
+  defaults: {
     diagnostics: false,
     json: false,
     light: false,
@@ -1734,21 +1736,22 @@ function parseArgs(argv) {
     noSpinner: false,
     probeKeychain: false,
     probeKeychainDetails: false,
-  };
+  },
+  flags: [
+    { flag: "--diagnostics", key: "diagnostics" },
+    { flag: "--json", key: "json" },
+    { flag: "--light", key: "light" },
+    { flag: "--limits", key: "limits" },
+    { flag: "--no-spinner", key: "noSpinner" },
+    { flag: "--probe-keychain", key: "probeKeychain" },
+    { flag: "--probe-keychain-details", key: "probeKeychainDetails" },
+  ],
+};
 
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--diagnostics") out.diagnostics = true;
-    else if (a === "--json") out.json = true;
-    else if (a === "--light") out.light = true;
-    else if (a === "--limits") out.limits = true;
-    else if (a === "--no-spinner") out.noSpinner = true;
-    else if (a === "--probe-keychain") out.probeKeychain = true;
-    else if (a === "--probe-keychain-details") {
-      out.probeKeychainDetails = true;
-      out.probeKeychain = true;
-    } else throw new Error(`Unknown option: ${a}`);
-  }
+function parseArgs(argv = []) {
+  const out = parseFlags(argv, STATUS_FLAGS);
+  // `--probe-keychain-details` implies the base probe (unchanged behavior).
+  if (out.probeKeychainDetails) out.probeKeychain = true;
 
   return out;
 }
@@ -1900,6 +1903,7 @@ function parseEpochMsToIso(v) {
 
 module.exports = {
   cmdStatus,
+  flagSpec: STATUS_FLAGS,
   formatUsageLimitRows,
   parseArgs,
   renderLightTable,

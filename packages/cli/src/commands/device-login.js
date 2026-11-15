@@ -8,6 +8,7 @@ const { readJson, updateJsonLocked } = require("../lib/fs");
 const { resolveTrackerPaths } = require("../lib/tracker-paths");
 const { resolveRuntimeConfig, assertInsforgeRuntime, normalizeInstanceBaseUrl, clearDeviceIdentity, resetInstanceState } = require("../lib/runtime-config");
 const { functionUrlFor, fetchFunctionResponse } = require("../lib/function-url");
+const { parseFlags } = require("../lib/cli-flags");
 
 const POLL_INTERVAL_MS = 5_000;
 const ABSOLUTE_TIMEOUT_MS = 16 * 60 * 1000; // matches the 15-min server window with a small buffer
@@ -184,22 +185,20 @@ async function cmdDeviceLogin(argv = [], options = {}) {
   throw new Error("device-login timed out without approval");
 }
 
-function parseArgs(argv) {
-  const out = { json: false, baseUrl: null, anonKey: null, anonKeyFile: null, dashboardUrl: null };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--json") out.json = true;
-    else if (a === "--base-url") {
-      out.baseUrl = argv[++i] || null;
-    } else if (a === "--anon-key") {
-      out.anonKey = argv[++i] || null;
-    } else if (a === "--anon-key-file") {
-      out.anonKeyFile = argv[++i] || null;
-    } else if (a === "--dashboard-url") {
-      out.dashboardUrl = argv[++i] || null;
-    } else throw new Error(`Unknown option: ${a}`);
-  }
-  return out;
+const DEVICE_LOGIN_FLAGS = {
+  command: "device-login",
+  defaults: { json: false, baseUrl: null, anonKey: null, anonKeyFile: null, dashboardUrl: null },
+  flags: [
+    { flag: "--json", key: "json" },
+    { flag: "--base-url", key: "baseUrl", kind: "value" },
+    { flag: "--anon-key", key: "anonKey", kind: "value" },
+    { flag: "--anon-key-file", key: "anonKeyFile", kind: "value" },
+    { flag: "--dashboard-url", key: "dashboardUrl", kind: "value" },
+  ],
+};
+
+function parseArgs(argv = []) {
+  return parseFlags(argv, DEVICE_LOGIN_FLAGS);
 }
 
-module.exports = { cmdDeviceLogin, authorize, pollOnce };
+module.exports = { cmdDeviceLogin, authorize, pollOnce, parseArgs, flagSpec: DEVICE_LOGIN_FLAGS };
