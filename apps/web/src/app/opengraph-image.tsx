@@ -72,24 +72,26 @@ export default function OpengraphImage() {
       }}
     >
       {/* 品牌行 + 部署域名（弹性占位推开，不用 space-between） */}
-      <div style={{ alignItems: "center", display: "flex" }}>          <div
-            style={{
-              borderRadius: 14,
-              display: "flex",
-              height: LOGO_SIZE,
-              overflow: "hidden",
-              width: LOGO_SIZE,
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              alt=""
-              height={LOGO_SIZE}
-              src={logoDataUri}
-              style={{ borderRadius: 14, display: "flex" }}
-              width={LOGO_SIZE}
-            />
-          </div>
+      <div style={{ alignItems: "center", display: "flex" }}>
+        {" "}
+        <div
+          style={{
+            borderRadius: 14,
+            display: "flex",
+            height: LOGO_SIZE,
+            overflow: "hidden",
+            width: LOGO_SIZE,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            alt=""
+            height={LOGO_SIZE}
+            src={logoDataUri}
+            style={{ borderRadius: 14, display: "flex" }}
+            width={LOGO_SIZE}
+          />
+        </div>
         <div
           style={{
             display: "flex",
