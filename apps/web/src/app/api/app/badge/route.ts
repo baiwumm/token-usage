@@ -1,4 +1,4 @@
-﻿// Badge config for the signed-in operator (docs/badge.md §7.1): the browser
+// Badge config for the signed-in operator (docs/badge.md §7.1): the browser
 // session authenticates via @supabase/ssr cookies exactly like
 // /api/app/achievements (the /api/functions contract gate does not apply),
 // then all reads and writes go through service-role.

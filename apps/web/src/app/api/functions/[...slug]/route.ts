@@ -1,4 +1,4 @@
-// GET /api/functions/[...slug] — ONE dynamic route serving the eight read-only
+// GET /api/functions/[...slug] — ONE dynamic route serving the nine read-only
 // account series (Vercel Hobby function budget). Dashboard face;
 // docs/cli-contract.md §2.7.
 //

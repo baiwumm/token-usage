@@ -274,16 +274,16 @@ function buildHistory(
         .toLowerCase() || "unknown",
     );
 
-    if (!agg.night && total > 0) {
+    // One zonedParts call covers both time-of-day flags: rows that match
+    // neither (the common midday case) used to pay the formatToParts cost
+    // twice per row over the whole history walk.
+    if ((!agg.night || !agg.early) && total > 0) {
       const parts = zonedParts(String(row.hour_start), tzContext);
 
-      if (parts && NIGHT_HOURS.has(parts.hour)) agg.night = true;
-    }
-
-    if (!agg.early && total > 0) {
-      const parts = zonedParts(String(row.hour_start), tzContext);
-
-      if (parts && EARLY_HOURS.has(parts.hour)) agg.early = true;
+      if (parts) {
+        if (!agg.night && NIGHT_HOURS.has(parts.hour)) agg.night = true;
+        if (!agg.early && EARLY_HOURS.has(parts.hour)) agg.early = true;
+      }
     }
   }
 

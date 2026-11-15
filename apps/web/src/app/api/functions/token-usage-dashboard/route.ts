@@ -28,7 +28,9 @@ function parseOffset(value: string | null): number | null {
   if (value == null || value === "") return null;
   const parsed = Number(value);
 
-  return Number.isFinite(parsed) ? parsed : null;
+  // Truncated like parseTzContext (§2.7): fractional offsets make no sense
+  // and would shift day bucketing by a partial minute.
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
 }
 
 // §2.10 freezes the combined message (the reference impl split "Invalid

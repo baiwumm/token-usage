@@ -1,4 +1,4 @@
-// The seven read-only account series handlers — ports
+// The nine read-only account series handlers — ports
 // api/_lib/account-endpoints.js. docs/cli-contract.md §2.7 freezes the
 // parameter and response shapes.
 
