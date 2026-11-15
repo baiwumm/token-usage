@@ -110,6 +110,8 @@ export default function OpengraphImage() {
         {" "}
         <div style={{ alignItems: "center", display: "flex", gap: 14 }}>
           {}{" "}
+          {/* eslint-disable-next-line @next/next/no-img-element -- Satori renders a
+              data URI here; next/image cannot optimize it and has no route to. */}
           <img
             alt=""
             height={LOGO_SIZE}
