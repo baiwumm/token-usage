@@ -21,6 +21,7 @@
   <a href="https://token-usage.cc"><img src="https://img.shields.io/badge/%E5%AE%98%E6%96%B9%E7%AB%99-token--usage.cc-0A0A0A?style=flat-square" alt="官方站" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-0A0A0A?style=flat-square" alt="MIT License" /></a>
   <a href="docs/requirements.md"><img src="https://img.shields.io/badge/%E9%9C%80%E6%B1%82-%E7%9C%9F%E6%BA%90-2ea44f?style=flat-square" alt="需求真源" /></a>
+  <a href="https://www.npmjs.com/package/tokenusage-cli"><img src="https://img.shields.io/npm/v/tokenusage-cli?style=flat-square&label=tokenusage-cli&color=0A0A0A" alt="npm tokenusage-cli" /></a>
 </p>
 
 <p align="center">
@@ -48,6 +49,10 @@
   </a>
   <br />
   <sub>作者实例的实时用量——由本项目的<a href="docs/badge.md">公开徽章</a>渲染，点击进入公开页</sub>
+</p>
+
+<p align="center">
+  <img src="apps/landing/public/dashboard/app-overview.png" alt="Token Usage 仪表盘总览" width="100%" />
 </p>
 
 ## ✨ 项目特性
@@ -97,6 +102,18 @@ cp apps/web/.env.example apps/web/.env.local   # 填入 Supabase URL / publishab
 pnpm dev                                       # http://localhost:3000
 ```
 
+### 🧑‍💻 采集端 CLI
+
+```bash
+npm install -g tokenusage-cli
+tokenusage init          # 扫描本地 AI 工具日志、装用量 hook、注册每小时自动采集的计划任务
+tokenusage device-login  # 输出配对码，浏览器打开 /device 批准（15 分钟内有效）
+tokenusage sync          # 立即上报一次；--watch 常驻
+```
+
+本地日志只读，只上报用量元数据（prompt、对话正文、绝对路径、会话标题一律不采集）。
+完整命令面、来源支持与排障见 [`packages/cli/README.md`](packages/cli/README.md)。
+
 ### 🤖 交给 Agent 部署
 
 部署全程（建库 → 配 Auth → 部署 → 建管理员 → 配对采集端 → 冒烟）都可交给编码 Agent 执行。
@@ -143,6 +160,7 @@ Agent 拿到的两个真源：[`docs/deploy-guide.md`](docs/deploy-guide.md)（�
 | [`docs/deploy-guide.md`](docs/deploy-guide.md) | 从零部署（Supabase + Vercel） |
 | [`docs/launch-runbook.md`](docs/launch-runbook.md) | 升级、冒烟清单与回滚 |
 | [`docs/cli-release.md`](docs/cli-release.md) | CLI 发版与 npm 发布 |
+| [`packages/cli/README.md`](packages/cli/README.md) | 采集端：安装、命令、来源支持与排障 |
 | [`apps/landing/README.md`](apps/landing/README.md) | 落地页：快照同步与部署接线 |
 | [`docs/desktop-plan.md`](docs/desktop-plan.md) | 桌面端：定位、边界、发版 |
 | [`docs/archive/`](docs/archive/) | 历史归档（不再维护） |

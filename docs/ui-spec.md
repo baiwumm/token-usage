@@ -802,9 +802,14 @@ cookie 会话；Loading 骨架按三卡结构逐块占位（账户设置行/列�
   `animation-delay`，reduced-motion 全局规则关停）；来源 logo 循环为两行反向 CSS marquee
   （内容复制一份 + `-50%` 位移无缝衔接，悬停暂停，reduced-motion 停用）。
 - 回到顶部：`components/landing/back-to-top.tsx` 固定右下 44px 圆盘，滚过 480px 浮出；滚动监听
-  rAF 节流，显隐 / 悬停上浮 4px / 按压 95% 缩放全走 CSS 过渡
-  （`ease-[cubic-bezier(0.22,1,0.36,1)]`，300ms），`visibility` 同列过渡项以免淡出被硬切，
-  reduced-motion 下过渡关停、点击瞬时跳顶。
+  rAF 节流；显隐为 200ms 的 `opacity` + `translate` 6px + `scale` 95% → 100%（缓出曲线
+  `ease-[cubic-bezier(0.16,1,0.3,1)]`）。过渡列表必须写 `translate` / `scale`：Tailwind 4 这两组
+  工具类改的是独立属性，旧写法列 `transform` 不生效，淡入淡出只剩透明度在动（2026-11-15 修复）。
+  悬停只换 accent 描边与文字色、不上浮；按压沿用 Button 自带的 96% 缩放，不叠加自写 scale；
+  `visibility` 同列过渡项以免淡出被硬切；reduced-motion 下过渡关停、点击瞬时跳顶。
+- SEO 与分享卡：标题 / 描述 / 关键词 / canonical / OG / Twitter 统一在根布局（`src/lib/seo.ts`
+  取值），社交卡由 `app/opengraph-image.tsx` 构建期生成（暗黑终端风格 + 快照数字，文案为 ASCII——
+  Satori 不支持仓库内的 woff2 字体）；`app/sitemap.ts`、`app/robots.ts` 静态产出。
 - 类名：Tailwind 任意值写法收敛到 canonical（`grid-cols-52`、`aspect-16/10`、`mask-[...]`）；
   圆角例外——`rounded-[2px]` 保留（canonical `rounded-sm` = 4px 会变值，同 AGENTS 约束 5）。
 - 375px 可用、无页面级横向滚动；文案中文单语（`lib/copy.ts` 留 en 结构位）。

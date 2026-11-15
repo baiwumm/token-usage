@@ -28,6 +28,7 @@
   <img src="https://img.shields.io/badge/HeroUI-3-111?style=flat-square&logo=heroui&logoColor=fff&labelColor=111" alt="HeroUI 3" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-4-111?style=flat-square&logo=tailwindcss&logoColor=38BDF8&labelColor=111" alt="Tailwind CSS 4" />
   <img src="https://img.shields.io/badge/Supabase-Postgres-111?style=flat-square&logo=supabase&logoColor=3FCF8E&labelColor=111" alt="Supabase Postgres" />
+  <img src="https://img.shields.io/badge/TypeScript-5.9-111?style=flat-square&logo=typescript&logoColor=3178C6&labelColor=111" alt="TypeScript 5.9" />
   <img src="https://img.shields.io/badge/Tauri-2-111?style=flat-square&logo=tauri&logoColor=24C8DB&labelColor=111" alt="Tauri 2" />
 </p>
 
@@ -35,7 +36,21 @@
   🌐 <a href="https://token-usage.cc">Website</a> ·
   📖 <a href="docs/cli-contract.md">API contract</a> ·
   🚀 <a href="docs/deploy-guide.md">Deploy guide</a> ·
+  🧭 <a href="docs/rewrite-plan.md">Architecture</a> ·
+  🎨 <a href="docs/ui-spec.md">UI spec</a> ·
   🤖 <a href="AGENTS.md">Agent rules</a>
+</p>
+
+<p align="center">
+  <a href="https://token-usage.baiwumm.com/u/tu_page_bOlbNTnYObADlBpAbskviq2h66gHzoGL">
+    <img src="https://token-usage.baiwumm.com/api/badge?token=tu_badge_E99QerXGGOxG7w_BUvBd7GEV9vjzmfT2" alt="Token Usage badge" width="600">
+  </a>
+  <br />
+  <sub>Live usage of the author's instance - rendered by this project's <a href="docs/badge.md">public badge</a>, click through to the public page</sub>
+</p>
+
+<p align="center">
+  <img src="apps/landing/public/dashboard/app-overview.png" alt="Token Usage dashboard" width="100%" />
 </p>
 
 ## ✨ Features
@@ -69,6 +84,19 @@ cp apps/web/.env.example apps/web/.env.local   # Supabase URL / publishable key 
 pnpm dev                                       # http://localhost:3000
 ```
 
+### 🧑‍💻 Collector CLI
+
+```bash
+npm install -g tokenusage-cli
+tokenusage init          # scan local AI tool logs, install the usage hook, register the hourly task
+tokenusage device-login  # print a pairing code, approve it in the browser at /device
+tokenusage sync          # report once; --watch keeps it resident
+```
+
+Logs are read-only and only usage metadata leaves the machine (never prompts, message
+bodies, absolute paths or session titles). Full command surface and source support live in
+[`packages/cli/README.md`](packages/cli/README.md).
+
 ### 🤖 Let an agent deploy it
 
 Everything from "empty Supabase project" to "collector reporting" is documented as an
@@ -95,7 +123,14 @@ keep secrets local and never echo them.
 
 The agent's two sources of truth: [`docs/deploy-guide.md`](docs/deploy-guide.md) (from
 zero, including env vars and FAQ) and [`docs/launch-runbook.md`](docs/launch-runbook.md)
-(upgrades, smoke checks, rollback).
+(upgrades, smoke checks, rollback). Or hit the button below and fill in the env vars after
+the deploy:
+
+<p align="center">
+  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbaiwumm%2Ftoken-usage&project-name=token-usage&repository-name=token-usage">
+    <img src="https://vercel.com/button" alt="Deploy with Vercel" />
+  </a>
+</p>
 
 ## 📚 Documentation
 

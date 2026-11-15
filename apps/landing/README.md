@@ -42,6 +42,32 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 **light / dark 两版并排**（`badgeImageUrl(style, theme)`），暗色页上亮色版更醒目，
 成对展示填满右半区。
 
+## SEO 与社交分享
+
+单页站的 SEO 事实源是 `src/lib/seo.ts`（站点名、标题、描述、关键词、域名）：根布局
+`src/app/layout.tsx` 用它拼 `metadata`（canonical / Open Graph / Twitter / robots /
+icons / themeColor），页面里不再重复声明标题与描述。
+
+- **社交卡**：`src/app/opengraph-image.tsx` 用 `next/og` 的 `ImageResponse` 在**构建期**
+  生成一张 1200×630 的暗黑终端风格卡片（终端窗口 + 一年热力条），数字直接读
+  `src/data/snapshot.json`，与 Hero 同源；品牌标构建期读 `public/logo-dark.svg` 成 base64
+  data URI 交给 Satori（与顶栏同一份素材，换 logo 不用改卡片代码）。文件约定会自动注入
+  `og:image`，所以 `metadata` 里**不要**手写 `images`（会覆盖文件约定）。
+- **字体限制**：Satori 只接受 ttf / otf / woff，仓库里预置的是 woff2 子集
+  （`public/fonts/maple-mono-cn-regular.woff2`），因此卡片文案目前是 ASCII 英文。要换
+  中文标题，先补一份 ttf/otf 子集（只含卡片用到的字），再用 `fonts: [{ name, data,
+  style, weight }]` 传入并在样式里 `fontFamily` 指定。
+- **无扩展名的产物**：静态导出把该路由写成 `out/opengraph-image`（无 `.png` 后缀，
+  `og:image` 指向 `/opengraph-image?<hash>`）。静态托管按扩展名推断 MIME，因此仓库根
+  `edgeone.json` 为这条路径固定 `Content-Type: image/png`——换托管或改文件名时别丢这条
+  头，否则爬虫可能拿到 `application/octet-stream`。
+- **热力条配色**：Satori 不支持 `oklch(from …)`，卡片内的 `HEAT` 是 `--heatmap-1..4` 的
+  静态近似；改 `globals.css` 的强调色时同步那一组常量。
+- **sitemap / robots**：`src/app/sitemap.ts` 与 `src/app/robots.ts` 在构建期静态产出
+  `/sitemap.xml`、`/robots.txt`（原 `public/robots.txt` 已删除——同路径只能有一个来源）。
+  `lastModified` 取快照的 `fetchedAt` 而非构建时间，未同步到新数据时不会虚报更新。
+- **结构化数据**：`src/app/page.tsx` 内联 `SoftwareApplication` JSON-LD。
+
 ## 部署（腾讯云 EdgeOne Pages · Makers）
 
 实际托管：**腾讯云 EdgeOne Pages（Makers 套餐）**，域名绑定 **token-usage.cc**。仓库为
