@@ -527,7 +527,17 @@ async function updateJsonLocked(
   }
 }
 
+async function safeStatSize(p) {
+  try {
+    const st = await fs.stat(p);
+    return st && st.isFile() ? st.size : 0;
+  } catch (_e) {
+    return 0;
+  }
+}
+
 module.exports = {
+  safeStatSize,
   ensureDir,
   writeFileAtomic,
   attachWriteHint,
