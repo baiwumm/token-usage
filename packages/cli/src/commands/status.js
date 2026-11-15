@@ -1641,6 +1641,8 @@ const USAGE_LIMIT_PROVIDERS = [
   ["opencodeGo", "OpenCode Go"],
   ["commandCode", "CommandCode"],
   ["devin", "Devin"],
+  ["workbuddy", "WorkBuddy"],
+  ["workbuddyAi", "WorkBuddy AI"],
   ["qoder", "Qoder"],
   ["qoderCn", "Qoder CN"],
   ["codingPlan", "Ark Coding Plan"],

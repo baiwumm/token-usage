@@ -32,6 +32,7 @@ const { fetchZcodeLimits } = require("./zcode-limits");
 const { fetchOpencodeGoLimits } = require("./opencode-go-limits");
 const { fetchCommandcodeLimits } = require("./commandcode-limits");
 const { fetchDevinLimits } = require("./devin-limits");
+const { fetchWorkbuddyLimits, fetchWorkbuddyAiLimits } = require("./workbuddy-limits");
 const { fetchDeepseekLimits } = require("./deepseek-limits");
 const { fetchQoderLimits, fetchQoderCnLimits } = require("./qoder-limits");
 const { fetchArkCodingPlanLimits } = require("./ark-coding-plan-limits");
@@ -4427,7 +4428,7 @@ async function fetchUsageLimitsUncached({
     : null;
 
   const providerFetch = withFetchTimeout(fetchImpl, providerTimeoutMs);
-  const [claudeResult, codexResult, cursor, kimi, gemini, kiro, antigravity, copilot, grok, zcode, opencodeGoRaw, qoder, qoderCn, codingPlan, agentPlan, commandCodeRaw, devinRaw, deepseek, claudeServiceStatus] = await Promise.all([
+  const [claudeResult, codexResult, cursor, kimi, gemini, kiro, antigravity, copilot, grok, zcode, opencodeGoRaw, qoder, qoderCn, codingPlan, agentPlan, commandCodeRaw, devinRaw, workbuddy, workbuddyAi, deepseek, claudeServiceStatus] = await Promise.all([
     claudeToken && !freshClaudeCache && !claudeRetryAtMs
       ? withProviderTimeout(fetchClaudeUsageLimits(claudeToken, { fetchImpl: providerFetch, maxAttempts: 1 }), "Claude", providerTimeoutMs).then(
           (value) => ({ status: "fulfilled", value }),
@@ -4552,6 +4553,14 @@ async function fetchUsageLimitsUncached({
         (value) => ({ status: "fulfilled", value }),
         (reason) => ({ status: "rejected", reason }),
       ),
+    // WorkBuddy CN and WorkBuddy AI are separate editions: each one only talks
+    // to its own local authenticated billing proxy (wbipc) and never falls back
+    // to the other edition's socket. Abort tears down the IPC socket when the
+    // provider budget expires; reward credits are not a plan window.
+    withAbortableProviderTimeout((signal) => fetchWorkbuddyLimits({ home, env, fetchImpl: providerFetch, signal }), "WorkBuddy", providerTimeoutMs)
+      .catch((reason) => ({ configured: true, error: reason?.message || "Unknown error" })),
+    withAbortableProviderTimeout((signal) => fetchWorkbuddyAiLimits({ home, env, fetchImpl: providerFetch, signal }), "WorkBuddy AI", providerTimeoutMs)
+      .catch((reason) => ({ configured: true, error: reason?.message || "Unknown error" })),
     // DeepSeek (platform.deepseek.com, pay-as-you-go): the balance endpoint is
     // the only documented programmatic source, so this slot yields a balance
     // card, not quota windows (#960). The last-good disk-cache fallback with a
@@ -4951,6 +4960,12 @@ async function fetchUsageLimitsUncached({
     // Devin's planName ("Pro", "Max") is already the official display name —
     // Title-Case normalization is still harmless and strips any brand prefix.
     devin: withPlanLabel(devinObj, devinObj?.plan_label, "Devin"),
+    // WorkBuddy's plan labels are the desktop edition's own English strings
+    // (Ultimate / Advanced / STANDARD / Free). The shared normalization would
+    // Title-Case them and drop "Free" outright, so pass them through verbatim
+    // like grok / commandCode.
+    workbuddy,
+    workbuddyAi,
     qoder: withPlanLabel(qoder, qoder?.plan_label, "Qoder"),
     qoderCn: withPlanLabel(qoderCn, qoderCn?.plan_label, "Qoder CN"),
     codingPlan: withPlanLabel(codingPlan, codingPlan?.plan_label, "Ark Coding Plan"),
