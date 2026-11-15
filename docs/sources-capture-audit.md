@@ -6,7 +6,7 @@
 
 ## 1. 核心结论
 
-- CLI 全量 46+5 个来源（`packages/cli/src/commands/sync.js` `AUTO_SYNC_SOURCES` / `BACKGROUND_AUTO_SYNC_SOURCES`）中，**非标准来源只有 6 处**（§4），其余约 40 个均为"本地真实 token 全量"或"本机未装/零数据"，机制完整。
+- CLI 全量 46+5 个来源（`packages/cli/src/commands/sync.js` `AUTO_SYNC_SOURCES` / `BACKGROUND_AUTO_SYNC_SOURCES`）中，**非标准来源只有 7 处**（§4），其余约 40 个均为"本地真实 token 全量"或"本机未装/零数据"，机制完整。
 - **Trae CN 本地库缺口已修**：`resolveTraeDbPaths` 的 roots 已含 `Trae CN`（`packages/cli/src/lib/trae-db.js:29`），`%APPDATA%\Trae CN\ModularData\ai-agent\database.db` 真实 token 已进入持续采集。
 - **本机唯一"本地只有积分"的活跃源**：qoder-cn 新版 JSONL（`~/.qoder-cn/projects`），credits-only 行 token 记 0、conversation 照常、credits 进独立字段（2026-10-31 P1，`packages/cli/src/lib/rollout.js`）。
 - **行业事实（双重验证）**：订阅制工具的云端接口只有余额/百分比快照，**没有任何一家开放按 token 的消耗明细**——我们自己的 `lib/usage-limits.js` 覆盖 20 家、参照项目 12 个订阅渠道，结论一致。唯一例外是 Cursor 的 dashboard CSV 导出（逐事件 token 明细 + 真实美元成本），本项目已实现。
@@ -44,7 +44,7 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 
 评价：这是全仓库最完整的账户级样板，也是业界唯一的"云端 token 明细"接口，**机制无缺口，不改**。
 
-## 4. 非标准来源清单（6 处）
+## 4. 非标准来源清单（7 处）
 
 | # | 来源 | 情况 | 关键代码 | 实测 | 定性 |
 |---|---|---|---|---|---|
@@ -54,7 +54,7 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 | 4 | **kiro（CLI 部分）** | 无真实 token：按 4 字符/token 估算（带 `usage_precision`）；credits 写 sidecar `~/.tokenusage/tracker/kiro-credits.json` 仅诊断、不入队列 | `rollout.js:8497`（`KIRO_CLI_CHARS_PER_TOKEN=4`）、:8600-8603 注释、:8832-8849、:9034+ | 未装（无 sidecar 文件） | 估算制先例，保持 |
 | 5 | **cursor** | 账户级 CSV 明细（§3） | `cursor-config.js` 全文件 | 未装，休眠 | 机制完整，不改 |
 | 6 | **trae-cn（账户级 API）** | opt-in：`TOKENUSAGE_TRAE_CN_USAGE=1`；凭据 `<APPDATA>/TRAE SOLO CN` 或 `<APPDATA>/Trae CN` 下 `User/globalStorage/storage.json` 的 `iCubeAuthInfo://icube.cloudide`（tc v5 解密）→ `POST https://api.trae.cn/trae/api/v1/pay/query_user_usage_group_by_session`，30 天窗会话快照（2026-11-05 起两个 CN app dir 都发现） | `trae-cn-config.js`、`rollout.js` `parseTraeCnApiIncremental`、`sync.js` | 无 `TRAE SOLO CN` 目录 → 通路无对象。注意：status 里的 "Trae SOLO plan: plan Free" 快照（`status.js`、`rollout.js`）是另一条 entitlement 通路，证明 Trae 系登录态可读 | 保持 opt-in 关闭 |
-| 7 | **freebuff（Freebuff CLI）** | 不做：本机只有项目级 `.freebuff/project-id`，没有会话日志、没有 token 记录，用量只存在于服务端；无可采集的本地事实，因此既无解析器也无队列行（2026-11-15 实测） | — | `~/.freebuff` 不存在，仅 `<repo>/.freebuff/project-id` | **不采集（无本地数据源）** |
+| 7 | **freebuff（Freebuff CLI）** | 不做：本地只有会话客户端投影，**无 token 消耗记录**。会话日志在 `~/.config/manicode/`（npm launcher 沿用前身 manicode 名下载真身二进制，`~/.freebuff` 反而不存在）；日志里全部 token 字段均为上下文窗口占用计数器（`contextTokenCount` / `systemTokens` / `working_set_tokens` 等）或 prompt 构建估计器内部量（`estimatedTokens` / `fileTokenScores`），不是消耗量；credits 本地不计量（免费会话 318 条 `stepCreditsUsed` 与 12 个 ai 快照的 `creditsUsed`/`directCreditsUsed` 全 0）；`run-state.json` 的 `inference.source: "codebuff"` 表明真实模型调用与 token 计量都在 Codebuff 服务端。无可采集的 token 事实，因此既无解析器也无队列行（2026-11-15 实测，含 32MB 会话全文件字段扫描） | — | `~/.freebuff` 不存在，仅 `<repo>/.freebuff/project-id`；真身数据在 `~/.config/manicode/projects/<项目>/chats/<UTC时间戳>/`（`log.jsonl` 运行日志 + `chat-messages.json` 完整转录 + `chat-meta.json` + `run-state.json`）；`credentials.json` / `device-key.json` 为机密不入文档 | **不采集（本地无 token/credits 消耗记录，用量只在服务端）** |
 | 附 | workbuddy（SQLite `session_usage`） | 只有 used/size+credits，**刻意忽略**，JSONL 是权威 | `rollout.js:11018-11023,11141,11770` | 53 个 JSONL 正常在采 | 忽略正确，保持 |
 
 ## 5. 标准来源速览
@@ -70,6 +70,7 @@ Cursor **没有本地 token 日志**，token 明细只能从云端拿：
 | workbuddy SQLite session_usage 忽略 | JSONL 权威，SQLite 只有 used/size+credits |
 | kiro CLI 估算（chars/4 + precision 标注） | 合理先例；与 qoder 不同，qoder 拒绝估算是因为 agent 模式的 prompt 内容不在本地、连字符数都没有 |
 | grok/copilot/kimi/zcode 等"积分计费但本地有真 token"的源 | 采集无病；云端限额已有 status-only 面板 |
+| freebuff 不采集、不估算 | 本地只有客户端投影，无 token/credits 消耗记录（§4#7）；上下文计数器不是消耗量，估算是无本之木；若未来接云端余额 API，属积分面（`usage-limits.js` status-only），不动 token 面 |
 | 其余全部本地源 | 机制完整 |
 
 ## 7. 决策记录（数据模型与原则，长期有效）
