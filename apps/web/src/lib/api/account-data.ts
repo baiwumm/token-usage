@@ -82,21 +82,81 @@ export type AccountUsage = {
 // TOKEN_USAGE_USAGE_CACHE=off (tests/contract/helpers.ts initContractEnv).
 const USAGE_TTL_MS = 10_000;
 
-type UsageCacheEntry = {
-  revision: string;
+// Incremental watermark (2026-11-15): the two big tables are append-only
+// last-wins baselines whose rows are never deleted, so a warm process keeps
+// the full row set in memory and each TTL window only pulls rows whose
+// updated_at moved past the watermark (upsert-merged by primary key). The
+// two small tables (devices / device tokens) are re-read whole every refresh
+// — they carry no updated_at column worth watermarking (device tokens) and
+// their row counts are per-device, not per-hour. All write paths call
+// invalidateAccountUsage, which marks the snapshot dirty: the next load runs
+// an immediate incremental refresh, so the watermark never masks a write.
+// Overlap window: the probe reads from watermark − 1 s so a row written with
+// the same clock second as the watermark (concurrent ingest) cannot slip
+// between two polls; merging is an idempotent upsert, so re-seen rows are
+// free. In-memory maps are per process — a cold serverless instance pays one
+// full pull exactly like before, and multi-instance staleness is bounded by
+// the same TTL as the old scheme (the data-version gate revalidates it).
+const USAGE_OVERLAP_MS = 1_000;
+
+function hourlyKey(row: RestRow): string {
+  // Primary key of token_usage_hourly (v2): user_id is implicit (one
+  // snapshot per user), project_key '' = unattributed.
+  return `${row.device_id}|${row.hour_start}|${row.source}|${row.model}|${row.project_key ?? ""}`;
+}
+
+function statesKey(row: RestRow): string {
+  // Primary key of token_account_session_states.
+  return `${row.source}|${row.session_id}`;
+}
+
+/** Later of two ISO timestamps (defensive: numeric compare, not lexical). */
+function maxIso(a: string | null, b: string | null): string | null {
+  if (a == null) return b;
+  if (b == null) return a;
+  const aMs = Date.parse(a);
+  const bMs = Date.parse(b);
+
+  if (!Number.isFinite(aMs)) return b;
+  if (!Number.isFinite(bMs)) return a;
+
+  return bMs > aMs ? b : a;
+}
+
+function maxUpdatedAt(rows: RestRow[], previous: string | null): string | null {
+  let latest = previous;
+
+  for (const row of rows) {
+    const value = row.updated_at;
+
+    if (typeof value === "string" && value) latest = maxIso(latest, value);
+  }
+
+  return latest;
+}
+
+type LiveSnapshot = {
+  /** PK → row for token_usage_hourly (append-only; upsert-merged). */
+  hourlyMap: Map<string, RestRow>;
+  /** PK → row for token_account_session_states. */
+  statesMap: Map<string, RestRow>;
+  /** Whole-table reads refreshed on every load (small, no usable watermark). */
+  deviceRows: RestRow[];
+  tokenRows: RestRow[];
+  /** Max updated_at per big table; null until the first full pull. */
+  hourlyWatermark: string | null;
+  statesWatermark: string | null;
+  /** Set by invalidateAccountUsage: the next load must refresh immediately. */
+  dirty: boolean;
   expiresAt: number;
   promise: Promise<AccountUsage>;
 };
 
-// A global revision alone let one user's upload invalidate every other user's
-// cached snapshot in the same process. Revisions are therefore per user, with
-// a global component only for truly global changes (pricing/config resets).
+// Per-user revision counters (global component for pricing/config resets)
+// still gate the session / sync-run window caches below; the usage snapshot
+// itself switched to the dirty-flag + watermark scheme above.
 let globalUsageRevision = 0;
 const userUsageRevisions = new Map<string, number>();
-const usageCache = new Map<string, UsageCacheEntry>();
-const MAX_USAGE_CACHE_ENTRIES = 512;
-const MAX_SESSION_CACHE_ENTRIES = 512;
-const MAX_SYNC_RUN_CACHE_ENTRIES = 512;
 
 function revisionFor(userId: string): string {
   return `${globalUsageRevision}:${userUsageRevisions.get(userId) ?? 0}`;
@@ -127,17 +187,14 @@ function usageCacheDisabled(): boolean {
 }
 
 export function invalidateAccountUsage(userId?: string): void {
+  globalUsageRevision += 1;
   if (userId == null) {
-    globalUsageRevision += 1;
     userUsageRevisions.clear();
-    usageCache.clear();
     sessionCache.clear();
     syncRunCache.clear();
+    for (const live of liveSnapshots.values()) live.dirty = true;
 
     return;
-  }
-  for (const key of usageCache.keys()) {
-    if (key === userId) usageCache.delete(key);
   }
   for (const key of sessionCache.keys()) {
     if (key.startsWith(`${userId}|`)) sessionCache.delete(key);
@@ -145,14 +202,29 @@ export function invalidateAccountUsage(userId?: string): void {
   for (const key of syncRunCache.keys()) {
     if (key.startsWith(`${userId}|`)) syncRunCache.delete(key);
   }
+  const live = liveSnapshots.get(userId);
+
+  if (live) live.dirty = true;
   userUsageRevisions.set(userId, (userUsageRevisions.get(userId) ?? 0) + 1);
 }
 
-async function fetchAccountUsage(userId: string): Promise<AccountUsage> {
-  const [hourly, sessionStates, deviceRows, tokenRows] = await Promise.all([
+const HOURLY_COLUMNS =
+  "device_id,hour_start,source,model,project_key,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,conversations,total_cost_usd,credits,updated_at";
+const STATES_COLUMNS =
+  "source,session_id,model,bucket_start,snapshot_verified_at,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,updated_at";
+const DEVICE_COLUMNS =
+  "id,device_name,platform,default_device_name,revoked_at,created_at,updated_at";
+const TOKEN_COLUMNS = "device_id,last_used_at,created_at,revoked_at";
+
+async function fetchFullTables(userId: string): Promise<{
+  hourlyRows: RestRow[];
+  statesRows: RestRow[];
+  deviceRows: RestRow[];
+  tokenRows: RestRow[];
+}> {
+  const [hourlyRows, statesRows, deviceRows, tokenRows] = await Promise.all([
     selectAll("token_usage_hourly", {
-      columns:
-        "device_id,hour_start,source,model,project_key,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,conversations,total_cost_usd,credits,updated_at",
+      columns: HOURLY_COLUMNS,
       filters: [["user_id", "eq", userId]],
       // Order by the full primary key (project_key included): omitting it made
       // offset pagination non-deterministic once a bucket had split rows.
@@ -160,27 +232,43 @@ async function fetchAccountUsage(userId: string): Promise<AccountUsage> {
         "hour_start.asc,device_id.asc,source.asc,model.asc,project_key.asc",
     }),
     selectAll("token_account_session_states", {
-      columns:
-        "source,session_id,model,bucket_start,snapshot_verified_at,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens",
+      columns: STATES_COLUMNS,
       filters: [["user_id", "eq", userId]],
       order: "bucket_start.asc,source.asc,session_id.asc",
     }),
     selectAll("token_devices", {
-      columns:
-        "id,device_name,platform,default_device_name,revoked_at,created_at,updated_at",
+      columns: DEVICE_COLUMNS,
       filters: [["user_id", "eq", userId]],
       order: "created_at.asc,id.asc",
     }),
     selectAll("token_device_tokens", {
-      columns: "device_id,last_used_at,created_at,revoked_at",
+      columns: TOKEN_COLUMNS,
       filters: [["user_id", "eq", userId]],
       // No stable order meant offset paging could repeat/skip rows.
       order: "device_id.asc,token_hash.asc",
     }),
   ]);
 
+  return { hourlyRows, statesRows, deviceRows, tokenRows };
+}
+
+/** Upsert-merge fetched big-table rows into the live maps, advancing marks. */
+function mergeRows(
+  live: LiveSnapshot,
+  hourlyRows: RestRow[],
+  statesRows: RestRow[],
+): void {
+  for (const row of hourlyRows) live.hourlyMap.set(hourlyKey(row), row);
+  for (const row of statesRows) live.statesMap.set(statesKey(row), row);
+  live.hourlyWatermark = maxUpdatedAt(hourlyRows, live.hourlyWatermark);
+  live.statesWatermark = maxUpdatedAt(statesRows, live.statesWatermark);
+}
+
+function composeUsage(live: LiveSnapshot): AccountUsage {
+  const hourly = [...live.hourlyMap.values()];
+  const sessionStates = [...live.statesMap.values()];
   const activeDeviceIds = new Set(
-    deviceRows
+    live.deviceRows
       .filter((device) => !device.revoked_at)
       .map((device) => String(device.id)),
   );
@@ -188,39 +276,173 @@ async function fetchAccountUsage(userId: string): Promise<AccountUsage> {
   return {
     hourly,
     sessionStates,
-    deviceRows,
-    tokenRows,
+    deviceRows: live.deviceRows,
+    tokenRows: live.tokenRows,
     activeDeviceIds,
     canonicalRows: canonicalizeUsage(hourly, sessionStates, activeDeviceIds),
   };
 }
 
+async function refreshLive(
+  userId: string,
+  live: LiveSnapshot,
+): Promise<AccountUsage> {
+  // The two small tables re-read whole; the big tables probe past their
+  // watermarks (with a 1 s overlap so same-second concurrent writes cannot
+  // slip between polls — merging is an idempotent upsert). A cold snapshot
+  // (no watermark) falls back to the full table reads. selectAll everywhere:
+  // incremental result sets are tiny in practice, but the cap protection must
+  // stay honest on the first pull.
+  const hourlyProbe = live.hourlyWatermark
+    ? new Date(Date.parse(live.hourlyWatermark) - USAGE_OVERLAP_MS)
+    : null;
+  const statesProbe = live.statesWatermark
+    ? new Date(Date.parse(live.statesWatermark) - USAGE_OVERLAP_MS)
+    : null;
+  const [hourlyRows, statesRows, smallTables] = await Promise.all([
+    selectAll("token_usage_hourly", {
+      columns: HOURLY_COLUMNS,
+      filters: hourlyProbe
+        ? [
+            ["user_id", "eq", userId],
+            ["updated_at", "gte", hourlyProbe.toISOString()],
+          ]
+        : [["user_id", "eq", userId]],
+      order: hourlyProbe
+        ? "updated_at.asc"
+        : "hour_start.asc,device_id.asc,source.asc,model.asc,project_key.asc",
+    }),
+    selectAll("token_account_session_states", {
+      columns: STATES_COLUMNS,
+      filters: statesProbe
+        ? [
+            ["user_id", "eq", userId],
+            ["updated_at", "gte", statesProbe.toISOString()],
+          ]
+        : [["user_id", "eq", userId]],
+      order: statesProbe
+        ? "updated_at.asc"
+        : "bucket_start.asc,source.asc,session_id.asc",
+    }),
+    (async () => {
+      const [deviceRows, tokenRows] = await Promise.all([
+        selectAll("token_devices", {
+          columns: DEVICE_COLUMNS,
+          filters: [["user_id", "eq", userId]],
+          order: "created_at.asc,id.asc",
+        }),
+        selectAll("token_device_tokens", {
+          columns: TOKEN_COLUMNS,
+          filters: [["user_id", "eq", userId]],
+          order: "device_id.asc,token_hash.asc",
+        }),
+      ]);
+
+      return { deviceRows, tokenRows };
+    })(),
+  ]);
+
+  mergeRows(live, hourlyRows, statesRows);
+  live.deviceRows = smallTables.deviceRows;
+  live.tokenRows = smallTables.tokenRows;
+
+  return composeUsage(live);
+}
+
+function newLiveSnapshot(): LiveSnapshot {
+  return {
+    hourlyMap: new Map(),
+    statesMap: new Map(),
+    deviceRows: [],
+    tokenRows: [],
+    hourlyWatermark: null,
+    statesWatermark: null,
+    dirty: false,
+    expiresAt: 0,
+    // Placeholder: needsRefresh is true on the first load, so this is always
+    // replaced before any caller can see it (no unhandled rejection either).
+    promise: Promise.resolve({} as AccountUsage),
+  };
+}
+
+function loadAccountUsageUncached(userId: string): Promise<AccountUsage> {
+  // Cache disabled (tests reseeding the fake backend): every load is a whole
+  // pull straight into a throwaway result, exactly the old shape.
+  return (async () => {
+    const { hourlyRows, statesRows, deviceRows, tokenRows } =
+      await fetchFullTables(userId);
+    const activeDeviceIds = new Set(
+      deviceRows
+        .filter((device) => !device.revoked_at)
+        .map((device) => String(device.id)),
+    );
+
+    return {
+      hourly: hourlyRows,
+      sessionStates: statesRows,
+      deviceRows,
+      tokenRows,
+      activeDeviceIds,
+      canonicalRows: canonicalizeUsage(hourlyRows, statesRows, activeDeviceIds),
+    };
+  })();
+}
+
 // The cached instance is shared across concurrent requests — callers are
 // read-only over it (aggregations build their own buckets, filters copy).
+const MAX_USAGE_CACHE_ENTRIES = 512;
+const MAX_SESSION_CACHE_ENTRIES = 512;
+const MAX_SYNC_RUN_CACHE_ENTRIES = 512;
+
+const liveSnapshots = new Map<string, LiveSnapshot>();
+
+// Test hook: contract tests run with the cache off (reseeding the fake
+// backend between cases); the incremental tests flip it on and use this to
+// drop the per-user live snapshots so a reseed never inherits rows.
+export function __resetLiveSnapshotsForTests(): void {
+  liveSnapshots.clear();
+}
+
 export function loadAccountUsage(userId: string): Promise<AccountUsage> {
-  if (usageCacheDisabled()) return fetchAccountUsage(userId);
+  if (usageCacheDisabled()) return loadAccountUsageUncached(userId);
 
   const now = Date.now();
-  const revision = revisionFor(userId);
-  const hit = usageCache.get(userId);
+  let live = liveSnapshots.get(userId);
 
-  if (hit && hit.revision === revision && hit.expiresAt > now) {
-    return hit.promise;
+  if (!live) {
+    live = newLiveSnapshot();
+    liveSnapshots.set(userId, live);
   }
-  const promise = fetchAccountUsage(userId);
 
-  // A failed load must not pin its rejection for the TTL window.
-  promise.catch(() => {
-    const entry = usageCache.get(userId);
+  const needsRefresh = live.dirty || live.expiresAt <= now;
 
-    if (entry?.promise === promise) usageCache.delete(userId);
-  });
-  usageCache.set(userId, {
-    revision,
-    expiresAt: now + USAGE_TTL_MS,
-    promise,
-  });
-  pruneCache(usageCache, now, MAX_USAGE_CACHE_ENTRIES);
+  if (!needsRefresh) return live.promise;
+
+  const previousPromise = live.promise;
+
+  // Reserve the window first: a concurrent caller must not start a second
+  // refresh before this one sets the new expiry. dirty and cold snapshots
+  // share one path — refreshLive probes past the watermark (a full read when
+  // there is none), which covers every invalidation shape: the big tables
+  // are upsert-only (no deletes) and the small ones re-read whole.
+  live.expiresAt = now + USAGE_TTL_MS;
+  const promise = refreshLive(userId, live).then(
+    (usage) => usage,
+    (error: unknown) => {
+      // A failed load must not pin its rejection: drop the snapshot so the
+      // next caller starts from a cold full pull (same convention as the
+      // caches below).
+      if (liveSnapshots.get(userId) === live) liveSnapshots.delete(userId);
+
+      // A superseded caller keeps the previous promise it already holds.
+      void previousPromise.catch(() => undefined);
+      throw error;
+    },
+  );
+
+  live.promise = promise;
+  live.dirty = false;
+  pruneCache(liveSnapshots, now, MAX_USAGE_CACHE_ENTRIES);
 
   return promise;
 }
