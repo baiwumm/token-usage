@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildMonitorSnapshot } from "@/lib/monitor";
+import { buildMonitorSnapshot, isTooLargeError } from "@/lib/monitor";
 
 const NOW = Date.parse("2026-11-08T12:00:00.000Z");
 const ROW_TODAY = JSON.stringify({
@@ -173,5 +173,49 @@ describe("buildMonitorSnapshot", () => {
       },
     ]);
     expect(snapshot.week.attributedTokens).toBe(500);
+  });
+  it("marks the capacity-wall tail view and keeps pending bytes whole-file", () => {
+    const fileSize = 2 * 1024 * 1024 + 7;
+    const snapshot = buildMonitorSnapshot(
+      {
+        ...BASE_FILES,
+        queueState: `${JSON.stringify({ offset: 40 })}
+`,
+      },
+      { available: true, version: null },
+      null,
+      NOW,
+      { partial: true, fileSizeBytes: fileSize },
+    );
+
+    expect(snapshot.queuePartial).toBe(true);
+    // The tail text is only the newest window; the byte size must come from
+    // the whole-file read so the offset arithmetic stays meaningful.
+    expect(snapshot.queueBytes).toBe(fileSize);
+    expect(snapshot.pendingBytes).toBe(fileSize - 40);
+  });
+
+  it("stays on the whole-file view when no tail metadata rides along", () => {
+    const snapshot = buildMonitorSnapshot(
+      BASE_FILES,
+      { available: true, version: null },
+      null,
+      NOW,
+    );
+
+    expect(snapshot.queuePartial).toBe(false);
+    expect(snapshot.queueBytes).toBe(
+      new TextEncoder().encode(`${ROW_TODAY}
+`).length,
+    );
+  });
+});
+
+describe("isTooLargeError", () => {
+  it("matches the Rust sentinel in both error shapes", () => {
+    expect(isTooLargeError("tracker file too large")).toBe(true);
+    expect(isTooLargeError(new Error("tracker file too large"))).toBe(true);
+    expect(isTooLargeError(new Error("path outside tracker dir"))).toBe(false);
+    expect(isTooLargeError(null)).toBe(false);
   });
 });

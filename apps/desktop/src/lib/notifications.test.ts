@@ -70,6 +70,7 @@ function snapshot(patch: Partial<MonitorSnapshot> = {}): MonitorSnapshot {
     rows: [],
     pendingBytes: 0,
     queueBytes: 0,
+    queuePartial: false,
     paused: false,
     pausedAt: null,
     lastRun: null,

@@ -21,6 +21,7 @@ import { SyncStatusCard } from "@/components/monitor/sync-status-card";
 import { TopModelsCard } from "@/components/monitor/top-models-card";
 import { TrendCard } from "@/components/monitor/trend-card";
 import { TrayNote } from "@/components/monitor/tray-note";
+import { QueuePartialNote } from "@/components/monitor/queue-partial-note";
 import { UnpairedNote } from "@/components/monitor/unpaired-note";
 import { UsageCards } from "@/components/monitor/usage-cards";
 import { PairingBody } from "@/components/pairing/pairing-body";
@@ -262,6 +263,7 @@ export function MonitorBody() {
         ) : (
           <>
             {trayAvailable === false ? <TrayNote /> : null}
+            {snapshot.queuePartial ? <QueuePartialNote /> : null}
             {pairing.gate.kind === "unpaired" ? (
               <UnpairedNote onPair={() => setSkipped(false)} />
             ) : null}

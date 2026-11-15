@@ -10,8 +10,11 @@
 //   tracker_paths       — home / tracker dir / hostname for labels
 //   read_tracker_file   — scoped read of ~/.tokenusage/tracker/<rel> (None if
 //                         missing, 8 MiB cap, canonicalized prefix check)
+//   read_tracker_tail   — append-order tail for the queue.jsonl capacity wall
+//                         (≤2 MiB, whole rows only, carries the file size so
+//                         pending-byte math stays whole-file accurate)
 //   read_tracker_head   — newest-first sidecar head (≤512 KiB, whole rows
-//                         only; the tail variant died with the 0.4.1 head read)
+//                         only)
 //   read_instance_config— config.json filtered to baseUrl / dashboardUrl /
 //                         machineId (never deviceToken / anonKey)
 //   cli_info            — `tokenusage --version` presence probe
@@ -265,6 +268,77 @@ fn read_tracker_file(app: AppHandle, rel_path: String) -> Result<Option<String>,
     std::fs::read_to_string(&canonical)
         .map(Some)
         .map_err(|e| e.to_string())
+}
+
+/// Read only the tail of a tracker file, with the file's total size. The
+/// capacity-wall fallback for `queue.jsonl`: the queue is the append-only
+/// last-wins reconcile baseline and grows forever, so once it passes the 8 MiB
+/// whole-read cap the monitor switches to the newest window (rows are
+/// newest-LAST, exactly the append order). Same canonical guard as
+/// `read_tracker_file`; the partial first line inside the tail window is
+/// dropped, so the caller only ever receives whole JSONL rows. Cap: 2 MiB
+/// (~ several months of hourly buckets). `file_size` lets the webview keep
+/// `queue.state.json`'s whole-file offset meaningful (pending bytes stay
+/// correct on the partial view).
+#[tauri::command]
+fn read_tracker_tail(
+    app: AppHandle,
+    rel_path: String,
+    max_bytes: Option<u64>,
+) -> Result<Option<TailRead>, String> {
+    use std::io::{Read, Seek, SeekFrom};
+
+    const MAX_TAIL_BYTES: u64 = 2 * 1024 * 1024;
+    let tracker = tracker_dir(&app)?;
+    let tracker_canonical = match tracker.canonicalize() {
+        Ok(path) => path,
+        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(err) => return Err(err.to_string()),
+    };
+    let target = tracker.join(&rel_path);
+    let canonical = match target.canonicalize() {
+        Ok(path) => path,
+        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(err) => return Err(err.to_string()),
+    };
+    if !canonical.starts_with(&tracker_canonical) {
+        return Err("path outside tracker dir".into());
+    }
+    let meta = std::fs::metadata(&canonical).map_err(|e| e.to_string())?;
+    let cap = max_bytes.unwrap_or(MAX_TAIL_BYTES).min(MAX_TAIL_BYTES);
+    let start = meta.len().saturating_sub(cap);
+    let mut file = std::fs::File::open(&canonical).map_err(|e| e.to_string())?;
+    file.seek(SeekFrom::Start(start))
+        .map_err(|e| e.to_string())?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).map_err(|e| e.to_string())?;
+    let file_size = meta.len();
+    if start > 0 {
+        match buffer.iter().position(|byte| *byte == b'\n') {
+            Some(position) => {
+                buffer.drain(..=position);
+            }
+            // No complete line inside the tail window yet.
+            None => {
+                return Ok(Some(TailRead {
+                    text: None,
+                    file_size,
+                }))
+            }
+        };
+    }
+    let text = String::from_utf8_lossy(&buffer).into_owned();
+
+    Ok(Some(TailRead {
+        text: (!text.is_empty()).then_some(text),
+        file_size,
+    }))
+}
+
+#[derive(Serialize)]
+struct TailRead {
+    text: Option<String>,
+    file_size: u64,
 }
 
 /// Read only the head of a tracker file. `session.queue.jsonl` is rewritten in
@@ -1079,6 +1153,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             tracker_paths,
             read_tracker_file,
+            read_tracker_tail,
             read_tracker_head,
             read_instance_config,
             cli_info,

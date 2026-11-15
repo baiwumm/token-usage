@@ -12,6 +12,7 @@ import { formatTokens } from "@/lib/format-tokens";
 import {
   buildMonitorSnapshot,
   DEFAULT_DASHBOARD_URL,
+  isTooLargeError,
   type CliStatus,
   type MonitorSnapshot,
 } from "@/lib/monitor";
@@ -45,7 +46,7 @@ export interface CliRunOutcome {
   outputTail: string;
 }
 
-export type MonitorPhase =
+type MonitorPhase =
   | { kind: "loading" }
   | { kind: "ready"; snapshot: MonitorSnapshot }
   | { kind: "error"; message: string };
@@ -61,6 +62,55 @@ async function readTrackerFile(relPath: string): Promise<string | null> {
     // Missing file, size cap, transient lock — degrade to "no data".
     return null;
   }
+}
+
+interface QueueRead {
+  text: string | null;
+  /** True on the capacity-wall tail view (whole file exceeded the 8 MiB cap). */
+  partial: boolean;
+  /** Whole-file byte size from the tail read (null on the whole read). */
+  fileSizeBytes: number | null;
+}
+
+/**
+ * queue.jsonl reader with the capacity-wall fallback (2026-11-15): the queue
+ * is the last-wins reconcile baseline and grows forever, so once it passes
+ * the 8 MiB whole-read cap the newest 2 MiB tail is aggregated instead and
+ * the partial flag rides to the snapshot for the UI notice. The tail keeps
+ * last-wins semantics inside its window (rows are newest-last, append order)
+ * and carries the whole-file byte size so pending-byte math stays correct.
+ */
+async function readQueueFile(): Promise<QueueRead> {
+  let text: string | null;
+
+  try {
+    text =
+      (await invoke<string | null>("read_tracker_file", {
+        relPath: "queue.jsonl",
+      })) ?? null;
+  } catch (error) {
+    if (!isTooLargeError(error)) {
+      // Missing file, transient lock — degrade to "no data".
+      return { text: null, partial: false, fileSizeBytes: null };
+    }
+    try {
+      const tail = await invoke<{ text: string | null; fileSize: number }>(
+        "read_tracker_tail",
+        { relPath: "queue.jsonl" },
+      );
+
+      return {
+        text: tail?.text ?? null,
+        partial: true,
+        fileSizeBytes:
+          typeof tail?.fileSize === "number" ? tail.fileSize : null,
+      };
+    } catch {
+      return { text: null, partial: false, fileSizeBytes: null };
+    }
+  }
+
+  return { text, partial: false, fileSizeBytes: null };
 }
 
 async function readInstanceConfig(): Promise<InstanceConfig | null> {
@@ -122,9 +172,9 @@ export function useMonitor(period: UsagePeriod, formatKey = "") {
 
   const refresh = useCallback(async () => {
     try {
-      const [queue, pause, queueState, syncLog, projectRepos, config] =
+      const [queueRead, pause, queueState, syncLog, projectRepos, config] =
         await Promise.all([
-          readTrackerFile("queue.jsonl"),
+          readQueueFile(),
           readTrackerFile("pause.flag.json"),
           readTrackerFile("queue.state.json"),
           readTrackerFile("logs/sync.log"),
@@ -135,7 +185,7 @@ export function useMonitor(period: UsagePeriod, formatKey = "") {
         config?.dashboardUrl ?? config?.baseUrl ?? DEFAULT_DASHBOARD_URL;
       const snapshot = buildMonitorSnapshot(
         {
-          queue,
+          queue: queueRead.text,
           pause,
           queueState,
           syncLog,
@@ -144,6 +194,10 @@ export function useMonitor(period: UsagePeriod, formatKey = "") {
         cliRef.current,
         dashboardUrl,
         Date.now(),
+        {
+          partial: queueRead.partial,
+          fileSizeBytes: queueRead.fileSizeBytes,
+        },
       );
 
       setMachineId(config?.machineId ?? null);

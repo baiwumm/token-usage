@@ -32,7 +32,7 @@ import {
   type SyncRunSummary,
 } from "@/lib/sync-log";
 
-export interface TrackerFileTexts {
+interface TrackerFileTexts {
   /** queue.jsonl — missing file reads as null (fresh install / no CLI). */
   queue: string | null;
   /** pause.flag.json — `{paused: true, at}` when collection is paused. */
@@ -51,7 +51,7 @@ export interface CliStatus {
 }
 
 /** A usage window whose project rows carry their confirmed repository URL. */
-export interface MonitorWindow extends UsageWindow {
+interface MonitorWindow extends UsageWindow {
   projects: ProjectRepoUsage[];
 }
 
@@ -109,6 +109,12 @@ export interface MonitorSnapshot {
   pendingBytes: number;
   /** Total size of queue.jsonl in bytes (proxy for queue growth). */
   queueBytes: number;
+  /**
+   * Capacity-wall flag (2026-11-15): queue.jsonl passed the 8 MiB whole-read
+   * cap and the snapshot aggregates only the newest 2 MiB tail, so
+   * whole-history figures (总计) are lower bounds. The UI surfaces a notice.
+   */
+  queuePartial: boolean;
   paused: boolean;
   pausedAt: string | null;
   lastRun: SyncRunSummary | null;
@@ -130,11 +136,34 @@ export interface MonitorSnapshot {
 
 export const DEFAULT_DASHBOARD_URL = "https://token-usage.baiwumm.com";
 
+/**
+ * Whether a bridge failure is the whole-read capacity wall (the queue passed
+ * the 8 MiB cap) rather than a missing file or transient lock. Tauri rejects
+ * `invoke` with the raw error string, so the sentinel Rust side writes
+ * ("tracker file too large") is matched on either error shape.
+ */
+export function isTooLargeError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+
+  return message.includes("too large");
+}
+
+/** Queue read metadata riding along on the snapshot (capacity wall). */
+export interface QueueReadMeta {
+  /** True when queue.jsonl exceeded the whole-read cap and the newest tail
+   *  window was aggregated instead of the whole file. */
+  partial?: boolean;
+  /** Whole-file byte size from the tail read; keeps the queue.state.json
+   *  offset (whole-file semantics) meaningful on the partial view. */
+  fileSizeBytes?: number | null;
+}
+
 export function buildMonitorSnapshot(
   files: TrackerFileTexts,
   cli: CliStatus,
   dashboardUrl: string | null,
   nowMs: number = Date.now(),
+  queueMeta: QueueReadMeta = {},
 ): MonitorSnapshot {
   const queueText = files.queue ?? "";
   const repoUrls = parseProjectRepoMap(files.projectRepos);
@@ -177,6 +206,7 @@ export function buildMonitorSnapshot(
   const { pendingBytes, queueBytes } = queueSizes(
     files.queue,
     files.queueState,
+    queueMeta,
   );
   const pause = parsePauseFlag(files.pause);
   const { lastRun, lastError } = summarizeSyncLog(files.syncLog ?? "");
@@ -196,6 +226,7 @@ export function buildMonitorSnapshot(
     rows,
     pendingBytes,
     queueBytes,
+    queuePartial: queueMeta.partial === true,
     paused: pause.paused,
     pausedAt: pause.at,
     lastRun,
@@ -324,11 +355,22 @@ function buildUsageSeries(rows: QueueBucketRow[], nowMs: number): UsageSeries {
 function queueSizes(
   queueText: string | null,
   stateText: string | null,
+  queueMeta: QueueReadMeta = {},
 ): { pendingBytes: number; queueBytes: number } {
   // Byte sizes, not char counts: offset in queue.state.json is a byte
-  // cursor. ASCII-heavy JSONL makes char≈byte, but compute honestly.
+  // cursor. ASCII-heavy JSONL makes char≈byte, but compute honestly. On the
+  // capacity-wall tail view the text is only the newest window, so the
+  // whole-file size rides along from the Rust read — the offset keeps its
+  // whole-file meaning and pending bytes stay correct.
   const encoder = new TextEncoder();
-  const queueBytes = queueText === null ? 0 : encoder.encode(queueText).length;
+  const queueBytes =
+    queueMeta.partial === true &&
+    typeof queueMeta.fileSizeBytes === "number" &&
+    queueMeta.fileSizeBytes > 0
+      ? queueMeta.fileSizeBytes
+      : queueText === null
+        ? 0
+        : encoder.encode(queueText).length;
   let offset = 0;
 
   if (stateText !== null) {
