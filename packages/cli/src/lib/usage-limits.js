@@ -45,6 +45,12 @@ const {
   isBinaryAvailable,
 } = require("./command-runner");
 
+const {
+  clampPercent,
+  toFiniteNumberOrNull,
+  buildWindow,
+} = require("./limits-core");
+
 const execFileAsync = promisify(cp.execFile);
 
 // 2-minute in-memory cache. It also expires early at the earliest upcoming window
@@ -168,34 +174,6 @@ const CLAUDE_RATE_LIMIT_FILE = "claude-usage-rate-limit.json";
 const KIRO_CREDITS_SIDECAR_FILE = "kiro-credits.json";
 const CLAUDE_RATE_LIMIT_DEFAULT_COOLDOWN_SEC = 5 * 60;
 const CLAUDE_RATE_LIMIT_MAX_COOLDOWN_SEC = 60 * 60;
-
-function clampPercent(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const n = Number(value);
-  if (!Number.isFinite(n)) return null;
-  if (n <= 0) return 0;
-  if (n >= 100) return 100;
-  return n;
-}
-
-function toFiniteNumberOrNull(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function buildWindow({ usedPercent, resetAt, windowSeconds = null }) {
-  const pct = clampPercent(usedPercent);
-  if (pct === null) return null;
-  const window = {
-    used_percent: pct,
-    reset_at: typeof resetAt === "string" && resetAt ? resetAt : null,
-  };
-  if (Number.isFinite(windowSeconds) && windowSeconds > 0) {
-    window.limit_window_seconds = windowSeconds;
-  }
-  return window;
-}
 
 function decodeJwtPayload(token) {
   if (typeof token !== "string" || token.length === 0) return null;

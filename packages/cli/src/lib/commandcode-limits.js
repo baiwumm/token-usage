@@ -23,6 +23,17 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+const {
+  clampPercent,
+  buildWindow,
+  normalizeResetAt: coreNormalizeResetAt,
+} = require("./limits-core");
+
+// CommandCode treats a non-positive resetAt as absent; 0 would render 1970.
+function normalizeResetAt(value) {
+  return coreNormalizeResetAt(value, { rejectNonPositive: true });
+}
+
 const COMMANDCODE_API_BASE_URL = "https://api.commandcode.ai";
 const COMMANDCODE_API_KEY_ENV = "COMMAND_CODE_API_KEY";
 const COMMANDCODE_AUTH_DIRNAME = ".commandcode";
@@ -76,44 +87,6 @@ function readCommandcodeApiKey({ home, env = process.env } = {}) {
     return null;
   }
   return isNonEmptyString(parsed?.apiKey) ? parsed.apiKey.trim() : null;
-}
-
-function normalizeResetAt(value) {
-  if (value === null || value === undefined || value === "") return null;
-  if (
-    typeof value === "number" ||
-    /^\d+(?:\.\d+)?$/.test(String(value).trim())
-  ) {
-    const raw = Number(value);
-    if (!Number.isFinite(raw) || raw <= 0) return null;
-    const milliseconds = raw > 10_000_000_000 ? raw : raw * 1000;
-    const date = new Date(milliseconds);
-    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
-  }
-  const timestamp = Date.parse(String(value));
-  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
-}
-
-function clampPercent(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const n = Number(value);
-  if (!Number.isFinite(n)) return null;
-  if (n <= 0) return 0;
-  if (n >= 100) return 100;
-  return n;
-}
-
-function buildWindow({ usedPercent, resetAt, windowSeconds = null }) {
-  const pct = clampPercent(usedPercent);
-  if (pct === null) return null;
-  const window = {
-    used_percent: pct,
-    reset_at: typeof resetAt === "string" && resetAt ? resetAt : null,
-  };
-  if (Number.isFinite(windowSeconds) && windowSeconds > 0) {
-    window.limit_window_seconds = windowSeconds;
-  }
-  return window;
 }
 
 // Upstream window rows are `{ used, cap, resetAt }` (epoch ms). Tolerate the

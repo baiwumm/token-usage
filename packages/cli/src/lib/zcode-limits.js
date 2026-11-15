@@ -4,6 +4,11 @@ const os = require("node:os");
 const path = require("node:path");
 const { fetchZcodeResetCredits } = require("./zcode-reset-credits");
 
+const {
+  clampPercent,
+  buildWindow,
+} = require("./limits-core");
+
 const DEFAULT_BILLING_BASE_URL = "https://zcode.z.ai/api/v1/zcode-plan";
 const DEFAULT_ZAI_MONITOR_BASE_URL = "https://api.z.ai";
 const DEFAULT_BIGMODEL_MONITOR_BASE_URL = "https://bigmodel.cn";
@@ -548,24 +553,6 @@ function zcodeTsToIso(value) {
     return new Date(value * 1000).toISOString();
   }
   return null;
-}
-
-function clampPercent(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const n = Number(value);
-  if (!Number.isFinite(n)) return null;
-  if (n <= 0) return 0;
-  if (n >= 100) return 100;
-  return n;
-}
-
-function buildWindow({ usedPercent, resetAt }) {
-  const pct = clampPercent(usedPercent);
-  if (pct === null) return null;
-  return {
-    used_percent: pct,
-    reset_at: typeof resetAt === "string" && resetAt ? resetAt : null,
-  };
 }
 
 // Z.ai coding-plan ids look like "zcode-v3-start-plan-0615". The raw id reads

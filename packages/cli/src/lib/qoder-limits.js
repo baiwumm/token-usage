@@ -7,6 +7,10 @@ const os = require("node:os");
 const path = require("node:path");
 const { fetchQoderCnCliLimits } = require("./qoder-cn-cli-limits");
 
+const {
+  normalizeResetAt,
+} = require("./limits-core");
+
 const QODER_SITES = {
   international: {
     id: "international",
@@ -72,19 +76,6 @@ function finiteNumber(value, field) {
 
 function firstDefined(object, camel, snake) {
   return object?.[camel] ?? object?.[snake];
-}
-
-function normalizeResetAt(value) {
-  if (value === null || value === undefined || value === "") return null;
-  if (typeof value === "number" || /^\d+(?:\.\d+)?$/.test(String(value).trim())) {
-    const raw = Number(value);
-    if (!Number.isFinite(raw)) return null;
-    const milliseconds = raw > 10_000_000_000 ? raw : raw * 1000;
-    const date = new Date(milliseconds);
-    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
-  }
-  const timestamp = Date.parse(String(value));
-  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
 }
 
 function quotaSummary(container) {

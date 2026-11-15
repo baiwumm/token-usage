@@ -27,6 +27,10 @@ const path = require("node:path");
 
 const { runCommand, resolveBinaryPath, statBinaryInDirs, commonGlobalBinDirectories, resolvedCliEnvironment } = require("./command-runner");
 
+const {
+  normalizeResetAt,
+} = require("./limits-core");
+
 const ARK_LIMITS_CACHE_FILE = "ark-agent-plan-limits-cache.json";
 const ARK_LIMITS_CACHE_UNKNOWN_RESET_TTL_MS = 12 * 60 * 60 * 1000;
 const ARK_USAGE_PLAN_TIMEOUT_MS = 10_000;
@@ -52,19 +56,6 @@ const ARK_PRODUCT_PRIORITY = ["agent-plan"];
 
 function clampPercent(value) {
   return Math.max(0, Math.min(100, value));
-}
-
-function normalizeResetAt(value) {
-  if (value === null || value === undefined || value === "") return null;
-  if (typeof value === "number" || /^\d+(?:\.\d+)?$/.test(String(value).trim())) {
-    const raw = Number(value);
-    if (!Number.isFinite(raw)) return null;
-    const milliseconds = raw > 10_000_000_000 ? raw : raw * 1000;
-    const date = new Date(milliseconds);
-    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
-  }
-  const timestamp = Date.parse(String(value));
-  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
 }
 
 function planLabelForTier(tier) {

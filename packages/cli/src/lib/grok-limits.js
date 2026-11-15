@@ -2,6 +2,11 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
+const {
+  clampPercent,
+  buildWindow,
+} = require("./limits-core");
+
 const DEFAULT_BILLING_BASE_URL = "https://cli-chat-proxy.grok.com";
 const DEFAULT_BILLING_TIMEOUT_MS = 15_000;
 const DEFAULT_SETTINGS_TIMEOUT_MS = 2_000;
@@ -101,24 +106,6 @@ function grokIsoReset(value) {
   if (typeof value !== "string" || !value.trim()) return null;
   const ts = Date.parse(value.trim());
   return Number.isFinite(ts) && ts > 0 ? new Date(ts).toISOString() : null;
-}
-
-function clampPercent(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const n = Number(value);
-  if (!Number.isFinite(n)) return null;
-  if (n <= 0) return 0;
-  if (n >= 100) return 100;
-  return n;
-}
-
-function buildWindow({ usedPercent, resetAt }) {
-  const pct = clampPercent(usedPercent);
-  if (pct === null) return null;
-  return {
-    used_percent: pct,
-    reset_at: typeof resetAt === "string" && resetAt ? resetAt : null,
-  };
 }
 
 /**
