@@ -1,14 +1,15 @@
 "use client";
 
-// 顶部导航：logo 锁定（单行标题）+ npm / GitHub / 公开页演示图标按钮，
-// 三枚按钮带 Tooltip 箭头提示（对齐 web 端 top-actions 的 ControlTooltip），
+// 顶部导航：logo 锁定（单行标题）+ 文档 / npm / GitHub / 公开页演示图标按钮，
+// 各按钮带 Tooltip 箭头提示（对齐 web 端 top-actions 的 ControlTooltip），
 // hairline 底边。恒为暗色，只引 logo-dark 变体。
 
 import type { ReactNode } from "react";
 
-import { ChartLineArrowUp, LogoGithub } from "@gravity-ui/icons";
+import { BookOpen, ChartLineArrowUp, LogoGithub } from "@gravity-ui/icons";
 import { Button, Tooltip, Typography } from "@heroui/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { LANDING_COPY } from "@/lib/copy";
 import { NPM_CLI_URL, REPO_URL } from "@/lib/repo-links";
@@ -34,6 +35,7 @@ function NavTooltip({
 
 export function NavBar({ demoUrl }: { demoUrl: string | null }) {
   const copy = LANDING_COPY.zh;
+  const router = useRouter();
 
   return (
     <header className="sticky top-0 z-40 border-b border-default/50 bg-background/75 backdrop-blur-md">
@@ -57,6 +59,17 @@ export function NavBar({ demoUrl }: { demoUrl: string | null }) {
         </Link>
 
         <div className="ml-auto flex items-center gap-2">
+          <NavTooltip label={copy.nav.docs}>
+            <Button
+              isIconOnly
+              aria-label={copy.nav.docs}
+              size="sm"
+              variant="outline"
+              onPress={() => router.push("/docs/")}
+            >
+              <BookOpen className="size-4" />
+            </Button>
+          </NavTooltip>
           <div className="hidden items-center gap-2 md:flex">
             <NavTooltip label="npm · tokenusage-cli">
               <Button

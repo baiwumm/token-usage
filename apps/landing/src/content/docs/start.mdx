@@ -1,0 +1,81 @@
+---
+title: 快速开始
+description: Supabase 建库 → Vercel 部署 → 建号 → 配对采集端，五步闭环。
+---
+
+免费档（Supabase Free + Vercel Hobby）即可跑完整套，全程约 20–30 分钟。
+
+<Callout title="更省事的做法">
+以下每一步都可以整段交给编码 Agent 执行并自检——拿现成指令块见
+[Agent 执行手册](/docs/agent/)。
+</Callout>
+
+<Steps>
+
+## 创建 Supabase 项目
+
+1. 新建项目（Free 档即可），记下 **Project URL / Publishable key / Secret key**；
+2. 按**文件名顺序**执行 `supabase/migrations/` 里的全部迁移（幂等，可重复跑）；
+3. Auth 配置：**关闭公开注册**，站点 URL 填你的部署域名；邀请制用
+   `token_allowed_emails` 白名单控制谁能被邀请。
+
+## 部署到 Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbaiwumm%2Ftoken-usage&project-name=token-usage&repository-name=token-usage)
+
+Environment Variables 填四个值：
+
+| 变量 | 值 |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key |
+| `SUPABASE_SECRET_KEY` | Secret key |
+| `TOKEN_USAGE_DASHBOARD_URL` | 部署域名根，如 `https://your-app.vercel.app` |
+
+手动导入仓库时：**Root Directory 设为 `apps/web`**，且项目设置里
+**Include files outside the root directory in the Build Step 必须 Enabled**——
+pnpm workspace 根与 lockfile 都在仓库根，关掉后安装阶段直接报错。
+
+**完成条件**：访问 `/api/functions/token-usage-public-config` 返回含 `supabase_url` 的 JSON。
+
+## 创建第一个账号
+
+公开注册关闭，账号由管理员脚本创建（管理员即你自己）：
+
+```bash
+cp apps/web/.env.example apps/web/.env.local   # 填入上一步的三组 Supabase 值
+node scripts/admin/create-user.cjs --email you@example.com --password  # 直接建号 + 临时密码
+node scripts/admin/create-user.cjs --email you@example.com             # 或发邀请邮件
+```
+
+之后在站点 `/login` 登录。团队扩展账号走同一脚本的邀请模式。
+
+## 配对采集端
+
+在你要统计的机器上装 CLI（Node ≥ 22.19）并完成设备流配对：
+
+```bash
+npm i -g tokenusage-cli
+tokenusage init          # 扫描本机 AI 工具、安装用量 hook、注册每小时计划任务
+tokenusage device-login  # 输出 user_code → 浏览器打开 /device 页批准
+tokenusage sync --drain  # 首轮全量补传
+```
+
+批准配对的就是登录站点的账号，设备数据与该账号绑定、账号间完全隔离。
+
+## 验证闭环
+
+- CLI：`tokenusage doctor` 全 OK、`tokenusage reconcile --days 1` 无漂移；
+- 仪表盘：来源卡开始出现数据；下一步想看趋势与构成，直接逛仪表盘即可。
+
+![仪表盘总览](/dashboard/app-overview.png)
+
+</Steps>
+
+<Callout title="升级已有部署">
+迁移幂等、按文件名顺序补跑 → push 部署（main 出 Production）→ 冒烟
+（`/` 200、`/api/badge/data` 可用）。CLI 升级后跑一次
+`tokenusage init --yes --no-integrations --no-open` 刷新运行时副本，再 `doctor`。
+回滚用 Vercel 的 Deployment Rollback。完整清单见
+[launch-runbook](https://github.com/baiwumm/token-usage/blob/main/docs/launch-runbook.md)。
+</Callout>

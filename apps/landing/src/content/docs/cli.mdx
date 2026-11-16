@@ -1,0 +1,47 @@
+---
+title: CLI 采集端
+description: tokenusage 命令：安装、三步接入、常用命令与诊断。
+---
+
+`tokenusage-cli`（npm 包名 `tokenusage-cli`，命令 `tokenusage`）运行在本机，
+**只把用量解析成 token 计数上报**——提示词与回复内容永远不离开你的机器。
+运行要求 Node ≥ 22.19。
+
+## 三步接入
+
+```bash
+tokenusage init          # 扫描本机 AI 工具、安装用量 hook、注册每小时计划任务
+tokenusage device-login  # 设备流配对：输出 user_code → 站点 /device 页批准
+tokenusage sync          # 手动一轮：解析 → 入队 → 上传
+```
+
+完成后 init 注册的计划任务**每小时自动采集一次**；也可 `tokenusage sync --watch`
+常驻轮询。不想自动采集就 `tokenusage pause`（手动 `sync` 不受影响）。
+
+## 常用命令
+
+| 命令 | 说明 |
+| --- | --- |
+| `init` | 初始化：hook 安装、计划任务、运行时副本刷新（不含配对） |
+| `device-login` | 设备流配对：`user_code` 15 分钟内有效，在站点批准后拿令牌 |
+| `sync` | 解析本地日志 → 上报小时桶 + 会话元数据；`--drain` 首轮积压补传 |
+| `status` | 本地状态：设备身份、采集状态、队列积压、最近上传时间 |
+| `doctor` | 体检：运行时 / 网络 / 各工具配置 / 计划任务是否降级 |
+| `status --limits` | 各家订阅限额面板（Codex / Cursor / Qoder / WorkBuddy 等） |
+| `reconcile --days 7` | 只读对账：本地基线 vs 云端逐桶比对，有漂移退出码 1 |
+| `pause` / `resume` | 暂停 / 恢复自动采集（定时任务、hook、`--watch` 全部静默） |
+| `sessions` | 本地导出会话分析（JSON / CSV，元数据级） |
+| `uninstall --purge` | 移除 hook 与计划任务；`--purge` 连数据目录一起删 |
+
+配置优先级：命令行参数 > `~/.tokenusage` 下 `config.json` > 环境变量
+（`TOKENUSAGE_BASE_URL` 等）> 内置默认。自部署实例在 `init` 时传
+`--base-url <你的域名>` 即可。
+
+<Callout title="诊断思路">
+出问题先 `doctor`：版本落后、运行时副本缺失、计划任务降级、某工具配置异常都会
+逐条报出来；`sources.coverage` 段会列出每个来源最近 30 天的采集情况（闲置超 7 天
+的源单列为 silent，属正常停写）。要堆栈加 `--debug`。
+</Callout>
+
+采集端完整参数与边界见
+[CLI README](https://github.com/baiwumm/token-usage/blob/main/packages/cli/README.md)。

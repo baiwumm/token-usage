@@ -1,0 +1,48 @@
+---
+title: 公开徽章
+description: 一行 SVG 徽章嵌进 README：风格、主题与嵌入代码。
+---
+
+徽章是**一行 SVG**，实时反映你账号（或单个项目）的用量，README、个人主页都能嵌。
+在站点 `/settings?section=badges` 创建——每枚徽章的令牌即凭证，泄露可单独吊销。
+
+实物效果（亮 / 暗两版，作者实例真实数据的离线快照，随文档一起分发）：
+
+<img alt="亮色折线徽章" loading="lazy" src="/docs/badge-light.svg" width="600" height="176" />
+
+<img alt="暗色折线徽章" loading="lazy" src="/docs/badge-dark.svg" width="600" height="176" />
+
+## 嵌入代码
+
+Settings 页会按你的选择生成现成片段，README 场景推荐 `picture` 双主题（跟随 GitHub
+亮暗自动切换）：
+
+```markdown
+<picture>
+  <source media="(prefers-color-scheme: dark)"
+          srcset="https://your-site.com/api/badge?token=YOUR_TOKEN&theme=dark" />
+  <img src="https://your-site.com/api/badge?token=YOUR_TOKEN&theme=light"
+       alt="Token Usage" width="600" height="176" />
+</picture>
+```
+
+## 参数一览
+
+| 参数 | 取值 | 说明 |
+| --- | --- | --- |
+| `token` | 徽章令牌 | 必填，即凭证；一行一枚，每账号上限 10 枚 |
+| `style` | `sparkline`（默认）/ `panel` / `compact` | 折线 / 完整面板 / 紧凑单行 |
+| `theme` | `auto`（默认）/ `light` / `dark` | `auto` 随系统亮暗（SVG 内嵌媒体查询） |
+| `project` | 项目 key | 带上即变成**单项目徽章**，不带为账号级 |
+
+- `range=30d` 把统计窗口切成最近 30 天（默认累计）；
+- `format=compact` 输出单行高度，适合侧栏与签名档；
+- 画布 600×176（compact 更矮），CDN 缓存 5 分钟，改数据后最多滞后一个窗口。
+
+## 公开页
+
+每枚徽章配套一个免登录公开页 `/u/<token>`：总览、来源构成、热力图与成就一页看完。
+配对链接（邀请别人看效果）直接发这个页面即可。
+
+完整渲染规范（确定性、动效、降级矩阵）见
+[badge.md](https://github.com/baiwumm/token-usage/blob/main/docs/badge.md)。

@@ -1,0 +1,29 @@
+---
+title: 数据与契约
+description: 两档 API 契约、对账基线与数据边界。
+---
+
+## 两档契约
+
+| 档 | 端点 | 演进策略 |
+| --- | --- | --- |
+| **CLI 面（硬冻结）** | `device-flow-*`、`ingest`、`reconcile`、`public-config`、`sync-report` 等 9 个 | 路径 / 字段 / 语义一经发布即冻结，只允许追加可选字段；破坏性变更走新 API 版本路径 |
+| **Dashboard 面（可演进）** | `account-summary`、`account-<series>` ×9、`dashboard` | 唯一消费者是本仓库仪表盘，同仓同发，随 UI 演进 |
+
+CLI 已配对的机器把端点绝对 URL 存在本地 `config.json`，**不随服务端升级而更新**——
+这是 CLI 面冻结的原因。每次变更需回写 `docs/cli-contract.md` 并同步 golden 测试。
+
+## 对账基线
+
+- 本地基线是 `queue.jsonl` 的 **last-wins** 总数，按 `(hour_start, source, model)`
+  逐键覆盖；`tokenusage reconcile --days N` 把它与云端该设备的桶明细逐键比对；
+- 云端桶表 `token_usage_hourly` 的 upsert 键跨版本不变，重放安全。
+
+## 数据边界
+
+- 浏览器**零 Supabase 直连**：一切读写字 `route.ts` + service-role 中转；
+- `token_*` 数据表对 anon / authenticated 保持零 policy，数据库层面不可绕过应用；
+- 采集端只上 token 计数与会话元数据，提示词与回复内容不出本机。
+
+完整端点索引、字段与错误码见
+[cli-contract.md](https://github.com/baiwumm/token-usage/blob/main/docs/cli-contract.md)。

@@ -1,7 +1,8 @@
 # @token-usage/landing
 
-token-usage.cc 官方落地页：纯静态单页营销站，暗色单主题，无数据面、无 API、无登录。
-`output: "export"` 静态导出，产物 `out/`。UI 规则先读 `docs/ui-spec.md`「落地页」节。
+token-usage.cc 官方站：营销首页 + `/docs` 文档区，静态导出（`output: "export"`，产物
+`out/`），暗色单主题，无数据面、无运行时 API、无登录。UI 规则先读 `docs/ui-spec.md`
+「落地页」节。
 
 ## 本地开发
 
@@ -42,9 +43,48 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 **light / dark 两版并排**（`badgeImageUrl(style, theme)`），暗色页上亮色版更醒目，
 成对展示填满右半区。
 
+## 首访体验（遮罩与徽章占位）
+
+- **首访遮罩**：根布局输出 `#boot-veil`（品牌 logo + 字标，`visibility:hidden` 待命）+
+  一段内联脚本；本会话首次访问才加 `.boot-veil-on` 显示，DOMContentLoaded 淡出，3s 由
+  CSS 兜底动画强制隐藏（内联脚本失效也必消失）。sessionStorage 门控，复访零闪现。
+  踩坑记录：脚本在水合前改的 className 必须配 veil div 上的 `suppressHydrationWarning`，
+  否则 React 19 水合会把类抹掉；复访路径只能「不显示」，不能 remove 节点——结构性缺失
+  会触发水合报错并把节点插回来。
+- **徽章占位**：footer 两张徽章 `<img>` 指向操作者实例（跨境外链，实测单次 8s+），首访
+  慢网时原本空白。`components/landing/badge-preview.tsx` 用 img 的 width/height 属性
+  （600×176，真实画布尺寸见 `docs/badge.md` §5.2）让浏览器加载前预留等比空间 + shimmer
+  脉冲占位，onLoad 后淡入；img `h-auto` 自然高度渲染，**不做任何裁剪**。
+
+## 文档区（`/docs`，fumadocs）
+
+2026-11-16 立项：文档站**不用 `docs.` 子域**，直接挂在本站 `/docs` 路径
+（`docs/rewrite-plan.md` §7）。技术栈 fumadocs（`fumadocs-core` / `fumadocs-ui` /
+`fumadocs-mdx`），静态导出链路同 better-admin/apps/website。
+
+- **内容是本站自建精编内容**：`src/content/docs/*.mdx` + `meta.json` **提交进仓库**
+  （内容真源，不 gitignore）。写法面向读者——提取上手重点、配代码块与截图
+  （`public/dashboard/*`、`public/achievement-art/*` 等），与仓库根 `docs/` 解耦：
+  那边面向开发者与 AI Agent，整篇照搬会又长又冗（同 better-admin 站的最终结论）。
+  改文档直接改 mdx，`fumadocs-mdx` 构建期编译；页面新增/删除同步改 `meta.json`。
+- **完整规范出口**：文档页内的「完整规范」链接指向 GitHub blob（仓库根 `docs/`），
+  首页的文档入口则全部指向站内页，不外跳。
+- **MDX 注意**（手写内容也要守）：正文裸 `{`/`}` 会被当 JSX 表达式（用 `\{` 转义或
+  放进代码）；**表格 code span 里不能写裸 `|`**（GFM 切格不尊重 code span，要写
+  `\|`）；图片走白名单里的原生 `img` 映射（外链徽章 URL 过不了 next/image 的
+  remotePatterns）。
+- **搜索**：静态导出没有服务端运行时，`src/app/api/search/route.ts` 用
+  `force-static` + `staticGET` 把索引固化成 `out/api/search` 静态文件，前端 RootProvider
+  以 `type: "static"` 客户端拉取后本地搜索。
+- **主题**：本站暗色单主题——根布局 `forcedTheme: "dark"` + `DocsLayout`
+  `themeSwitch: { enabled: false }`；`globals.css` 里 `--color-fd-*` 主色映射到
+  Vermillion `--accent`，文档区与首页同一品牌色。
+- **类型生成**：`postinstall: fumadocs-mdx` 产出 `.source/`（gitignore）；`tsc` 依赖它，
+  新克隆先 `pnpm install` 再跑门禁。
+
 ## SEO 与社交分享
 
-单页站的 SEO 事实源是 `src/lib/seo.ts`（站点名、标题、描述、关键词、域名）：根布局
+首页的 SEO 事实源是 `src/lib/seo.ts`（站点名、标题、描述、关键词、域名）：根布局
 `src/app/layout.tsx` 用它拼 `metadata`（canonical / Open Graph / Twitter / robots /
 icons / themeColor），页面里不再重复声明标题与描述。
 
@@ -65,7 +105,8 @@ icons / themeColor），页面里不再重复声明标题与描述。
   静态近似；改 `globals.css` 的强调色时同步那一组常量。
 - **sitemap / robots**：`src/app/sitemap.ts` 与 `src/app/robots.ts` 在构建期静态产出
   `/sitemap.xml`、`/robots.txt`（原 `public/robots.txt` 已删除——同路径只能有一个来源）。
-  `lastModified` 取快照的 `fetchedAt` 而非构建时间，未同步到新数据时不会虚报更新。
+  sitemap 覆盖首页 + `/docs` 全部文档页（`source.getPages()` 枚举）；`lastModified` 取
+  快照的 `fetchedAt` 而非构建时间，未同步到新数据时不会虚报更新。
 - **结构化数据**：`src/app/page.tsx` 内联 `SoftwareApplication` JSON-LD。
 
 ## 部署（腾讯云 EdgeOne Pages · Makers）
@@ -94,7 +135,8 @@ pnpm monorepo，接入方式固定为「Git 连接 + 根目录 `/`」：构建�
 **根目录必须留 `/`**：`edgeone.json` 只从项目根目录读取，挪到 `apps/landing/` 不生效。
 
 构建命令必须是 `pnpm build:landing:deploy`（`sync:snapshot` → `next build`），这样每次
-部署都会刷新快照数字；只想验证构建时用 `pnpm build:landing`（离线、不联网）。
+部署都会刷新快照数字（文档区内容已提交进仓库，随构建直接编译）；只想验证构建时用
+`pnpm build:landing`（离线、不联网）。
 **部署顺序**：先让 `apps/web` 上线（`/api/badge/data` 存在于线上），再触发本站构建；
 否则同步失败只告警、沿用已提交的旧快照（见上文「数据快照」）。
 

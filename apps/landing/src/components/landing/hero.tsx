@@ -2,21 +2,23 @@
 
 // Hero（设计拍板 2026-11-08）：暗底 + 真实数据。右侧一年热力图纹样用快照
 // 里 364 个真实日桶等级（数据即装饰），四个计数器滚入真实数字（no-JS 由
-// noscript 兜底）；双 CTA = 立即部署（滚动到自部署段）+ README 同款
-// Deploy to Vercel 一键链接。
+// noscript 兜底）；双 CTA = 立即开始（站内文档快速开始 /docs/start/）+
+// GitHub 仓库链接（2026-11-16 换：文档区内页已落地，第一跳直接进文档）。
 
 import { ArrowUpRight } from "@gravity-ui/icons";
 import { Button, Typography } from "@heroui/react";
+import { useRouter } from "next/navigation";
 
 import { FlowNumber } from "./flow-number";
 import { SourceLogoLoop } from "./source-logo-loop";
 
 import { LANDING_COPY } from "@/lib/copy";
-import { VERCEL_DEPLOY_URL } from "@/lib/repo-links";
+import { DEPLOY_GUIDE_URL, REPO_URL } from "@/lib/repo-links";
 import { formatCompactTokens, formatCost, SNAPSHOT } from "@/lib/snapshot";
 
 export function Hero() {
   const copy = LANDING_COPY.zh;
+  const router = useRouter();
   const { totals, meta } = SNAPSHOT;
 
   const counters = [
@@ -99,9 +101,9 @@ export function Hero() {
                 size="lg"
                 style={{ animationDelay: "240ms" }}
                 variant="primary"
-                onPress={() => scrollToDeploy()}
+                onPress={() => router.push(DEPLOY_GUIDE_URL)}
               >
-                {copy.hero.deployCta}
+                {copy.hero.startCta}
               </Button>
               <Button
                 className="landing-reveal"
@@ -109,14 +111,10 @@ export function Hero() {
                 style={{ animationDelay: "320ms" }}
                 variant="outline"
                 onPress={() =>
-                  window.open(
-                    VERCEL_DEPLOY_URL,
-                    "_blank",
-                    "noopener,noreferrer",
-                  )
+                  window.open(REPO_URL, "_blank", "noopener,noreferrer")
                 }
               >
-                {copy.hero.vercelCta}
+                {copy.hero.githubCta}
                 <ArrowUpRight className="size-4" />
               </Button>
             </div>
@@ -185,14 +183,6 @@ export function Hero() {
       </div>
     </section>
   );
-}
-
-function scrollToDeploy(): void {
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  document
-    .getElementById("deploy")
-    ?.scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
 }
 
 // 真实的一年：364 个日桶等级来自快照（近 52 周），横排 52 列 × 7 行，

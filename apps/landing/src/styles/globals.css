@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
+/* /docs 文档区（fumadocs）：neutral 底色 + preset 组件样式，--color-fd-* 变量
+   下方 .dark 内映射到本站 token，与首页同一视觉。 */
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
 @custom-variant dark (&:is(.dark *));
 
 /*
@@ -38,6 +43,12 @@
  */
 .dark {
 	--accent: oklch(0.5543 0.17 32.08);
+
+	/* fumadocs 文档区品牌映射：fd 主色 / 链接色走 Vermillion accent，其余
+	   fd 中性变量沿用 neutral 主题默认，保证文档区与首页同一套品牌色。 */
+	--color-fd-primary: var(--accent);
+	--color-fd-link: var(--accent);
+	--color-fd-link-visited: var(--accent);
 
 	/* Chart palette (dark values from apps/web globals.css). */
 	--color-chart-1: #48a7ff;
@@ -140,6 +151,38 @@
 
 .landing-breathe {
 	animation: landing-breathe 7s ease-in-out infinite alternate;
+}
+
+/*
+ * 首访遮罩（boot veil）：根布局把 `.boot-veil` 随 HTML 输出，`visibility`
+ * 默认 hidden；紧随其后的内联脚本对「本会话首次访问」补 `.boot-veil-on`
+ * 使其可见，DOMContentLoaded 时加 `.boot-veil-done` 淡出。`.boot-veil-on`
+ * 自带 3s `boot-veil-cap` 兜底动画（forwards 强制隐藏）——内联脚本被禁用
+ * 或异常时遮罩也必然消失，页面不会被永久挡住。
+ */
+.boot-veil {
+	visibility: hidden;
+	transition:
+		opacity 0.35s ease,
+		visibility 0.35s ease;
+}
+
+.boot-veil-on {
+	visibility: visible;
+	animation: boot-veil-cap 0.4s ease 3s forwards;
+}
+
+.boot-veil-done {
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+}
+
+@keyframes boot-veil-cap {
+	to {
+		opacity: 0;
+		visibility: hidden;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

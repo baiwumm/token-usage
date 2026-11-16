@@ -1,0 +1,87 @@
+---
+title: Agent 执行手册
+description: 把部署、升级、巡检整段交给编码 Agent：可直接粘贴的指令块。
+---
+
+Token Usage 本身就是用 Agent 开发的——仓库根 `docs/` 的运维文档从第一天起就按
+「每一步都能由 Agent 执行并自检」编写（每节末尾的**完成条件**就是该步验收标准）。
+所以部署、升级、巡检这些活，你同样可以整段交给编码 Agent（Claude Code / Codex /
+ZCode / …）：把下面任意一段指令**完整粘贴**给 Agent，它会读取仓库内对应文档并逐步
+执行、自检、汇报。
+
+<Callout title="使用前提">
+给 Agent 一个已克隆仓库的工作目录，并按任务装好所需 CLI（Supabase CLI / Vercel
+CLI / tokenusage）；凭据走环境变量或 Agent 的交互式输入，**不要**让 Agent 把
+Secret key 写进任何文件。涉及**不可逆操作**（删数据、退役实例、切换域名）时，
+在指令里要求 Agent 停下来问你——本项目约定这类动作必须人工放行。
+</Callout>
+
+## 部署新实例
+
+```text
+你是我的部署执行 Agent。任务：把 Token Usage 部署为一个新的自托管实例。
+
+1. 通读 docs/deploy-guide.md，严格按其步骤执行：Supabase 建库与迁移 → Auth
+   配置 → Vercel 部署 → 创建第一个账号 → 配对 CLI 采集端 → 验证闭环；
+2. 每完成一步，用该节末尾的「完成条件」自检，不达标不得进入下一步；
+3. 需要凭据时逐项向我列出并等待输入；Secret key 只进环境变量，不落文件；
+4. 全部完成后输出汇总：站点域名、Supabase 项目引用、已应用迁移清单、
+   冒烟清单逐项结果。
+```
+
+## 升级已有实例
+
+```text
+你是我的运维 Agent。任务：把已有的 Token Usage 实例升级到最新 main。
+
+1. 通读 docs/launch-runbook.md，按「升级已有部署」执行：按文件名顺序补跑
+   supabase/migrations/ 未应用迁移（幂等）→ 补新增环境变量 → 触发部署 →
+   跑完整冒烟清单；
+2. 特别注意 runbook 标注的破坏性迁移（如徽章表重建），执行前先向我确认；
+3. 冒烟全绿后输出：迁移清单、部署版本、冒烟逐项结果；任何一项不绿就停下
+   并按 runbook 的回滚预案给我选项，不要自行回滚。
+```
+
+## 新机器接入采集
+
+```text
+你是我的采集端接入 Agent。任务：在这台机器上接入 Token Usage 采集。
+
+1. 检查 Node ≥ 22.19，然后 npm i -g tokenusage-cli；
+2. tokenusage init --base-url https://<你的域名>（按需 --no-integrations）；
+3. tokenusage device-login，把输出的配对链接交给我批准；
+4. 批准后 tokenusage sync --drain 完成首轮补传；
+5. 验收：tokenusage doctor 全 OK（计划任务无降级）、
+   tokenusage reconcile --days 1 无漂移，逐项贴出输出。
+```
+
+## 日常巡检与对账
+
+```text
+你是我的巡检 Agent。任务：对 Token Usage 做一次例行体检并汇报。
+
+1. tokenusage doctor：确认 0 warn / 0 fail，重点看 sources.coverage——
+   闲置超 7 天的源标记为 silent 属正常，其余缺数据的来源要指出；
+2. tokenusage reconcile --days 7：确认无漂移；
+3. tokenusage status --limits：汇总各家订阅限额余量；
+4. 输出一页简报：异常项、疑似原因、建议动作。只读体检，不要执行修复。
+```
+
+## 排障
+
+```text
+你是我的排障 Agent。任务：Token Usage 数据链路疑似异常，定位并给出修复方案。
+
+1. 收集证据：tokenusage status、tokenusage doctor 全文、
+   ~/.tokenusage/tracker/logs/sync.log 最近 50 行、
+   tokenusage reconcile --days 3；
+2. 对照 docs/launch-runbook.md 的冒烟清单定位断点在采集端、队列还是云端；
+3. 给我：根因判断、修复方案（含命令）、验证方式；
+4. 修复涉及删除数据或重置配置的，先停下来向我确认，禁止直接执行。
+```
+
+<Callout title="指令为什么这么短">
+细节都在仓库文档里，指令块只做**编排**：指定要读哪份文档、按什么完成条件自检、
+在哪里必须停下来问你。这样仓库文档更新后指令块无需跟着改，也不会出现两份
+会漂移的操作手册。
+</Callout>

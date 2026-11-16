@@ -1,0 +1,28 @@
+---
+title: 成就系统
+description: 20 枚成就 × 5 档，只升不降，随用量自动点亮。
+---
+
+成就账号级计算、**只升不降**：达到阈值即点亮并记录达成时间，掉用量也不回收。
+共 **20 枚 × 5 档**（铜 / 银 / 金 / 钻 / 王者），在仪表盘 `/achievements` 查看，
+公开页 `/u/<token>` 也会展示已点亮的徽章。
+
+三枚代表作：
+
+| 成就 | 达成条件（金档示例） | 徽章 |
+| --- | --- | --- |
+| Token Titan | 累计 token 突破十亿级 | ![Token Titan](/achievement-art/token_titan.png) |
+| Streak | 连续多日都有用量记录 | ![Streak](/achievement-art/streak.png) |
+| Marathon Session | 单次会话时长冲上小时级 | ![Marathon Session](/achievement-art/marathon_session.png) |
+
+其余还有 Early Bird（早起型）、Night Owl（夜猫型）、Cachekeeper（缓存利用率）、
+Polyglot（多模型混用）、Project Hopper（多项目切换）等，阈值随铜到王者逐档提高。
+
+## 计算规则
+
+- **读时计算**：不落成就表，每次访问按账户快照现算，改阈值立即生效；
+- **达成时间回推**：用桶级数据把「何时越线」反推到具体小时；
+- 与积分 / 成本口径完全隔离，只看 token 与行为。
+
+完整目录与逐档阈值见
+[achievements-plan.md](https://github.com/baiwumm/token-usage/blob/main/docs/achievements-plan.md)。

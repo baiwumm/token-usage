@@ -4,13 +4,14 @@
 export interface LandingCopy {
   nav: {
     demo: string;
+    docs: string;
   };
   hero: {
     eyebrow: string;
     sloganMain: string;
     sloganSub: string;
-    deployCta: string;
-    vercelCta: string;
+    startCta: string;
+    githubCta: string;
     counters: {
       tokens: string;
       activeDays: string;
@@ -96,14 +97,15 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
   zh: {
     nav: {
       demo: "查看公开页演示",
+      docs: "文档",
     },
     hero: {
       eyebrow: "开源 · 自托管 · MIT",
       sloganMain: "所有采集端的 AI 用量，一块仪表盘看完。",
       sloganSub:
         "一个账号、多台设备，用量与成本数据完全落在你自己的 Supabase 里。采集端只向配对实例上报，跨实例零共享。",
-      deployCta: "立即部署",
-      vercelCta: "Deploy to Vercel",
+      startCta: "立即开始",
+      githubCta: "GitHub",
       counters: {
         tokens: "累计 Tokens",
         activeDays: "活跃天数",
@@ -251,15 +253,10 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
         {
           title: "资源",
           links: [
+            { label: "文档", href: "/docs/" },
             { label: "GitHub", href: "https://github.com/baiwumm/token-usage" },
-            {
-              label: "部署指南",
-              href: "https://github.com/baiwumm/token-usage/blob/main/docs/deploy-guide.md",
-            },
-            {
-              label: "CLI 契约",
-              href: "https://github.com/baiwumm/token-usage/blob/main/docs/cli-contract.md",
-            },
+            { label: "部署指南", href: "/docs/deploy/" },
+            { label: "CLI 契约", href: "/docs/cli-contract/" },
           ],
         },
         {
@@ -284,14 +281,15 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
   en: {
     nav: {
       demo: "View live demo",
+      docs: "Docs",
     },
     hero: {
       eyebrow: "Open source · Self-hosted · MIT",
       sloganMain: "All your AI usage, one dashboard.",
       sloganSub:
         "One account, many devices — usage and cost data live entirely in your own Supabase. Captured locally, reported only to your instance, zero cross-instance sharing.",
-      deployCta: "Deploy now",
-      vercelCta: "Deploy to Vercel",
+      startCta: "Get started",
+      githubCta: "GitHub",
       counters: {
         tokens: "Total tokens",
         activeDays: "Active days",
@@ -441,15 +439,10 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
         {
           title: "Resources",
           links: [
+            { label: "Docs", href: "/docs/" },
             { label: "GitHub", href: "https://github.com/baiwumm/token-usage" },
-            {
-              label: "Deploy guide",
-              href: "https://github.com/baiwumm/token-usage/blob/main/docs/deploy-guide.md",
-            },
-            {
-              label: "CLI contract",
-              href: "https://github.com/baiwumm/token-usage/blob/main/docs/cli-contract.md",
-            },
+            { label: "Deploy guide", href: "/docs/deploy/" },
+            { label: "CLI contract", href: "/docs/cli-contract/" },
           ],
         },
         {

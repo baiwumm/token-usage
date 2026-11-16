@@ -5,6 +5,7 @@
 
 import { Typography } from "@heroui/react";
 
+import { BadgePreview } from "@/components/landing/badge-preview";
 import { badgeImageUrl, badgeSource } from "@/lib/badge-url";
 import { LANDING_COPY } from "@/lib/copy";
 import { LICENSE_URL, THIRD_PARTY_URL } from "@/lib/repo-links";
@@ -62,24 +63,13 @@ export function SiteFooter() {
             </Typography>
             <div className="mt-2 grid gap-4 sm:grid-cols-2">
               {badges.map((badge) => (
-                <a
+                <BadgePreview
                   key={badge.label}
-                  aria-label={`Token Usage 公开页演示（${badge.label}徽章）`}
-                  className="block w-full"
+                  alt={`Token Usage 实时用量徽章（${badge.label}）`}
+                  ariaLabel={`Token Usage 公开页演示（${badge.label}徽章）`}
                   href={demoUrl ?? undefined}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    alt={`Token Usage 实时用量徽章（${badge.label}）`}
-                    className="h-auto w-full rounded-md"
-                    height={120}
-                    loading="lazy"
-                    src={badge.src}
-                    width={600}
-                  />
-                </a>
+                  src={badge.src}
+                />
               ))}
             </div>
           </div>
@@ -91,24 +81,20 @@ export function SiteFooter() {
               <Typography type="body-xs" weight="semibold">
                 {column.title}
               </Typography>
-              {column.links.map((link) =>
-                link.href.startsWith("#") ? (
-                  <a key={link.label} className="group w-fit" href={link.href}>
-                    <Typography
-                      className="transition-colors group-hover:text-accent"
-                      color="muted"
-                      type="body-xs"
-                    >
-                      {link.label}
-                    </Typography>
-                  </a>
-                ) : (
+              {column.links.map((link) => {
+                // 打开方式（2026-11-16 拍板）：站内（`/` 开头）与页内锚点
+                //（`#` 开头）同页打开；外域（GitHub、备案等）保持新窗口。
+                const external =
+                  !link.href.startsWith("#") && !link.href.startsWith("/");
+
+                return (
                   <a
                     key={link.label}
                     className="group w-fit"
                     href={link.href}
-                    rel="noopener noreferrer"
-                    target="_blank"
+                    {...(external
+                      ? { rel: "noopener noreferrer", target: "_blank" }
+                      : {})}
                   >
                     <Typography
                       className="transition-colors group-hover:text-accent"
@@ -118,8 +104,8 @@ export function SiteFooter() {
                       {link.label}
                     </Typography>
                   </a>
-                ),
-              )}
+                );
+              })}
             </div>
           ))}
         </div>

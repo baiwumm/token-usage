@@ -129,7 +129,9 @@ command。迁移文件 `supabase/migrations/20261025000000_token_sessions.sql`�
 **`packages/cli`**：`@journeyapps/wa-sqlite`、`smol-toml`、`undici`、`yauzl`（`engines.node >= 22.19`，
 zstd 用 Node 内置）。
 
-**`apps/landing`**：web 依赖集的子集镜像，零新依赖名；不引 `next-themes`（暗色写死）、`motion`
+**`apps/landing`**：web 依赖集的子集镜像 + `/docs` 文档区的 fumadocs 三件套
+（`fumadocs-core` / `fumadocs-ui` / `fumadocs-mdx`，2026-11-16 操作者批准）；不引
+`next-themes`（暗色写死，fumadocs RootProvider forcedTheme）、`motion`
 （动效全 CSS）、`recharts`（趋势为手绘 SVG）。
 
 **`apps/desktop`**：web 子集（`react` / `react-dom` / `@heroui/react` / `@heroui/styles` /
@@ -198,4 +200,8 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
    `docs/sources-capture-audit.md`）。
 6. **`deep_thinker` 成就**：reasoning 覆盖率低于 50% 门槛，阈值草案保留在
    `docs/achievements-plan.md` §2.3，覆盖率提升后复议。
-7. **`docs.` 子域与 demo 实例**：官方站可选后续项，未立项。
+7. **demo 实例页**：官方站可选后续项，未立项。文档站已另立项落地（2026-11-16，不用
+   `docs.` 子域，挂在 `apps/landing` 的 `/docs` 路径，fumadocs 静态导出；内容是本站
+   自建精编——提交在 `apps/landing/src/content/docs/`，面向读者提取重点并配图，
+   与仓库根 `docs/`（开发者 / Agent 向）解耦；完整规范经文档页外链 GitHub，见
+   `apps/landing/README.md`）。

@@ -1,0 +1,28 @@
+---
+title: 来源覆盖
+description: 46+ 来源怎么采：hooks 注入、本地直读与账户级三档。
+---
+
+CLI 当前覆盖 **46+ 来源**。绝大多数是「本地真实 token 全量」，按接入机制分三档：
+
+| 机制 | 做法 | 代表 |
+| --- | --- | --- |
+| **hooks 注入** | 向工具配置注入用量 hook，会话结束即上报 | Claude Code、Codex、ZCode、Opencode、CodeBuddy |
+| **本地直读（passive）** | 直读工具的会话日志 / SQLite，不注入任何配置 | WorkBuddy、MiniMax Code、Qoder、TRAE、Zed、DeepSeek Harness |
+| **账户级** | 拉取厂商云端的账户用量明细 | Cursor（CSV 明细，业界少有的账户级样板）、TRAE CN（订阅额度） |
+
+## 几个特例
+
+- **WorkBuddy（国内 / AI 国际版）**：用量 pass 与项目 pass 已合并，小时桶直接带
+  项目归属；限额面板经其桌面端本地计费代理读取（`status --limits`）；
+- **MiniMax Code**：会话文件只记 credits 不记 token，按积分换算展示（积分是独立
+  维度，永不并入 token / 成本 / 成就口径）；
+- **kiro CLI**：无真实 token 计数，按字符数估算并在响应里带 `usage_precision`
+  标注——诚实降级优于假装精确；
+- **Cursor**：本机未安装时自动休眠，零请求零数据。
+
+`tokenusage doctor` 的 `sources.coverage` 段列出每个来源最近 30 天的最新桶、桶数
+与 token 数；闲置超 7 天的源单列为 **silent**（正常停写，不是故障）。
+
+自部署不用的来源装了也不上报（没有配对就没有上传通道）；逐源机制与缺口审计见
+[sources-capture-audit.md](https://github.com/baiwumm/token-usage/blob/main/docs/sources-capture-audit.md)。

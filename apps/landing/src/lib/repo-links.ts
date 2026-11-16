@@ -9,16 +9,11 @@ const REPOSITORY_URL = rootPackage.repository.url
 
 export const REPO_URL = REPOSITORY_URL;
 
-export const DEPLOY_GUIDE_URL = `${REPO_URL}/blob/main/docs/deploy-guide.md`;
-
-export const CLI_CONTRACT_URL = `${REPO_URL}/blob/main/docs/cli-contract.md`;
+/** 部署指南在本站文档区的入口（完整规范仍可从文档页跳 GitHub）。 */
+export const DEPLOY_GUIDE_URL = "/docs/start/";
 
 export const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 
 export const THIRD_PARTY_URL = `${REPO_URL}/blob/main/THIRD_PARTY_NOTICES.md`;
 
 export const NPM_CLI_URL = "https://www.npmjs.com/package/tokenusage-cli";
-
-/** 根 README 的 Deploy to Vercel 按钮同款链接（一键克隆部署）。 */
-export const VERCEL_DEPLOY_URL =
-  "https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbaiwumm%2Ftoken-usage&project-name=token-usage&repository-name=token-usage";

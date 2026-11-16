@@ -1,0 +1,30 @@
+---
+title: 桌面端
+description: Windows 托盘伴生工具：本地监控盘、今日用量、一键同步。
+---
+
+`apps/desktop` 是 Windows 托盘伴生工具（Tauri 2），把仪表盘里**本机相关的部分**
+搬进系统托盘：不用开浏览器，用量、采集状态、同步操作常驻手边。
+
+## 功能一览
+
+- **托盘菜单**：今日 tokens、采集状态、Sync now、暂停 / 恢复采集、打开 web；
+- **本地监控盘**：用量构成、使用节奏热力图、趋势与来源构成、项目 / 模型筛选；
+- **会话视图**：本机会话明细（ reasoning 折叠、时长与费用口径对齐 web）+ 分享卡导出；
+- **每日汇总通知**：阈值可配；连败 / 积压也会提醒；
+- **项目档案同步**：显示名、logo、仓库链接自动对齐 web 端的编辑（经 CLI 中继）。
+
+## 安装与更新
+
+- 从 GitHub Releases 下载 NSIS 安装包（`desktop-v*`）；
+- 内置 Ed25519 签名的 **updater**，新版本自动提示；
+- 卸载用安装包或 `tokenusage uninstall`（CLI 部分）配合。
+
+<Callout title="前置条件">
+桌面端依赖本机的 tokenusage-cli（0.5.5+）完成配对与数据读取；未配对时首启向导会
+引导安装与配对。托盘消失的排障与已知边界见
+[desktop-plan.md](https://github.com/baiwumm/token-usage/blob/main/docs/desktop-plan.md)。
+</Callout>
+
+桌面端只做**本机视角**：热力图等卡片口径是本机数据，与 web 端的账户聚合数字
+（多设备去重）天然不同，这是设计而非 bug。

@@ -12,7 +12,7 @@ workspace）。开源、可自部署；每个实例只写自己的 Supabase，�
 | --- | --- |
 | `apps/web` | Next.js：仪表盘 + CLI 契约层（`src/` 目录结构） |
 | `packages/cli` | 采集 CLI（npm `tokenusage-cli`，命令 `tokenusage`） |
-| `apps/landing` | 官方落地页（纯静态单页，`output: "export"`，部署 token-usage.cc） |
+| `apps/landing` | 官方站（静态导出：营销首页 + `/docs` 文档区，fumadocs；部署 token-usage.cc） |
 | `apps/desktop` | 桌面端托盘伴生工具（Tauri 2 + web 同构前端栈） |
 | `supabase/migrations/` | Postgres 迁移，按文件名顺序执行，幂等 |
 | `scripts/` | 运维脚本；活脚本与归档的区分见 `scripts/README.md` |

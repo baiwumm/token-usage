@@ -1,10 +1,11 @@
 "use client";
 
-// 自部署段（设计定稿 07 段）：三步摘要 + 部署指南外链（2026-11-11：
-// 移除 Vercel 一键与 GitHub 按钮，部署动作统一由指南承接）。
+// 自部署段（设计定稿 07 段）：三步摘要 + 部署指南入口（2026-11-11：
+// 移除 Vercel 一键与 GitHub 按钮；2026-11-16 起指南指本站文档区 /docs/start/）。
 
 import { BookOpen } from "@gravity-ui/icons";
 import { Button, Typography } from "@heroui/react";
+import { useRouter } from "next/navigation";
 
 import { SectionHeader } from "./section-header";
 
@@ -13,6 +14,7 @@ import { DEPLOY_GUIDE_URL } from "@/lib/repo-links";
 
 export function Deploy() {
   const copy = LANDING_COPY.zh;
+  const router = useRouter();
 
   return (
     <section className="border-t border-default/50" id="deploy">
@@ -49,9 +51,7 @@ export function Deploy() {
           <Button
             size="lg"
             variant="outline"
-            onPress={() =>
-              window.open(DEPLOY_GUIDE_URL, "_blank", "noopener,noreferrer")
-            }
+            onPress={() => router.push(DEPLOY_GUIDE_URL)}
           >
             <BookOpen className="size-4" />
             {copy.deploy.guideCta}

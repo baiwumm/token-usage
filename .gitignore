@@ -57,3 +57,7 @@ apps/desktop/src-tauri/gen/
 
 # supabase cli runtime state (link/cache markers)
 supabase/.temp/
+
+# landing docs site: fumadocs-mdx typegen (build artifact; doc content in
+# apps/landing/src/content/docs/ is committed source, NOT generated)
+apps/landing/.source/

@@ -24,7 +24,7 @@
 | CLI API | `/api/functions/token-usage-*` | CLI 面 9 端点 + Dashboard 面若干端点（`docs/cli-contract.md` §0 索引） |
 | 公开徽章 API | `/api/badge` | 公开 SVG 徽章端点（徽章令牌即凭证，一行一枚，≤10 枚），规范见 `docs/badge.md` |
 | 仪表盘内部 API | `/api/app/*` | 应用自有接口（非契约面，随 UI 自由演进） |
-| 产品落地页 | token-usage.cc | 仓库内 `apps/landing`：纯静态单页（产品介绍、自部署入口、公开页演示），暗色单主题、中文单语、`output: "export"`；托管于腾讯云 EdgeOne Pages，对外口径为 Vercel；接线见 `apps/landing/README.md` |
+| 产品官网 | token-usage.cc | 仓库内 `apps/landing`：静态导出站（营销首页 + `/docs` 文档区），暗色单主题、中文单语、`output: "export"`；托管于腾讯云 EdgeOne Pages，对外口径为 Vercel；接线见 `apps/landing/README.md` |
 | 开源自部署 | — | 中文部署指南、迁移脚本、Deploy to Vercel 按钮 |
 
 **路由约定**：仪表盘挂 `/` 且需要登录；除 `/login`、`/auth/callback`、公开页 `/u/<token>` 与

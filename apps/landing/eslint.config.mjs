@@ -29,6 +29,7 @@ export default defineConfig([globalIgnores([
     "**/dist",
     "out/*",
     "public/*",
+    ".source/*",
     "**/*.config.js",
     "**/.DS_Store",
     "**/node_modules",
