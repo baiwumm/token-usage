@@ -7,7 +7,6 @@ import { NavBar } from "@/components/landing/nav-bar";
 import { Ownership } from "@/components/landing/ownership";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { TerminalSteps } from "@/components/landing/terminal-steps";
-import { badgeSource } from "@/lib/badge-url";
 import { NPM_CLI_URL, REPO_URL } from "@/lib/repo-links";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 
@@ -40,16 +39,13 @@ const SOFTWARE_JSON_LD = {
 // 页面级 metadata 不在此声明：本站单页，标题/描述/社交卡/icon 全部由
 // 根布局（app/layout.tsx + app/opengraph-image.tsx）统一提供。
 export default function HomePage() {
-  // 公开页演示链接（README 解析，构建期固化）；解析失败则顶栏隐藏演示图标。
-  const demoUrl = badgeSource()?.publicPageUrl ?? null;
-
   return (
     <div className="flex min-h-screen flex-col">
       <script
         dangerouslySetInnerHTML={{ __html: JSON.stringify(SOFTWARE_JSON_LD) }}
         type="application/ld+json"
       />
-      <NavBar demoUrl={demoUrl} />
+      <NavBar />
       <main className="flex-1">
         <Hero />
         <TerminalSteps />

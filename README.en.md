@@ -34,7 +34,7 @@
 
 <p align="center">
   🌐 <a href="https://token-usage.cc">Website</a> ·
-  🖥️ <a href="https://demo.token-usage.cc">Live demo</a> (read-only, no sign-in) ·
+  🖥️ <a href="https://demo.token-usage.cc">Live demo</a> ·
   📖 <a href="docs/cli-contract.md">API contract</a> ·
   🚀 <a href="docs/deploy-guide.md">Deploy guide</a> ·
   🧭 <a href="docs/rewrite-plan.md">Architecture</a> ·

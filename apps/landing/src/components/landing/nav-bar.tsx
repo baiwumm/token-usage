@@ -1,6 +1,6 @@
 "use client";
 
-// 顶部导航：logo 锁定（单行标题）+ 文档 / npm / GitHub / 公开页演示图标按钮，
+// 顶部导航：logo 锁定（单行标题）+ 文档 / 在线演示 / npm / GitHub 图标按钮，
 // 各按钮带 Tooltip 箭头提示（对齐 web 端 top-actions 的 ControlTooltip），
 // hairline 底边。恒为暗色，只引 logo-dark 变体。
 
@@ -34,7 +34,7 @@ function NavTooltip({
   );
 }
 
-export function NavBar({ demoUrl }: { demoUrl: string | null }) {
+export function NavBar() {
   const copy = LANDING_COPY.zh;
   const router = useRouter();
 
@@ -73,12 +73,13 @@ export function NavBar({ demoUrl }: { demoUrl: string | null }) {
           </NavTooltip>
           <NavTooltip label={copy.nav.liveDemo}>
             <Button
+              isIconOnly
+              aria-label={copy.nav.liveDemo}
               size="sm"
               variant="outline"
               onPress={() => openExternal(DEMO_URL)}
             >
               <ChartLineArrowUp className="size-4" />
-              {copy.nav.liveDemo}
             </Button>
           </NavTooltip>
           <div className="hidden items-center gap-2 md:flex">
@@ -105,19 +106,6 @@ export function NavBar({ demoUrl }: { demoUrl: string | null }) {
               </Button>
             </NavTooltip>
           </div>
-          {demoUrl ? (
-            <NavTooltip label={copy.nav.demo}>
-              <Button
-                isIconOnly
-                aria-label={copy.nav.demo}
-                size="sm"
-                variant="outline"
-                onPress={() => openExternal(demoUrl)}
-              >
-                <ChartLineArrowUp className="size-4" />
-              </Button>
-            </NavTooltip>
-          ) : null}
         </div>
       </div>
     </header>

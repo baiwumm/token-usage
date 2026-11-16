@@ -36,7 +36,7 @@
 
 <p align="center">
   🌐 <a href="https://token-usage.cc">官方站</a> ·
-  🖥️ <a href="https://demo.token-usage.cc">在线演示</a>（只读，免登录） ·
+  🖥️ <a href="https://demo.token-usage.cc">在线演示</a> ·
   📖 <a href="docs/cli-contract.md">API 契约</a> ·
   🚀 <a href="docs/deploy-guide.md">部署指南</a> ·
   🧭 <a href="docs/rewrite-plan.md">架构与计划</a> ·

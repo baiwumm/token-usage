@@ -38,8 +38,8 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 快照文件形状：`heatmap.cells` 为 `[day, tokens, level]` 三元组（52 列 × 7 行，周序，
 `level` 与仪表盘同一套 0–4 分档），`series` 为近 30 天日桶。
 
-页脚「实时公开徽章」与顶栏「公开页演示」链接在**构建期**从仓库根 `README.md`
-解析（`src/lib/badge-url.ts`），README 变更即跟随，不硬编码令牌。页脚徽章渲染
+页脚「实时公开徽章」链接在**构建期**从仓库根 `README.md` 解析
+（`src/lib/badge-url.ts`），README 变更即跟随，不硬编码令牌。页脚徽章渲染
 **light / dark 两版并排**（`badgeImageUrl(style, theme)`），暗色页上亮色版更醒目，
 成对展示填满右半区。
 
@@ -48,8 +48,9 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 `src/lib/demo-url.ts` 是唯一来源（`DEMO_URL = https://demo.token-usage.cc`）；静态导出没有
 运行时 env，故构建期固定。
 
-- 顶栏「在线演示」按钮、Hero 第三个 CTA、页脚「产品」列同指 `DEMO_URL`（页脚走 `#live-demo`
-  哨兵，在 `site-footer.tsx` 的 `SENTINEL_HREFS` 里解析，解析失败则隐藏该条）；
+- 顶栏「在线演示」图标按钮（纯图标 + tooltip）、Hero 第二个 CTA、页脚「产品」列同指 `DEMO_URL`
+  （页脚走 `#live-demo` 哨兵，在 `site-footer.tsx` 的 `SENTINEL_HREFS` 里解析，解析失败则隐藏该条）；
+  顶栏不再单独放「公开页」按钮——公开页入口只在页脚徽章区，顶栏留给 demo；
 - 演示实例是仓库内 `apps/web` 的**只读**部署（`TOKEN_USAGE_DEMO=on`，匿名自动登录演示账号），
   数据由 `scripts/demo/seed.mjs` 每晚重灌，见 `docs/demo-instance.md`；
 - 页脚徽章与 `/u/` 公开页**不受影响**：仍从仓库拷 README 解析、仍指操作者的生产实例
