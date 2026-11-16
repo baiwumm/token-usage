@@ -14,6 +14,13 @@
 > CLI 面冻结的含义：字段**不可改名、不可改类型、不可改变语义**；只允许**追加可选字段**。
 > 任何破坏性变更都必须以新的 API 版本路径发布，且旧路径继续可用。
 
+> **部署级 demo 模式（2026-11-16，`docs/demo-instance-plan.md` §5）**：演示实例以
+> `TOKEN_USAGE_DEMO=on` 部署时，`proxy.ts` 在进入本契约层之后、页面守卫之前，对
+> `/api/functions/*` 与 `/api/app/*` 的写动词（非 GET / HEAD / OPTIONS）统一返回
+> `403 {"error":"Demo instance is read-only"}`（`/api/app/demo-login` 除外）。这是**部署形态的
+> 闸门**，不改变任何端点的路径、字段、错误码与语义：未设该变量的实例行为逐字不变（契约测试
+> `tests/unit/demo-proxy-gate.test.ts` 与 `tests/contract/route-guard.test.ts` 共同守卫）。
+
 ## 0. 端点索引（新增端点先在此登记）
 
 编号连续、不重号；加端点 = 先加本表一行，再写 §2.x 小节，并同步 golden 测试。

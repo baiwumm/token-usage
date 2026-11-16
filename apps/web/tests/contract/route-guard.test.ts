@@ -107,8 +107,10 @@ describe("proxy config", () => {
 		// parity with the guard list cannot be derived in code — this test is
 		// the drift guard: adding a page to PROTECTED_PAGES without extending
 		// the matcher (or vice versa) fails here.
+		// API matchers (the frozen contract gate plus the demo write gate) are
+		// deliberately outside the page-parity check.
 		const pagePatterns = config.matcher.filter(
-			(pattern) => pattern !== "/api/functions/:path*",
+			(pattern) => !pattern.startsWith("/api/"),
 		);
 
 		expect(pagePatterns).toEqual([

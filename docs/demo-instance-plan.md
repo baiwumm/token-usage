@@ -3,9 +3,12 @@
 官方站三件套的最后一件：一个独立部署的 `apps/web` 演示实例，让访客不部署、不配对采集器
 就能点开仪表盘看真实功能。
 
-**状态：已立项，方案待操作者批准后执行**（2026-11-16）。批准前不改动任何代码。
-方案批准后按本文 §8 分期执行，执行完把「已交付」事实回写
-`docs/rewrite-plan.md` §7 与 `docs/requirements.md`（本级文档只保留方案与状态）。
+**状态：已立项；P0–P2 已交付，P3（建库 / 部署 / 绑域 / secrets）待操作者执行**
+（2026-11-16）。落地清单：`scripts/demo/`（生成器 + 种子脚本）、
+`apps/web/src/lib/demo.ts` + `src/proxy.ts` 闸门 + `/api/app/demo-login`、
+`components/app-shell/demo-banner.tsx`、landing 的 `src/lib/demo-url.ts` 与三处入口、
+`.github/workflows/demo-reseed.yml`、运维手册 `docs/demo-instance.md`。
+操作步骤按 [`docs/demo-instance.md`](demo-instance.md) 执行。
 
 本文是 demo 实例的单一真源：决策、数据面、只读边界、部署接线、验收全在此。
 运维手册（建库 / 建号 / 绑域 / 重置 / 排障）在执行期从 §5 扩写为独立的

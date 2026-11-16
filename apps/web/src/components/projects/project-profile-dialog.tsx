@@ -30,7 +30,9 @@ import { useRef, useState } from "react";
 import { ProjectLogo } from "./project-logo";
 
 import { PendingButton } from "@/components/pending-button";
+import { DEMO_COPY } from "@/lib/copy/demo";
 import { formatMessage } from "@/lib/copy/message";
+import { isDemoUi } from "@/lib/demo";
 import {
   isUnauthorized,
   resetProjectProfile,
@@ -76,6 +78,8 @@ export function ProjectProfileDialog({
   onUnauthorized: () => void;
 }) {
   const text = copy.profile;
+  // Demo instances are read-only; the server rejects these writes anyway.
+  const demo = isDemoUi();
   const [displayName, setDisplayName] = useState(profile?.display_name ?? "");
   const [repoUrl, setRepoUrl] = useState(profile?.manual_repo_url ?? "");
   const [repoHidden, setRepoHidden] = useState(profile?.repo_hidden ?? false);
@@ -119,6 +123,7 @@ export function ProjectProfileDialog({
   }
 
   async function save() {
+    if (demo) return;
     setShowErrors(true);
     if (!nameCheck.ok || !repoCheck.ok || !logoCheck.ok) return;
     setBusy("save");
@@ -142,6 +147,7 @@ export function ProjectProfileDialog({
   }
 
   async function reset() {
+    if (demo) return;
     if (!confirmReset) {
       setConfirmReset(true);
 
@@ -163,6 +169,7 @@ export function ProjectProfileDialog({
   // Immediate, like the avatar: the saved fields go back unchanged so pending
   // drafts in the form are neither saved nor lost.
   async function removeUpload() {
+    if (demo) return;
     setBusy("remove");
     try {
       onProfileChange(
@@ -184,6 +191,8 @@ export function ProjectProfileDialog({
   }
 
   async function uploadLogo(file: File): Promise<{ error: string | null }> {
+    if (demo) return { error: DEMO_COPY[locale].readOnly };
+
     try {
       onProfileChange(await uploadProjectLogo(projectKey, file));
       toast.success(text.logoUploaded);
@@ -405,6 +414,11 @@ export function ProjectProfileDialog({
               </Form>
             </Modal.Body>
             <Modal.Footer className="w-full flex-wrap">
+              {demo ? (
+                <Typography className="w-full text-accent" type="body-xs">
+                  {DEMO_COPY[locale].readOnly}
+                </Typography>
+              ) : null}
               {hasManual ? (
                 <PendingButton
                   className="me-auto"
@@ -424,7 +438,7 @@ export function ProjectProfileDialog({
                 {text.cancel}
               </Button>
               <PendingButton
-                isDisabled={busy !== null && busy !== "save"}
+                isDisabled={demo || (busy !== null && busy !== "save")}
                 pending={busy === "save"}
                 onPress={() => void save()}
               >

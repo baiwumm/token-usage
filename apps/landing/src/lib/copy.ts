@@ -4,6 +4,7 @@
 export interface LandingCopy {
   nav: {
     demo: string;
+    liveDemo: string;
     docs: string;
   };
   hero: {
@@ -12,6 +13,7 @@ export interface LandingCopy {
     sloganSub: string;
     startCta: string;
     githubCta: string;
+    liveDemoCta: string;
     counters: {
       tokens: string;
       activeDays: string;
@@ -97,6 +99,7 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
   zh: {
     nav: {
       demo: "查看公开页演示",
+      liveDemo: "在线演示",
       docs: "文档",
     },
     hero: {
@@ -106,6 +109,7 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
         "一个账号、多台设备，用量与成本数据完全落在你自己的 Supabase 里。采集端只向配对实例上报，跨实例零共享。",
       startCta: "立即开始",
       githubCta: "GitHub",
+      liveDemoCta: "先看在线演示",
       counters: {
         tokens: "累计 Tokens",
         activeDays: "活跃天数",
@@ -248,6 +252,7 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
             // Sentinel: replaced with the README-derived public page URL
             // at render time (the demo lives on the operator's instance).
             { label: "公开页演示", href: "#public-page" },
+            { label: "在线演示", href: "#live-demo" },
           ],
         },
         {
@@ -281,6 +286,7 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
   en: {
     nav: {
       demo: "View live demo",
+      liveDemo: "Live demo",
       docs: "Docs",
     },
     hero: {
@@ -290,6 +296,7 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
         "One account, many devices — usage and cost data live entirely in your own Supabase. Captured locally, reported only to your instance, zero cross-instance sharing.",
       startCta: "Get started",
       githubCta: "GitHub",
+      liveDemoCta: "Open the live demo",
       counters: {
         tokens: "Total tokens",
         activeDays: "Active days",
@@ -434,6 +441,7 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
             { label: "Self-host", href: "#deploy" },
             // Sentinel for the README-derived public page URL.
             { label: "Public page demo", href: "#public-page" },
+            { label: "Live demo", href: "#live-demo" },
           ],
         },
         {

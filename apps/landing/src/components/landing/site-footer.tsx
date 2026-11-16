@@ -8,6 +8,7 @@ import { Typography } from "@heroui/react";
 import { BadgePreview } from "@/components/landing/badge-preview";
 import { badgeImageUrl, badgeSource } from "@/lib/badge-url";
 import { LANDING_COPY } from "@/lib/copy";
+import { DEMO_URL } from "@/lib/demo-url";
 import { LICENSE_URL, THIRD_PARTY_URL } from "@/lib/repo-links";
 
 const PUBLIC_PAGE_SENTINEL = "#public-page";
@@ -16,6 +17,8 @@ const PUBLIC_PAGE_SENTINEL = "#public-page";
 const SENTINEL_HREFS: Record<string, string | null> = {
   "#license": LICENSE_URL,
   "#third-party": THIRD_PARTY_URL,
+  // Read-only demo dashboard (docs/demo-instance-plan.md §6).
+  "#live-demo": DEMO_URL,
 };
 
 export function SiteFooter() {

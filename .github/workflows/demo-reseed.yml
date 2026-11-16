@@ -1,0 +1,40 @@
+# Nightly demo reseed (docs/demo-instance-plan.md §7).
+#
+# Two jobs in one: the deterministic window slides forward (dates never go
+# stale) and the free Supabase project sees activity, so it is not paused for
+# idleness. Secret names are documented in docs/demo-instance.md §5.
+#
+# The seed script refuses to run without TOKEN_USAGE_DEMO=on and refuses to
+# wipe a project that holds more than one user — the production instance can
+# therefore not be reached even if a secret were swapped by mistake.
+
+name: Demo reseed
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reseed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Reseed demo data
+        env:
+          TOKEN_USAGE_DEMO: 'on'
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.DEMO_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.DEMO_SUPABASE_SECRET_KEY }}
+          TOKEN_USAGE_DEMO_EMAIL: ${{ vars.DEMO_EMAIL }}
+          TOKEN_USAGE_DEMO_PASSWORD: ${{ secrets.DEMO_DEMO_PASSWORD }}
+          TOKEN_USAGE_DASHBOARD_URL: https://demo.token-usage.cc
+        run: node scripts/demo/seed.mjs

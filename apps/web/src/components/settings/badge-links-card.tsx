@@ -13,6 +13,8 @@ import { Button, Card, Description, Typography } from "@heroui/react";
 
 import { BadgeLinkRow } from "./badge-link-row";
 
+import { isDemoUi } from "@/lib/demo";
+
 export function BadgeLinksCard({
   badges,
   busyId,
@@ -42,6 +44,8 @@ export function BadgeLinksCard({
   onToggleRevoked: (badge: BadgeLink) => void;
 }) {
   const atLimit = badges.length >= limit;
+  // Demo instances are read-only; the server rejects the write either way.
+  const demo = isDemoUi();
 
   return (
     <Card className="p-6">
@@ -51,7 +55,7 @@ export function BadgeLinksCard({
             <Card.Title>{copy.listTitle}</Card.Title>
             <Card.Description>{copy.listDescription}</Card.Description>
           </div>
-          <Button isDisabled={atLimit} size="sm" onPress={onAdd}>
+          <Button isDisabled={demo || atLimit} size="sm" onPress={onAdd}>
             <Plus aria-hidden="true" className="size-4" />
             {copy.addBadge}
           </Button>
@@ -69,6 +73,7 @@ export function BadgeLinksCard({
               badge={badge}
               busy={busyId === badge.id}
               copy={copy}
+              readOnly={demo}
               revoking={revokingId === badge.id}
               selected={selectedId === badge.id}
               onCopy={() => {

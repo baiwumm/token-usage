@@ -18,6 +18,7 @@ import {
   DataTableCard,
   type DataTableColumn,
 } from "@/components/data-table-card";
+import { isDemoUi } from "@/lib/demo";
 import { useFormat } from "@/lib/format/format";
 
 // Icon-only table actions carry their label in a tooltip (docs/ui-spec.md).
@@ -57,6 +58,9 @@ export function DevicesTable({
   onRevoke: (device: AccountDeviceRow) => void;
 }) {
   const { formatDate, formatTokens } = useFormat();
+  // Demo instances are read-only: the action buttons are disabled and the
+  // server rejects the write anyway (proxy gate, docs/demo-instance-plan §5).
+  const demo = isDemoUi();
   const deviceColumns = useMemo<DataTableColumn<AccountDeviceRow>[]>(
     () => [
       {
@@ -94,6 +98,7 @@ export function DevicesTable({
               <Button
                 isIconOnly
                 aria-label={copy.renameAction}
+                isDisabled={demo}
                 size="sm"
                 variant="secondary"
                 onPress={() => {
@@ -107,7 +112,7 @@ export function DevicesTable({
               <Button
                 isIconOnly
                 aria-label={copy.restoreAction}
-                isDisabled={!defaultNameFor(device)}
+                isDisabled={demo || !defaultNameFor(device)}
                 size="sm"
                 variant="tertiary"
                 onPress={() => {
@@ -121,6 +126,7 @@ export function DevicesTable({
               <Button
                 isIconOnly
                 aria-label={copy.revokeAction}
+                isDisabled={demo}
                 size="sm"
                 variant="danger-soft"
                 onPress={() => {
@@ -134,7 +140,7 @@ export function DevicesTable({
         ),
       },
     ],
-    [copy, formatDate, formatTokens, onRename, onRestore, onRevoke],
+    [copy, demo, formatDate, formatTokens, onRename, onRestore, onRevoke],
   );
 
   return (

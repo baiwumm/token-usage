@@ -156,6 +156,9 @@ secret key 无前缀、绝不进浏览器包。
 | `NEXT_PUBLIC_PROJECTS_CALIBER`（可选） | `/projects` 口径：`hourly` = 桶口径，缺省 = sessions 口径；构建期内联 |
 | `NEXT_PUBLIC_BEIAN_ICP` / `NEXT_PUBLIC_BEIAN_POLICE`（可选） | `/login` 页脚备案号；空/缺省不渲染，构建期内联 |
 | `TOKEN_USAGE_FX_RATES`（可选） | 汇率覆盖 JSON，根布局解析后注入 format provider；失败回退内置快照 |
+| `TOKEN_USAGE_DEMO`（可选） | `on` = 演示实例：proxy 对 `/api/**` 写动词返回 403、匿名访问直跳 `/api/app/demo-login`；缺省关闭，生产行为不变 |
+| `NEXT_PUBLIC_TOKEN_USAGE_DEMO`（可选） | 演示实例的前端开关（只读横幅与禁用控件，构建期内联） |
+| `TOKEN_USAGE_DEMO_EMAIL` / `TOKEN_USAGE_DEMO_PASSWORD` | 演示账号与口令（服务端专用，自动登录；绝不进浏览器包），见 `docs/demo-instance.md` |
 
 契约冻结：public-config 响应字段名 `supabase_anon_key` 不变（CLI 面冻结），其值取 publishable key。
 
@@ -200,7 +203,8 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
    `docs/sources-capture-audit.md`）。
 6. **`deep_thinker` 成就**：reasoning 覆盖率低于 50% 门槛，阈值草案保留在
    `docs/achievements-plan.md` §2.3，覆盖率提升后复议。
-7. **demo 实例页**：**2026-11-16 已立项，方案待操作者批准**（`docs/demo-instance-plan.md`）。
+7. **demo 实例页**：**2026-11-16 已立项并完成 P0–P2，P3（建库 / 部署 / 绑域 / secrets）待操作者执行**
+   （`docs/demo-instance-plan.md`；运维步骤见 `docs/demo-instance.md`）。
    五项决策已拍板：独立 Supabase + 确定性种子脚本、`demo.token-usage.cc` 子域、纯只读
    演示账号、landing 保留生产公开页并新增演示入口、Free 档 + 每晚重灌。批准后按该文档
    §8 分期执行。文档站已另立项落地（2026-11-16，不用

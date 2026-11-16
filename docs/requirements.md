@@ -42,6 +42,9 @@ CLI API 外，所有页面未登录一律重定向到登录页，重定向须保
 
 - **不做**：排行榜、上游云端成就（依赖排名与全局编号）、pet/quota 桌面 widget、`/selfhost` 降级页、
   社区多实例管理面板、数据导入导出工具、端点限流与防滥用（进 backlog）。
+- **官方 demo 实例**：独立部署的**只读**演示（`docs/demo-instance-plan.md` / `docs/demo-instance.md`），
+  与任何自部署实例相互隔离（不同 Supabase / Vercel 项目）；关闭注册与配对，`/api/**` 写请求一律 403，
+  数据为确定性种子、每晚重置。写闸门在 `proxy.ts`，不改变契约层错误码。
 - **Sessions 只采集用量元数据**：source、session_id、开始/结束时间、项目标签、token 拆分、模型
   拆分。**不采集 prompt、对话正文、绝对路径、resume command、会话标题**；项目标签由客户端取
   basename，服务端再次清洗。Sessions 为空不影响仪表盘聚合，旧 CLI 继续可用。
@@ -99,3 +102,5 @@ last-wins 语义跨版本保持不变（对账基线）。成就与段位不建�
   `docs/badge.md`。
 - **部署**：全新 Supabase / Vercel 账号按 `docs/deploy-guide.md` 从零跑通：建库 → 部署 → CLI
   配对 → 上报 → 仪表盘可见。
+- **demo 实例**：匿名打开 `https://demo.token-usage.cc/` ≤2 跳直达仪表盘；写请求 403、配对禁用；
+  与生产实例零共享（不同 project ref、浏览器零数据表直连）；每晚种子重灌后日期不陈旧。

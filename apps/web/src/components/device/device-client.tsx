@@ -26,8 +26,10 @@ import {
 import { PendingButton } from "@/components/pending-button";
 import { authBrowserClient } from "@/lib/auth/browser";
 import { LOGIN_PATH } from "@/lib/auth/next-path";
+import { DEMO_COPY } from "@/lib/copy/demo";
 import { DEVICE_COPY } from "@/lib/copy/device";
 import { useLocale } from "@/lib/copy/locale";
+import { isDemoUi } from "@/lib/demo";
 import {
   DashboardApiError,
   grantDeviceFlow,
@@ -61,6 +63,9 @@ function DeviceClientInner() {
   const searchParams = useSearchParams();
   const [locale] = useLocale();
   const copy = DEVICE_COPY[locale];
+  // Pairing is disabled on the demo instance (docs/demo-instance-plan §5): the
+  // approve call is a write, and the server answers 403 regardless.
+  const demo = isDemoUi();
 
   const urlCode = searchParams.get("user_code") ?? "";
   const [phase, setPhase] = useState<Phase>(
@@ -167,6 +172,11 @@ function DeviceClientInner() {
         <Typography color="muted" type="body-sm">
           {copy.pageSubtitle}
         </Typography>
+        {demo ? (
+          <Typography className="text-accent" type="body-xs">
+            {DEMO_COPY[locale].readOnly}
+          </Typography>
+        ) : null}
       </header>
 
       {phase === "input" ? (
@@ -214,7 +224,7 @@ function DeviceClientInner() {
               ) : null}
               <PendingButton
                 className="self-center"
-                isDisabled={draft.length !== CODE_LENGTH}
+                isDisabled={demo || draft.length !== CODE_LENGTH}
                 pending={pending}
                 type="submit"
               >
@@ -244,6 +254,7 @@ function DeviceClientInner() {
             ) : null}
             <div className="flex flex-wrap items-center justify-center gap-2">
               <PendingButton
+                isDisabled={demo}
                 pending={pending}
                 onPress={() => void approve(activeCode)}
               >

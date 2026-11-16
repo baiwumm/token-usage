@@ -42,6 +42,7 @@ export function BadgeLinkRow({
   badge,
   busy,
   copy,
+  readOnly = false,
   revoking,
   selected,
   onCopy,
@@ -53,6 +54,8 @@ export function BadgeLinkRow({
   badge: BadgeLink;
   busy: boolean;
   copy: BadgeCopy;
+  /** Demo instance: mutations are disabled (copying the link still works). */
+  readOnly?: boolean;
   /** True while this row's revoke/restore PATCH is in flight. */
   revoking: boolean;
   selected: boolean;
@@ -101,7 +104,7 @@ export function BadgeLinkRow({
           <Button
             isIconOnly
             aria-label={copy.labelDialogEdit}
-            isDisabled={busy}
+            isDisabled={readOnly || busy}
             size="sm"
             variant="tertiary"
             onPress={onEdit}
@@ -124,7 +127,7 @@ export function BadgeLinkRow({
           <Button
             isIconOnly
             aria-label={revoked ? copy.restore : copy.revoke}
-            isDisabled={busy}
+            isDisabled={readOnly || busy}
             size="sm"
             variant="tertiary"
             onPress={onToggleRevoked}
@@ -142,7 +145,7 @@ export function BadgeLinkRow({
           <Button
             isIconOnly
             aria-label={copy.deleteBadge}
-            isDisabled={busy}
+            isDisabled={readOnly || busy}
             size="sm"
             variant="danger-soft"
             onPress={onDelete}

@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { LANDING_COPY } from "@/lib/copy";
+import { DEMO_URL } from "@/lib/demo-url";
 import { NPM_CLI_URL, REPO_URL } from "@/lib/repo-links";
 
 /** 顶栏图标按钮共用的箭头提示。 */
@@ -68,6 +69,16 @@ export function NavBar({ demoUrl }: { demoUrl: string | null }) {
               onPress={() => router.push("/docs/")}
             >
               <BookOpen className="size-4" />
+            </Button>
+          </NavTooltip>
+          <NavTooltip label={copy.nav.liveDemo}>
+            <Button
+              size="sm"
+              variant="outline"
+              onPress={() => openExternal(DEMO_URL)}
+            >
+              <ChartLineArrowUp className="size-4" />
+              {copy.nav.liveDemo}
             </Button>
           </NavTooltip>
           <div className="hidden items-center gap-2 md:flex">

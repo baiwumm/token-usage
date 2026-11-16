@@ -5,7 +5,7 @@
 // noscript 兜底）；双 CTA = 立即开始（站内文档快速开始 /docs/start/）+
 // GitHub 仓库链接（2026-11-16 换：文档区内页已落地，第一跳直接进文档）。
 
-import { ArrowUpRight } from "@gravity-ui/icons";
+import { ArrowUpRight, ChartLineArrowUp } from "@gravity-ui/icons";
 import { Button, Typography } from "@heroui/react";
 import { useRouter } from "next/navigation";
 
@@ -13,6 +13,7 @@ import { FlowNumber } from "./flow-number";
 import { SourceLogoLoop } from "./source-logo-loop";
 
 import { LANDING_COPY } from "@/lib/copy";
+import { DEMO_URL } from "@/lib/demo-url";
 import { DEPLOY_GUIDE_URL, REPO_URL } from "@/lib/repo-links";
 import { formatCompactTokens, formatCost, SNAPSHOT } from "@/lib/snapshot";
 
@@ -110,6 +111,18 @@ export function Hero() {
                 size="lg"
                 style={{ animationDelay: "320ms" }}
                 variant="outline"
+                onPress={() =>
+                  window.open(DEMO_URL, "_blank", "noopener,noreferrer")
+                }
+              >
+                {copy.hero.liveDemoCta}
+                <ChartLineArrowUp className="size-4" />
+              </Button>
+              <Button
+                className="landing-reveal"
+                size="lg"
+                style={{ animationDelay: "400ms" }}
+                variant="tertiary"
                 onPress={() =>
                   window.open(REPO_URL, "_blank", "noopener,noreferrer")
                 }

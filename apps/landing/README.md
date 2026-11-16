@@ -43,6 +43,18 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 **light / dark 两版并排**（`badgeImageUrl(style, theme)`），暗色页上亮色版更醒目，
 成对展示填满右半区。
 
+## 在线演示入口
+
+`src/lib/demo-url.ts` 是唯一来源（`DEMO_URL = https://demo.token-usage.cc`）；静态导出没有
+运行时 env，故构建期固定。
+
+- 顶栏「在线演示」按钮、Hero 第三个 CTA、页脚「产品」列同指 `DEMO_URL`（页脚走 `#live-demo`
+  哨兵，在 `site-footer.tsx` 的 `SENTINEL_HREFS` 里解析，解析失败则隐藏该条）；
+- 演示实例是仓库内 `apps/web` 的**只读**部署（`TOKEN_USAGE_DEMO=on`，匿名自动登录演示账号），
+  数据由 `scripts/demo/seed.mjs` 每晚重灌，见 `docs/demo-instance.md`；
+- 页脚徽章与 `/u/` 公开页**不受影响**：仍从仓库拷 README 解析、仍指操作者的生产实例
+  （`src/lib/badge-url.ts` 不改），demo 只增加仪表盘入口。
+
 ## 首访体验（遮罩与徽章占位）
 
 - **首访遮罩**：根布局输出 `#boot-veil`（品牌 logo + 字标，`visibility:hidden` 待命）+

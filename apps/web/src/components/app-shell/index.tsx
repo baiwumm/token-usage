@@ -22,6 +22,7 @@ import {
   setCollapsedPreference,
   subscribeCollapsed,
 } from "./collapse-state";
+import { DemoBanner } from "./demo-banner";
 import { MobileDrawer } from "./mobile-drawer";
 import { firstNameOf, titleForPath } from "./page-title";
 import { Sidebar } from "./sidebar";
@@ -119,6 +120,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           collapsed ? "lg:pl-19" : "lg:pl-66",
         )}
       >
+        <DemoBanner />
+
         <TopBar
           collapsed={collapsed}
           copy={copy}
