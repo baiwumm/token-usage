@@ -11,18 +11,26 @@ import {
   Input,
   Label,
   TextField,
+  Typography,
   toast,
 } from "@heroui/react";
 import { useState, type FormEvent } from "react";
 
 import { PendingButton } from "@/components/pending-button";
 import { authBrowserClient } from "@/lib/auth/browser";
+import { DEMO_COPY } from "@/lib/copy/demo";
 import { useLocale } from "@/lib/copy/locale";
 import { SETTINGS_COPY } from "@/lib/copy/settings";
+import { isDemoUi } from "@/lib/demo";
 
 export function PasswordCard() {
   const [locale] = useLocale();
   const copy = SETTINGS_COPY[locale];
+  // Demo instances are read-only (docs/demo-instance-plan.md §5). Changing the
+  // shared demo account's password would break /api/app/demo-login for every
+  // visitor (it signs in with TOKEN_USAGE_DEMO_PASSWORD), so this card is
+  // locked on the client too — auth traffic never reaches the proxy gate.
+  const demo = isDemoUi();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,7 +38,7 @@ export function PasswordCard() {
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || demo) return;
     if (password.length < 8) {
       setError(copy.passwordLengthError);
 
@@ -81,6 +89,7 @@ export function PasswordCard() {
           <TextField
             isRequired
             className="flex flex-col gap-1.5"
+            isDisabled={demo}
             minLength={8}
             name="password"
             type="password"
@@ -97,6 +106,7 @@ export function PasswordCard() {
           <TextField
             isRequired
             className="flex flex-col gap-1.5"
+            isDisabled={demo}
             minLength={8}
             name="password_confirm"
             type="password"
@@ -112,10 +122,15 @@ export function PasswordCard() {
           </TextField>
           {error ? <ErrorMessage role="alert">{error}</ErrorMessage> : null}
           <div>
-            <PendingButton pending={busy} type="submit">
+            <PendingButton isDisabled={demo} pending={busy} type="submit">
               {copy.passwordSave}
             </PendingButton>
           </div>
+          {demo ? (
+            <Typography className="text-accent" type="body-xs">
+              {DEMO_COPY[locale].readOnly}
+            </Typography>
+          ) : null}
         </Form>
       </Card.Content>
     </Card>

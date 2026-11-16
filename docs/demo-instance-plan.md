@@ -93,7 +93,8 @@ apps/web（route.ts + service-role）  ──►  demo Supabase（token_* 表，
 | `src/proxy.ts` | demo 模式：写动词（非 GET / HEAD / OPTIONS）打向 `/api/**` 一律 `403 {"error":"Demo instance is read-only"}`，只放行 `/api/app/demo-login`；未登录访问受保护页 → 直跳 `/api/app/demo-login?next=<原路径>` |
 | `src/app/api/app/demo-login/route.ts`（新） | 非 demo 模式 404；demo 模式用服务端 `@supabase/ssr` 客户端以 `TOKEN_USAGE_DEMO_EMAIL` / `TOKEN_USAGE_DEMO_PASSWORD` 登录写 cookie，302 回 `next`（口令不出服务端） |
 | `src/components/app-shell/demo-banner.tsx`（新）+ `index.tsx` | 壳顶部 strip：「演示实例 · 只读 · 数据每晚重置 · 前往自部署」，内容水平居中（避开左侧栏视觉重心）；无独立底色，与顶栏同处一个 sticky 头部栈（`index.tsx` 外层容器提供背景与毛玻璃），滚动时一并固定 |
-| Settings / 徽章 / Projects / `/device` 客户端组件 | demo 模式隐藏或 disable 写操作（新增/吊销/删除徽章、改资料、改项目、设备改名/吊销、批准配对），统一提示「演示实例不可修改」 |
+| Settings / 徽章 / Projects / `/device` 客户端组件 | demo 模式隐藏或 disable 写操作（新增/吊销/删除徽章、改资料/头像/口令、改项目、设备改名/吊销、批准配对），统一提示「演示实例不可修改」 |
+| 账户区三张卡（`settings/profile-card.tsx`、`avatar-card.tsx`、`password-card.tsx`） | 额外硬约束：这三处写的是 Supabase `auth.updateUser`（user_metadata / password）与 storage `avatars` 桶，浏览器直连 Supabase，**不经过 `proxy.ts`**，服务端闸门看不见它们。因此在组件内以 `isDemoUi()` 锁死输入与按钮（口令卡尤其关键：改掉共享账号口令会让 `/api/app/demo-login` 对后续所有访客失败） |
 | 配置护栏 | demo 模式下 `TOKEN_USAGE_DASHBOARD_URL` 命中生产域名 → 启动即 500「misconfigured demo」 |
 
 新增环境变量（批准后同步回写 `docs/rewrite-plan.md` §5）：
@@ -171,7 +172,8 @@ TOKEN_USAGE_DEMO_PASSWORD=…            # 服务端专用，绝不进浏览器�
 | --- | --- |
 | Supabase Free 项目 7 天闲置暂停 | 每晚 reseed 保活；workflow 停跑需人工补一次 |
 | Free 组织项目数上限 | 若操作者已有 2 个项目需先腾位或升级，P3 前确认 |
-| 共享演示账号没有访客隔离 | 纯只读 + 每晚重灌；写闸门在服务端（proxy），不靠 UI |
+| 共享演示账号没有访客隔离 | 纯只读 + 每晚重灌；业务写闸门在服务端（proxy），不靠 UI |
+| 浏览器→Supabase 的认证写（display_name / avatar / password）绕过 proxy 闸门 | 账户区三张卡在 UI 层锁死（见 §5）；残余风险是对 `/settings` 持有该会话者可直接调 auth API 改名/换头像/改口令 → 若需堵死，只能在 demo 专属 Supabase 侧做（Auth 设置或 storage policy），不改应用架构 |
 | 契约层改动 | 403 只做部署级 proxy 闸门，不动 handler 与错误码；文档先行并经操作者确认 |
 | 子域绑域不可由 Agent 完成 | P3 由操作者控制台操作，Agent 提供逐条清单与自检 |
 | 种子内容泄露真实信息 | 全部虚构项目名与仓库；脚本不读任何本机采集数据 |

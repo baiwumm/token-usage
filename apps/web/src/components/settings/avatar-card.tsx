@@ -5,13 +5,22 @@
 // USER_UPDATED auth event.
 
 import { Camera, TrashBin } from "@gravity-ui/icons";
-import { Avatar, Button, Card, Spinner, toast } from "@heroui/react";
+import {
+  Avatar,
+  Button,
+  Card,
+  Spinner,
+  toast,
+  Typography,
+} from "@heroui/react";
 import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 
 import { useAvatarUpload, useProfile } from "@/lib/auth/profile";
+import { DEMO_COPY } from "@/lib/copy/demo";
 import { useLocale } from "@/lib/copy/locale";
 import { SETTINGS_COPY } from "@/lib/copy/settings";
+import { isDemoUi } from "@/lib/demo";
 
 // react-easy-crop is only needed once a file is picked; keep it out of the
 // settings first-load chunk.
@@ -26,6 +35,10 @@ export function AvatarCard() {
   const { uploadAvatar, deleteAvatar } = useAvatarUpload();
   const [locale] = useLocale();
   const copy = SETTINGS_COPY[locale];
+  // Demo instances are read-only (docs/demo-instance-plan.md §5). Avatar
+  // uploads go browser → Supabase storage + auth metadata, bypassing the proxy
+  // write gate, so the read-only lock lives here.
+  const demo = isDemoUi();
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -38,6 +51,7 @@ export function AvatarCard() {
     .toUpperCase();
 
   function pickImage(file: File) {
+    if (demo) return;
     // Revoke the previous objectURL before replacing it.
     if (imageSrc) URL.revokeObjectURL(imageSrc);
     setImageSrc(URL.createObjectURL(file));
@@ -52,6 +66,7 @@ export function AvatarCard() {
   }
 
   async function runUpload(file: File) {
+    if (demo) return { error: DEMO_COPY[locale].readOnly };
     setUploading(true);
 
     const { error } = await uploadAvatar(file);
@@ -68,6 +83,7 @@ export function AvatarCard() {
   }
 
   async function runDelete() {
+    if (demo) return;
     setDeleting(true);
 
     const { error } = await deleteAvatar();
@@ -111,7 +127,7 @@ export function AvatarCard() {
               }}
             />
             <Button
-              isDisabled={uploading || deleting}
+              isDisabled={demo || uploading || deleting}
               size="sm"
               variant="outline"
               onPress={() => fileInputRef.current?.click()}
@@ -121,7 +137,7 @@ export function AvatarCard() {
             </Button>
             {profile?.avatarUrl ? (
               <Button
-                isDisabled={uploading || deleting}
+                isDisabled={demo || uploading || deleting}
                 size="sm"
                 variant="danger-soft"
                 onPress={() => void runDelete()}
@@ -136,6 +152,11 @@ export function AvatarCard() {
             ) : null}
           </div>
         </div>
+        {demo ? (
+          <Typography className="text-accent" type="body-xs">
+            {DEMO_COPY[locale].readOnly}
+          </Typography>
+        ) : null}
       </Card.Content>
       {cropLoaded ? (
         <ImageCropDialog

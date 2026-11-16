@@ -4,13 +4,23 @@
 // Avatar/profile state lives in Supabase auth user_metadata; the sidebar
 // reflects updates via the USER_UPDATED auth event.
 
-import { Card, Form, Input, Label, TextField, toast } from "@heroui/react";
+import {
+  Card,
+  Form,
+  Input,
+  Label,
+  TextField,
+  toast,
+  Typography,
+} from "@heroui/react";
 import { useEffect, useRef, useState } from "react";
 
 import { PendingButton } from "@/components/pending-button";
 import { useProfile } from "@/lib/auth/profile";
+import { DEMO_COPY } from "@/lib/copy/demo";
 import { useLocale } from "@/lib/copy/locale";
 import { SETTINGS_COPY } from "@/lib/copy/settings";
+import { isDemoUi } from "@/lib/demo";
 
 export function ProfileCard() {
   const { profile, updateProfile } = useProfile();
@@ -26,9 +36,13 @@ export function ProfileCard() {
 
   const [locale] = useLocale();
   const copy = SETTINGS_COPY[locale];
+  // Demo instances are read-only (docs/demo-instance-plan.md §5). This card
+  // writes auth user_metadata straight to Supabase from the browser, so the
+  // proxy gate never sees it — the lock has to live here.
+  const demo = isDemoUi();
 
   async function save() {
-    if (saving) return;
+    if (saving || demo) return;
     setSaving(true);
 
     const { error } = await updateProfile({
@@ -59,6 +73,7 @@ export function ProfileCard() {
         >
           <TextField
             isRequired
+            isDisabled={demo}
             name="display_name"
             value={name}
             onChange={setName}
@@ -74,10 +89,19 @@ export function ProfileCard() {
             <Input variant="secondary" />
           </TextField>
           <div>
-            <PendingButton pending={saving} onPress={() => void save()}>
+            <PendingButton
+              isDisabled={demo}
+              pending={saving}
+              onPress={() => void save()}
+            >
               {copy.profileSave}
             </PendingButton>
           </div>
+          {demo ? (
+            <Typography className="text-accent" type="body-xs">
+              {DEMO_COPY[locale].readOnly}
+            </Typography>
+          ) : null}
         </Form>
       </Card.Content>
     </Card>
