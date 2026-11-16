@@ -82,7 +82,6 @@ function seedBadgeScenario(): void {
     display_name: "Ming Wei",
     timezone: "Asia/Shanghai",
     allowed_projects: ["token-usage"],
-    show_page_entry: true,
     page_token: PAGE_TOKEN,
     page_enabled: true,
     created_at: "2026-10-01T00:00:00.000Z",

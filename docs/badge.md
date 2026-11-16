@@ -241,8 +241,6 @@ alter table public.token_public_badges
 
 -- 20261114000002_token_public_badge_settings_page_entry.sql（幂等，操作者拍板）
 alter table public.token_public_badge_settings
-  add column if not exists show_page_entry boolean not null default true;
-alter table public.token_public_badge_settings
   add column if not exists page_token text
     check (page_token is null or page_token ~ '^tu_page_[A-Za-z0-9_-]{32}$');
 create unique index if not exists token_public_badge_settings_page_token_key
@@ -274,8 +272,7 @@ alter table public.token_public_badge_settings
   已吊销行也计入；命中 → `409 {error:"Label already exists"}`。弹窗先用本地列表即时
   判重，服务端同步镜像校验，409 回显为弹窗内联错误；不设 DB 唯一索引（写入路径唯一，
   应用层校验足够，且避免卡死历史空名行）
-- `show_page_entry`（默认 true，2026-11-14）控制登录后顶栏是否显示「公开页」入口按钮，
-  **不控制公开页本身**；`page_enabled`（默认 true，2026-11-14）是公开页自己的开关——关闭时
+- `page_enabled`（默认 true，2026-11-14）是公开页自己的开关——关闭时
   `/u/` 404，开启时正常访问；徽章总开关 `enabled` 只影响徽章图片（§2.3），不触及页面；
   `page_token` 是每用户一份公开页的唯一钥匙（§3.2），settings 行创建时生成，迁移前的
   旧行首次读取配置时懒生成
