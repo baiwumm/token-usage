@@ -13,6 +13,7 @@ import { type Key } from "react";
 
 import { NAV_COPY } from "@/lib/copy/nav";
 import { useLocale } from "@/lib/copy/locale";
+import { isDemoUi } from "@/lib/demo";
 
 function initialsFor(name: string, email: string | null): string {
   if (name.trim()) return name.trim().charAt(0).toUpperCase();
@@ -63,6 +64,11 @@ export function SidebarProfile({
   const copy = NAV_COPY[locale];
   const email = profile?.email ?? null;
   const displayName = profile?.displayName || email || "…";
+  // Demo instances sign the visitor in server-side on every page hit, so
+  // "sign out" would bounce straight back into the dashboard (and /login is
+  // forwarded to /api/app/demo-login). Leaving a dead entry point out is
+  // clearer than a button that appears to do nothing.
+  const demo = isDemoUi();
 
   // Before the first read resolves, the avatar would fall back to "?" — a
   // skeleton reads as "loading" instead of "unknown account".
@@ -160,14 +166,16 @@ export function SidebarProfile({
 
             <Separator />
 
-            <Dropdown.Item
-              id="signout"
-              textValue={copy.signOut}
-              variant="danger"
-            >
-              <ArrowRightFromSquare className="text-danger size-4 shrink-0" />
-              <Label>{copy.signOut}</Label>
-            </Dropdown.Item>
+            {demo ? null : (
+              <Dropdown.Item
+                id="signout"
+                textValue={copy.signOut}
+                variant="danger"
+              >
+                <ArrowRightFromSquare className="text-danger size-4 shrink-0" />
+                <Label>{copy.signOut}</Label>
+              </Dropdown.Item>
+            )}
           </Dropdown.Menu>
         </Dropdown.Popover>
       </Dropdown>

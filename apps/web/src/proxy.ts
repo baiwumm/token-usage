@@ -25,10 +25,11 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { authConfig } from "@/lib/auth/config";
-import { loginPathFor } from "@/lib/auth/next-path";
+import { LOGIN_PATH, loginPathFor } from "@/lib/auth/next-path";
 import { CORS_HEADERS } from "@/lib/api/http";
 import {
   DEMO_WRITE_ERROR,
+  demoCredentials,
   demoMisconfiguration,
   isDemoInstance,
 } from "@/lib/demo";
@@ -96,6 +97,37 @@ function isProtectedPage(pathname: string): boolean {
   );
 }
 
+/**
+ * Demo mode: the login form is not part of the demo and must stay unreachable
+ * (2026-11-17). Its magic-link / recovery buttons hand arbitrary addresses to
+ * the demo Supabase project's mailer — a free send-mail channel on a public
+ * instance — and the shared account signs in server-side anyway. Visitors are
+ * forwarded to /api/app/demo-login instead, carrying a ?next= when one is
+ * present.
+ *
+ * Two conditions keep this from turning into a redirect loop or a blank page:
+ * `?error=` is the direct check above (demo-login's own failure target is
+ * /login?error=…), and a demo deploy without credentials/auth config leaves
+ * /login reachable because rendering its explanation is the only useful thing
+ * left.
+ */
+function demoLoginRedirect(request: NextRequest): NextResponse | null {
+  if (!isDemoInstance()) return null;
+
+  const { pathname, searchParams } = request.nextUrl;
+
+  if (pathname !== LOGIN_PATH) return null;
+  if (searchParams.has("error")) return null;
+  if (!demoCredentials() || !authConfig()) return null;
+
+  const demoLogin = new URL(DEMO_LOGIN_PATH, request.nextUrl.origin);
+  const next = searchParams.get("next");
+
+  if (next) demoLogin.searchParams.set("next", next);
+
+  return NextResponse.redirect(demoLogin);
+}
+
 export async function proxy(request: NextRequest) {
   const method = request.method.toUpperCase();
   const { pathname } = request.nextUrl;
@@ -126,6 +158,10 @@ export async function proxy(request: NextRequest) {
   const demoBlocked = demoWriteResponse(method, pathname);
 
   if (demoBlocked) return demoBlocked;
+
+  const demoLogin = demoLoginRedirect(request);
+
+  if (demoLogin) return demoLogin;
 
   if (!isProtectedPage(pathname)) return NextResponse.next();
 

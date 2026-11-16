@@ -96,6 +96,44 @@ describe("demo page guard", () => {
   });
 });
 
+describe("demo login form", () => {
+  // The redirect only fires when the deployment could actually sign someone
+  // in (demo credentials + browser-auth env), so these tests provide the auth
+  // pair the other cases leave out.
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://demo-auth.example.test";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "fake-publishable-key";
+  });
+
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  });
+
+  it("forwards /login to the shared-account sign-in, keeping ?next=", async () => {
+    const response = await proxy(request("/login?next=%2Fsessions"));
+    const target = new URL(response.headers.get("location") || "");
+
+    expect([302, 307]).toContain(response.status);
+    expect(target.pathname).toBe("/api/app/demo-login");
+    expect(target.searchParams.get("next")).toBe("/sessions");
+  });
+
+  it("keeps /login?error=… reachable as the failure landing page", async () => {
+    // demo-login redirects its own failures here; forwarding again would loop.
+    expect(
+      isPassThrough(await proxy(request("/login?error=demo_unavailable"))),
+    ).toBe(true);
+  });
+
+  it("leaves /login usable when demo auth is not configured", async () => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+    expect(isPassThrough(await proxy(request("/login")))).toBe(true);
+  });
+});
+
 describe("production deployments", () => {
   it("is inert without the demo flag", async () => {
     delete process.env.TOKEN_USAGE_DEMO;
