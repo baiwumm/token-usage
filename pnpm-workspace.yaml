@@ -9,6 +9,7 @@ packages:
   - packages/*
 allowBuilds:
   '@journeyapps/wa-sqlite': true
+  esbuild: true
 minimumReleaseAgeExclude:
   - '@next/env@16.4.4'
   - '@next/eslint-plugin-next@16.4.4'
