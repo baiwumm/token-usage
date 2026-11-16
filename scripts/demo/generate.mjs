@@ -466,7 +466,6 @@ export function generateDemoData(options = {}) {
     display_name: "Token Usage Demo",
     timezone: "Asia/Shanghai",
     allowed_projects: DEMO_PROJECTS.map((project) => project.key),
-    show_page_entry: true,
     page_token: demoPageToken(seed),
     page_enabled: true,
     created_at: accountCreatedAt,
