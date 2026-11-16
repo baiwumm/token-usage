@@ -13,6 +13,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [{ userAgent: "*", allow: "/" }],
     sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
+    // Host 指令要裸主机名，不能带协议（Yandex 规范）；`https://…` 会被忽略。
+    host: new URL(SITE_URL).host,
   };
 }

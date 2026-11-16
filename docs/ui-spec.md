@@ -808,9 +808,12 @@ cookie 会话；Loading 骨架按三卡结构逐块占位（账户设置行/列�
   工具类改的是独立属性，旧写法列 `transform` 不生效，淡入淡出只剩透明度在动（2026-11-15 修复）。
   悬停只换 accent 描边与文字色、不上浮；按压沿用 Button 自带的 96% 缩放，不叠加自写 scale；
   `visibility` 同列过渡项以免淡出被硬切；reduced-motion 下过渡关停、点击瞬时跳顶。
-- SEO 与分享卡：标题 / 描述 / 关键词 / canonical / OG / Twitter 统一在根布局（`src/lib/seo.ts`
-  取值），社交卡由 `app/opengraph-image.tsx` 构建期生成（暗黑终端风格 + 快照数字，文案为 ASCII——
-  Satori 不支持仓库内的 woff2 字体）；`app/sitemap.ts`、`app/robots.ts` 静态产出。
+- SEO 与分享卡：标题 / 描述 / 关键词 / canonical / OG / Twitter 统一从 `src/lib/seo.ts`
+  取值（规范域 `SITE_URL` 为 `https://www.token-usage.cc`），文档页在
+  `generateMetadata` 里按页覆盖 canonical / OG / Twitter 并注入 TechArticle +
+  BreadcrumbList；社交卡由 `app/opengraph-image.tsx` 构建期生成（暗黑终端风格 + 快照数字，
+  文案为 ASCII——Satori 不支持仓库内的 woff2 字体）；`app/sitemap.ts`、`app/robots.ts`、
+  `app/llms.txt/route.ts` 静态产出。
 - 类名：Tailwind 任意值写法收敛到 canonical（`grid-cols-52`、`aspect-16/10`、`mask-[...]`）；
   圆角例外——`rounded-[2px]` 保留（canonical `rounded-sm` = 4px 会变值，同 AGENTS 约束 5）。
 - 375px 可用、无页面级横向滚动；文案中文单语（`lib/copy.ts` 留 en 结构位）。

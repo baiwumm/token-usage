@@ -51,7 +51,9 @@ export function SourceLogoLoop() {
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      alt=""
+                      // 容器整体 aria-hidden（装饰性 marquee），但保留具名 alt：
+                      // 搜索引擎与 SEO 审计读取 alt 属性，空 alt 会被记为缺失。
+                      alt={`${logo.label} logo`}
                       className="h-5 w-auto opacity-70"
                       height={20}
                       loading="lazy"

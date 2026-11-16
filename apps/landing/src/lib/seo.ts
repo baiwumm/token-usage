@@ -1,9 +1,23 @@
 // 落地页 SEO 常量（单一来源）：根布局 metadata、sitemap、robots 与页内
 // JSON-LD 都从这里取，避免标题/描述/关键词在多处漂移。
-// 落地页是独立部署域（docs/requirements.md #19），域名写死在此，与
-// metadataBase、页脚落款保持一致。
+// 落地页是独立部署域（docs/requirements.md #19），规范域写死在此，并与
+// metadataBase 保持一致（页脚落款只写品牌域，不带 www）。
+//
+// 规范主机名是 **www**：EdgeOne 的 `$host → $wwwhost` 会把 apex 301 到
+// www（仓库根 edgeone.json），canonical / OG / sitemap / robots / JSON-LD
+// 必须直接写 www，否则爬虫拿到的每条 URL 都要多跳一次 301。
 
-export const SITE_URL = "https://token-usage.cc";
+export const SITE_URL = "https://www.token-usage.cc";
+
+/**
+ * 文档页绝对 URL。`index.mdx` 的 slug 为空数组，拼接后是 `/docs//`——
+ * canonical 与 sitemap 都必须落到 `/docs/`，不能出现双斜杠。
+ */
+export function docsPageUrl(slugs: string[]): string {
+  return slugs.length > 0
+    ? `${SITE_URL}/docs/${slugs.join("/")}/`
+    : `${SITE_URL}/docs/`;
+}
 
 export const SITE_NAME = "Token Usage";
 
@@ -31,3 +45,10 @@ export const SITE_KEYWORDS = [
 
 /** 社交卡片：`app/opengraph-image.tsx` 生成的固定尺寸（也用于 TS 类型一致性）。 */
 export const SITE_OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
+
+/** 社交卡片的公开路径（文件约定生成，静态导出为 out/opengraph-image）。 */
+export const SITE_OG_IMAGE_PATH = "/opengraph-image";
+
+/** 社交卡片 alt：根布局自动注入与文档页手动覆盖共用，避免两处漂移。 */
+export const SITE_OG_IMAGE_ALT =
+  "Token Usage — self-hosted AI token usage tracking";

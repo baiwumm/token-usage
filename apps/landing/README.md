@@ -97,9 +97,12 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 
 ## SEO 与社交分享
 
-首页的 SEO 事实源是 `src/lib/seo.ts`（站点名、标题、描述、关键词、域名）：根布局
-`src/app/layout.tsx` 用它拼 `metadata`（canonical / Open Graph / Twitter / robots /
-icons / themeColor），页面里不再重复声明标题与描述。
+首页与 `/docs` 的 SEO 事实源是 `src/lib/seo.ts`（站点名、标题、描述、关键词、规范域
+`SITE_URL = https://www.token-usage.cc`）：根布局 `src/app/layout.tsx` 用它拼 `metadata`
+（canonical / Open Graph / Twitter / robots / icons / themeColor），文档页的
+`generateMetadata` 再按页覆盖标题、描述、canonical 与 Open Graph。**规范主机名是 www**
+（apex 由 EdgeOne 301 到 www），任何 canonical / sitemap / JSON-LD 都不要再写 apex，否则
+爬虫拿到的每条 URL 都要多跳一次。
 
 - **社交卡**：`src/app/opengraph-image.tsx` 用 `next/og` 的 `ImageResponse` 在**构建期**
   生成一张 1200×630 的暗黑终端风格卡片（终端窗口 + 一年热力条），数字直接读
@@ -118,13 +121,19 @@ icons / themeColor），页面里不再重复声明标题与描述。
   静态近似；改 `globals.css` 的强调色时同步那一组常量。
 - **sitemap / robots**：`src/app/sitemap.ts` 与 `src/app/robots.ts` 在构建期静态产出
   `/sitemap.xml`、`/robots.txt`（原 `public/robots.txt` 已删除——同路径只能有一个来源）。
-  sitemap 覆盖首页 + `/docs` 全部文档页（`source.getPages()` 枚举）；`lastModified` 取
-  快照的 `fetchedAt` 而非构建时间，未同步到新数据时不会虚报更新。
-- **结构化数据**：`src/app/page.tsx` 内联 `SoftwareApplication` JSON-LD。
+  sitemap 覆盖首页 + `/docs` 全部文档页（`source.getPages()` 枚举；`index.mdx` 的 slug 为空，
+  由 `docsPageUrl()` 落成 `/docs/` 而非 `/docs//`）；`lastModified` 取快照的 `fetchedAt`
+  而非构建时间，未同步到新数据时不会虚报更新。`robots.txt` 的 `Host` 输出裸主机名。
+- **llms.txt**：`src/app/llms.txt/route.ts` 构建期从文档源生成 `/llms.txt`（llmstxt.org
+  约定），新增 mdx 自动进入索引，不需要手工维护列表。
+- **结构化数据**：`src/app/page.tsx` 内联 `SoftwareApplication` JSON-LD；文档页在
+  `docs/[[...slug]]/page.tsx` 内联 `TechArticle`（目录页为 `CollectionPage`）+
+  `BreadcrumbList`，标题、描述与面包屑都从当前文档派生。
 
 ## 部署（腾讯云 EdgeOne Pages · Makers）
 
-实际托管：**腾讯云 EdgeOne Pages（Makers 套餐）**，域名绑定 **token-usage.cc**。仓库为
+实际托管：**腾讯云 EdgeOne Pages（Makers 套餐）**，规范域 **www.token-usage.cc**（apex
+301 到 www）。仓库为
 pnpm monorepo，接入方式固定为「Git 连接 + 根目录 `/`」：构建产物是静态导出目录
 `apps/landing/out`，无需 Node 运行时。
 
@@ -156,10 +165,14 @@ pnpm monorepo，接入方式固定为「Git 连接 + 根目录 `/`」：构建�
 ### 仓库根 `edgeone.json`（重定向与缓存）
 
 - **重定向**：`$host` → `$wwwhost`（301），即 `token-usage.cc` → `www.token-usage.cc`。
-  对外口径与代码里的域名（`metadataBase`、页脚落款）保持 `token-usage.cc`，跳转只在
-  边缘层发生，不改文案。`$host` / `$wwwhost` 只在自定义域名上生效（平台分配的预览域名
-  不受影响），且**apex 与 www 两个域名都要绑定到本项目**，否则 apex 请求到不了 EdgeOne，
-  301 无从触发；反方向（www → apex）只需对调 `source` / `destination`；
+  **www 是规范域**：`src/lib/seo.ts` 的 `SITE_URL`、canonical / OG / sitemap / robots /
+  JSON-LD 一律写 `https://www.token-usage.cc`，与线上实际响应对齐。`$host` / `$wwwhost`
+  只在自定义域名上生效（平台分配的预览域名不受影响），且**apex 与 www 两个域名都要绑定到
+  本项目**，否则 apex 请求到不了 EdgeOne，301 无从触发；反方向（www → apex）只需对调
+  `source` / `destination`，并同步改 `SITE_URL`；
+- **安全头**：`/*` 统一加 `Strict-Transport-Security: max-age=31536000`（不含
+  `includeSubDomains`，避免影响 demo 子域）；强制 HTTP → HTTPS 跳转仍在 EdgeOne 控制台的
+  域名 / HTTPS 配置里开启，仓库代码无法替代；
 - **缓存头**：`/_next/static/*` 一年 `immutable`（文件名带内容哈希，安全）；其余资源与
   HTML 不设长缓存，重新部署即时生效。`headers` / `redirects` 的 `source` 是 URL 路径
   通配符（`*` 不是文件 glob）；
@@ -184,7 +197,8 @@ CJS `require()` 加载它 → Turbopack 在 `globals.css` 上报
 
 ### 域名与备案
 
-- 域名 `token-usage.cc`（及可选 `www.`）在腾讯云内侧 CNAME 接入 EdgeOne；
+- 域名 `token-usage.cc` 与 `www.token-usage.cc` 均绑定到 EdgeOne，**www 为规范域**（apex
+  由 `edgeone.json` 301 到 www）；
 - 备案：域名已备案（粤ICP备2023007649号-5），页脚右下角展示
   ICP 号并链接工信部；文案在 `src/lib/copy.ts` 的 `footer.beian`（`icp` / `police`，
   空串隐藏对应条目）。公安网备待部署后提交，拿到号填 `beian.police` 即可（数字部分

@@ -5,7 +5,7 @@
 
 import type { MetadataRoute } from "next";
 
-import { SITE_URL } from "@/lib/seo";
+import { docsPageUrl, SITE_URL } from "@/lib/seo";
 import { source } from "@/lib/source";
 import { SNAPSHOT } from "@/lib/snapshot";
 
@@ -14,7 +14,7 @@ export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const docPages: MetadataRoute.Sitemap = source.getPages().map((page) => ({
-    url: `${SITE_URL}/docs/${page.slugs.join("/")}/`,
+    url: docsPageUrl(page.slugs),
     lastModified: SNAPSHOT.fetchedAt,
     changeFrequency: "weekly",
     priority: 0.6,

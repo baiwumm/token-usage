@@ -258,8 +258,8 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
           links: [
             { label: "文档", href: "/docs/" },
             { label: "GitHub", href: "https://github.com/baiwumm/token-usage" },
-            { label: "部署指南", href: "/docs/deploy/" },
-            { label: "CLI 契约", href: "/docs/cli-contract/" },
+            { label: "部署指南", href: "/docs/start/" },
+            { label: "CLI 契约", href: "/docs/contract/" },
           ],
         },
         {
@@ -446,8 +446,8 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
           links: [
             { label: "Docs", href: "/docs/" },
             { label: "GitHub", href: "https://github.com/baiwumm/token-usage" },
-            { label: "Deploy guide", href: "/docs/deploy/" },
-            { label: "CLI contract", href: "/docs/cli-contract/" },
+            { label: "Deploy guide", href: "/docs/start/" },
+            { label: "CLI contract", href: "/docs/contract/" },
           ],
         },
         {

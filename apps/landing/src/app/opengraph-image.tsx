@@ -13,10 +13,10 @@ import { join } from "node:path";
 
 import { ImageResponse } from "next/og";
 
-import { SITE_OG_IMAGE_SIZE } from "@/lib/seo";
+import { SITE_OG_IMAGE_ALT, SITE_OG_IMAGE_SIZE } from "@/lib/seo";
 import { SNAPSHOT, formatCompactTokens } from "@/lib/snapshot";
 
-export const alt = "Token Usage — self-hosted AI token usage tracking";
+export const alt = SITE_OG_IMAGE_ALT;
 
 export const size = SITE_OG_IMAGE_SIZE;
 
