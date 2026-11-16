@@ -44,6 +44,7 @@ workspace）。开源、可自部署；每个实例只写自己的 Supabase，�
 | 从零部署 / 升级与回滚 | `docs/deploy-guide.md` / `docs/launch-runbook.md` |
 | CLI 发版与 npm 发布 | `docs/cli-release.md` |
 | 落地页（文案、快照、部署接线） | `apps/landing/README.md` |
+| demo 实例（方案、种子数据、只读闸门、部署） | `docs/demo-instance-plan.md` |
 | 桌面端（定位、边界、发版、updater） | `docs/desktop-plan.md` |
 | 运维脚本 | `scripts/README.md` |
 | 当前待办与待决策 | `docs/rewrite-plan.md` §7 |

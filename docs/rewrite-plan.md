@@ -200,7 +200,10 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
    `docs/sources-capture-audit.md`）。
 6. **`deep_thinker` 成就**：reasoning 覆盖率低于 50% 门槛，阈值草案保留在
    `docs/achievements-plan.md` §2.3，覆盖率提升后复议。
-7. **demo 实例页**：官方站可选后续项，未立项。文档站已另立项落地（2026-11-16，不用
+7. **demo 实例页**：**2026-11-16 已立项，方案待操作者批准**（`docs/demo-instance-plan.md`）。
+   五项决策已拍板：独立 Supabase + 确定性种子脚本、`demo.token-usage.cc` 子域、纯只读
+   演示账号、landing 保留生产公开页并新增演示入口、Free 档 + 每晚重灌。批准后按该文档
+   §8 分期执行。文档站已另立项落地（2026-11-16，不用
    `docs.` 子域，挂在 `apps/landing` 的 `/docs` 路径，fumadocs 静态导出；内容是本站
    自建精编——提交在 `apps/landing/src/content/docs/`，面向读者提取重点并配图，
    与仓库根 `docs/`（开发者 / Agent 向）解耦；完整规范经文档页外链 GitHub，见
