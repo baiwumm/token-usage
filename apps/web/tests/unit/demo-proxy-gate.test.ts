@@ -149,4 +149,20 @@ describe("production deployments", () => {
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "Auth not configured" });
   });
+
+  it("leaves the login form alone even with auth configured", async () => {
+    delete process.env.TOKEN_USAGE_DEMO;
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://prod-auth.example.test";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "fake-publishable-key";
+
+    try {
+      expect(isPassThrough(await proxy(request("/login")))).toBe(true);
+      expect(
+        isPassThrough(await proxy(request("/login?next=%2Fsessions"))),
+      ).toBe(true);
+    } finally {
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+      delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    }
+  });
 });
