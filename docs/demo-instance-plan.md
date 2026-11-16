@@ -92,7 +92,7 @@ apps/web（route.ts + service-role）  ──►  demo Supabase（token_* 表，
 | `src/lib/demo.ts`（新） | `isDemoInstance()`（读 `TOKEN_USAGE_DEMO`）、演示文案 key、配置护栏 |
 | `src/proxy.ts` | demo 模式：写动词（非 GET / HEAD / OPTIONS）打向 `/api/**` 一律 `403 {"error":"Demo instance is read-only"}`，只放行 `/api/app/demo-login`；未登录访问受保护页 → 直跳 `/api/app/demo-login?next=<原路径>` |
 | `src/app/api/app/demo-login/route.ts`（新） | 非 demo 模式 404；demo 模式用服务端 `@supabase/ssr` 客户端以 `TOKEN_USAGE_DEMO_EMAIL` / `TOKEN_USAGE_DEMO_PASSWORD` 登录写 cookie，302 回 `next`（口令不出服务端） |
-| `src/components/app-shell/demo-banner.tsx`（新）+ `index.tsx` | 壳顶部 strip：「演示实例 · 只读 · 数据每晚重置 · 前往自部署」，内容水平居中（避开左侧栏视觉重心） |
+| `src/components/app-shell/demo-banner.tsx`（新）+ `index.tsx` | 壳顶部 strip：「演示实例 · 只读 · 数据每晚重置 · 前往自部署」，内容水平居中（避开左侧栏视觉重心）；无独立底色，与顶栏同处一个 sticky 头部栈（`index.tsx` 外层容器提供背景与毛玻璃），滚动时一并固定 |
 | Settings / 徽章 / Projects / `/device` 客户端组件 | demo 模式隐藏或 disable 写操作（新增/吊销/删除徽章、改资料、改项目、设备改名/吊销、批准配对），统一提示「演示实例不可修改」 |
 | 配置护栏 | demo 模式下 `TOKEN_USAGE_DASHBOARD_URL` 命中生产域名 → 启动即 500「misconfigured demo」 |
 

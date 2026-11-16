@@ -121,15 +121,19 @@ export function AppShell({ children }: { children: ReactNode }) {
           collapsed ? "lg:pl-19" : "lg:pl-66",
         )}
       >
-        <DemoBanner />
+        {/* Sticky header stack: the demo banner rides along with the top bar
+            instead of scrolling away (and has no background of its own). */}
+        <div className="bg-background/80 sticky top-0 z-20 backdrop-blur-xl">
+          <DemoBanner />
 
-        <TopBar
-          collapsed={collapsed}
-          copy={copy}
-          title={pageTitle}
-          onOpenMenu={() => setMenuOpen(true)}
-          onToggleCollapsed={toggleCollapsed}
-        />
+          <TopBar
+            collapsed={collapsed}
+            copy={copy}
+            title={pageTitle}
+            onOpenMenu={() => setMenuOpen(true)}
+            onToggleCollapsed={toggleCollapsed}
+          />
+        </div>
 
         {children}
       </div>

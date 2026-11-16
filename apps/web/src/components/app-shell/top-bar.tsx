@@ -5,7 +5,12 @@ import { Button, Typography } from "@heroui/react";
 
 import { TopActions } from "@/components/top-actions";
 
-/** Sticky top bar: nav toggle LEFT, contextual page title, controls RIGHT. */
+/**
+ * Top bar: nav toggle LEFT, contextual page title, controls RIGHT.
+ *
+ * Not sticky on its own — `app-shell/index.tsx` owns a sticky header stack so
+ * the demo banner above it stays attached while scrolling.
+ */
 export function TopBar({
   collapsed,
   copy,
@@ -20,7 +25,7 @@ export function TopBar({
   onToggleCollapsed: () => void;
 }) {
   return (
-    <header className="bg-background/80 sticky top-0 z-20 flex h-16 shrink-0 items-center gap-2 px-3 backdrop-blur-xl md:px-6">
+    <header className="flex h-16 shrink-0 items-center gap-2 px-3 md:px-6">
       <Button
         isIconOnly
         aria-label={copy.menu}

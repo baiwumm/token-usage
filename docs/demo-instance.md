@@ -125,7 +125,7 @@ GitHub → Settings → Secrets and variables → Actions：
 | 检查 | 期望 |
 | --- | --- |
 | 匿名打开 `https://demo.token-usage.cc/` | ≤2 跳直达仪表盘（proxy → demo-login → 302） |
-| 顶部横幅 | 显示「演示实例 · 只读」及重置说明 |
+| 顶部横幅 | 显示「演示实例 · 只读」及重置说明（无底色，与顶栏一起 sticky） |
 | `POST /api/app/badge` | `403 {"error":"Demo instance is read-only"}` |
 | `POST /api/functions/token-usage-ingest` | 同上 403 |
 | `PUT /api/functions/token-usage-ingest` | `405 Method not allowed`（契约层先判） |
