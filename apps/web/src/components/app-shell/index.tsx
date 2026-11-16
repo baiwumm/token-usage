@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [locale] = useLocale();
   const copy = NAV_COPY[locale];
   const hour = useLocalHour();
-  const { profile } = useProfile();
+  const { profile, loaded } = useProfile();
   const collapsed = useSyncExternalStore(
     subscribeCollapsed,
     getCollapsedSnapshot,
@@ -110,6 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       <Sidebar
         collapsed={collapsed}
+        loading={!loaded}
         profile={profile}
         onRequestSignOut={requestSignOut}
       />
@@ -139,6 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <MobileDrawer
         copy={copy}
+        loading={!loaded}
         open={menuOpen}
         profile={profile}
         onOpenChange={setMenuOpen}

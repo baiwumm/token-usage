@@ -18,12 +18,14 @@ import { SidebarProfile } from "./sidebar-profile";
 export function MobileDrawer({
   copy,
   open,
+  loading,
   profile,
   onOpenChange,
   onRequestSignOut,
 }: {
   copy: NavCopy;
   open: boolean;
+  loading: boolean;
   profile: Profile | null;
   onOpenChange: (open: boolean) => void;
   onRequestSignOut: () => void;
@@ -50,6 +52,7 @@ export function MobileDrawer({
           <Drawer.Footer className="mt-0 flex flex-col gap-2 px-3 py-3">
             <SidebarProfile
               collapsed={false}
+              loading={loading}
               profile={profile}
               onRequestSignOut={() => {
                 onOpenChange(false);

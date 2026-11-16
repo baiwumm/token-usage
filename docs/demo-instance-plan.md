@@ -92,7 +92,7 @@ apps/web（route.ts + service-role）  ──►  demo Supabase（token_* 表，
 | `src/lib/demo.ts`（新） | `isDemoInstance()`（读 `TOKEN_USAGE_DEMO`）、演示文案 key、配置护栏 |
 | `src/proxy.ts` | demo 模式：写动词（非 GET / HEAD / OPTIONS）打向 `/api/**` 一律 `403 {"error":"Demo instance is read-only"}`，只放行 `/api/app/demo-login`；未登录访问受保护页 → 直跳 `/api/app/demo-login?next=<原路径>` |
 | `src/app/api/app/demo-login/route.ts`（新） | 非 demo 模式 404；demo 模式用服务端 `@supabase/ssr` 客户端以 `TOKEN_USAGE_DEMO_EMAIL` / `TOKEN_USAGE_DEMO_PASSWORD` 登录写 cookie，302 回 `next`（口令不出服务端） |
-| `src/components/app-shell/demo-banner.tsx`（新）+ `index.tsx` | 壳顶部 strip：「演示实例 · 只读 · 数据每晚重置 · 前往自部署」 |
+| `src/components/app-shell/demo-banner.tsx`（新）+ `index.tsx` | 壳顶部 strip：「演示实例 · 只读 · 数据每晚重置 · 前往自部署」，内容水平居中（避开左侧栏视觉重心） |
 | Settings / 徽章 / Projects / `/device` 客户端组件 | demo 模式隐藏或 disable 写操作（新增/吊销/删除徽章、改资料、改项目、设备改名/吊销、批准配对），统一提示「演示实例不可修改」 |
 | 配置护栏 | demo 模式下 `TOKEN_USAGE_DASHBOARD_URL` 命中生产域名 → 启动即 500「misconfigured demo」 |
 
@@ -115,8 +115,8 @@ TOKEN_USAGE_DEMO_PASSWORD=…            # 服务端专用，绝不进浏览器�
 | 文件 | 改动 |
 | --- | --- |
 | `src/lib/demo-url.ts`（新） | `DEMO_URL = "https://demo.token-usage.cc"` 单一常量（landing 无运行时 env，仍按构建期固化） |
-| `src/components/landing/nav-bar.tsx` + `src/lib/copy.ts` | 顶栏新增「在线演示」入口（沿用现有 icon + tooltip 形态）；`nav.demo` 文案继续服务公开页入口 |
-| `src/components/landing/hero.tsx` 或 `deploy.tsx` 邻近区块 | 主 CTA 旁加次级「先看在线演示」 |
+| `src/components/landing/nav-bar.tsx` + `src/lib/copy.ts` | 顶栏「在线演示」纯图标按钮（icon-only + tooltip）；顶栏原「公开页」按钮已移除，公开页入口只留页脚徽章区 |
+| `src/components/landing/hero.tsx` 或 `deploy.tsx` 邻近区块 | 主 CTA 旁加次级「在线演示」 |
 | `src/components/landing/site-footer.tsx` | 页脚加一行指向 demo；徽章与 `/u/` 公开页**仍解析 README、仍指生产实例**（`badge-url.ts` 不改） |
 | 仓库根 `README.md` | 加一处 demo 链接（landing 之外的第二公开出处） |
 

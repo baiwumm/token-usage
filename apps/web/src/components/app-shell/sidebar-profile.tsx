@@ -49,10 +49,12 @@ function ProfileAvatar({
  */
 export function SidebarProfile({
   collapsed,
+  loading,
   profile,
   onRequestSignOut,
 }: {
   collapsed: boolean;
+  loading: boolean;
   profile: Profile | null;
   onRequestSignOut: () => void;
 }) {
@@ -61,6 +63,34 @@ export function SidebarProfile({
   const copy = NAV_COPY[locale];
   const email = profile?.email ?? null;
   const displayName = profile?.displayName || email || "…";
+
+  // Before the first read resolves, the avatar would fall back to "?" — a
+  // skeleton reads as "loading" instead of "unknown account".
+  if (loading) {
+    return (
+      <div
+        aria-busy="true"
+        className={cn("px-2 pt-1 pb-2", collapsed && "flex justify-center")}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-2.5 p-2",
+            collapsed ? "justify-center" : "w-full",
+          )}
+          role="status"
+        >
+          <span className="bg-default size-8 shrink-0 animate-pulse rounded-full" />
+          {collapsed ? null : (
+            <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <span className="bg-default h-3 w-24 animate-pulse rounded-md" />
+              <span className="bg-default/60 h-2.5 w-32 animate-pulse rounded-md" />
+            </span>
+          )}
+          <span className="sr-only">Loading</span>
+        </div>
+      </div>
+    );
+  }
 
   const handleAction = (key: Key) => {
     if (key === "settings") {

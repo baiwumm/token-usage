@@ -872,9 +872,11 @@ cookie 会话；Loading 骨架按三卡结构逐块占位（账户设置行/列�
     图标。
   - 侧栏用户块与顶栏问候语共用 `useProfile()`；profile 存在单例 store
     （`stores/profile-store.ts`）而非 hook 局部 state。`AppShell` 由各页面各自组合、菜单切换会
-    整体重挂载，store 让头像 / 名称 / 邮箱直接命中缓存，不重放 `?` + `…` 占位，也不重复请求
+    整体重挂载，store 让头像 / 名称 / 邮箱直接命中缓存，不重放占位，也不重复请求
     `auth.getUser()`；全应用只保留一个 `onAuthStateChange` 订阅（`USER_UPDATED` / `SIGNED_IN` /
-    `SIGNED_OUT`）。
+    `SIGNED_OUT`）。**首次读取未返回时用户块渲染骨架**（圆形头像位 + 两行名称/邮箱骨架，
+    `animate-pulse` + `aria-busy` + `sr-only` 文案），不再显示 `?` + `…`——占位读起来像「账号
+    未知」而不是「正在加载」；读取失败则保挂骨架，下一次挂载重试。
   - 导航 pending：点击导航项后，若目标路由持续 pending 超过 150ms，当前项图标淡出、同位换成
     `Spinner`（`useLinkStatus`，`nav-items.tsx`）；命中 prefetch 的瞬时切换不出现。图标位固定
     `size-4.5` 不产生位移，`prefers-reduced-motion` 下关闭淡入淡出与旋转。只覆盖 `Link` 导航，

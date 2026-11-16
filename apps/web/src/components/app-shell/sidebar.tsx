@@ -9,10 +9,12 @@ import { SidebarProfile } from "./sidebar-profile";
 /** Desktop sidebar (lg+) — fixed, transparent over the page background. */
 export function Sidebar({
   collapsed,
+  loading,
   profile,
   onRequestSignOut,
 }: {
   collapsed: boolean;
+  loading: boolean;
   profile: Profile | null;
   onRequestSignOut: () => void;
 }) {
@@ -29,6 +31,7 @@ export function Sidebar({
       </ScrollShadow>
       <SidebarProfile
         collapsed={collapsed}
+        loading={loading}
         profile={profile}
         onRequestSignOut={onRequestSignOut}
       />

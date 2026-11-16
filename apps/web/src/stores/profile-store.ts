@@ -54,6 +54,8 @@ function toProfile(
 
 interface ProfileState {
   profile: Profile | null;
+  /** False until the first successful read — the shell shows a skeleton, not "?". */
+  loaded: boolean;
   ensureLoaded: () => void;
 }
 
@@ -62,6 +64,7 @@ let inFlight: Promise<void> | null = null;
 
 export const useProfileStore = create<ProfileState>((set, get) => ({
   profile: null,
+  loaded: false,
   ensureLoaded: () => {
     const supabase = authBrowserClient();
 
@@ -75,7 +78,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
           event === "SIGNED_IN" ||
           event === "SIGNED_OUT"
         ) {
-          set({ profile: toProfile(session?.user ?? null) });
+          set({ profile: toProfile(session?.user ?? null), loaded: true });
         }
       });
     }
@@ -89,7 +92,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       .then(({ data, error }) => {
         // A transient failure leaves the cache empty so the next mount retries
         // instead of pinning the placeholder for the rest of the session.
-        if (!error) set({ profile: toProfile(data.user) });
+        if (!error) set({ profile: toProfile(data.user), loaded: true });
       })
       .finally(() => {
         inFlight = null;

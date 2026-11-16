@@ -16,7 +16,7 @@ export function DemoBanner() {
   const copy = DEMO_COPY[locale];
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-default/50 bg-surface-secondary px-4 py-2 md:px-8">
+    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-default/50 bg-surface-secondary px-4 py-2 text-center md:px-8">
       <Typography className="text-accent" type="body-xs" weight="semibold">
         {copy.banner.title}
       </Typography>

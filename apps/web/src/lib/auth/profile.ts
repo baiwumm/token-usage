@@ -23,12 +23,14 @@ export type { Profile } from "@/stores/profile-store";
  */
 export function useProfile(): {
   profile: Profile | null;
+  loaded: boolean;
   updateProfile: (data: {
     display_name?: string;
     avatar_url?: string;
   }) => Promise<{ error: string | null }>;
 } {
   const profile = useProfileStore((state) => state.profile);
+  const loaded = useProfileStore((state) => state.loaded);
   const ensureLoaded = useProfileStore((state) => state.ensureLoaded);
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export function useProfile(): {
     [],
   );
 
-  return { profile, updateProfile };
+  return { profile, loaded, updateProfile };
 }
 
 const AVATAR_BUCKET = "avatars";
