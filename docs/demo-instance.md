@@ -7,6 +7,26 @@
 （官方域名决策 #19）。不同 Supabase 项目、不同 Vercel 项目、不同域名，代码同源。
 下列任何一步都**不要**复用生产环境的 key。
 
+## 0. 已部署实例（2026-11-16）
+
+| 项 | 值 |
+| --- | --- |
+| Supabase 项目 | `ipvyswlsnnciomcfyyma`（Free 档） |
+| Vercel 项目 | `token-usage-demo` · `prj_DNgbvV57ouNPbhkj4KQGmA7WjRxh`（Root `apps/web`） |
+| 域名 | `https://demo.token-usage.cc` |
+| 演示账号 | `apps/web/.env.demo.local`（gitignored，不入库） |
+| 固定令牌 | 公开页 `tu_page_wGX96o5u_…` / 徽章 `tu_badge_L_EOXskEd…`（跨重灌不变） |
+| 夜间重置 | `.github/workflows/demo-reseed.yml`，03:00 UTC |
+
+两个已经踩过的坑：
+
+1. **在仓库根跑 `vercel`** 会把仓库根链到生产项目 `token-usage` 并可能误部署；所有
+   `vercel` 命令都在 `apps/web` 内执行（那里的 `.vercel` 指向 `token-usage-demo`）。
+2. Vercel 现在给每个项目独立的 CNAME 目标（本实例是
+   `dade1ad6f76af9b4.vercel-dns-017.com`），不是通用的 `cname.vercel-dns.com`；
+   且本地路由器可能缓存 NXDOMAIN，域名刚生效时用
+   `curl --resolve demo.token-usage.cc:443:<ip>` 验证。
+
 ## 1. 一次性建库
 
 1. Supabase 新建项目（Free 档），记三组值：Project URL、publishable key、secret key；
@@ -55,8 +75,10 @@ TOKEN_USAGE_DEMO_PASSWORD             = <强随机口令>            # 服务端
 
 ## 3. 域名
 
-1. Vercel → Project → Domains → 添加 `demo.token-usage.cc`，按提示到 DNSPod 加 TXT 校验；
-2. DNSPod 加 CNAME：`demo` → `cname.vercel-dns.com`；
+1. Vercel → Project → Domains → 添加 `demo.token-usage.cc`（同账号已拥有 `token-usage.cc`，
+   通常无需 TXT 校验）；
+2. DNSPod 加 CNAME：`demo` → `vercel domains verify` 输出的目标
+   （本实例为 `dade1ad6f76af9b4.vercel-dns-017.com`，每个项目不同）；
 3. 等 Vercel 签发证书（通常几分钟）。
 
 子域沿用主域 `token-usage.cc` 的备案，不需要单独备案。

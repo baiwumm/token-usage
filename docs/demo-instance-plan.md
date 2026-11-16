@@ -3,8 +3,11 @@
 官方站三件套的最后一件：一个独立部署的 `apps/web` 演示实例，让访客不部署、不配对采集器
 就能点开仪表盘看真实功能。
 
-**状态：已立项；P0–P2 已交付，P3（建库 / 部署 / 绑域 / secrets）待操作者执行**
-（2026-11-16）。落地清单：`scripts/demo/`（生成器 + 种子脚本）、
+**状态：已上线（2026-11-16）**。P0–P2 代码与文档已交付；P3 已执行完毕：demo Supabase
+`ipvyswlsnnciomcfyyma`（21 个迁移）、Vercel 项目 `token-usage-demo`（Root `apps/web`）、
+域名 `demo.token-usage.cc`（CNAME → `dade1ad6f76af9b4.vercel-dns-017.com`）、三个 Actions
+secret + 一个 variable、首次灌数与 nightly reseed 均成功。实测：匿名 `/` 307 → 自动登录 →
+200；契约与 `/api/app/*` 写操作 403；公开页与徽章 SVG 200；`public-config` 指向 demo 库。落地清单：`scripts/demo/`（生成器 + 种子脚本）、
 `apps/web/src/lib/demo.ts` + `src/proxy.ts` 闸门 + `/api/app/demo-login`、
 `components/app-shell/demo-banner.tsx`、landing 的 `src/lib/demo-url.ts` 与三处入口、
 `.github/workflows/demo-reseed.yml`、运维手册 `docs/demo-instance.md`。
