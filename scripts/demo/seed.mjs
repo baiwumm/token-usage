@@ -37,6 +37,9 @@ const DIRNAME = path.dirname(fileURLToPath(import.meta.url));
 
 const CHUNK = 500;
 
+/** Placeholder account id for --dry-run (never written anywhere). */
+const DRY_RUN_USER_ID = '00000000-0000-4000-8000-000000000000';
+
 function readArg(name) {
   const index = process.argv.indexOf(name);
   return index >= 0 && index + 1 < process.argv.length
@@ -67,12 +70,25 @@ function parseEnvFile(text) {
 
 function loadEnv() {
   const repoRoot = path.resolve(DIRNAME, '..', '..');
+  // Demo-only files. `apps/web/.env.local` is deliberately NOT a candidate: it
+  // holds the operator's production instance values, and a seed run against it
+  // would wipe real data.
   const candidates = [
     path.join(repoRoot, 'apps', 'web', '.env.demo.local'),
-    path.join(repoRoot, 'apps', 'web', '.env.local'),
-    path.join(repoRoot, '.env.local'),
+    path.join(repoRoot, '.env.demo.local'),
   ];
   const explicit = readArg('--env-file');
+
+  if (
+    explicit &&
+    /(^|[\\/])\.env\.local$/.test(explicit) &&
+    !hasFlag('--force')
+  ) {
+    throw new Error(
+      'Refusing to read a generic .env.local (production values). Point --env-file at a demo env file, or pass --force if you really mean it.',
+    );
+  }
+
   const envFile =
     explicit || candidates.find((file) => fs.existsSync(file)) || null;
 
@@ -95,7 +111,8 @@ function loadEnv() {
 
   if (!url || !secret) {
     throw new Error(
-      'Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY (legacy names accepted) via env or --env-file',
+      'Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY (legacy names accepted) via env or --env-file.\n' +
+        'Tip: create apps/web/.env.demo.local (gitignored) — see docs/demo-instance.md §4.',
     );
   }
 
@@ -288,7 +305,29 @@ async function main() {
   console.log(`Env file: ${envFile || '(process env only)'}`);
   console.log(`Account : ${email}`);
   console.log(`Window  : last ${days} days · seed ${seed}`);
-  console.log(`Mode    : ${dryRun ? 'dry run (no writes)' : 'write'}`);
+  console.log(`Mode    : ${dryRun ? 'dry run (offline)' : 'write'}`);
+
+  // A dry run must be safe to repeat and must not touch the project: it prints
+  // the deterministic dataset with a placeholder account id and makes no
+  // network calls at all.
+  if (dryRun) {
+    const preview = generateDemoData({
+      userId: DRY_RUN_USER_ID,
+      today: new Date(),
+      days,
+      seed,
+      cliVersion: cliVersion(),
+    });
+
+    console.log(
+      `Dataset : ${preview.summary.hourlyRows} buckets · ${preview.summary.sessionRows} sessions · ${preview.summary.syncRunRows} runs · ${preview.summary.totalTokens.toLocaleString('en-US')} tokens · ${preview.summary.activeDays}/${days} active days`,
+    );
+    console.log(`Window  : ${preview.window.start} → ${preview.window.end}`);
+    console.log(
+      'Dry run complete — nothing was written and no network calls were made.',
+    );
+    return;
+  }
 
   const { id: userId, created, users } = await ensureUser(
     url,
@@ -320,11 +359,6 @@ async function main() {
   console.log(
     `Dataset : ${data.summary.hourlyRows} buckets · ${data.summary.sessionRows} sessions · ${data.summary.syncRunRows} runs · ${data.summary.totalTokens.toLocaleString('en-US')} tokens · ${data.summary.activeDays}/${days} active days`,
   );
-
-  if (dryRun) {
-    console.log('Dry run complete — nothing was written.');
-    return;
-  }
 
   for (const table of DELETE_ORDER) {
     await rest(url, secret, 'DELETE', `${table}?user_id=eq.${userId}`, undefined, {

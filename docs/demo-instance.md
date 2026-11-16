@@ -64,10 +64,13 @@ TOKEN_USAGE_DEMO_PASSWORD             = <强随机口令>            # 服务端
 ## 4. 首次灌数据
 
 ```bash
-# 本地（推荐首次）：把 demo 的三组值写进 apps/web/.env.local 或 --env-file 指定的文件
-TOKEN_USAGE_DEMO=on node scripts/demo/seed.mjs --dry-run   # 先看摘要，不写库
-TOKEN_USAGE_DEMO=on node scripts/demo/seed.mjs             # 真写
+cp apps/web/.env.demo.example apps/web/.env.demo.local   # 填入 demo 项目的三组值与账号
+node scripts/demo/seed.mjs --dry-run                     # 离线试跑：不联网、不建号、不写库
+node scripts/demo/seed.mjs                               # 真写（自动读 .env.demo.local）
 ```
+
+种子脚本只认 `apps/web/.env.demo.local`、仓库根 `.env.demo.local` 或 `--env-file`，
+**拒绝读取通用的 `.env.local`**（那里是生产实例的值，跑一次就清库）；必须 `--force` 才能越过。
 
 脚本会：确保演示账号存在 → 只清该账号的行 → 写入 120 天确定性数据（3 台设备、2298 个
 小时桶、约 430 条会话、约 490 条采集记录、公开徽章与公开页配置）→ 打印摘要与公开链接。
