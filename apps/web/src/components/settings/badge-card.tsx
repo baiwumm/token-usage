@@ -51,6 +51,7 @@ import { BADGE_COPY } from "@/lib/copy/badge";
 import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
 import { browserTimezone } from "@/lib/dashboard/ranges";
+import { demoWriteNotice } from "@/lib/demo";
 
 // Loading placeholder mirroring the real three-card layout (account settings /
 // badge list / selected badge) so the swap to content doesn't jump.
@@ -228,9 +229,11 @@ export function BadgeCard() {
   const handleFailure = useCallback(
     (error: unknown) => {
       if (isUnauthorized(error)) redirectToLogin();
-      else toast(copy.saveError);
+      // A demo instance answers 403 to every write; "save failed, retry" there
+      // promises a retry that can never succeed.
+      else toast(demoWriteNotice(error, locale) ?? copy.saveError);
     },
-    [copy.saveError, redirectToLogin],
+    [copy.saveError, locale, redirectToLogin],
   );
 
   function replaceBadge(badge: BadgeLink) {

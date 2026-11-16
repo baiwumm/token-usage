@@ -96,6 +96,7 @@ apps/web（route.ts + service-role）  ──►  demo Supabase（token_* 表，
 | Settings / 徽章 / Projects / `/device` 客户端组件 | demo 模式隐藏或 disable 写操作（新增/吊销/删除徽章、改资料/头像/口令、改项目、设备改名/吊销、批准配对），统一提示「演示实例不可修改」 |
 | 账户区三张卡（`settings/profile-card.tsx`、`avatar-card.tsx`、`password-card.tsx`） | 额外硬约束：这三处写的是 Supabase `auth.updateUser`（user_metadata / password）与 storage `avatars` 桶，浏览器直连 Supabase，**不经过 `proxy.ts`**，服务端闸门看不见它们。因此在组件内以 `isDemoUi()` 锁死输入与按钮（口令卡尤其关键：改掉共享账号口令会让 `/api/app/demo-login` 对后续所有访客失败） |
 | `app-shell/sidebar-profile.tsx` | demo 模式隐藏「退出登录」：每次访问都由服务端重新登录共享账号，退出的实际效果是弹回来 |
+| 写失败的 toast | `lib/demo.ts` 的 `isDemoWriteError()` / `demoWriteNotice()` 识别闸门的 403 + 固定报文（浏览器客户端各自把 `payload.error` 拷进自己的 error class，所以按形状而不按 instanceof 判定）。徽章卡片、公开页卡片、项目信息对话框统一显示「演示实例不可修改」，不再出现「保存失败，请重试」或英文原始报文 |
 | 配置护栏 | demo 模式下 `TOKEN_USAGE_DASHBOARD_URL` 命中生产域名 → 启动即 500「misconfigured demo」 |
 
 新增环境变量（批准后同步回写 `docs/rewrite-plan.md` §5）：

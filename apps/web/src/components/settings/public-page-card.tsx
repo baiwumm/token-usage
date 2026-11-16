@@ -25,6 +25,7 @@ import {
 import { BADGE_COPY } from "@/lib/copy/badge";
 import { useLocale } from "@/lib/copy/locale";
 import { browserTimezone } from "@/lib/dashboard/ranges";
+import { demoWriteNotice } from "@/lib/demo";
 
 export function PublicPageCard() {
   const [locale] = useLocale();
@@ -64,7 +65,7 @@ export function PublicPageCard() {
       toast.success(enabled ? copy.pageOn : copy.pageOff);
     } catch (error) {
       if (isUnauthorized(error)) toast(copy.loadError);
-      else toast(copy.saveError);
+      else toast(demoWriteNotice(error, locale) ?? copy.saveError);
     } finally {
       setBusy(null);
     }
@@ -84,7 +85,7 @@ export function PublicPageCard() {
       toast.success(copy.pageResetDone);
     } catch (error) {
       if (isUnauthorized(error)) toast(copy.loadError);
-      else toast(copy.saveError);
+      else toast(demoWriteNotice(error, locale) ?? copy.saveError);
     } finally {
       setBusy(null);
     }

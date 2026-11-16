@@ -9,7 +9,7 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { DEMO_WRITE_ERROR } from "@/lib/demo";
+import { DEMO_WRITE_ERROR, demoWriteNotice, isDemoWriteError } from "@/lib/demo";
 import { proxy } from "@/proxy";
 
 function request(path: string, method = "GET"): NextRequest {
@@ -93,6 +93,33 @@ describe("demo page guard", () => {
     const response = await proxy(request("/"));
 
     expect(response.status).toBe(500);
+  });
+});
+
+describe("demo write-error copy", () => {
+  // The browser clients turn the 403 envelope into their own error class, so
+  // the UI matches on shape, not on instanceof.
+  it("recognises the gate envelope and nothing else", () => {
+    expect(
+      isDemoWriteError({ status: 403, message: DEMO_WRITE_ERROR }),
+    ).toBe(true);
+    expect(isDemoWriteError({ status: 401, message: "unauthorized" })).toBe(
+      false,
+    );
+    expect(isDemoWriteError(new Error(DEMO_WRITE_ERROR))).toBe(false);
+    expect(isDemoWriteError(null)).toBe(false);
+  });
+
+  it("maps to the shared read-only line instead of 'save failed'", () => {
+    const error = { status: 403, message: DEMO_WRITE_ERROR };
+
+    expect(demoWriteNotice(error, "zh")).toBe("演示实例不可修改");
+    expect(demoWriteNotice(error, "en")).toBe(
+      "Not editable on the demo instance",
+    );
+    expect(demoWriteNotice({ status: 500, message: "boom" }, "zh")).toBe(
+      null,
+    );
   });
 });
 

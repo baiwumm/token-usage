@@ -32,7 +32,7 @@ import { ProjectLogo } from "./project-logo";
 import { PendingButton } from "@/components/pending-button";
 import { DEMO_COPY } from "@/lib/copy/demo";
 import { formatMessage } from "@/lib/copy/message";
-import { isDemoUi } from "@/lib/demo";
+import { isDemoUi, demoWriteNotice } from "@/lib/demo";
 import {
   isUnauthorized,
   resetProjectProfile,
@@ -114,6 +114,15 @@ export function ProjectProfileDialog({
       onUnauthorized();
 
       return "unauthorized";
+    }
+    // Demo writes are refused by the proxy with a 403: name the real reason
+    // instead of "something went wrong: Demo instance is read-only".
+    const demoNotice = demoWriteNotice(error, locale);
+
+    if (demoNotice) {
+      toast.danger(demoNotice);
+
+      return demoNotice;
     }
     const message = error instanceof Error ? error.message : String(error);
 
