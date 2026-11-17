@@ -4,10 +4,11 @@ const fs = require("node:fs/promises");
 const fssync = require("node:fs");
 const { runOpenclawCli } = require("./openclaw-cli");
 const { cliEntryPath } = require("./scheduled-task");
-const { runtimeReadyMarkerPath } = require("./runtime-entry");
+const { buildLauncherEsmImports, launcherModuleSource } = require("./runtime-launch");
 
 const OPENCLAW_SESSION_PLUGIN_ID = "openclaw-session-sync";
 const OPENCLAW_SESSION_PLUGIN_DIRNAME = "openclaw-plugin";
+const LAUNCHER_MODULE_FILE = "launcher.cjs";
 
 function resolveOpenclawSessionPluginPaths({
   home = os.homedir(),
@@ -98,10 +99,14 @@ async function ensureOpenclawSessionPluginFiles({
 
   const packageJsonPath = path.join(pluginEntryDir, "package.json");
   const pluginMetaPath = path.join(pluginEntryDir, "openclaw.plugin.json");
+  const launcherPath = path.join(pluginEntryDir, LAUNCHER_MODULE_FILE);
   const indexPath = path.join(pluginEntryDir, "index.js");
 
   await fs.writeFile(packageJsonPath, buildSessionPluginPackageJson(), "utf8");
   await fs.writeFile(pluginMetaPath, buildSessionPluginMeta(), "utf8");
+  // The launcher contract, verbatim from the package: the plugin is ESM, so
+  // index.js imports this sibling instead of inlining a CommonJS module.
+  await fs.writeFile(launcherPath, launcherModuleSource(), "utf8");
   await fs.writeFile(
     indexPath,
     buildSessionPluginIndex({
@@ -123,6 +128,7 @@ async function probeOpenclawSessionPluginState({
 
   const pluginFilesReady =
     fssync.existsSync(path.join(pluginEntryDir, "package.json")) &&
+    fssync.existsSync(path.join(pluginEntryDir, LAUNCHER_MODULE_FILE)) &&
     fssync.existsSync(path.join(pluginEntryDir, "index.js"));
 
   let cfg = null;
@@ -352,20 +358,29 @@ function buildSessionPluginIndex({
   openclawHome,
   packageEntry = cliEntryPath(),
 }) {
-  const trackerBinPath = path.join(trackerDir, "app", "bin", "tracker.js");
-  const runtimeReadyPath = runtimeReadyMarkerPath(path.join(trackerDir, "app"));
   const fallbackPkg = packageName || "tokenusage-cli";
   const safeOpenclawHome = openclawHome || path.join(os.homedir(), ".openclaw");
+  // Which CLI entry runs the spawned sync is decided by the shared launcher
+  // contract (lib/runtime-launch.js) — the same one notify.cjs, the OpenClaw hook,
+  // the auto-retry child, init's first sync and the scheduled runners use.
+  //
+  // This file is ESM (`type: module` in the generated package.json), so the
+  // launcher lib cannot be inlined here — `require` and a second `const fs`
+  // would both be errors. It is written out next to this file as launcher.cjs
+  // (CommonJS, which ESM can import) and imported below.
+  const launcherImports = buildLauncherEsmImports({
+    modulePath: "./launcher.cjs",
+    trackerDir,
+    packageEntry,
+  });
 
   return (
     `import fs from 'node:fs';\n` +
     `import path from 'node:path';\n` +
     `import cp from 'node:child_process';\n` +
     `\n` +
+    launcherImports +
     `const trackerDir = ${JSON.stringify(trackerDir)};\n` +
-    `const trackerBinPath = ${JSON.stringify(trackerBinPath)};\n` +
-    `const runtimeReadyPath = ${JSON.stringify(runtimeReadyPath)};\n` +
-    `const packageEntryPath = ${JSON.stringify(packageEntry || null)};\n` +
     `const fallbackPkg = ${JSON.stringify(fallbackPkg)};\n` +
     `const openclawHome = ${JSON.stringify(safeOpenclawHome)};\n` +
     `const triggerStatePath = path.join(trackerDir, 'openclaw.session-sync.trigger-state.json');\n` +
@@ -414,16 +429,15 @@ function buildSessionPluginIndex({
     `}\n` +
     `\n` +
     `function spawnSync({ args, env = {} }) {\n` +
-    `  // First usable launcher: init-copied runtime (only with its readiness\n` +
-    `  // marker), then the installed package entry, then npx.\n` +
-    `  const hasLocalRuntime = fs.existsSync(runtimeReadyPath) && fs.existsSync(trackerBinPath);\n` +
-    `  const hasPackageEntry = Boolean(packageEntryPath) && fs.existsSync(packageEntryPath);\n` +
+    `  // Newest usable entry wins (see the resolution block above): the init-copied\n` +
+    `  // runtime when it is newer, the installed package otherwise, npx last. A\n` +
+    `  // half-copied runtime is never a candidate.\n` +
     `  const argv = Array.isArray(args) && args.length > 0 ? args : ['sync', '--auto'];\n` +
-    `  const cmd = hasLocalRuntime\n` +
-    `    ? [process.execPath, trackerBinPath, ...argv]\n` +
-    `    : hasPackageEntry\n` +
-    `      ? [process.execPath, packageEntryPath, ...argv]\n` +
-    `      : ['npx', '--yes', fallbackPkg, ...argv];\n` +
+    `  const launcher = resolveLauncher({\n` +
+    `    trackerDir: LAUNCHER_DATA_DIR,\n` +
+    `    packageEntry: LAUNCHER_PACKAGE_ENTRY,\n` +
+    `  });\n` +
+    `  const cmd = launcherCommand(launcher, argv, { fallbackPkg });\n` +
     `  const child = cp.spawn(cmd[0], cmd.slice(1), {\n` +
     `    detached: true,\n` +
     `    windowsHide: true,\n` +
@@ -566,6 +580,9 @@ function normalizeString(value) {
 module.exports = {
   OPENCLAW_SESSION_PLUGIN_ID,
   OPENCLAW_SESSION_PLUGIN_DIRNAME,
+  LAUNCHER_MODULE_FILE,
+  buildSessionPluginIndex,
+  buildSessionPluginPackageJson,
   resolveOpenclawSessionPluginPaths,
   ensureOpenclawSessionPluginFiles,
   installOpenclawSessionPlugin,

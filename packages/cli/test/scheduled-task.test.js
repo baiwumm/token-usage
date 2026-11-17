@@ -26,6 +26,8 @@ const {
   buildSystemdService,
   buildSystemdTimer,
   buildSyncLauncherScript,
+  buildSyncEntryScript,
+  writeSyncEntry,
   formatTaskStartBoundary,
   launchAgentPath,
   systemdServicePath,
@@ -113,7 +115,7 @@ test("the hidden runner is UTF-16LE with a BOM so non-ASCII paths survive wscrip
     const vbsPath = writeHiddenRunner({
       binDir,
       nodeExe: "C:\\Users\\张三\\AppData\\node.exe",
-      cliJs: "C:\\Users\\张三\\AppData\\tokenusage.js",
+      syncEntryJs: "C:\\Users\\张三\\AppData\\sync-entry.js",
     });
     const bytes = fs.readFileSync(vbsPath);
 
@@ -164,25 +166,37 @@ test("systemd percent signs are escaped so they cannot become specifiers", () =>
   );
 });
 
-test("the POSIX launcher falls back to the init runtime and runs --from-scheduled", () => {
+test("the POSIX launcher is a thin wrapper around the generated sync entry", () => {
   const script = buildSyncLauncherScript({
     nodeExe: "/usr/local/bin/node",
-    cliJs: "/opt/npm/lib/node_modules/tokenusage-cli/bin/tokenusage.js",
-    fallbackCliJs: "/Users/me/.tokenusage/tracker/app/bin/tracker.js",
+    syncEntryJs: "/Users/me/.tokenusage/bin/sync-entry.js",
   });
   assert.match(script, /^#!\/bin\/sh/);
   assert.ok(script.includes("NODE='/usr/local/bin/node'"));
-  assert.ok(script.includes("CLI='/opt/npm/lib/node_modules/tokenusage-cli/bin/tokenusage.js'"));
-  assert.ok(script.includes("if [ ! -f \"$CLI\" ]; then CLI='/Users/me/.tokenusage/tracker/app/bin/tracker.js'; fi"));
-  assert.ok(script.includes('exec "$NODE" "$CLI" sync --from-scheduled'));
+  assert.ok(script.includes("SYNC_ENTRY='/Users/me/.tokenusage/bin/sync-entry.js'"));
+  assert.ok(script.includes('exec "$NODE" "$SYNC_ENTRY" sync --from-scheduled'));
 
-  // No fallback path → no probe line (nothing to fall back to).
-  const plain = buildSyncLauncherScript({ nodeExe: "node", cliJs: "/a/b.js" });
-  assert.ok(!plain.includes("if [ ! -f"));
   // Spaces survive because every path is single-quoted.
-  const spaced = buildSyncLauncherScript({ nodeExe: "/usr/bin/env node", cliJs: "/a b/c.js" });
-  assert.ok(spaced.includes("CLI='/a b/c.js'"));
-  assert.ok(!spaced.includes('CLI="/a b/c.js"'));
+  const spaced = buildSyncLauncherScript({ nodeExe: "/usr/bin/env node", syncEntryJs: "/a b/sync-entry.js" });
+  assert.ok(spaced.includes("SYNC_ENTRY='/a b/sync-entry.js'"));
+  assert.ok(!spaced.includes('SYNC_ENTRY="/a b/sync-entry.js"'));
+
+  // No entry resolution in the shell layer: the generated resolver owns it.
+  assert.ok(!script.includes("if [ ! -f"), "the launcher must not probe for CLI paths");
+});
+
+test("the generated sync entry resolves the newest CLI entry at run time", () => {
+  const trackerDir = path.join(os.tmpdir(), "tokenusage-sync-entry");
+  const script = buildSyncEntryScript({
+    trackerDir,
+    packageEntry: "/opt/npm/lib/node_modules/tokenusage-cli/bin/tokenusage.js",
+  });
+  // The resolver is inlined, not required from a file that may not exist yet.
+  assert.ok(script.includes("resolveLauncher"), "the arbitration logic must be inlined");
+  assert.ok(!/require\(['"](?!node:)/.test(script), "sync-entry.js must only require node: built-ins");
+  assert.ok(script.includes(JSON.stringify(trackerDir)));
+  assert.ok(script.includes("/opt/npm/lib/node_modules/tokenusage-cli/bin/tokenusage.js"));
+  assert.ok(script.includes("process.argv.slice(2)"), "the entry forwards the scheduled argv verbatim");
 });
 
 test("schedule paths follow the documented home layout", () => {

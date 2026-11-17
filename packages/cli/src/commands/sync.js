@@ -55,7 +55,8 @@ const {
   repairZcodePruneWindowRestore,
 } = require("../repairs/zcode");
 const { readSqliteJsonRows } = require("../lib/sqlite-reader");
-const { runtimeReadyMarkerPath, runtimeBinPath } = require("../lib/runtime-entry");
+const { buildLauncherPrelude, resolveLauncher, launcherCommand } = require("../lib/runtime-launch");
+const { ensureRuntimeCopyFresh } = require("../lib/runtime-refresh");
 const { cliEntryPath } = require("../lib/scheduled-task");
 
 const { resolveInstallPaths, resolveZcodeNativeDbPath, resolveMimoNativeDbPath, ensureFlatCursor } = require("../lib/install-resolver");
@@ -710,6 +711,16 @@ async function cmdSync(argv, context = {}) {
   // Auto-flavored runs self-log to the rolling file so neither the scheduled
   // task nor a TTY-less hook run loses its trail.
   if (autoishSync) setAutoLogSink(path.join(trackerDir, "logs", "sync.log"));
+  // The init-copied runtime (`<trackerDir>/app`) is what notify hooks, the
+  // auto-retry child and the scheduled task spawn when npm's global prefix is
+  // gone — but only `init` ever refreshes it, so a globally upgraded CLI
+  // leaves a snapshot that still pins the old build's base URL and legacy-host
+  // table. An auto run is the last point that touches that snapshot before an
+  // upload, so repair the drift here. A stat + marker read when there is no
+  // drift; the ~10 MB re-copy only when the versions differ.
+  if (autoishSync) {
+    await ensureRuntimeCopyFresh({ trackerDir, log: autoLog });
+  }
   // §2.11 run telemetry (empty runs included), only when the persisted
   // run-report pref (init --run-report=off) has not disabled it.
   const syncRun = isRunReportEnabled(trackerDir)
@@ -4716,8 +4727,7 @@ async function scheduleAutoRetry({
 
   spawnAutoRetryProcess({
     retryPath,
-    trackerBinPath: runtimeBinPath(trackerDir),
-    runtimeReadyPath: runtimeReadyMarkerPath(path.join(trackerDir, "app")),
+    trackerDir,
     packageEntryPath: cliEntryPath(),
     fallbackPkg: "tokenusage-cli",
     delayMs,
@@ -4746,16 +4756,14 @@ async function clearAutoRetry(trackerDir) {
 
 function spawnAutoRetryProcess({
   retryPath,
-  trackerBinPath,
-  runtimeReadyPath,
+  trackerDir,
   packageEntryPath,
   fallbackPkg,
   delayMs,
 }) {
   const script = buildAutoRetryScript({
     retryPath,
-    trackerBinPath,
-    runtimeReadyPath,
+    trackerDir,
     packageEntryPath,
     fallbackPkg,
     delayMs,
@@ -4776,22 +4784,23 @@ function spawnAutoRetryProcess({
 
 function buildAutoRetryScript({
   retryPath,
-  trackerBinPath,
-  runtimeReadyPath,
+  trackerDir,
   packageEntryPath,
   fallbackPkg,
   delayMs,
 }) {
   return (
     `'use strict';\n` +
-    `const fs = require('node:fs');\n` +
+    `// node:fs and node:path come from the inlined launcher lib below.\n` +
     `const cp = require('node:child_process');\n` +
     `const retryPath = ${JSON.stringify(retryPath)};\n` +
-    `const trackerBinPath = ${JSON.stringify(trackerBinPath)};\n` +
-    `const runtimeReadyPath = ${JSON.stringify(runtimeReadyPath)};\n` +
-    `const packageEntryPath = ${JSON.stringify(packageEntryPath || null)};\n` +
     `const fallbackPkg = ${JSON.stringify(fallbackPkg)};\n` +
     `const delayMs = ${Math.max(0, Math.floor(delayMs || 0))};\n` +
+    `\n` +
+    // Which CLI entry runs the retried sync is decided by the shared launcher
+    // contract (lib/runtime-launch.js) — the same one notify.cjs, the OpenClaw
+    // spawn points, init's first sync and the scheduled runners use.
+    buildLauncherPrelude({ trackerDir, packageEntry: packageEntryPath }) +
     `setTimeout(() => {\n` +
     `  let payload = null;\n` +
     `  let retryAtMs = 0;\n` +
@@ -4805,15 +4814,14 @@ function buildAutoRetryScript({
     `  if (payload && typeof payload.syncSource === 'string' && payload.syncSource.trim()) {\n` +
     `    argv.push('--source', payload.syncSource.trim());\n` +
     `  }\n` +
-    `  // Same readiness contract as notify: a copy without its marker is half\n` +
-    `  // copied, so retry through the installed package instead.\n` +
-    `  const hasLocalRuntime = fs.existsSync(runtimeReadyPath) && fs.existsSync(trackerBinPath);\n` +
-    `  const hasPackageEntry = Boolean(packageEntryPath) && fs.existsSync(packageEntryPath);\n` +
-    `  const cmd = hasLocalRuntime\n` +
-    `    ? [process.execPath, trackerBinPath, ...argv]\n` +
-    `    : hasPackageEntry\n` +
-    `      ? [process.execPath, packageEntryPath, ...argv]\n` +
-    `      : ['npx', '--yes', fallbackPkg, ...argv];\n` +
+    `  // Newest usable entry wins (see the resolution block above): the init-copied\n` +
+    `  // runtime when it is newer, the installed package otherwise, npx last. A\n` +
+    `  // half-copied runtime is never a candidate.\n` +
+    `  const launcher = resolveLauncher({\n` +
+    `    trackerDir: LAUNCHER_DATA_DIR,\n` +
+    `    packageEntry: LAUNCHER_PACKAGE_ENTRY,\n` +
+    `  });\n` +
+    `  const cmd = launcherCommand(launcher, argv, { fallbackPkg });\n` +
     `  try {\n` +
     `    const child = cp.spawn(cmd[0], cmd.slice(1), { detached: true, windowsHide: true, stdio: 'ignore', env: process.env });\n` +
     `    child.unref();\n` +

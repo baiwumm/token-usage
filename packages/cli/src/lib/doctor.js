@@ -4,6 +4,9 @@ const { constants } = require("node:fs");
 
 const { readJsonStrict } = require("./fs");
 const { collectPricingCoverage, readLastWinsBuckets } = require("./pricing-coverage");
+// Safe to require eagerly: runtime-refresh only pulls commands/init in when
+// it actually has to re-install a copy.
+const { runtimeCopyDrift } = require("./runtime-refresh");
 
 async function buildDoctorReport({
   runtime = {},
@@ -405,6 +408,13 @@ function formatAge(ms) {
 // The init-copied runtime (`<trackerDir>/app`) is what notify hooks and the
 // hidden task prefer; without its readiness marker they fall back to the
 // installed CLI. Surface that state instead of leaving it invisible.
+//
+// A copy that is merely *older* than the CLI is critical, not a warn: it is the
+// launcher of last resort and it pins whatever the old build baked in — the
+// retired dashboard domain, the pre-repair legacy-host table. It used to be a
+// non-critical warn, so the only way to learn your scheduled task was running
+// stale code was to run `doctor` and read the line. Auto syncs now refresh the
+// copy themselves, so a critical here means the refresh did not happen.
 async function checkRuntimeCopy(trackerDir) {
   const { runtimeAppDir, runtimeBinPath, runtimeReadyMarkerPath } = require("./runtime-entry");
   const appDir = runtimeAppDir(trackerDir);
@@ -433,13 +443,25 @@ async function checkRuntimeCopy(trackerDir) {
     };
   }
   const version = marker.value && typeof marker.value.version === "string" ? marker.value.version : null;
-  if (version && version !== cliVersion) {
+  // One definition of drift, shared with the auto-sync self-heal: a copy newer
+  // than the running CLI is not stale (refreshing would downgrade it).
+  const drift = runtimeCopyDrift({ exists: true, ready: true, version, cli_version: cliVersion });
+  if (drift === "stale") {
+    return {
+      id: "runtime.copy",
+      status: "fail",
+      detail: `runtime copy v${version} is older than the CLI v${cliVersion}; the next auto sync refreshes it, or re-run \`tokenusage init\``,
+      critical: true,
+      meta: { path: appDir, version, cli_version: cliVersion, drift },
+    };
+  }
+  if (drift === "unknown-version") {
     return {
       id: "runtime.copy",
       status: "warn",
-      detail: `runtime copy v${version} is older than the CLI v${cliVersion}; re-run \`tokenusage init\``,
+      detail: "runtime copy marker carries no version; the next auto sync refreshes it, or re-run `tokenusage init`",
       critical: false,
-      meta: { path: appDir, version, cli_version: cliVersion },
+      meta: { path: appDir, version: null, cli_version: cliVersion, drift },
     };
   }
   return {

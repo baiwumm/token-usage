@@ -30,10 +30,15 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
+const { buildSyncEntryScript } = require("./runtime-launch");
+
 const TASK_NAME = "TokenUsageSync";
 const VBS_FILE = "run-sync-hidden.vbs";
 const LAUNCHER_FILE = "run-sync-scheduled.sh";
 const TASK_XML_FILE = "TokenUsageSync.xml";
+// Every platform's runner is a thin wrapper around this generated resolver,
+// which is what keeps the six spawn points on one launcher contract.
+const SYNC_ENTRY_FILE = "sync-entry.js";
 const LAUNCH_AGENT_LABEL = "com.token-usage.sync";
 const SYSTEMD_SERVICE_UNIT = "token-usage-sync.service";
 const SYSTEMD_TIMER_UNIT = "token-usage-sync.timer";
@@ -105,19 +110,38 @@ function cliEntryPath() {
   return path.resolve(__dirname, "..", "..", "bin", "tokenusage.js");
 }
 
+// The scheduled runners do not choose a CLI entry themselves: they run
+// `sync-entry.js`, which resolves "whoever is newer wins" at run time. Baking a
+// single winner at init time cannot work — nvm-windows keeps npm globals in a
+// version-specific prefix, and every auto sync refreshes the init-copied
+// runtime, so both candidates can move after the file is written.
+function syncEntryPathFor(binDir) {
+  return path.join(binDir, SYNC_ENTRY_FILE);
+}
+
+function writeSyncEntry({ binDir, trackerDir, packageEntry = cliEntryPath() }) {
+  fs.mkdirSync(binDir, { recursive: true });
+  const syncEntryPath = syncEntryPathFor(binDir);
+  fs.writeFileSync(
+    syncEntryPath,
+    buildSyncEntryScript({ trackerDir, packageEntry }),
+    { mode: 0o700 },
+  );
+  return syncEntryPath;
+}
+
 /**
  * The Windows hidden-runner wrapper. Paths are quoted individually (via
  * Chr(34), so the VBS has no quote-escaping puzzles) and cmd is NOT involved:
  * wscript runs node directly, so the cmd /c outer-quote-stripping pitfall
  * (paths with spaces) never applies.
  *
- * `fallbackCliJs` is the init-copied runtime (trackerDir/app/bin/tracker.js).
- * The primary path lives in npm's global prefix, which nvm-windows makes
- * version-specific: after `nvm use` the package is gone from that prefix and
- * an unconditional launch would fail every hour with "file not found". The
- * fallback keeps collecting (with the last init-copied build) instead.
+ * `syncEntryJs` is the resolver described above. It is a plain .js file, so the
+ * VBS has no readiness probe of its own to drift out of sync with the JS spawn
+ * points: a half-copied runtime, a missing global prefix and an npx-less
+ * machine are all resolved in one place and surface as a non-zero exit code.
  */
-function buildHiddenRunnerVbs({ nodeExe, cliJs, fallbackCliJs }) {
+function buildHiddenRunnerVbs({ nodeExe, syncEntryJs }) {
   // --from-scheduled: the run reports trigger=scheduled, self-logs via autoLog
   // and uploads without consulting the cloud-sync preference.
   const lines = [
@@ -126,36 +150,21 @@ function buildHiddenRunnerVbs({ nodeExe, cliJs, fallbackCliJs }) {
     "' flash); it runs the sync fully hidden and returns its exit code so the",
     "' task's LastTaskResult stays meaningful. Sync output lands in the CLI's",
     "' own rolling logs/sync.log — no shell redirect involved.",
-    "Dim shell, fso, nodeExe, cliJs, cmd, q",
+    "' The entry is resolved per run (installed package vs init-copied runtime,",
+    "' newest wins) by the generated sync-entry.js below.",
+    "Dim shell, nodeExe, syncEntryJs, cmd, q",
     "Set shell = CreateObject(\"WScript.Shell\")",
-    "Set fso = CreateObject(\"Scripting.FileSystemObject\")",
     "q = Chr(34)",
     `nodeExe = "${nodeExe}"`,
-    `cliJs = "${cliJs}"`,
-  ];
-  if (fallbackCliJs) {
-    lines.push(
-      "' npm's global prefix is version-specific under nvm-windows, so the",
-      "' path above disappears after `nvm use`. init also copies a",
-      "' self-contained runtime into the data dir; fall back to it rather than",
-      "' failing the hourly run with \"file not found\".",
-      `If Not fso.FileExists(cliJs) Then cliJs = "${fallbackCliJs}"`,
-    );
-  }
-  lines.push(
-    "cmd = q & nodeExe & q & \" \" & q & cliJs & q & \" sync --from-scheduled\"",
+    `syncEntryJs = "${syncEntryJs}"`,
+    "cmd = q & nodeExe & q & \" \" & q & syncEntryJs & q & \" sync --from-scheduled\"",
     "WScript.Quit shell.Run(cmd, 0, True)",
     "",
-  );
+  ];
   return lines.join("\n");
 }
 
-function writeHiddenRunner({
-  binDir,
-  nodeExe = process.execPath,
-  cliJs = cliEntryPath(),
-  fallbackCliJs,
-}) {
+function writeHiddenRunner({ binDir, nodeExe = process.execPath, syncEntryJs }) {
   fs.mkdirSync(binDir, { recursive: true });
   const vbsPath = vbsPathFor(binDir);
   // wscript.exe reads a BOM-less .vbs with the system ANSI code page (GBK on
@@ -163,7 +172,7 @@ function writeHiddenRunner({
   // into mojibake and the hourly run cannot find node. UTF-16LE + BOM is what
   // Windows Script Host expects; the XML definition already follows the same
   // rule.
-  const body = buildHiddenRunnerVbs({ nodeExe, cliJs, fallbackCliJs });
+  const body = buildHiddenRunnerVbs({ nodeExe, syncEntryJs });
   fs.writeFileSync(vbsPath, Buffer.from(`\uFEFF${body}`, "utf16le"), { mode: 0o600 });
   return vbsPath;
 }
@@ -186,33 +195,26 @@ function shSingleQuote(value) {
  * or ExecStart — avoids two different quoting grammars (launchd XML vs systemd
  * unit parsing) for the same paths.
  */
-function buildSyncLauncherScript({ nodeExe = process.execPath, cliJs = cliEntryPath(), fallbackCliJs }) {
+function buildSyncLauncherScript({ nodeExe = process.execPath, syncEntryJs }) {
   const lines = [
     "#!/bin/sh",
     "# Token Usage — scheduled sync launcher (generated by `tokenusage init`).",
     "# Edited by hand? Re-run `tokenusage init` instead: it rewrites this file.",
+    "# The entry itself is resolved per run by sync-entry.js (installed package vs",
+    "# init-copied runtime, newest wins), so an nvm/homebrew upgrade never leaves",
+    "# this launcher pointing at a path that no longer exists.",
     `NODE=${shSingleQuote(nodeExe)}`,
-    `CLI=${shSingleQuote(cliJs)}`,
+    `SYNC_ENTRY=${shSingleQuote(syncEntryJs)}`,
+    'exec "$NODE" "$SYNC_ENTRY" sync --from-scheduled',
+    "",
   ];
-  if (fallbackCliJs) {
-    // nvm / homebrew upgrades move or drop the package path; the init-copied
-    // runtime under the data dir keeps collecting instead of failing silently.
-    lines.push(
-      `if [ ! -f "$CLI" ]; then CLI=${shSingleQuote(fallbackCliJs)}; fi`,
-    );
-  }
-  lines.push('exec "$NODE" "$CLI" sync --from-scheduled', "");
   return lines.join("\n");
 }
 
-function writeSyncLauncher({ binDir, nodeExe, cliJs = cliEntryPath(), fallbackCliJs }) {
+function writeSyncLauncher({ binDir, nodeExe, syncEntryJs }) {
   fs.mkdirSync(binDir, { recursive: true });
   const launcherPath = launcherPathFor(binDir);
-  fs.writeFileSync(
-    launcherPath,
-    buildSyncLauncherScript({ nodeExe, cliJs, fallbackCliJs }),
-    { mode: 0o700 },
-  );
+  fs.writeFileSync(launcherPath, buildSyncLauncherScript({ nodeExe, syncEntryJs }), { mode: 0o700 });
   return launcherPath;
 }
 
@@ -489,32 +491,34 @@ function errorText(error, max = 200) {
  */
 function registerAutoSyncSchedule({
   binDir,
+  trackerDir,
   home = os.homedir(),
-  cliJs = cliEntryPath(),
   nodeExe = process.execPath,
-  fallbackCliJs,
   platform = process.platform,
   now = new Date(),
 } = {}) {
   const kind = schedulePlatform(platform);
   const label = scheduleLabel(platform);
+  // The resolver is written first: every platform's runner is a thin wrapper
+  // around it, so a failure here has to abort the whole registration.
+  const syncEntryJs = writeSyncEntry({ binDir, trackerDir });
   if (kind === "windows") {
-    const outcome = registerWindowsScheduledTask({ binDir, cliJs, nodeExe, fallbackCliJs, now });
+    const outcome = registerWindowsScheduledTask({ binDir, nodeExe, syncEntryJs, now });
     return { ...outcome, platform: kind, label };
   }
   if (kind === "macos") {
-    return registerLaunchAgent({ binDir, home, cliJs, nodeExe, fallbackCliJs });
+    return { ...registerLaunchAgent({ binDir, home, nodeExe, syncEntryJs }), platform: kind, label };
   }
   if (kind === "linux") {
-    return registerSystemdTimer({ binDir, home, cliJs, nodeExe, fallbackCliJs });
+    return { ...registerSystemdTimer({ binDir, home, nodeExe, syncEntryJs }), platform: kind, label };
   }
   return { registered: false, platform: kind, label, reason: "unsupported_platform" };
 }
 
-function registerWindowsScheduledTask({ binDir, cliJs = cliEntryPath(), nodeExe = process.execPath, fallbackCliJs, now = new Date(), userId = windowsUserId() }) {
+function registerWindowsScheduledTask({ binDir, nodeExe = process.execPath, syncEntryJs, now = new Date(), userId = windowsUserId() }) {
   if (!isWindows()) return { registered: false, reason: "not_windows" };
   try {
-    const vbsPath = writeHiddenRunner({ binDir, nodeExe, cliJs, fallbackCliJs });
+    const vbsPath = writeHiddenRunner({ binDir, nodeExe, syncEntryJs });
     const xmlPath = taskXmlPathFor(binDir);
     const startBoundary = formatTaskStartBoundary(now);
     // schtasks only accepts a Unicode (UTF-16) definition file.
@@ -565,9 +569,9 @@ function registerWindowsScheduledTask({ binDir, cliJs = cliEntryPath(), nodeExe 
   }
 }
 
-function registerLaunchAgent({ binDir, home = os.homedir(), cliJs = cliEntryPath(), nodeExe = process.execPath, fallbackCliJs }) {
+function registerLaunchAgent({ binDir, home = os.homedir(), nodeExe = process.execPath, syncEntryJs }) {
   try {
-    const launcherPath = writeSyncLauncher({ binDir, nodeExe, cliJs, fallbackCliJs });
+    const launcherPath = writeSyncLauncher({ binDir, nodeExe, syncEntryJs });
     const plistPath = launchAgentPath(home);
     fs.mkdirSync(path.dirname(plistPath), { recursive: true });
     const logDir = scheduleLogDir(home);
@@ -594,9 +598,9 @@ function registerLaunchAgent({ binDir, home = os.homedir(), cliJs = cliEntryPath
   }
 }
 
-function registerSystemdTimer({ binDir, home = os.homedir(), cliJs = cliEntryPath(), nodeExe = process.execPath, fallbackCliJs }) {
+function registerSystemdTimer({ binDir, home = os.homedir(), nodeExe = process.execPath, syncEntryJs }) {
   try {
-    const launcherPath = writeSyncLauncher({ binDir, nodeExe, cliJs, fallbackCliJs });
+    const launcherPath = writeSyncLauncher({ binDir, nodeExe, syncEntryJs });
     const servicePath = systemdServicePath(home);
     const timerPath = systemdTimerPath(home);
     fs.mkdirSync(path.dirname(servicePath), { recursive: true });
@@ -781,7 +785,7 @@ function deleteAutoSyncSchedule({ home = os.homedir(), binDir, platform = proces
   const label = scheduleLabel(platform);
   const removals = [];
   if (binDir) {
-    for (const file of [VBS_FILE, LAUNCHER_FILE, TASK_XML_FILE]) {
+    for (const file of [VBS_FILE, LAUNCHER_FILE, TASK_XML_FILE, SYNC_ENTRY_FILE]) {
       try {
         fs.unlinkSync(path.join(binDir, file));
         removals.push(file);
@@ -913,6 +917,9 @@ module.exports = {
   systemdServicePath,
   systemdTimerPath,
   cliEntryPath,
+  syncEntryPathFor,
+  writeSyncEntry,
+  buildSyncEntryScript,
   buildHiddenRunnerVbs,
   writeHiddenRunner,
   buildSyncLauncherScript,

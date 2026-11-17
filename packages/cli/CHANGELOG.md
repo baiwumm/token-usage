@@ -6,6 +6,32 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.6.3
+
+2026-11-17。运行时副本漂移自愈：全局 `npm i -g` 升级后，`<trackerDir>/app` 里那份给钩子与计划任务兜底的
+运行时副本不再停在旧版本。零契约变更（`docs/cli-contract.md` 未动），服务端无需同步升级；对账基线
+（`queue.jsonl` last-wins）与队列文件格式不变。
+
+- **自动运行的 sync 会自愈陈旧副本**：`<trackerDir>/app` 此前只由 `tokenusage init` 刷新，全局升级后它
+  一直停留在旧构建——写死的默认生产域、旧 legacy-host 表——而唯一在跑的比对（`doctor`）是个非致命
+  warn。现在自动口味（计划任务、notify、watch）的 sync 在采集前比对副本标记与 CLI 版本，不一致就
+  就地重装。重装走 staging + rename，用 `appDir.refresh.lock` 防并发，崩溃遗留的锁 5 分钟后自动
+  回收；`TOKENUSAGE_SKIP_LOCAL_RUNTIME_COPY=1` 仍然跳过。无漂移时只多一次 stat + marker 读取，刷新
+  失败只记日志、绝不让每小时采集失败。副本比 CLI **新**不算陈旧（刷新等于降级）。
+- **`doctor` 的 `runtime.copy` 从 warn 升为 fail（critical）**：陈旧副本意味着计划任务跑的是旧代码。
+  详情会写明下一次自动 sync 会自愈，或手动 `tokenusage init`。
+- **`status` 显示副本版本**：文本模式多一行 `- Runtime copy: v0.6.2 (up to date)`，`--json` / `--light`
+  多一个 `runtime_copy` 字段（`path` / `version` / `installed_at` / `ready` / `cli_version` / `stale`），
+  陈旧时直接标 `STALE`。
+- **启动契约统一为「谁新用谁」**：五个 spawn 点（计划任务 VBS/sh、notify 钩子、OpenClaw hook、
+  OpenClaw session plugin、sync 的 auto-retry 子进程）此前各自手写「marker 存在 + 拷贝文件存在」
+  的探测链，只有 Windows 计划任务那一支例外——它只判 `FileExists` 就烤死一个入口。现在所有点共用
+  `lib/runtime-launch.js`：运行时副本在 `.runtime-ready` 里声明版本，已安装包在自己的 `package.json`
+  里声明版本，高者胜，平手给已安装包（npm 是升级来源），无 marker 的副本不是候选，两路皆无才退回
+  `npx`。计划任务只负责 `node sync-entry.js sync --from-scheduled`，仲裁收敛到生成的 resolver
+  入口；VBS 不再点名任何 CLI 文件，`nvm` 全局前缀切换也不会再打偏。CommonJS 生成脚本内联这份
+  lib，OpenClaw session plugin 是 ESM，改为写入同目录 `launcher.cjs` 再 import。
+
 ## 0.6.2
 
 2026-11-17。仅元数据与文档：包页可发现性优化，零代码、零契约变更，已安装的采集端无需升级。

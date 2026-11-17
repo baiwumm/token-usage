@@ -4,7 +4,7 @@ const fs = require("node:fs/promises");
 const fssync = require("node:fs");
 const { runOpenclawCli } = require("./openclaw-cli");
 const { cliEntryPath } = require("./scheduled-task");
-const { runtimeReadyMarkerPath } = require("./runtime-entry");
+const { buildLauncherPrelude, resolveLauncher, launcherCommand } = require("./runtime-launch");
 
 const OPENCLAW_HOOK_NAME = "tokenusage-openclaw-sync";
 const OPENCLAW_HOOK_DIRNAME = "openclaw-hook";
@@ -245,21 +245,20 @@ function buildHookHandler({
   openclawHome,
   packageEntry = cliEntryPath(),
 }) {
-  const trackerBinPath = path.join(trackerDir, "app", "bin", "tracker.js");
-  const runtimeReadyPath = runtimeReadyMarkerPath(path.join(trackerDir, "app"));
   const fallbackPkg = packageName || "tokenusage-cli";
   const safeOpenclawHome = openclawHome || path.join(os.homedir(), ".openclaw");
+  // Which CLI entry runs the spawned sync is decided by the shared launcher
+  // contract (lib/runtime-launch.js) — the same one notify.cjs, the auto-retry
+  // child, init's first sync and the scheduled runners use.
+  const launcherPrelude = buildLauncherPrelude({ trackerDir, packageEntry });
 
   return (
     `'use strict';\n` +
-    `const fs = require('node:fs');\n` +
-    `const path = require('node:path');\n` +
+    `// node:fs and node:path come from the inlined launcher lib below.\n` +
     `const cp = require('node:child_process');\n` +
     `const trackerDir = ${JSON.stringify(trackerDir)};\n` +
-    `const trackerBinPath = ${JSON.stringify(trackerBinPath)};\n` +
-    `const runtimeReadyPath = ${JSON.stringify(runtimeReadyPath)};\n` +
-    `const packageEntryPath = ${JSON.stringify(packageEntry || null)};\n` +
     `const fallbackPkg = ${JSON.stringify(fallbackPkg)};\n` +
+    launcherPrelude +
     `const openclawHome = ${JSON.stringify(safeOpenclawHome)};\n` +
     `const throttlePath = path.join(trackerDir, 'openclaw.sync.throttle');\n` +
     `const THROTTLE_MS = 15_000;\n` +
@@ -304,15 +303,15 @@ function buildHookHandler({
     `    if (prevModel) env.TOKENUSAGE_OPENCLAW_PREV_MODEL = prevModel;\n` +
     `    if (prevUpdatedAt) env.TOKENUSAGE_OPENCLAW_PREV_UPDATED_AT = prevUpdatedAt;\n` +
     `\n` +
-    `    // First usable launcher: init-copied runtime (only with its readiness\n` +
-    `    // marker), then the installed package entry, then npx.\n` +
-    `    const hasLocalRuntime = fs.existsSync(runtimeReadyPath) && fs.existsSync(trackerBinPath);\n` +
-    `    const hasPackageEntry = Boolean(packageEntryPath) && fs.existsSync(packageEntryPath);\n` +
-    `    const cmd = hasLocalRuntime\n` +
-    `      ? [process.execPath, trackerBinPath, 'sync', '--auto', '--from-openclaw']\n` +
-    `      : hasPackageEntry\n` +
-    `        ? [process.execPath, packageEntryPath, 'sync', '--auto', '--from-openclaw']\n` +
-    `        : ['npx', '--yes', fallbackPkg, 'sync', '--auto', '--from-openclaw'];\n` +
+    `    // Newest usable entry wins (see the resolution block above): the init-copied\n` +
+    `    // runtime when it is newer, the installed package otherwise, npx last. A\n` +
+    `    // half-copied runtime is never a candidate.\n` +
+    `    const syncArgs = ['sync', '--auto', '--from-openclaw'];\n` +
+    `    const launcher = resolveLauncher({\n` +
+    `      trackerDir: LAUNCHER_DATA_DIR,\n` +
+    `      packageEntry: LAUNCHER_PACKAGE_ENTRY,\n` +
+    `    });\n` +
+    `    const cmd = launcherCommand(launcher, syncArgs, { fallbackPkg });\n` +
     `\n` +
     `    const child = cp.spawn(cmd[0], cmd.slice(1), { detached: true, windowsHide: true, stdio: 'ignore', env });\n` +
     `    child.unref();\n` +

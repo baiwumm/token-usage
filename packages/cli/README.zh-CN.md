@@ -234,7 +234,9 @@ init 会把当前 CLI 及其依赖闭包复制到 `~/.tokenusage/tracker/app`，
 入口使用。
 
 升级 CLI 或切换 Node 版本后重跑一次
-`tokenusage init --yes --no-integrations --no-open` 刷新副本；`tokenusage doctor`
+`tokenusage init --yes --no-integrations --no-open` 刷新副本；自动运行的 sync（小时任务、
+notify、watch）现在也会自己比对副本与 CLI 版本，不一致就地重装，`tokenusage status` 会把
+副本版本与 CLI 版本并排打出来。`tokenusage doctor`
 的 `runtime.copy` 检查会报告副本缺失、缺标记或版本落后，`uninstall --purge`
 连同数据目录一并清理。
 

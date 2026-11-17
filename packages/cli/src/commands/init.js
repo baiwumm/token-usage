@@ -90,6 +90,7 @@ const {
   formatScheduleRegistration,
 } = require("../lib/scheduled-task");
 const { runtimeReadyMarkerPath } = require("../lib/runtime-entry");
+const { buildLauncherPrelude, resolveLauncher, launcherCommand } = require("../lib/runtime-launch");
 const { UsageError, unknownOptionError } = require("../lib/cli-errors");
 const {
   BOLD,
@@ -358,7 +359,6 @@ async function cmdInit(argv, options = {}) {
   let firstSync = null;
   try {
     firstSync = await runFirstSyncAndRead({
-      trackerBinPath,
       trackerDir,
       packageName: "tokenusage",
     });
@@ -567,16 +567,10 @@ async function runSetup({
       detail: "Skipped (--no-task); auto syncs stay manual",
     });
   } else {
-    // The generated runner targets the package's bin entry (scheduled-task.js
-    // owns that path): pointing it at src/cli.js makes the hidden run a no-op.
-    // The runtime copy refresh below is also the runner's fallback, so an nvm
-    // switch (which drops the version-specific npm prefix) does not kill
-    // collection — but only a copy with its readiness marker counts as usable.
-    const fallbackCliJs =
-      runtimeCopy.ok === true && fssync.existsSync(runtimeReadyMarkerPath(appDir))
-        ? trackerBinPath
-        : undefined;
-    const scheduleOutcome = registerAutoSyncSchedule({ binDir, home, fallbackCliJs });
+    // The generated runners resolve their entry per run (installed package vs
+    // init-copied runtime, newest wins) — see lib/runtime-launch.js — so nothing
+    // here has to decide which of the two is usable at init time.
+    const scheduleOutcome = registerAutoSyncSchedule({ binDir, home, trackerDir });
     summary.push({
       label: "Scheduled sync",
       status: scheduleOutcome.registered ? "installed" : "skipped",
@@ -1750,15 +1744,17 @@ function buildNotifyHandler({ trackerDir, packageName, packageEntry = cliEntryPa
   const queueSignalPath = path.join(trackerDir, "notify.signal");
   const originalPath = path.join(trackerDir, "codex_notify_original.json");
   const fallbackPkg = packageName || "tokenusage-cli";
-  const trackerBinPath = path.join(trackerDir, "app", "bin", "tracker.js");
-  const runtimeReadyPath = runtimeReadyMarkerPath(path.join(trackerDir, "app"));
+  // Which CLI entry runs the spawned sync is decided by the shared launcher
+  // contract (lib/runtime-launch.js) — the same one the OpenClaw hook, the
+  // session plugin, the auto-retry child, init's first sync and the scheduled
+  // runners use. Hand-rolling the chain here is what let them drift apart.
+  const launcherPrelude = buildLauncherPrelude({ trackerDir, packageEntry });
 
   return `#!/usr/bin/env node
 'use strict';
 
-const fs = require('node:fs');
+// node:fs and node:path come from the inlined launcher lib below.
 const os = require('node:os');
-const path = require('node:path');
 const cp = require('node:child_process');
 
 const rawArgs = process.argv.slice(2);
@@ -1783,9 +1779,7 @@ const signalPath = ${JSON.stringify(queueSignalPath)};
 const codexOriginalPath = ${JSON.stringify(originalPath)};
 const acodeOriginalPath = ${JSON.stringify(path.join(trackerDir, "acode_notify_original.json"))};
 const codeOriginalPath = ${JSON.stringify(path.join(trackerDir, "code_notify_original.json"))};
-const trackerBinPath = ${JSON.stringify(trackerBinPath)};
-const runtimeReadyPath = ${JSON.stringify(runtimeReadyPath)};
-const packageEntryPath = ${JSON.stringify(packageEntry || null)};
+${launcherPrelude}const packageEntryPath = ${JSON.stringify(packageEntry || null)};
 const fallbackPkg = ${JSON.stringify(fallbackPkg)};
 const selfPath = path.resolve(__filename);
 const home = os.homedir();
@@ -1828,20 +1822,16 @@ try {
     try { last = Number(fs.readFileSync(throttlePath, 'utf8')) || 0; } catch (_) {}
     if (now - last > 20_000) {
     try { fs.writeFileSync(throttlePath, String(now), 'utf8'); } catch (_) {}
-    // Pick the first usable launcher: the init-copied runtime (self-contained,
-    // survives an nvm switch — but only with its readiness marker), then the
-    // installed package entry, then npx as the last resort. A half-copied
-    // runtime must never be spawned: it dies with MODULE_NOT_FOUND in an
-    // ignored stdio stream, which looks exactly like a successful sync.
-    const hasLocalRuntime = fs.existsSync(runtimeReadyPath) && fs.existsSync(trackerBinPath);
-    const hasPackageEntry = Boolean(packageEntryPath) && fs.existsSync(packageEntryPath);
+    // Newest usable entry wins (see the resolution block above): the init-copied
+    // runtime when it is newer, the installed package otherwise, npx last. A
+    // half-copied runtime is never a candidate, so it cannot die with
+    // MODULE_NOT_FOUND inside this ignored stdio stream.
     const syncArgs = ['sync', '--auto', '--from-notify', '--source', source];
-    const cmd = hasLocalRuntime
-      ? [process.execPath, trackerBinPath, ...syncArgs]
-      : hasPackageEntry
-        ? [process.execPath, packageEntryPath, ...syncArgs]
-        : ['npx', '--yes', fallbackPkg, ...syncArgs];
-    spawnDetached(cmd);
+    const launcher = resolveLauncher({
+      trackerDir: LAUNCHER_DATA_DIR,
+      packageEntry: LAUNCHER_PACKAGE_ENTRY,
+    });
+    spawnDetached(launcherCommand(launcher, syncArgs, { fallbackPkg }));
   }
 } catch (_) {}
 
@@ -2749,7 +2739,7 @@ async function safeRealpath(p) {
 // derived from queue.jsonl after the wait window closes.
 const FIRST_SYNC_TIMEOUT_MS = 15_000;
 
-async function runFirstSyncAndRead({ trackerBinPath, trackerDir, packageName }) {
+async function runFirstSyncAndRead({ trackerDir, packageName }) {
   // Test-only escape hatch: skip spawning a real `sync --drain` subprocess when
   // a test only exercises init wiring. Returns the same shape derived from an
   // (empty) queue so callers behave identically without the ~1s spawn per case.
@@ -2758,15 +2748,12 @@ async function runFirstSyncAndRead({ trackerBinPath, trackerDir, packageName }) 
   }
   const fallbackPkg = packageName || "tokenusage-cli";
   const argv = ["sync", "--auto", "--drain"];
-  // Same readiness contract as notify: a runtime copy without its marker is a
-  // half copy — spawn the installed package instead of dying silently.
-  const hasLocalRuntime =
-    typeof trackerBinPath === "string" &&
-    fssync.existsSync(trackerBinPath) &&
-    fssync.existsSync(runtimeReadyMarkerPath(path.join(trackerDir, "app")));
-  const cmd = hasLocalRuntime
-    ? [process.execPath, trackerBinPath, ...argv]
-    : ["npx", "--yes", fallbackPkg, ...argv];
+  // One launcher contract for every spawn point: whichever CLI entry is newer
+  // runs. A half-copied runtime (no readiness marker) is not a candidate, so
+  // init's own first sync cannot die on it the way the old FileExists probe
+  // could.
+  const launcher = resolveLauncher({ trackerDir, packageEntry: cliEntryPath() });
+  const cmd = launcherCommand(launcher, argv, { fallbackPkg });
 
   await new Promise((resolve) => {
     let settled = false;

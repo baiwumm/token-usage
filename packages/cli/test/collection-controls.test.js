@@ -27,6 +27,7 @@ const {
   TASK_NAME,
   cliEntryPath,
   buildHiddenRunnerVbs,
+  buildSyncEntryScript,
 } = require("../src/lib/scheduled-task");
 
 let tmpDir;
@@ -168,41 +169,39 @@ test("report() is strictly best-effort: never throws, skips unpaired runs, logs 
   assert.equal(logs.length, 1);
 });
 
-test("hidden-runner VBS quotes paths individually and propagates the exit code", () => {
+test("hidden-runner VBS is a thin wrapper around the generated sync entry", () => {
   const vbs = buildHiddenRunnerVbs({
     nodeExe: "C:\\Program Files\\nodejs\\node.exe",
-    cliJs: "C:\\Users\\me\\AppData\\tokenusage-cli\\bin\\tokenusage.js",
+    syncEntryJs: "C:\\Users\\me\\.tokenusage\\bin\\sync-entry.js",
   });
   // Chr(34) builds the quotes: no VBS quote-escaping, no cmd /c layer, and
   // paths with spaces stay intact.
   assert.match(vbs, /q = Chr\(34\)/);
   assert.ok(vbs.includes('nodeExe = "C:\\Program Files\\nodejs\\node.exe"'));
-  assert.ok(vbs.includes('cliJs = "C:\\Users\\me\\AppData\\tokenusage-cli\\bin\\tokenusage.js"'));
-  assert.ok(vbs.includes('cmd = q & nodeExe & q & " " & q & cliJs & q & " sync --from-scheduled"'));
+  assert.ok(
+    vbs.includes('syncEntryJs = "C:\\Users\\me\\.tokenusage\\bin\\sync-entry.js"'),
+    "the wrapper must point at the resolver, not at a fixed CLI entry",
+  );
+  assert.ok(vbs.includes('cmd = q & nodeExe & q & " " & q & syncEntryJs & q & " sync --from-scheduled"'));
   // Hidden window (0) + wait for completion (True).
   assert.match(vbs, /WScript\.Quit shell\.Run\(cmd, 0, True\)/);
   // The task name stays stable — pause/resume and uninstall toggle by name.
   assert.equal(TASK_NAME, "TokenUsageSync");
 });
 
-// nvm-windows installs npm globals into a version-specific prefix, so the
-// recorded package path vanishes after `nvm use` and the hourly run failed
-// every time with "file not found". The VBS now falls back to the
-// init-copied runtime, which lives under the data dir.
-test("hidden-runner VBS falls back to the init runtime when the package path disappears", () => {
-  const fallback = "C:\\Users\\me\\.tokenusage\\tracker\\app\\bin\\tracker.js";
+// The wrapper used to probe for a recorded package path and fall back to the
+// init-copied runtime. That probe could only see whether a file existed, so it
+// happily ran a half-copied runtime (missing deps → MODULE_NOT_FOUND inside a
+// hidden window) and it never noticed when the two copies swapped places. The
+// generated sync-entry.js now resolves the newest usable entry per run, so the
+// VBS deliberately contains no path probing at all.
+test("hidden-runner VBS contains no path probing — resolution lives in sync-entry.js", () => {
   const vbs = buildHiddenRunnerVbs({
     nodeExe: "C:\\Program Files\\nodejs\\node.exe",
-    cliJs: "C:\\Users\\me\\AppData\\Roaming\\npm\\node_modules\\tokenusage-cli\\bin\\tokenusage.js",
-    fallbackCliJs: fallback,
+    syncEntryJs: "C:\\Users\\me\\.tokenusage\\bin\\sync-entry.js",
   });
-  assert.ok(
-    vbs.includes(`If Not fso.FileExists(cliJs) Then cliJs = "${fallback}"`),
-    "the runtime copy must be the fallback target",
-  );
-  // Non-nvm layouts have nothing to fall back to; the line stays out.
-  const plain = buildHiddenRunnerVbs({ nodeExe: "node.exe", cliJs: "C:\\a\\b.js" });
-  assert.ok(!plain.includes("FileExists"), "no fallback probe without a fallback path");
+  assert.ok(!vbs.includes("FileExists"), "no fallback probe: the resolver picks the entry");
+  assert.ok(!vbs.includes("cliJs"), "the wrapper must not name a CLI entry of its own");
 });
 
 // 0.2.2 regression: init registered src/cli.js instead of the bin entry. That
@@ -213,8 +212,13 @@ test("scheduled task launches the CLI entry, never the inert src/cli.js", () => 
   assert.match(entry, /\/bin\/tokenusage\.js$/);
   assert.ok(fs.existsSync(cliEntryPath()), "the registered entry must exist in the package");
 
-  const vbs = buildHiddenRunnerVbs({ nodeExe: "node.exe", cliJs: cliEntryPath() });
-  assert.doesNotMatch(vbs, /src[\\/]cli\.js/);
+  // The resolver is what names the entry now; the VBS never does.
+  const entryScript = buildSyncEntryScript({
+    trackerDir: path.join(os.tmpdir(), "tokenusage-sync-entry", "tracker"),
+    packageEntry: cliEntryPath(),
+  });
+  assert.match(entryScript, /bin[\\/]tokenusage\.js/);
+  assert.doesNotMatch(entryScript, /src[\\/]cli\.js/);
 });
 
 test("--from-scheduled reports as scheduled, unlike a plain manual run", () => {

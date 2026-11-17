@@ -4,6 +4,12 @@ const fs = require("node:fs/promises");
 const fssync = require("node:fs");
 const pkg = require("../../package.json");
 const { resolveDumateDbPaths } = require("../lib/dumate");
+const {
+  readRuntimeCopyState,
+  runtimeCopyDrift,
+  formatRuntimeCopyLine,
+  formatRuntimeCopyCell,
+} = require("../lib/runtime-refresh");
 
 const { readJson } = require("../lib/fs");
 const { parseFlags } = require("../lib/cli-flags");
@@ -1080,12 +1086,30 @@ async function cmdStatus(argv = []) {
   // every status output has to name itself — see lib/device-identity.js.
   const deviceIdentity = resolveLocalDeviceIdentity({ config: config || {}, home });
 
+  // Version of the init-copied runtime that notify hooks, the auto-retry child
+  // and the scheduled task spawn when npm's global prefix is gone. Only
+  // `init` refreshes it, so after a global upgrade it stays behind — and a
+  // stale snapshot pins the old build's base URL. Auto syncs now refresh it
+  // themselves, but `status` has to be able to say "still stale".
+  const runtimeCopy = readRuntimeCopyState(trackerDir);
+  const runtimeDrift = runtimeCopyDrift(runtimeCopy);
+
   if (opts.json || opts.light) {
     const summary = {
       version: pkg.version,
       generated_at: new Date().toISOString(),
       base_url: config?.baseUrl || null,
       device_token_set: deviceTokenPresence.set,
+      runtime_copy: runtimeCopy.exists
+        ? {
+            path: runtimeCopy.path,
+            version: runtimeCopy.version,
+            installed_at: runtimeCopy.installed_at,
+            ready: runtimeCopy.ready,
+            cli_version: runtimeCopy.cli_version,
+            stale: runtimeDrift === "stale",
+          }
+        : null,
       device: {
         name: deviceIdentity.name,
         hostname: deviceIdentity.hostname,
@@ -1329,6 +1353,7 @@ async function cmdStatus(argv = []) {
       "Status:",
       `- Base URL: ${config?.baseUrl || "unset"}`,
       `- Device token: ${deviceTokenPresence.set ? "set" : "unset"}`,
+      formatRuntimeCopyLine(runtimeCopy, runtimeDrift, pkg.version),
       formatDeviceLine(deviceIdentity),
       collectionPaused
         ? "- Collection: PAUSED (auto/notify/watch syncs skip; manual sync runs; `tokenusage resume` to re-enable)"
@@ -1767,6 +1792,7 @@ function renderLightTable(summary) {
   const push = (k, v) => rows.push([k, v == null || v === "" ? "—" : String(v)]);
 
   push("Version", summary.version);
+  if (summary.runtime_copy) push("Runtime copy", formatRuntimeCopyCell(summary.runtime_copy));
   push("Base URL", summary.base_url);
   push("Device token", summary.device_token_set ? "set" : "unset");
   push("Device", summary.device?.name);

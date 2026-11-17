@@ -89,23 +89,40 @@ test("doctor: a copy from an older CLI is flagged for a re-run", async () => {
     fs.writeFileSync(path.join(appDir, "bin", "tracker.js"), "// copy\n");
     fs.writeFileSync(runtimeReadyMarkerPath(appDir), JSON.stringify({ version: "0.0.1" }));
     const check = await runtimeCopyCheck(trackerDir);
-    assert.equal(check.status, "warn");
+    // Was a non-critical warn, which meant the only way to learn your
+    // scheduled task was running stale code was to run `doctor` and read the
+    // line. Auto syncs now refresh the copy themselves, so a failure here
+    // means the refresh did not happen.
+    assert.equal(check.status, "fail");
+    assert.equal(check.critical, true);
     assert.match(check.detail, /older than the CLI/);
   });
 });
 
-test("notify handler: marker + installed-package fallback baked into the template", () => {
+test("doctor: a copy newer than the CLI is not flagged", async () => {
+  await withTrackerDir(async ({ trackerDir }) => {
+    const appDir = runtimeAppDir(trackerDir);
+    fs.mkdirSync(path.join(appDir, "bin"), { recursive: true });
+    fs.writeFileSync(path.join(appDir, "bin", "tracker.js"), "// copy\n");
+    fs.writeFileSync(runtimeReadyMarkerPath(appDir), JSON.stringify({ version: "99.0.0" }));
+    const check = await runtimeCopyCheck(trackerDir);
+    // Refreshing would downgrade the copy to whatever the older global
+    // install happens to be, so "newer" is not drift.
+    assert.equal(check.status, "ok");
+    assert.equal(check.meta.version, "99.0.0");
+  });
+});
+
+test("notify handler: the shared launcher contract is baked into the template", () => {
   const source = buildNotifyHandler({ trackerDir: path.join("C:", "home", ".tokenusage", "tracker") });
-  assert.ok(source.includes("runtimeReadyPath"), "the template must probe the readiness marker");
-  assert.ok(source.includes("packageEntryPath"), "the template must carry the installed CLI entry");
-  assert.ok(
-    source.includes("const hasLocalRuntime = fs.existsSync(runtimeReadyPath) && fs.existsSync(trackerBinPath);"),
-    "both the launcher and the marker are required",
-  );
-  assert.ok(
-    source.includes(": hasPackageEntry\n        ? [process.execPath, packageEntryPath, ...syncArgs]"),
-    "the middle tier runs the installed package without npx",
-  );
+  // The prelude is inlined, so the generated file needs no require outside
+  // node built-ins — it runs from ~/.tokenusage/bin, away from the package.
+  assert.ok(source.includes("resolveLauncher"), "the template must carry the resolver");
+  assert.ok(source.includes("launcherCommand"), "the template must build the command through the resolver");
+  assert.ok(source.includes("LAUNCHER_DATA_DIR"), "the tracker dir must be injected for the resolver");
+  // Newest wins: the init-copied runtime when it is newer, the installed
+  // package otherwise, npx only as a last resort.
+  assert.ok(!source.includes("hasLocalRuntime"), "the hand-rolled three-tier probe is gone");
   // The generated file must stay dependency-free: only node built-ins.
   assert.ok(!/require\(['"](?!node:)/.test(source), "notify.cjs must only require node: built-ins");
 });

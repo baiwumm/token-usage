@@ -11,6 +11,7 @@ const { test } = require("node:test");
 const PACKAGE_ROOT = path.join(__dirname, "..");
 const SRC = path.join(PACKAGE_ROOT, "src");
 const BIN = path.join(PACKAGE_ROOT, "bin");
+const { buildLauncherPrelude } = require("../src/lib/runtime-launch");
 
 function readSource(...segments) {
   return fs.readFileSync(path.join(PACKAGE_ROOT, ...segments), "utf8");
@@ -142,31 +143,58 @@ test("the unported install heartbeat stays removed", () => {
   assert.ok(!sync.includes('require("../lib/telemetry")'));
 });
 
-test("every auto-sync spawn point gates on the runtime-copy readiness marker", () => {
+test("every auto-sync spawn point shares one launcher contract", () => {
   // 0.2.4: a runtime copy without its marker is a half copy (missing deps) and
   // dies with MODULE_NOT_FOUND inside an ignored stdio stream — collection
   // looks alive while nothing is collected. Each generated/hidden launcher must
   // check the marker before choosing it.
+  //
+  // 0.6.3: instead of five hand-rolled probes (one per spawn point, each able
+  // to drift), every JS spawn point now inlines lib/runtime-launch.js and lets
+  // resolveLauncher() pick the newest usable entry. The marker is still the
+  // gate — a copy without it is never a candidate — but the rule lives in one
+  // place instead of five.
   const init = readSource("src", "commands", "init.js");
-  assert.ok(init.includes("runtimeReadyMarkerPath"), "init.js must write and probe the marker");
+  assert.ok(init.includes("runtimeReadyMarkerPath"), "init.js must write the marker");
+  assert.ok(init.includes("require(\"../lib/runtime-launch\")"), "init.js must use the shared launcher");
 
   const notify = readSource("src", "commands", "init.js");
   assert.ok(
-    notify.includes("const hasLocalRuntime = fs.existsSync(runtimeReadyPath) && fs.existsSync(trackerBinPath);"),
-    "the notify handler must require both the launcher and the marker",
+    notify.includes("buildLauncherPrelude"),
+    "the notify handler must inline the shared launcher contract",
   );
 
-  for (const file of [["src", "lib", "openclaw-hook.js"], ["src", "lib", "openclaw-session-plugin.js"]]) {
+  for (const file of [
+    ["src", "lib", "openclaw-hook.js"],
+    ["src", "lib", "openclaw-session-plugin.js"],
+  ]) {
     const source = readSource(...file);
-    assert.ok(
-      source.includes("runtimeReadyPath") && source.includes("packageEntryPath"),
-      `${file.join("/")} must bake the marker + installed-package fallback`,
-    );
+    // The hook template is CommonJS, so it inlines the lib; the session plugin
+    // is ESM, so it imports a written-out copy of the same file. Either way
+    // the arbitration happens in lib/runtime-launch.js, not here.
+    const usesLauncher =
+      (source.includes("buildLauncherPrelude") || source.includes("buildLauncherEsmImports")) &&
+      source.includes("resolveLauncher");
+    assert.ok(usesLauncher, `${file.join("/")} must bake the shared launcher contract`);
   }
 
   const sync = readSource("src", "commands", "sync.js");
   assert.ok(
-    sync.includes("runtimeReadyPath") && sync.includes("packageEntryPath"),
+    sync.includes("buildLauncherPrelude") && sync.includes("resolveLauncher"),
     "the auto-retry script must use the same launcher selection",
+  );
+
+  // The scheduled runners stay thin wrappers over the generated resolver, so
+  // the VBS/sh layer can never disagree with the JS spawn points again.
+  const scheduled = readSource("src", "lib", "scheduled-task.js");
+  assert.ok(
+    scheduled.includes("buildSyncEntryScript") && scheduled.includes("SYNC_ENTRY_FILE"),
+    "scheduled-task.js must generate a sync entry resolver",
+  );
+
+  // The inlined prelude must stay dependency-free: only node built-ins.
+  assert.ok(
+    !/require\(['"](?!node:)/.test(buildLauncherPrelude({ trackerDir: "/x", packageEntry: "/y.js" })),
+    "the launcher prelude must only require node: built-ins",
   );
 });

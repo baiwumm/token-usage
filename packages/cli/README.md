@@ -239,7 +239,10 @@ instance you paired, nothing receives data.
 
 The self-contained runtime copy means the scheduled task keeps working after an nvm-windows
 Node switch; `tokenusage doctor` reports a missing or stale copy, and `uninstall --purge`
-removes it together with the data directory.
+removes it together with the data directory. A global upgrade used to leave the copy behind
+until you re-ran `init`; automatic runs (the hourly task, notify hooks, watch) now compare
+the copy's version against the CLI's and re-install it themselves, and `tokenusage status`
+prints the copy's version next to the CLI's.
 
 ## Provider support
 
