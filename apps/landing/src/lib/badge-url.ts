@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 export interface BadgeSource {
-  /** 徽章端点 origin，如 https://token-usage.baiwumm.com */
+  /** 徽章端点 origin，如 https://app.token-usage.cc */
   origin: string;
   /** 徽章令牌（README 已公开，非机密）——SVG 直链用。 */
   token: string;

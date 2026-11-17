@@ -33,7 +33,7 @@ landing 的 `src/lib/demo-url.ts` 与三处入口、
 
 ## 2. 硬边界
 
-- demo 与操作者生产实例 `token-usage.baiwumm.com` **相互隔离**（官方域名决策 #19，
+- demo 与操作者生产实例 `app.token-usage.cc` **相互隔离**（官方域名决策 #19，
   `docs/archive/rewrite-plan-2026-11.md`）：不同 Supabase 项目、不同 Vercel 项目、不同域名，
   唯一共享物是 Git 仓库代码；
 - 代码里不出现任何实例地址：实例身份只由环境变量决定，`apps/web` 镜像同源；

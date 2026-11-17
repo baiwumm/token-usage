@@ -31,7 +31,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const BASE_URL_DEFAULT = "https://token-usage.baiwumm.com/api";
+const BASE_URL_DEFAULT = "https://app.token-usage.cc/api";
 const SYNTHETIC_MACHINE_ID = "selftest-synthetic-0001";
 const SYNTHETIC_CLIENT_INFO = "tokentracker selftest-synthetic-device";
 const SYNTHETIC_SOURCE = "selftest";

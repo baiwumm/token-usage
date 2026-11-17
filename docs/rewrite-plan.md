@@ -187,7 +187,7 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
 
 **已交付**：v1 里程碑 M0–M7（契约层、认证与设置、仪表盘、wrapped / 分享 / 服务状态、配对页与
 部署文档、上游 Dashboard 核心与外观设置、Sessions、采集端、数据迁移与切换、成就系统）、官方落地页
-`apps/landing`、桌面端 `apps/desktop`。生产实例 `token-usage.baiwumm.com` 承载多台采集机。
+`apps/landing`、桌面端 `apps/desktop`。生产实例 `app.token-usage.cc` 承载多台采集机。
 
 版本号不写死：CLI 看 `packages/cli/CHANGELOG.md`，桌面端看 `apps/desktop/CHANGELOG.md`。
 
@@ -221,3 +221,9 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
    自建精编——提交在 `apps/landing/src/content/docs/`，面向读者提取重点并配图，
    与仓库根 `docs/`（开发者 / Agent 向）解耦；完整规范经文档页外链 GitHub，见
    `apps/landing/README.md`）。
+8. **生产实例域名迁移**：**已完成（2026-11-17）**——生产实例迁至 `app.token-usage.cc`
+   （操作者放行并完成 Vercel / DNS / Supabase Auth / OAuth 控制台侧），旧生产域名已注销、
+   不保留跳转。README 徽章块（landing 徽章构建期解析 README 自动跟随）、CLI 与桌面端默认
+   `DEFAULT_DASHBOARD_URL`/`DEFAULT_BASE_URL`、web demo 防呆闸门与 seed 防呆、自检脚本、
+   相关文档全部换域；CLI 0.6.1 起旧生产域名进 `LEGACY_TOKEN_USAGE_HOSTS`（连同持久化的
+   `dashboardUrl`）自动归位到新域。桌面端常量随下次桌面端发版带出，届时 CHANGELOG 记一条。

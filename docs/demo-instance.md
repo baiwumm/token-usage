@@ -3,7 +3,7 @@
 公开演示实例 `https://demo.token-usage.cc` 的建库、部署、重置与排障。方案与决策见
 [`docs/demo-instance-plan.md`](demo-instance-plan.md)；本册只讲「怎么操作」。
 
-**边界（不可逾越）**：demo 与操作者生产实例 `token-usage.baiwumm.com` 相互隔离
+**边界（不可逾越）**：demo 与操作者生产实例 `app.token-usage.cc` 相互隔离
 （官方域名决策 #19）。不同 Supabase 项目、不同 Vercel 项目、不同域名，代码同源。
 下列任何一步都**不要**复用生产环境的 key。
 

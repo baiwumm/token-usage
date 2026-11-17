@@ -3,8 +3,9 @@
 面向**已有实例**的升级、冒烟与回滚。从零部署看 [`docs/deploy-guide.md`](deploy-guide.md)；
 采集机身份对照与历史对账记录见 [`docs/archive/machines.md`](archive/machines.md)。
 
-生产实例 `token-usage.baiwumm.com` 承载多台采集机；旧系统已于 2026-10-29 整体退役，
-**改回旧 base URL 的回滚路径不存在**。
+生产实例 `app.token-usage.cc` 承载多台采集机（2026-11-17 域名迁移，旧生产域名已从 DNS 与
+Vercel 注销，**改回旧 base URL 的回滚路径不存在**；存量 CLI 安装由
+`packages/cli/src/lib/runtime-config.js` 的 legacy 归位机制自动落到新域）。
 
 ## 升级已有部署
 
