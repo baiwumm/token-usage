@@ -184,6 +184,35 @@ fn read_instance_config_inner(app: &AppHandle) -> Result<InstanceConfig, String>
     // machineId — see runtime-config.js); before 2026-11-09 this struct read
     // snake_case, so every whitelisted field silently read as None and the
     // tray's dashboard link fell back to the default instance.
+    //
+    // init deliberately keeps retired instance URLs persisted as migration
+    // markers; the CLI's own resolver drops them at read time (LEGACY_* sets
+    // in runtime-config.js) but this raw parse would not. Mirror that here:
+    // the desktop must never open a URL the CLI itself refuses to upload to.
+    // Values are always absolute https URLs written by the CLI, so extracting
+    // the authority segment is enough to identify the host.
+    const RETIRED_CONFIG_HOSTS: [&str; 5] = [
+        "example.invalid", // CLI test-isolation placeholder
+        "b46ug8xu.us-east.insforge.app",
+        "srctyff5.us-east.insforge.app",
+        "token-usage-delta.vercel.app",
+        "token-usage.baiwumm.com", // retired 2026-11-17 → app.token-usage.cc
+    ];
+    fn live_url(value: Option<String>) -> Option<String> {
+        let value = value?;
+        let host = value
+            .trim()
+            .split("://")
+            .nth(1)?
+            .split(['/', ':'])
+            .next()?
+            .to_lowercase();
+        if RETIRED_CONFIG_HOSTS.contains(&host.as_str()) {
+            None
+        } else {
+            Some(value)
+        }
+    }
     #[derive(Deserialize, Default)]
     #[serde(default, rename_all = "camelCase")]
     struct CliConfigFields {
@@ -212,8 +241,8 @@ fn read_instance_config_inner(app: &AppHandle) -> Result<InstanceConfig, String>
             .map(|v| v.trim().to_string())
     };
     Ok(InstanceConfig {
-        base_url: non_empty(&parsed.base_url),
-        dashboard_url: non_empty(&parsed.dashboard_url),
+        base_url: live_url(non_empty(&parsed.base_url)),
+        dashboard_url: live_url(non_empty(&parsed.dashboard_url)),
         machine_id: non_empty(&parsed.machine_id),
     })
 }

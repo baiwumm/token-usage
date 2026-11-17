@@ -226,4 +226,6 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
    不保留跳转。README 徽章块（landing 徽章构建期解析 README 自动跟随）、CLI 与桌面端默认
    `DEFAULT_DASHBOARD_URL`/`DEFAULT_BASE_URL`、web demo 防呆闸门与 seed 防呆、自检脚本、
    相关文档全部换域；CLI 0.6.1 起旧生产域名进 `LEGACY_TOKEN_USAGE_HOSTS`（连同持久化的
-   `dashboardUrl`）自动归位到新域。桌面端常量随下次桌面端发版带出，届时 CHANGELOG 记一条。
+   `dashboardUrl`）自动归位到新域。桌面端常量随下次桌面端发版带出，届时 CHANGELOG 记一条；
+   另发现桌面端裸读 config.json 没有 CLI 的 retired-host 归位（迁移机器的托盘/页头会打开
+   已注销旧域），已在 `read_instance_config` 补镜像归位（0.4.3 一并记 CHANGELOG）。
