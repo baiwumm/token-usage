@@ -16,14 +16,8 @@ import { DEMO_COPY } from "@/lib/copy/demo";
 /** Stable envelope for every blocked write on a demo instance. */
 export const DEMO_WRITE_ERROR = "Demo instance is read-only";
 
-/** Hosts that must never be treated as a demo instance (decision #19). The
- * second entry is the retired production host (2026-11-17 domain move): it no
- * longer resolves, but a stale demo config aimed at it must still trip the
- * isolation check instead of slipping through. */
-const PRODUCTION_INSTANCE_HOSTS = [
-  "app.token-usage.cc",
-  "token-usage.baiwumm.com",
-];
+/** Hosts that must never be treated as a demo instance (decision #19). */
+const PRODUCTION_INSTANCE_HOSTS = ["app.token-usage.cc"];
 
 function hostOf(value: string): string {
   try {

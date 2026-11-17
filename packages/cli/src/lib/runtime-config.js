@@ -9,12 +9,6 @@ const LEGACY_INSFORGE_HOSTS = new Set([
   "b46ug8xu.us-east.insforge.app",
   "srctyff5.us-east.insforge.app",
 ]);
-// Retired hosts a persisted config may still point at; such installs fall
-// back to the current default instead of uploading into a dead backend.
-const LEGACY_TOKEN_USAGE_HOSTS = new Set([
-  "token-usage-delta.vercel.app",
-  "token-usage.baiwumm.com", // retired 2026-11-17, moved to app.token-usage.cc
-]);
 const DEFAULT_DASHBOARD_URL = DEFAULT_BASE_URL;
 const DEFAULT_HTTP_TIMEOUT_MS = 20_000;
 // Public InsForge anon key (JWT, role=anon). Mirrors dashboard/src/lib/insforge-config.ts
@@ -207,7 +201,6 @@ function normalizePersistedBaseUrl(value) {
     const hostname = new URL(normalized).hostname.toLowerCase();
     if (hostname === "example.invalid") return undefined;
     if (LEGACY_INSFORGE_HOSTS.has(hostname)) return undefined;
-    if (LEGACY_TOKEN_USAGE_HOSTS.has(hostname)) return undefined;
   } catch {
     // Preserve the existing resolver behavior for arbitrary custom values.
   }
@@ -221,7 +214,7 @@ function normalizePersistedDashboardUrl(value) {
   if (normalized === undefined) return undefined;
   try {
     const hostname = new URL(normalized).hostname.toLowerCase();
-    if (LEGACY_INSFORGE_HOSTS.has(hostname) || LEGACY_TOKEN_USAGE_HOSTS.has(hostname)) {
+    if (LEGACY_INSFORGE_HOSTS.has(hostname)) {
       return undefined;
     }
   } catch {

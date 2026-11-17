@@ -277,9 +277,7 @@ function assertDemoTarget() {
     process.env.TOKEN_USAGE_DASHBOARD_URL || '',
   ).trim();
 
-  // The second host is the retired production domain (2026-11-17 move); it
-  // stays denied so a stale env can never point the seeder at production.
-  const productionHosts = ['app.token-usage.cc', 'token-usage.baiwumm.com'];
+  const productionHosts = ['app.token-usage.cc'];
 
   if (dashboard && productionHosts.some((host) => dashboard.includes(host))) {
     throw new Error(

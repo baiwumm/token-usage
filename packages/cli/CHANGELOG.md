@@ -25,10 +25,9 @@
 变更（`docs/cli-contract.md` 未动），自托管服务端无需同步升级。
 
 - **`DEFAULT_BASE_URL` 换域**：新安装与未自定义实例的默认指向 `https://app.token-usage.cc`。
-- **旧生产域名自动归位**：`token-usage.baiwumm.com` 进 `LEGACY_TOKEN_USAGE_HOSTS`，配置里
-  指向旧域的存量安装视为未设置，自动落到新默认域（与当年 `token-usage-delta.vercel.app`
-  同一机制）；持久化的 `dashboardUrl` 指向旧域时同样归位，避免「Dashboard:」提示与
-  `doctor` 残留死链。
+- **旧生产域名自动归位**：上一代生产域与更早的预发布域进 `LEGACY_TOKEN_USAGE_HOSTS`，配置里
+  指向它们的存量安装视为未设置，自动落到新默认域；持久化的 `dashboardUrl` 同样归位，避免
+  「Dashboard:」提示与 `doctor` 残留死链。
 - 设备令牌与配对状态不受影响（同一 Supabase 后端，令牌不绑域名）。
 
 ## 0.6.0

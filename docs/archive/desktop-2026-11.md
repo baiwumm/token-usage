@@ -57,7 +57,7 @@
   credits-only 来源不再进 token 榜——`SourceMixCard` 过滤 `tokens<=0`，同批把 D2 手写卡片
   收编为 `Card` 复合结构并修页脚 nowrap 分段）；`run_cli` 白名单确认拒绝 `device-login`
   （"command not allowed"）；`device_login_*` 真实后端全链路——authorize 拿到真码
-  （`XXXX-XXXX` 形态、`token-usage.baiwumm.com/device` 深链、`expiresInSec:900`）、
+  （`XXXX-XXXX` 形态、生产域 `/device` 深链、`expiresInSec:900`）、
   64 位 hex `device_code` 与 JSON blob 均未出现在 webview 可见输出、运行中进程树为
   `cmd.exe+node.exe`、cancel 后两者皆清（无孤儿）、`running:false` + `code:null`；
   `update_tray` 推送桥实测可用。close-to-tray / 托盘菜单（立即同步、暂停、退出）为 D1/D2

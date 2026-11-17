@@ -23,17 +23,17 @@ TokenTrackerSelfhost（Vite + React SPA + Vercel Functions）的下一代重写�
 | 6 | 数据访问 | route.ts 内 `@supabase/supabase-js` 服务端客户端 + service-role |
 | 7 | RLS 姿态 | 应用表对 `anon`/`authenticated` **全拒**；浏览器零直连 Supabase；所有环境变量 server-only |
 | 8 | 表结构 | 保守规范化 + `token_` 前缀：保留桶语义（last-wins upsert 键），表名列名规范化 |
-| 9 | 切换拓扑 | 2026-10-23 修订：新系统部署于 `token-usage.baiwumm.com`；旧域名 `tokentracker.baiwumm.com` 保留运行旧系统，互不冲突；采集机迁移 = 逐台把 base URL 指向新域名 |
+| 9 | 切换拓扑 | 2026-10-23 修订：新系统部署于当时的自有生产域；旧系统域名保留运行旧系统，互不冲突；采集机迁移 = 逐台把 base URL 指向新域名 |
 | 10 | 环境策略 | 2026-10-23 修订：**新建独立 Supabase 项目**承载新系统（与旧系统项目物理分离，free 档两个活跃项目恰好各占一个）；开发期在新项目用测试专用用户/设备，切换前清理测试数据再导入真实数据 |
 | 11 | i18n | v1 中英双语，重建轻量 copy 管线，架构留扩展点（2026-10-25 复核：维持轻量——locale 存 cookie + 根布局 SSR、`<html lang>` 同步；带数字/复数的文案用 `intl-messageformat`，不引入 i18n 框架） |
 | 12 | 文档 | 中文为主，代码注释英文 |
 | 13 | 视觉 | 功能对齐 + 视觉简化：HeroUI 重做到整洁可用；GSAP/Three 不移植；动画优先 CSS，确有必要时可用 **motion**（`motion/react`，2026-10-24 操作者批准，按需安装）。图表实现 2026-10-24 修订（操作者指令）：**recharts**，不再手写 SVG |
 | 14 | 里程碑 | 契约层先行（M1 先把 CLI 兼容层做绿） |
 | 15 | 旧系统 | 重写期间冻结新功能，只修 bug 和运维问题 |
-| 16 | 退役 | **2026-10-29 已执行**（操作者直接退役，跳过观察期与备份）：旧 Supabase 项目、旧 Vercel 项目、`tokentracker.baiwumm.com` 域名 DNS、旧仓库全部删除（G2/G3；旧仓库原 Archive 方案作废） |
+| 16 | 退役 | **2026-10-29 已执行**（操作者直接退役，跳过观察期与备份）：旧 Supabase 项目、旧 Vercel 项目、旧系统域名 DNS、旧仓库全部删除（G2/G3；旧仓库原 Archive 方案作废） |
 | 17 | 契约分档 | 2026-10-23 评审增补：两档制——CLI 面（7 端点）硬冻结；Dashboard 面（account-*×7 + dashboard）可演进、消费者仅新 UI，v1 复用现有形状，变更回写契约并同步 golden 测试与前端 |
 | 18 | 分支与门禁 | 直推 main；本地 `pnpm verify` + GitHub Actions CI 兜底（test 自 M1 接入）；`.vscode/` 入库 |
-| 19 | 官方域名 | 2026-10-24 注册 **token-usage.cc**（腾讯云，.cc 可备案）——开源项目官方站：落地页、文档（`docs.` 子域）、可选 demo 实例；操作者自部署实例仍为 `token-usage.baiwumm.com`，与官方站相互独立。命名注意：tokenusage.org 为同类 Rust 工具，无横杠的 tokenusage 域名/品牌一律避开。**2026-11-08 更新**：落地页已实施（仓库内 `apps/landing` 纯静态单页，见 §10 M-landing），`docs.` 子域与 demo 实例仍为后续可选项 |
+| 19 | 官方域名 | 2026-10-24 注册 **token-usage.cc**（腾讯云，.cc 可备案）——开源项目官方站：落地页、文档（`docs.` 子域）、可选 demo 实例；操作者自部署实例仍在自有生产域，与官方站相互独立。命名注意：tokenusage.org 为同类 Rust 工具，无横杠的 tokenusage 域名/品牌一律避开。**2026-11-08 更新**：落地页已实施（仓库内 `apps/landing` 纯静态单页，见 §10 M-landing），`docs.` 子域与 demo 实例仍为后续可选项 |
 | 20 | 上游基础功能 | 2026-10-25 操作者指令：先按上游 TokenTracker 的基础功能对齐——**A. Dashboard 核心 + 外观设置**，**B. Sessions**。不做上游全量复刻；Limits / Skills / Cloud / Leaderboard / Pet / Widgets / IP check 仍排除；Achievements 于 2026-10-30 移入范围（M7，账号级、读时计算，不移植上游云端成就，见 §5 与 `docs/achievements-plan.md`） |
 | 21 | Dashboard A | 上游 Dashboard 的信息架构（rolling stats、Top 模型、趋势、热力图、模型/来源/设备、日/时/月明细、成本分析）全部复用现有 Dashboard 面契约；不新增表/端点，不改 CLI；HeroUI 重做，图表继续 recharts |
 | 22 | Sessions B | 设备级会话明细：新增 `token_sessions`（`models` JSONB）、ingest 可选 `sessions` 数组、`account-sessions` series；只收用量元数据（source/session_id/时间/项目标签/token/模型），不收 prompt/正文/绝对路径/resume command/标题；成本读取时算；账户级来源（cursor/trae-cn）不进 Sessions v1；旧 CLI 不传 sessions 时行为不变 |
@@ -210,7 +210,7 @@ pnpm lockfile，依赖树披露随发版文档（`docs/desktop-plan.md` §6）�
 | **M5 配对页 + 部署文档**（已完成并上线：2026-10-24 开发完成，2026-10-26 生产实例完成 CLI 配对与真实上报闭环） | `/device` 配对/批准页（?user_code= 确认批准 + 手动输入 + 错误三态，调冻结 device-flow-grant）；中文部署指南（`docs/deploy-guide.md`：Supabase 建库 → Auth 配置 → Vercel → 建号 → 配对 → 闭环 + FAQ）、`apps/web/.env.example`、README Deploy to Vercel 按钮 + 英文摘要；本地验收提示：device-flow-authorize 需服务端配置 `TOKEN_USAGE_DASHBOARD_URL` | 全新 Supabase/Vercel 账号按文档从零跑通：建库 → 部署 → CLI 配对 → 上报 → 仪表盘可见 |
 | **M5.5 Dashboard 上游核心（A）+ 外观设置**（已完成 2026-10-25，操作者验收通过；二轮 UI 调整同日完成：总 Tokens 头卡、近一年热力图 + 平台筛选（契约 cell 新增可选 `sources` 字段）、卡片级模糊遮罩 Loading、分享卡（canvas Broadsheet）、`@number-flow/react` 数字过渡、卡片标题层级、Tooltip/Popover 箭头、Select 新 API、charts 色板接 `--color-chart-*`） | 仪表盘对齐上游基础信息架构：KPI（总量/计费量/成本/会话/活跃天）+ rolling 7d/30d/日均（复用 `account-summary`）、Top 模型、日/月趋势、活跃热力图、来源/设备（复用现有 Dashboard 面端点）、日/时/月明细表（排序/分页）、成本分析 Modal、统一筛选（范围/时区/设备）；设置新增外观分区：主题/语言/货币/Token 显示/单位/分组；新增统一格式 provider（`Intl.NumberFormat` + 内置汇率表）并替换现有零散格式化；不新增表、端点、CLI 改动、依赖 | 数值与 `dashboard` / `account-summary` / `daily` / `hourly` / `monthly` / `heatmap` / `model-breakdown` 对账一致，设备卡与 `dashboard.devices` 一致；桌面与 375px 无页面级横向滚动；三态齐全；外观偏好即时生效、刷新保留、`system` 语言 SSR 首帧正确；`pnpm verify` 全绿 |
 | **M5.6 Sessions（B）**（已完成 2026-10-25；真实数据对账通过 2026-10-26——公司机 448 会话与本地 sidecar 全一致（依赖 M-CLI reasoning 折算修复）；`token_sessions` 迁移、ingest 可选 `sessions`、第七个 series、`/sessions` 页面 + 导航已上线） | `token_sessions` 迁移（RLS 零 policy + 原子 `token_upsert_sessions` RPC）；ingest 可选 `sessions`（≤200、`ended_at` 严格 last-wins、账户级来源跳过）；`account-sessions` 第七个 series（catch-all，不新增 route）；`/sessions` 列表/详情（筛选/分页/汇总/模型拆分）；应用壳导航加入 Sessions；只落用量元数据 | 契约 golden 测试覆盖校验/幂等/乱序快照/吊销/隐私；旧 CLI 请求与响应逐字不变；新 CLI 上报后列表与本地会话对账一致；无会话时显示「等待新版采集器」空态；375px 可用；`pnpm verify` 全绿 |
-| **M-CLI 采集端**（真机迁移完成 2026-10-26：两台采集机切换、13.67B 历史重放、总量 20.94B 对账达标；sessions 真实数据对账一致 2026-10-26——zcode/opencode 行的 total 含 reasoning 而 output 不含，违反契约恒等式被映射器整行丢弃，修复为映射时按 `total = identity + reasoning` 精确形状折算进 output（fix(cli) 2026-10-26），公司机 448/448 会话全对上；npm 已发布 0.1.0（2026-10-27）并持续至 0.3.0（2026-11-01，新增 Trae CN 本地库、Qoder credits、Qoder 会话清单）；包名定为 tokenusage-cli） | fork 上游 CLI（MIT）改造为 `tokenusage-cli`（pnpm workspace 子包，二进制命令 `tokenusage`）：改名、指向新契约路径、`sync` 手动为主、`--watch` / `install-task` 可选自动档、剥离用不到的部分、`sessions` 元数据采集（session_id / source / 时间 / 项目 basename / token / 模型；不采集 prompt、正文、绝对路径、标题、resume command）、npm 发布（已完成：0.1.0 2026-10-27 首发，2026-11-01 至 0.3.0）；采集机迁移（装新 CLI → 配对 → 撤旧任务）。命名复查：tokenusage.org 为同类 Rust 工具（crates.io `tokenusage`），最终包名定为 `tokenusage-cli`（见 §1#19） | 任一台采集机 `npm i -g tokenusage-cli` 完成配对 + `tokenusage sync`，数值与该机 queue.jsonl 对账一致；`sessions` 与该机本地会话分析对账一致且无敏感字段；端到端契约测试全绿。**交付补充（2026-10-25）**：`packages/cli` skeleton + 契约重指向（delta.vercel.app / publishable key / `~/.tokenusage` 数据目录与旧 CLI 共存）+ sessions 增量上报（水位去重、恒等式自检、隐私白名单）+ payload golden 测试 14 项；serve/wrapped 本地面板剥除；`--watch` 常驻增量；npm 发布与真机对账已完成（见 `docs/cli-release.md`、`docs/launch-runbook.md` 新 CLI 迁移段） |
+| **M-CLI 采集端**（真机迁移完成 2026-10-26：两台采集机切换、13.67B 历史重放、总量 20.94B 对账达标；sessions 真实数据对账一致 2026-10-26——zcode/opencode 行的 total 含 reasoning 而 output 不含，违反契约恒等式被映射器整行丢弃，修复为映射时按 `total = identity + reasoning` 精确形状折算进 output（fix(cli) 2026-10-26），公司机 448/448 会话全对上；npm 已发布 0.1.0（2026-10-27）并持续至 0.3.0（2026-11-01，新增 Trae CN 本地库、Qoder credits、Qoder 会话清单）；包名定为 tokenusage-cli） | fork 上游 CLI（MIT）改造为 `tokenusage-cli`（pnpm workspace 子包，二进制命令 `tokenusage`）：改名、指向新契约路径、`sync` 手动为主、`--watch` / `install-task` 可选自动档、剥离用不到的部分、`sessions` 元数据采集（session_id / source / 时间 / 项目 basename / token / 模型；不采集 prompt、正文、绝对路径、标题、resume command）、npm 发布（已完成：0.1.0 2026-10-27 首发，2026-11-01 至 0.3.0）；采集机迁移（装新 CLI → 配对 → 撤旧任务）。命名复查：tokenusage.org 为同类 Rust 工具（crates.io `tokenusage`），最终包名定为 `tokenusage-cli`（见 §1#19） | 任一台采集机 `npm i -g tokenusage-cli` 完成配对 + `tokenusage sync`，数值与该机 queue.jsonl 对账一致；`sessions` 与该机本地会话分析对账一致且无敏感字段；端到端契约测试全绿。**交付补充（2026-10-25）**：`packages/cli` skeleton + 契约重指向（预发布域 / publishable key / `~/.tokenusage` 数据目录与旧 CLI 共存）+ sessions 增量上报（水位去重、恒等式自检、隐私白名单）+ payload golden 测试 14 项；serve/wrapped 本地面板剥除；`--watch` 常驻增量；npm 发布与真机对账已完成（见 `docs/cli-release.md`、`docs/launch-runbook.md` 新 CLI 迁移段） |
 | **M6 数据迁移与切换**（**已完成**：G1 2026-10-26 切换，G2/G3 2026-10-29 退役删除） | 迁移演练（见 §6）→ 生产切换 → 退役 | 见 §7 闸门清单逐项打勾 |
 | **M7 成就系统**（已完成 2026-10-30：P0/P1/P2/P4 + P3 收尾全部验收；实施与进度见 `docs/achievements-plan.md`） | 账号级成就：20 条 × 5 档（铜/银/金/钻/王者），指标单调白名单，按浏览器时区计算；读时计算，仅 `token_achievement_seen` 存账号级已读水位；`GET` + `POST /api/app/achievements`（同一 route）+ `/achievements` 页（徽章墙 / 摘要 / 五档详情）、侧栏入口、wrapped 独立成就卡（已获得成就 + 段位）、仪表盘成就条、全局解锁 toast、分享卡、详情 3D 翻面；中英文案与三态齐全；Sessions 类成就标明数据覆盖起点 | 20 条成就全部可计算且只升不降；阈值经真实实例校准；守卫测试（阈值递增 / 单调白名单 / 文案 / 资产）全绿；浏览器验收（正常 / 空 / 错误 / 窄屏 / 深色 / reduced-motion）；`pnpm verify` 全绿 |
 | **M-desktop 桌面端**（已完成 2026-11-10：D1–D5 全部操作者验收，`desktop-v0.1.0` 已发布并本机安装验收；过程与记录见 `docs/desktop-plan.md`） | `apps/desktop` 托盘伴生工具：Tauri 2 + web 同构前端栈，本机采集视角监控台 + CLI 操作台；定位、架构硬边界与各 D 验收线见 `docs/desktop-plan.md` | 各 D 验收线见 `docs/desktop-plan.md` §8；每期操作者验收 |
@@ -225,7 +225,7 @@ service key 读、向新项目写。数据量小（万级行），风险在**顺
 
 **执行结果**：G1 切换 2026-10-26 完成（两台采集机逐台改 base URL，历史重放 13.67B，
 总量对账达标）；G2/G3 退役 2026-10-29 由操作者执行完毕，旧 Supabase 项目、旧 Vercel 项目、
-`tokentracker.baiwumm.com` 域名 DNS 与旧仓库全部删除，未保留备份。
+旧系统域名 DNS 与旧仓库全部删除，未保留备份。
 
 **回滚预案**：旧系统已整体删除，改回旧域名的回滚路径**不存在**。采集机异常只能在现行系统侧
 处理：该机本地 `queue.jsonl` 与水位保证不丢数据，修复后 `tokenusage sync --drain` 补传
@@ -314,7 +314,7 @@ GitHub Release 安装验收**，D8 原范围被 D9–D11 全部吸收；应用�
 始终未发布、被本版取代并于同日删除（tag `desktop-v0.4.0` 保留作构建记录）。桌面端所依赖的
 `project-profiles` 子命令已随 `tokenusage-cli@0.5.5`（2026-11-11 发布）上线，其他机器升级
 CLI 后即可同步 web 编辑的显示名 / logo。生产实例
-`token-usage.baiwumm.com` 自 2026-10-26 起承载
+自有生产域自 2026-10-26 起承载
 两台采集机，旧系统已于 2026-10-29 退役。CLI 最新 `tokenusage-cli@0.5.5`（2026-11-11 发布，tag `cli-v0.5.5`——新增只读子命令
 `project-profiles`，供桌面端同步 web 编辑的项目显示名 / logo / 仓库；零破坏性变更）。
 `0.5.4`（2026-11-09）是 tracker 写入被拒时的 tmp 重试与 `hint`、pause 标志改原子写、

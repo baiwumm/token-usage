@@ -82,7 +82,7 @@ npx supabase db push
 
 Dashboard → **Authentication → URL Configuration**：
 
-- **Site URL**：部署域名根（如 `https://<your-project>.vercel.app`，绑定自定义域名后改回来）
+- **Site URL**：部署域名根（如 `https://your-domain.com`，绑定自定义域名后改回来）
 - **Redirect URLs**：添加 `https://<部署域名>/**`（**通配条目**。精确条目盖不住
   `/auth/callback?next=…` 这类带查询串的子路径，GoTrue 校验不过会回退 Site URL，魔法链接与
   OAuth 的会话交换都会失败）
@@ -121,7 +121,7 @@ Dashboard → **Authentication → URL Configuration**：
 | `NEXT_PUBLIC_SUPABASE_URL` | 第 1 步的 Project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 第 1 步的 Publishable key |
 | `SUPABASE_SECRET_KEY` | 第 1 步的 Secret key |
-| `TOKEN_USAGE_DASHBOARD_URL` | 部署域名根，如 `https://<your-project>.vercel.app` |
+| `TOKEN_USAGE_DASHBOARD_URL` | 部署域名根，如 `https://your-domain.com` |
 
 可选变量（`TOKEN_USAGE_SITE_NAME`、`NEXT_PUBLIC_BEIAN_ICP` / `NEXT_PUBLIC_BEIAN_POLICE`、
 `NEXT_PUBLIC_PROJECTS_CALIBER`、`TOKEN_USAGE_FX_RATES`）的语义见 `docs/rewrite-plan.md` §5。

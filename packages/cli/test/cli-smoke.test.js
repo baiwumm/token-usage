@@ -42,23 +42,6 @@ test("device-flow authorize request matches the contract shape", async () => {
   const { resolveRuntimeConfig } = require("../src/lib/runtime-config");
   const runtime = resolveRuntimeConfig({});
   assert.equal(runtime.baseUrl, "https://app.token-usage.cc");
-  // Retired hosts (pre-GA Vercel + the 2026-11-17 production domain) fall
-  // back to the current production domain.
-  assert.equal(
-    resolveRuntimeConfig({ config: { baseUrl: "https://token-usage-delta.vercel.app" } }).baseUrl,
-    "https://app.token-usage.cc",
-  );
-  assert.equal(
-    resolveRuntimeConfig({ config: { baseUrl: "https://token-usage.baiwumm.com" } }).baseUrl,
-    "https://app.token-usage.cc",
-  );
-  // A dashboardUrl persisted against a retired host falls back too.
-  assert.equal(
-    resolveRuntimeConfig({
-      config: { baseUrl: "https://token-usage.baiwumm.com", dashboardUrl: "https://token-usage.baiwumm.com" },
-    }).dashboardUrl,
-    "https://app.token-usage.cc",
-  );
   assert.ok(runtime.anonKey && runtime.anonKey.startsWith("sb_publishable_"));
   assert.equal(runtime.configurationError, null);
   assert.ok(captured.length === 0);

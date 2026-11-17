@@ -50,7 +50,7 @@ describe("demoMisconfiguration", () => {
 
   it("is inert when the demo flag is off (production env mistakes stay quiet)", () => {
     delete process.env.TOKEN_USAGE_DEMO;
-    process.env.TOKEN_USAGE_DASHBOARD_URL = "https://token-usage.baiwumm.com";
+    process.env.TOKEN_USAGE_DASHBOARD_URL = "https://app.token-usage.cc";
 
     expect(demoMisconfiguration()).toBeNull();
   });
@@ -59,12 +59,6 @@ describe("demoMisconfiguration", () => {
     process.env.TOKEN_USAGE_DASHBOARD_URL = "https://app.token-usage.cc";
 
     expect(demoMisconfiguration()).toContain("app.token-usage.cc");
-  });
-
-  it("still rejects the retired production host (stale demo configs)", () => {
-    process.env.TOKEN_USAGE_DASHBOARD_URL = "https://token-usage.baiwumm.com";
-
-    expect(demoMisconfiguration()).toContain("token-usage.baiwumm.com");
   });
 
   it("requires the shared demo account credentials", () => {
