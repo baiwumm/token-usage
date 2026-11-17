@@ -89,7 +89,7 @@ describe("demo page guard", () => {
   });
 
   it("fails closed when demo mode is misconfigured", async () => {
-    process.env.TOKEN_USAGE_DASHBOARD_URL = "https://token-usage.baiwumm.com";
+    process.env.TOKEN_USAGE_DASHBOARD_URL = "https://app.token-usage.cc";
     const response = await proxy(request("/"));
 
     expect(response.status).toBe(500);

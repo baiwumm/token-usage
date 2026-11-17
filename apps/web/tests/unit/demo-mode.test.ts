@@ -56,6 +56,12 @@ describe("demoMisconfiguration", () => {
   });
 
   it("rejects a dashboard URL aimed at the production instance", () => {
+    process.env.TOKEN_USAGE_DASHBOARD_URL = "https://app.token-usage.cc";
+
+    expect(demoMisconfiguration()).toContain("app.token-usage.cc");
+  });
+
+  it("still rejects the retired production host (stale demo configs)", () => {
     process.env.TOKEN_USAGE_DASHBOARD_URL = "https://token-usage.baiwumm.com";
 
     expect(demoMisconfiguration()).toContain("token-usage.baiwumm.com");

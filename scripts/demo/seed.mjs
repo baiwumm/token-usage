@@ -277,7 +277,11 @@ function assertDemoTarget() {
     process.env.TOKEN_USAGE_DASHBOARD_URL || '',
   ).trim();
 
-  if (dashboard && dashboard.includes('token-usage.baiwumm.com')) {
+  // The second host is the retired production domain (2026-11-17 move); it
+  // stays denied so a stale env can never point the seeder at production.
+  const productionHosts = ['app.token-usage.cc', 'token-usage.baiwumm.com'];
+
+  if (dashboard && productionHosts.some((host) => dashboard.includes(host))) {
     throw new Error(
       `Refusing to seed: TOKEN_USAGE_DASHBOARD_URL points at the production instance (${dashboard})`,
     );
