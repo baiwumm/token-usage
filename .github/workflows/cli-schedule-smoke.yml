@@ -52,8 +52,19 @@ jobs:
           sudo systemctl start "user@$(id -u)"
           echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
 
+      # Users install the published tarball, not the source tree: pack it and
+      # install globally so the smoke exercises the real bin shim + bundled
+      # dependencies (source-only runs fail on missing deps like smol-toml).
+      - name: Pack and install the CLI globally
+        run: |
+          cd packages/cli
+          npm pack
+          npm install -g ./tokenusage-cli-*.tgz
+          tokenusage --help > /dev/null
+          echo "installed: $(command -v tokenusage)"
+
       - name: Init (non-interactive, unpaired, purely local)
-        run: node packages/cli/src/cli.js init --yes --no-integrations --no-open
+        run: tokenusage init --yes --no-integrations --no-open
 
       - name: Assert launchd agent is registered (macOS)
         if: runner.os == 'macOS'
@@ -77,7 +88,7 @@ jobs:
           systemctl --user list-timers --all --no-pager | head -5
 
       - name: Uninstall
-        run: node packages/cli/src/cli.js uninstall
+        run: tokenusage uninstall
 
       - name: Assert launchd agent is gone (macOS)
         if: runner.os == 'macOS'
