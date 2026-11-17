@@ -10,7 +10,7 @@ export const REPO_URL = "https://github.com/baiwumm/token-usage";
 export const README_URL = `${REPO_URL}#readme`;
 
 /** The project's own landing page (settings 网页 group, D11 acceptance). */
-export const LANDING_URL = "https://token-usage.cc";
+export const LANDING_URL = "https://www.token-usage.cc";
 
 const PATHS: Record<WebPage, string> = {
   dashboard: "/",
