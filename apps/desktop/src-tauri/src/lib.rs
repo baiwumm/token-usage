@@ -59,7 +59,7 @@ const CLI_COMMANDS: [&str; 7] = [
     "project-profiles",
 ];
 const MAX_TRACKER_FILE_BYTES: u64 = 8 * 1024 * 1024;
-const DEFAULT_DASHBOARD_URL: &str = "https://token-usage.baiwumm.com";
+const DEFAULT_DASHBOARD_URL: &str = "https://app.token-usage.cc";
 
 fn tracker_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let home = app.path().home_dir().map_err(|e| e.to_string())?;

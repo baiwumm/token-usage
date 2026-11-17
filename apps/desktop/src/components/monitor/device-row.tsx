@@ -18,9 +18,9 @@ export function DeviceRow({ hostname, machineId }: DeviceRowProps) {
       : (hostname ?? "未知设备");
   const parts = [identity, "© 2026 Token Usage"];
 
-  // Each segment stays whole (a host like token-usage.baiwumm.com would
-  // otherwise break at its hyphen in a 400 px window); the separators sit
-  // outside the nowrap spans, so lines wrap only between segments.
+  // Each segment stays whole (a host like app.token-usage.cc would otherwise
+  // break at its hyphen in a 400 px window); the separators sit outside the
+  // nowrap spans, so lines wrap only between segments.
   return (
     <Typography className="text-center text-muted tabular-nums" type="body">
       {parts.map((part, index) => (

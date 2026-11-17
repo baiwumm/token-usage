@@ -134,7 +134,7 @@ export interface MonitorSnapshot {
   cli: CliStatus;
 }
 
-export const DEFAULT_DASHBOARD_URL = "https://token-usage.baiwumm.com";
+export const DEFAULT_DASHBOARD_URL = "https://app.token-usage.cc";
 
 /**
  * Whether a bridge failure is the whole-read capacity wall (the queue passed
