@@ -41,7 +41,7 @@ test("fix 1: init.js no longer ships the stale www.tokenusage.cc constant", () =
   );
   assert.ok(!source.includes("www.tokenusage.cc"), "stale domain must not reappear in init.js");
   // The effective default stays the production deployment in runtime-config.
-  assert.equal(DEFAULT_BASE_URL, "https://token-usage.baiwumm.com");
+  assert.equal(DEFAULT_BASE_URL, "https://app.token-usage.cc");
   assert.equal(DEFAULT_DASHBOARD_URL, DEFAULT_BASE_URL);
 });
 

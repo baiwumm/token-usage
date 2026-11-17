@@ -6,6 +6,18 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.6.1
+
+2026-11-17。生产实例域名迁移配套：默认实例切换 `app.token-usage.cc`（操作者放行）。零契约
+变更（`docs/cli-contract.md` 未动），自托管服务端无需同步升级。
+
+- **`DEFAULT_BASE_URL` 换域**：新安装与未自定义实例的默认指向 `https://app.token-usage.cc`。
+- **旧生产域名自动归位**：`token-usage.baiwumm.com` 进 `LEGACY_TOKEN_USAGE_HOSTS`，配置里
+  指向旧域的存量安装视为未设置，自动落到新默认域（与当年 `token-usage-delta.vercel.app`
+  同一机制）；持久化的 `dashboardUrl` 指向旧域时同样归位，避免「Dashboard:」提示与
+  `doctor` 残留死链。
+- 设备令牌与配对状态不受影响（同一 Supabase 后端，令牌不绑域名）。
+
 ## 0.6.0
 
 2026-11-15。来源覆盖面的补齐 + 采集可诊断性。零契约变更（`docs/cli-contract.md` 未动），

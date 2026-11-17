@@ -1,7 +1,7 @@
-// token-usage production deployment (operator-approved 2026-10-25,
-// docs/rewrite-plan.md §1#19). Override per invocation with --base-url or
+// token-usage production deployment (moved to app.token-usage.cc with
+// operator approval 2026-11-17). Override per invocation with --base-url or
 // TOKENUSAGE_BASE_URL.
-const DEFAULT_BASE_URL = "https://token-usage.baiwumm.com";
+const DEFAULT_BASE_URL = "https://app.token-usage.cc";
 // Retired hosts from the upstream (InsForge) era; a persisted config pointing
 // at one of these must fall back to the current default instead of uploading
 // into a dead backend.
@@ -9,9 +9,12 @@ const LEGACY_INSFORGE_HOSTS = new Set([
   "b46ug8xu.us-east.insforge.app",
   "srctyff5.us-east.insforge.app",
 ]);
-// The pre-GA Vercel deployment; installs pinned to it during acceptance move
-// to the production domain like every other host change.
-const LEGACY_TOKEN_USAGE_HOSTS = new Set(["token-usage-delta.vercel.app"]);
+// Retired hosts a persisted config may still point at; such installs fall
+// back to the current default instead of uploading into a dead backend.
+const LEGACY_TOKEN_USAGE_HOSTS = new Set([
+  "token-usage-delta.vercel.app",
+  "token-usage.baiwumm.com", // retired 2026-11-17, moved to app.token-usage.cc
+]);
 const DEFAULT_DASHBOARD_URL = DEFAULT_BASE_URL;
 const DEFAULT_HTTP_TIMEOUT_MS = 20_000;
 // Public InsForge anon key (JWT, role=anon). Mirrors dashboard/src/lib/insforge-config.ts
@@ -57,7 +60,7 @@ function resolveRuntimeConfig({ cli = {}, config = {}, env = process.env, defaul
   );
   const dashboardUrl = pickString(
     cli.dashboardUrl,
-    configBase === selectedBase ? config.dashboardUrl : undefined,
+    configBase === selectedBase ? normalizePersistedDashboardUrl(config.dashboardUrl) : undefined,
     envBase === selectedBase ? env?.TOKENUSAGE_DASHBOARD_URL : undefined,
     defaultBase === selectedBase ? defaults.dashboardUrl : undefined,
     custom ? baseUrl.value : DEFAULT_DASHBOARD_URL,
@@ -205,6 +208,22 @@ function normalizePersistedBaseUrl(value) {
     if (hostname === "example.invalid") return undefined;
     if (LEGACY_INSFORGE_HOSTS.has(hostname)) return undefined;
     if (LEGACY_TOKEN_USAGE_HOSTS.has(hostname)) return undefined;
+  } catch {
+    // Preserve the existing resolver behavior for arbitrary custom values.
+  }
+  return normalized;
+}
+
+// A persisted dashboardUrl aimed at a retired host is treated as unset so it
+// falls back to the current default, mirroring normalizePersistedBaseUrl.
+function normalizePersistedDashboardUrl(value) {
+  const normalized = normalizeString(value);
+  if (normalized === undefined) return undefined;
+  try {
+    const hostname = new URL(normalized).hostname.toLowerCase();
+    if (LEGACY_INSFORGE_HOSTS.has(hostname) || LEGACY_TOKEN_USAGE_HOSTS.has(hostname)) {
+      return undefined;
+    }
   } catch {
     // Preserve the existing resolver behavior for arbitrary custom values.
   }

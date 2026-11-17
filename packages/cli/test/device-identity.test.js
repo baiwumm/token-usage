@@ -92,7 +92,7 @@ test("doctor reports the device identity as its own check", () => {
 test("the light table names the device and its id", () => {
   const table = renderLightTable({
     version: "0.4.6",
-    base_url: "https://token-usage.baiwumm.com",
+    base_url: "https://app.token-usage.cc",
     device_token_set: true,
     device: {
       name: "DESKTOP-MHFON1J #48ea790e",
