@@ -1,0 +1,100 @@
+# CLI auto-sync schedule smoke on real non-Windows machines (rewrite-plan §7-1).
+#
+# The scheduler install (packages/cli/src/lib/scheduled-task.js) had only
+# artifact-level tests (plist / unit text assertions). This workflow runs the
+# real `tokenusage init` on GitHub-hosted macOS and Ubuntu VMs — genuine
+# launchd / systemd hosts — and asserts the schedule is actually registered,
+# then that `uninstall` tears it down again.
+#
+# Safety: the schedule install is purely local (files + launchctl/systemctl);
+# this init run is unpaired, so no server ever sees anything. `--yes
+# --no-integrations --no-open` keeps it non-interactive.
+#
+# Linux quirk: the runner user has no systemd user manager by default, so
+# `systemctl --user` cannot connect. Enabling linger and starting user@UID
+# first mirrors a real desktop session — init's daemon-reload / enable --now
+# then run for real instead of degrading.
+
+name: CLI schedule smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "packages/cli/**"
+      - ".github/workflows/cli-schedule-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+          - os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Prepare systemd user manager (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo loginctl enable-linger "$USER"
+          sudo systemctl start "user@$(id -u)"
+          echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
+
+      - name: Init (non-interactive, unpaired, purely local)
+        run: node packages/cli/src/cli.js init --yes --no-integrations --no-open
+
+      - name: Assert launchd agent is registered (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          test -f "$HOME/Library/LaunchAgents/com.token-usage.sync.plist"
+          launchctl print "gui/$(id -u)/com.token-usage.sync" > /dev/null
+          launchctl list | grep -q "com.token-usage.sync"
+          echo "launchd agent registered: $(launchctl list | grep 'com.token-usage.sync')"
+
+      - name: Assert systemd timer is registered (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          test -f "$HOME/.config/systemd/user/token-usage-sync.timer"
+          test -f "$HOME/.config/systemd/user/token-usage-sync.service"
+          systemctl --user daemon-reload
+          test "$(systemctl --user is-enabled token-usage-sync.timer)" = "enabled"
+          systemctl --user list-timers --all | grep -q "token-usage-sync.timer"
+          systemd-analyze verify \
+            "$HOME/.config/systemd/user/token-usage-sync.service" \
+            "$HOME/.config/systemd/user/token-usage-sync.timer"
+          systemctl --user list-timers --all --no-pager | head -5
+
+      - name: Uninstall
+        run: node packages/cli/src/cli.js uninstall
+
+      - name: Assert launchd agent is gone (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          test ! -f "$HOME/Library/LaunchAgents/com.token-usage.sync.plist"
+          if launchctl print "gui/$(id -u)/com.token-usage.sync" > /dev/null 2>&1; then
+            echo "agent still loaded after uninstall"; exit 1
+          fi
+          echo "launchd agent removed"
+
+      - name: Assert systemd timer is gone (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          test ! -f "$HOME/.config/systemd/user/token-usage-sync.timer"
+          test ! -f "$HOME/.config/systemd/user/token-usage-sync.service"
+          systemctl --user daemon-reload
+          if systemctl --user is-enabled token-usage-sync.timer 2>/dev/null | grep -qx enabled; then
+            echo "timer still enabled after uninstall"; exit 1
+          fi
+          echo "systemd timer removed"
