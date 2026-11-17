@@ -193,8 +193,15 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
 
 **待办与待决策**：
 
-1. **macOS / Linux 调度真机验证**：目前只有产物级测试（plist / systemd unit 与文案断言）。
-   首次真机 `init` 后确认 `launchctl list` / `systemctl --user list-timers` 有条目。
+1. **macOS / Linux 调度真机验证**：**已完成（2026-11-17，CI 真机冒烟）**。GitHub 托管的
+   `macos-latest` / `ubuntu-latest` 就是真实 launchd / systemd 主机：`.github/workflows/
+   cli-schedule-smoke.yml` 在两台 VM 上非交互跑真实 `init --yes --no-integrations --no-open`
+   （纯本地安装、未配对、零服务端接触），断言 `launchctl print gui/$UID/<label>` /
+   `systemctl --user is-enabled + list-timers` 有条目，再 `uninstall` 验证对称拆卸；Linux
+   前置 linger + `user@UID` 启动（runner 用户默认无 user manager，与真实桌面对齐）。触发：
+   push 触及 `packages/cli/**` 或手动 dispatch。Windows 侧已有日常覆盖（操作者本机的
+   schtasks 小时任务）。执行断言只验证「注册/拆卸」，不验证任务体执行——后者依赖配对状态，
+   留给真机日常运行检验。
 2. **队列按月分片**：`queue/<month>.jsonl` 可控制 `queue.jsonl` 增长与读取成本；触及对账基线
    文件格式（AGENTS 约束 8），待「队列体积或读取延迟有明显体感」再立项。
 3. **keyset 分页 / 预聚合**：暂不立项，触发条件同上。
