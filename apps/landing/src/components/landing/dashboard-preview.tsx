@@ -269,8 +269,10 @@ function ShotsCarousel() {
             className={`absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-500 ${
               shotIndex === index ? "opacity-100" : "opacity-0"
             }`}
+            height={900}
             loading={shotIndex === 0 ? "eager" : "lazy"}
             src={shot.file}
+            width={1440}
           />
         ))}
       </div>

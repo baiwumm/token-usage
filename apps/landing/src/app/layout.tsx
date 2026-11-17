@@ -10,8 +10,10 @@ import {
   SITE_DESCRIPTION,
   SITE_KEYWORDS,
   SITE_NAME,
+  SITE_ORGANIZATION_JSON_LD,
   SITE_TITLE,
   SITE_URL,
+  SITE_WEBSITE_JSON_LD,
 } from "@/lib/seo";
 
 // 全站 SEO 基座只在这一处：首页 metadata 与全站 title 模板（`%s · Token
@@ -50,7 +52,6 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     url: "/",
     locale: "zh_CN",
-    alternateLocale: ["en_US"],
   },
   twitter: {
     card: "summary_large_image",
@@ -111,6 +112,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </p>
         </div>
         <script dangerouslySetInnerHTML={{ __html: BOOT_VEIL_SCRIPT }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([
+              SITE_ORGANIZATION_JSON_LD,
+              SITE_WEBSITE_JSON_LD,
+            ]),
+          }}
+          type="application/ld+json"
+        />
         <RootProvider
           i18n={{ locale: "zh-CN", translations: UI_TRANSLATIONS }}
           search={{ options: { type: "static", api: "/api/search" } }}

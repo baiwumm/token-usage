@@ -122,13 +122,18 @@ pnpm build:landing:deploy                          # 同步 + 构建（部署用
 - **sitemap / robots**：`src/app/sitemap.ts` 与 `src/app/robots.ts` 在构建期静态产出
   `/sitemap.xml`、`/robots.txt`（原 `public/robots.txt` 已删除——同路径只能有一个来源）。
   sitemap 覆盖首页 + `/docs` 全部文档页（`source.getPages()` 枚举；`index.mdx` 的 slug 为空，
-  由 `docsPageUrl()` 落成 `/docs/` 而非 `/docs//`）；`lastModified` 取快照的 `fetchedAt`
-  而非构建时间，未同步到新数据时不会虚报更新。`robots.txt` 的 `Host` 输出裸主机名。
+  由 `docsPageUrl()` 落成 `/docs/` 而非 `/docs//`）；只有首页写 `lastModified`（取快照的
+  `fetchedAt`，未同步到新数据时不会虚报更新）——文档页没有逐页日期，统一盖成快照时间等于
+  每天谎报更新，Google 会忽略该字段，因此干脆不写。`robots.txt` 的 `Host` 输出裸主机名。
 - **llms.txt**：`src/app/llms.txt/route.ts` 构建期从文档源生成 `/llms.txt`（llmstxt.org
   约定），新增 mdx 自动进入索引，不需要手工维护列表。
-- **结构化数据**：`src/app/page.tsx` 内联 `SoftwareApplication` JSON-LD；文档页在
-  `docs/[[...slug]]/page.tsx` 内联 `TechArticle`（目录页为 `CollectionPage`）+
-  `BreadcrumbList`，标题、描述与面包屑都从当前文档派生。
+- **结构化数据**：`src/app/layout.tsx` 每页注入 `Organization` + `WebSite` 两个站点实体
+  （`@id` 定义在 `lib/seo.ts`，`sameAs` 指向 GitHub / npm）；`src/app/page.tsx` 的
+  `SoftwareApplication` 通过 `@id` 引用这两个实体，`softwareVersion` 直接取
+  `packages/cli/package.json`；文档页在 `docs/[[...slug]]/page.tsx` 内联 `TechArticle`
+  （目录页为 `CollectionPage`）+ `BreadcrumbList`，标题、描述与面包屑都从当前文档派生。
+- **内链**：页脚「文档」列覆盖 `/docs` 下全部页面——文档区没有别的站内入口，新增 mdx 时
+  记得同步 `lib/copy.ts` 的 `footer.columns`（中英两份）。
 
 ## 部署（腾讯云 EdgeOne Pages · Makers）
 

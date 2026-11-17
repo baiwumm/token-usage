@@ -1,3 +1,5 @@
+import cliPackage from "../../../../packages/cli/package.json";
+
 import { BackToTop } from "@/components/landing/back-to-top";
 import { DashboardPreview } from "@/components/landing/dashboard-preview";
 import { Deploy } from "@/components/landing/deploy";
@@ -8,20 +10,30 @@ import { Ownership } from "@/components/landing/ownership";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { TerminalSteps } from "@/components/landing/terminal-steps";
 import { NPM_CLI_URL, REPO_URL } from "@/lib/repo-links";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_ORGANIZATION_ID,
+  SITE_URL,
+} from "@/lib/seo";
 
 // 结构化数据（SoftwareApplication）：让搜索与聚合器拿到「是什么 / 免费 /
 // 哪个仓库 / 怎么装」，与页面文案同源（标题与描述都取自 lib/seo.ts）。
+// 版本号直接取 CLI 包的真源，避免文案与 npm 实际发布版本漂移；站点级
+// Organization / WebSite 由根布局注入，这里只按 @id 引用。
 const SOFTWARE_JSON_LD = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: SITE_NAME,
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Web, Windows, macOS, Linux",
+  softwareVersion: cliPackage.version,
   description: SITE_DESCRIPTION,
   url: SITE_URL,
   downloadUrl: NPM_CLI_URL,
-  sameAs: [REPO_URL],
+  sameAs: [REPO_URL, NPM_CLI_URL],
+  author: { "@id": SITE_ORGANIZATION_ID },
+  publisher: { "@id": SITE_ORGANIZATION_ID },
   screenshot: `${SITE_URL}/dashboard/app-overview.png`,
   license: `${REPO_URL}/blob/main/LICENSE`,
   isAccessibleForFree: true,

@@ -15,7 +15,9 @@ import {
   SITE_OG_IMAGE_ALT,
   SITE_OG_IMAGE_PATH,
   SITE_OG_IMAGE_SIZE,
+  SITE_ORGANIZATION_ID,
   SITE_URL,
+  SITE_WEBSITE_ID,
 } from "@/lib/seo";
 import { source } from "@/lib/source";
 
@@ -60,7 +62,7 @@ function docsJsonLd(page: {
         description: page.description,
         url,
         inLanguage: "zh-CN",
-        isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
+        isPartOf: { "@id": SITE_WEBSITE_ID },
       }
     : {
         "@context": "https://schema.org",
@@ -70,9 +72,9 @@ function docsJsonLd(page: {
         url,
         mainEntityOfPage: { "@type": "WebPage", "@id": url },
         inLanguage: "zh-CN",
-        author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
-        publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
-        isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
+        author: { "@id": SITE_ORGANIZATION_ID },
+        publisher: { "@id": SITE_ORGANIZATION_ID },
+        isPartOf: { "@id": SITE_WEBSITE_ID },
       };
 
   return [main, breadcrumb];
@@ -134,6 +136,9 @@ export async function generateMetadata(props: {
     alt: SITE_OG_IMAGE_ALT,
     type: "image/png",
   };
+  // <title> 走根布局的 `%s · Token Usage` 模板，但 OG / Twitter 的标题
+  // 不会被模板化——手动带品牌，否则分享卡片只剩「快速开始」。
+  const socialTitle = `${page.data.title} · ${SITE_NAME}`;
 
   return {
     alternates: { canonical: url },
@@ -144,7 +149,7 @@ export async function generateMetadata(props: {
     openGraph: {
       type: isIndex ? "website" : "article",
       siteName: SITE_NAME,
-      title: page.data.title,
+      title: socialTitle,
       description: page.data.description,
       url,
       locale: "zh_CN",
@@ -152,7 +157,7 @@ export async function generateMetadata(props: {
     },
     twitter: {
       card: "summary_large_image",
-      title: page.data.title,
+      title: socialTitle,
       description: page.data.description,
       images: [{ url: SITE_OG_IMAGE_PATH, alt: SITE_OG_IMAGE_ALT }],
     },

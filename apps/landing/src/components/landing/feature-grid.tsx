@@ -118,11 +118,38 @@ function AchievementCoins() {
 
 // 四风格分享卡展示：由真实 Canvas 引擎（apps/web share-card）导出的 PNG，
 // mock 数据（伪造值）；导出失败时整块隐藏（含标题），不出现破图。
-const SHARE_CARDS: Array<{ file: string; label: string }> = [
-  { file: "/share-cards/broadsheet.png", label: "特刊 Broadsheet" },
-  { file: "/share-cards/receipt.png", label: "小票 Receipt" },
-  { file: "/share-cards/neon.png", label: "霓虹 Neon" },
-  { file: "/share-cards/vinyl.png", label: "唱片 Vinyl" },
+// width/height 是导出图的真实像素尺寸：让浏览器在图片加载前就按比例占位，
+// 图片走 unoptimized，尺寸属性是唯一的 CLS 防线。
+const SHARE_CARDS: Array<{
+  file: string;
+  height: number;
+  label: string;
+  width: number;
+}> = [
+  {
+    file: "/share-cards/broadsheet.png",
+    height: 3260,
+    label: "特刊 Broadsheet",
+    width: 2400,
+  },
+  {
+    file: "/share-cards/receipt.png",
+    height: 2480,
+    label: "小票 Receipt",
+    width: 1600,
+  },
+  {
+    file: "/share-cards/neon.png",
+    height: 1620,
+    label: "霓虹 Neon",
+    width: 1080,
+  },
+  {
+    file: "/share-cards/vinyl.png",
+    height: 2160,
+    label: "唱片 Vinyl",
+    width: 2160,
+  },
 ];
 
 function ShareCardShowcase() {
@@ -173,8 +200,10 @@ function ShareCardShowcase() {
               <img
                 alt={card.label}
                 className="w-full cursor-zoom-in transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transition-none"
+                height={card.height}
                 loading="lazy"
                 src={card.file}
+                width={card.width}
               />
             </button>
             <figcaption>
@@ -211,7 +240,9 @@ function ShareCardShowcase() {
                   <img
                     alt={SHARE_CARDS[active].label}
                     className="mx-auto max-h-[80vh] w-auto max-w-full"
+                    height={SHARE_CARDS[active].height}
                     src={SHARE_CARDS[active].file}
+                    width={SHARE_CARDS[active].width}
                   />
                   <figcaption className="border-t border-default/50 px-5 py-3">
                     <Typography color="muted" type="body-xs">

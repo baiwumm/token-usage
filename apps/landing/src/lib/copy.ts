@@ -254,17 +254,29 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
           ],
         },
         {
-          title: "资源",
+          title: "文档",
+          // 全部 /docs 页都在这里有入口：文档只有侧边栏与首页这层内链，
+          // 少一条就是一次孤岛（SEO 审计 2026-11-17）。
           links: [
-            { label: "文档", href: "/docs/" },
-            { label: "GitHub", href: "https://github.com/baiwumm/token-usage" },
-            { label: "部署指南", href: "/docs/start/" },
-            { label: "CLI 契约", href: "/docs/contract/" },
+            { label: "全部文档", href: "/docs/" },
+            { label: "快速开始", href: "/docs/start/" },
+            { label: "CLI 采集端", href: "/docs/cli/" },
+            { label: "来源覆盖", href: "/docs/sources/" },
+            { label: "公开徽章", href: "/docs/badge/" },
+            { label: "成就系统", href: "/docs/achievements/" },
+            { label: "桌面端", href: "/docs/desktop/" },
+            { label: "Agent 执行手册", href: "/docs/agent/" },
+            { label: "数据与契约", href: "/docs/contract/" },
           ],
         },
         {
-          title: "许可",
+          title: "资源",
           links: [
+            { label: "GitHub", href: "https://github.com/baiwumm/token-usage" },
+            {
+              label: "npm",
+              href: "https://www.npmjs.com/package/tokenusage-cli",
+            },
             // Sentinel hrefs resolved to the repo LICENSE files at render
             // time (AGENTS 规则 10：署名只指向这两份文件).
             { label: "LICENSE", href: "#license" },
@@ -442,17 +454,28 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
           ],
         },
         {
-          title: "Resources",
+          title: "Docs",
+          // Every /docs page gets an entry here (internal linking audit).
           links: [
-            { label: "Docs", href: "/docs/" },
-            { label: "GitHub", href: "https://github.com/baiwumm/token-usage" },
-            { label: "Deploy guide", href: "/docs/start/" },
-            { label: "CLI contract", href: "/docs/contract/" },
+            { label: "All docs", href: "/docs/" },
+            { label: "Quick start", href: "/docs/start/" },
+            { label: "Collector CLI", href: "/docs/cli/" },
+            { label: "Source coverage", href: "/docs/sources/" },
+            { label: "Public badge", href: "/docs/badge/" },
+            { label: "Achievements", href: "/docs/achievements/" },
+            { label: "Desktop app", href: "/docs/desktop/" },
+            { label: "Agent runbook", href: "/docs/agent/" },
+            { label: "Data & contract", href: "/docs/contract/" },
           ],
         },
         {
-          title: "License",
+          title: "Resources",
           links: [
+            { label: "GitHub", href: "https://github.com/baiwumm/token-usage" },
+            {
+              label: "npm",
+              href: "https://www.npmjs.com/package/tokenusage-cli",
+            },
             // Sentinel hrefs resolved to the repo LICENSE files at render time.
             { label: "LICENSE", href: "#license" },
             { label: "THIRD_PARTY_NOTICES", href: "#third-party" },

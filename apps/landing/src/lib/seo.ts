@@ -7,6 +7,8 @@
 // www（仓库根 edgeone.json），canonical / OG / sitemap / robots / JSON-LD
 // 必须直接写 www，否则爬虫拿到的每条 URL 都要多跳一次 301。
 
+import { NPM_CLI_URL, REPO_URL } from "@/lib/repo-links";
+
 export const SITE_URL = "https://www.token-usage.cc";
 
 /**
@@ -52,3 +54,32 @@ export const SITE_OG_IMAGE_PATH = "/opengraph-image";
 /** 社交卡片 alt：根布局自动注入与文档页手动覆盖共用，避免两处漂移。 */
 export const SITE_OG_IMAGE_ALT =
   "Token Usage — self-hosted AI token usage tracking";
+
+/** 站点实体图的稳定 @id：根布局注入一次，首页与文档页用 @id 引用。 */
+export const SITE_ORGANIZATION_ID = `${SITE_URL}/#organization`;
+export const SITE_WEBSITE_ID = `${SITE_URL}/#website`;
+
+/**
+ * 站点级实体（根布局每页注入）：让搜索引擎与 AI 把「Token Usage」认成同一个
+ * 品牌实体，并知道官网、仓库、npm 三处是同一主体。首页的 SoftwareApplication
+ * 与文档页的 TechArticle 只通过 @id 引用，不重复定义。
+ */
+export const SITE_ORGANIZATION_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": SITE_ORGANIZATION_ID,
+  name: SITE_NAME,
+  url: SITE_URL,
+  logo: `${SITE_URL}/logo-dark.svg`,
+  sameAs: [REPO_URL, NPM_CLI_URL],
+} as const;
+
+export const SITE_WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": SITE_WEBSITE_ID,
+  name: SITE_NAME,
+  url: SITE_URL,
+  inLanguage: "zh-CN",
+  publisher: { "@id": SITE_ORGANIZATION_ID },
+} as const;
