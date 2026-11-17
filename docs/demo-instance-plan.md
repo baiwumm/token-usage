@@ -5,11 +5,15 @@
 
 **状态：已上线（2026-11-16）**。P0–P2 代码与文档已交付；P3 已执行完毕：demo Supabase
 `ipvyswlsnnciomcfyyma`（21 个迁移）、Vercel 项目 `token-usage-demo`（Root `apps/web`）、
-域名 `demo.token-usage.cc`（CNAME → `dade1ad6f76af9b4.vercel-dns-017.com`）、三个 Actions
-secret + 一个 variable、首次灌数与 nightly reseed 均成功。实测：匿名 `/` 307 → 自动登录 →
-200；契约与 `/api/app/*` 写操作 403；公开页与徽章 SVG 200；`public-config` 指向 demo 库。落地清单：`scripts/demo/`（生成器 + 种子脚本）、
+域名 `demo.token-usage.cc`（CNAME → `dade1ad6f76af9b4.vercel-dns-017.com`）、四个 Actions
+secret、首次灌数与 nightly reseed 均成功。实测：匿名 `/` 307 → 自动登录 →
+200；契约与 `/api/app/*` 写操作 403；公开页与徽章 SVG 200；`public-config` 指向 demo 库。
+**2026-11-17 审查修复**：matcher 此前不含 `/login`，登录表单封锁为运行时死代码——已补
+matcher + 登录页只读提示（见 §5），并完成三项控制台加固（`DEMO_EMAIL` 迁 Secret、demo 库
+摘 avatars 写策略、`/login` 两态与 storage RLS 拒绝上传实测通过）。落地清单：`scripts/demo/`（生成器 + 种子脚本）、
 `apps/web/src/lib/demo.ts` + `src/proxy.ts` 闸门 + `/api/app/demo-login`、
-`components/app-shell/demo-banner.tsx`、landing 的 `src/lib/demo-url.ts` 与三处入口、
+`components/app-shell/demo-banner.tsx` + `components/login/login-demo-note.tsx`、
+landing 的 `src/lib/demo-url.ts` 与三处入口、
 `.github/workflows/demo-reseed.yml`、运维手册 `docs/demo-instance.md`。
 操作步骤按 [`docs/demo-instance.md`](demo-instance.md) 执行。
 
@@ -109,10 +113,9 @@ TOKEN_USAGE_DEMO_EMAIL=…               # 服务端专用，自动登录
 TOKEN_USAGE_DEMO_PASSWORD=…            # 服务端专用，绝不进浏览器包
 ```
 
-> **待批准冲突点**：写请求挡在 `proxy.ts`，而不是逐个 handler 加错误码，目的是不触碰
-> 「契约层错误码冻结」（AGENTS 硬性约束 1）。代价是 `docs/cli-contract.md` §1 需补一句
-> 「部署级 demo 模式对写动词返回 403」。按约束 1 的顺序，动工前先改契约文档草案交操作者
-> 确认，再改实现。
+> ~~**待批准冲突点**~~ **已闭环（2026-11-16）**：写请求挡在 `proxy.ts` 而非逐个 handler
+> 加错误码的方案已按约束 1 落实——`docs/cli-contract.md` §1 先行回写了「部署级 demo 模式
+> 对写动词返回 403」的说明，实现与 golden 测试随后跟上。
 
 ## 6. landing 入口（`apps/landing`）
 

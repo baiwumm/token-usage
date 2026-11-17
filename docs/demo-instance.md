@@ -53,6 +53,8 @@ drop policy if exists "user delete own avatar" on storage.objects;
 ```
 
    公共读策略（`public read avatars`）保留；**生产库不得执行**——生产头像上传依赖这三条。
+   当前实例已于 2026-11-17 补执行，实测：持有演示会话上传被 RLS 拒绝
+   （`new row violates row-level security policy`）。
 
 **完成条件**：Table Editor 里有 12 张 `token_*` 表且**没有任何 policy**（storage 的
 avatars 读策略除外，见第 5 步）。

@@ -203,11 +203,13 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
    `docs/sources-capture-audit.md`）。
 6. **`deep_thinker` 成就**：reasoning 覆盖率低于 50% 门槛，阈值草案保留在
    `docs/achievements-plan.md` §2.3，覆盖率提升后复议。
-7. **demo 实例页**：**2026-11-16 已立项并完成 P0–P2，P3（建库 / 部署 / 绑域 / secrets）待操作者执行**
+7. **demo 实例页**：**已完结——2026-11-16 上线，2026-11-17 审查修复登录封锁缺陷并完成
+   三项控制台加固（DEMO_EMAIL 迁 Secret、demo 库摘 avatars 写策略、`/login` 两态实测），
+   无遗留待办**
    （`docs/demo-instance-plan.md`；运维步骤见 `docs/demo-instance.md`）。
    五项决策已拍板：独立 Supabase + 确定性种子脚本、`demo.token-usage.cc` 子域、纯只读
-   演示账号、landing 保留生产公开页并新增演示入口、Free 档 + 每晚重灌。批准后按该文档
-   §8 分期执行。文档站已另立项落地（2026-11-16，不用
+   演示账号、landing 保留生产公开页并新增演示入口、Free 档 + 每晚重灌。日常运维与排障
+   走运维手册 §6–§7。文档站已另立项落地（2026-11-16，不用
    `docs.` 子域，挂在 `apps/landing` 的 `/docs` 路径，fumadocs 静态导出；内容是本站
    自建精编——提交在 `apps/landing/src/content/docs/`，面向读者提取重点并配图，
    与仓库根 `docs/`（开发者 / Agent 向）解耦；完整规范经文档页外链 GitHub，见
