@@ -34,7 +34,7 @@ jobs:
           TOKEN_USAGE_DEMO: 'on'
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.DEMO_SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.DEMO_SUPABASE_SECRET_KEY }}
-          TOKEN_USAGE_DEMO_EMAIL: ${{ vars.DEMO_EMAIL }}
+          TOKEN_USAGE_DEMO_EMAIL: ${{ secrets.DEMO_EMAIL }}
           TOKEN_USAGE_DEMO_PASSWORD: ${{ secrets.DEMO_DEMO_PASSWORD }}
           TOKEN_USAGE_DASHBOARD_URL: https://demo.token-usage.cc
         run: node scripts/demo/seed.mjs
