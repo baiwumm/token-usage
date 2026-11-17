@@ -124,6 +124,10 @@ describe("demo write-error copy", () => {
 });
 
 describe("demo login form", () => {
+  // These tests call proxy() directly, which bypasses config.matcher — so the
+  // routing premise of demoLoginRedirect is pinned separately in
+  // tests/contract/route-guard.test.ts ("/login" must stay in the matcher).
+  //
   // The redirect only fires when the deployment could actually sign someone
   // in (demo credentials + browser-auth env), so these tests provide the auth
   // pair the other cases leave out.

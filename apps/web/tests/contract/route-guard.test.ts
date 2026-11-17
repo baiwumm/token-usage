@@ -108,9 +108,12 @@ describe("proxy config", () => {
 		// the drift guard: adding a page to PROTECTED_PAGES without extending
 		// the matcher (or vice versa) fails here.
 		// API matchers (the frozen contract gate plus the demo write gate) are
-		// deliberately outside the page-parity check.
+		// deliberately outside the page-parity check. "/login" is the one
+		// deliberate page extra — not a protected page, but the demo login-form
+		// gate needs the proxy to run there (pinned right below); production
+		// passes it straight through.
 		const pagePatterns = config.matcher.filter(
-			(pattern) => !pattern.startsWith("/api/"),
+			(pattern) => !pattern.startsWith("/api/") && pattern !== "/login",
 		);
 
 		expect(pagePatterns).toEqual([
@@ -119,6 +122,13 @@ describe("proxy config", () => {
 				(page) => `${page}/:path*`,
 			),
 		]);
+	});
+
+	it("routes /login through the proxy for the demo login-form gate", () => {
+		// The demo gate tests call proxy() directly, which bypasses the matcher
+		// — without this pin, dropping "/login" from the literal would strand
+		// demoLoginRedirect (it would never fire in a real deployment).
+		expect(config.matcher).toContain("/login");
 	});
 });
 
