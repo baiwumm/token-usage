@@ -6,6 +6,19 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.6.2
+
+2026-11-17。仅元数据与文档：包页可发现性优化，零代码、零契约变更，已安装的采集端无需升级。
+
+- **`homepage` 指向官网**：从 GitHub 子目录改为 `https://www.token-usage.cc`，npm 页面的
+  主页入口直接落到站点。
+- **`description` 重写**：明确覆盖 Claude Code / Codex / Cursor 等 40+ 工具与
+  「一个账号、多台设备、自己的 Supabase」，替换原先偏内部的 “collector” 措辞。
+- **`keywords` 扩充**：补 `claude-code` / `token-tracker` / `ai-cost` / `cost-tracking` /
+  `observability` 等真实搜索词，移出无语义的单字 `token`、`usage`、`ai`。
+- **README 改为英文主文档**：npm 页展示英文安装、命令与隐私边界；完整中文版移到
+  `packages/cli/README.zh-CN.md`，两处互链。
+
 ## 0.6.1
 
 2026-11-17。生产实例域名迁移配套：默认实例切换 `app.token-usage.cc`（操作者放行）。零契约

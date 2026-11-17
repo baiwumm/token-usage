@@ -1,17 +1,25 @@
 {
   "name": "tokenusage-cli",
-  "version": "0.6.1",
-  "description": "Self-hosted AI coding token usage collector for the Token Usage dashboard.",
+  "version": "0.6.2",
+  "description": "Self-hosted AI token usage tracker for Claude Code, Codex, Cursor and 40+ other AI coding tools: one account, many machines, your own Supabase.",
   "keywords": [
     "token-usage",
-    "token",
-    "usage",
-    "claude",
+    "token-tracker",
+    "usage-tracking",
+    "claude-code",
     "codex",
+    "cursor",
+    "github-copilot",
+    "ai-usage",
+    "ai-cost",
+    "cost-tracking",
+    "llm",
+    "observability",
     "self-hosted",
-    "ai"
+    "supabase",
+    "dashboard"
   ],
-  "homepage": "https://github.com/baiwumm/token-usage/tree/main/packages/cli#readme",
+  "homepage": "https://www.token-usage.cc",
   "bugs": "https://github.com/baiwumm/token-usage/issues",
   "repository": {
     "type": "git",
