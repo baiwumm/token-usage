@@ -63,6 +63,12 @@ export const metadata: Metadata = {
     apple: "/logo-dark.svg",
   },
   formatDetection: { telephone: false, address: false, email: false },
+  // Search Console 用「网址前缀」属性 + HTML 标记验证：apex 已有指向
+  // EdgeOne 的 CNAME，同一主机名上无法再叠加 TXT 记录（DNS 规范冲突），
+  // 所以走 meta。标记值由 GSC 生成，公开信息，不是机密。
+  verification: {
+    google: "qTE7qxoDW1WNjocOdMmh4VsNRygtPvf4sxR63m3BuXc",
+  },
 };
 
 export const viewport: Viewport = {
