@@ -611,7 +611,14 @@ cookie 会话；Loading 骨架按三卡结构逐块占位（账户设置行/列�
 **定位**：公开页（不套 AppShell）、`noindex`、主题跟随系统（无明暗切换入口）、文案随语言
 （`lib/copy/login.ts`）。组件在 `components/login/`：`login-client.tsx`（编排：Suspense +
 `useSearchParams` + 全部 auth 状态与回调）、`login-body.tsx`（右栏表单主体）、
-`login-brand-panel.tsx`（品牌区 + 纹样 + 移动端品牌条）。
+`login-brand-panel.tsx`（品牌区 + 纹样 + 移动端品牌条）、`login-demo-note.tsx`（demo 实例
+只读提示卡，替代表单主体）。
+
+**demo 实例替身**：`isDemoUi()` 为真时 `login-client` 渲染 `login-demo-note` 而非
+`login-body`（docs/demo-instance-plan.md §5）——同款右栏布局与 `max-w-md` 卡片，内文为
+「无需登录 + 前往仪表盘」按钮；`?error=demo_unavailable` 给专属错误行。目的：demo 实例的
+魔法链接 / 重置邮件发信入口在 UI 层关死（proxy 的 `/login` → demo-login redirect 盖不住
+`?error=` 旁路）。生产构建该分支恒假，表单零影响。
 
 **布局（桌面 `≥lg`）**：`min-h-svh` 双栏 grid——左栏约 45% 为品牌视觉区，右栏表单区垂直居中
 （HeroUI `Card`，内容 `max-w-md`，卡内 `p-6 sm:p-8`）。**`<lg` 单栏**：顶部品牌条（Logo + 词标）

@@ -90,7 +90,8 @@ apps/web（route.ts + service-role）  ──►  demo Supabase（token_* 表，
 | 位置 | 改动 |
 | --- | --- |
 | `src/lib/demo.ts`（新） | `isDemoInstance()`（读 `TOKEN_USAGE_DEMO`）、演示文案 key、配置护栏 |
-| `src/proxy.ts` | demo 模式：写动词（非 GET / HEAD / OPTIONS）打向 `/api/**` 一律 `403 {"error":"Demo instance is read-only"}`，只放行 `/api/app/demo-login`；未登录访问受保护页 → 直跳 `/api/app/demo-login?next=<原路径>`；`/login`（非受保护路径）也重定向到 demo-login，阻断登录表单的魔法链接/重置邮件发信入口（`?error=` 与「缺凭据/认证配置」两种情形保留 `/login`，防重定向环与空白页） |
+| `src/proxy.ts` | demo 模式：写动词（非 GET / HEAD / OPTIONS）打向 `/api/**` 一律 `403 {"error":"Demo instance is read-only"}`，只放行 `/api/app/demo-login`；未登录访问受保护页 → 直跳 `/api/app/demo-login?next=<原路径>`；`/login` 也重定向到 demo-login，阻断登录表单的魔法链接/重置邮件发信入口（`?error=` 与「缺凭据/认证配置」两种情形保留 `/login`，防重定向环与空白页）。**`/login` 必须在 matcher 里**（2026-11-17 修正：此前不在，redirect 运行时不可达，登录表单在 demo 上完全可达）；route-guard 测试的 parity 检查为此把 `/login` 列为唯一豁免并单独钉住 |
+| `components/login/login-demo-note.tsx`（新）+ `login-client.tsx` | demo 构建下登录页渲染只读提示卡（无表单；`?error=demo_unavailable` 给专属文案）——proxy 的 redirect 盖不住 `?error=` 旁路（那是 demo-login 自己的失败回落页），表单在 UI 层关死才算封住发信入口；生产构建不渲染该组件，登录表单零影响 |
 | `src/app/api/app/demo-login/route.ts`（新） | 非 demo 模式 404；demo 模式用服务端 `@supabase/ssr` 客户端以 `TOKEN_USAGE_DEMO_EMAIL` / `TOKEN_USAGE_DEMO_PASSWORD` 登录写 cookie，302 回 `next`（口令不出服务端） |
 | `src/components/app-shell/demo-banner.tsx`（新）+ `index.tsx` | 壳顶部 strip：「演示实例 · 只读 · 数据每晚重置 · 前往自部署」，内容水平居中（避开左侧栏视觉重心）；无独立底色，与顶栏同处一个 sticky 头部栈（`index.tsx` 外层容器提供背景与毛玻璃），滚动时一并固定 |
 | Settings / 徽章 / Projects / `/device` 客户端组件 | demo 模式隐藏或 disable 写操作（新增/吊销/删除徽章、改资料/头像/口令、改项目、设备改名/吊销、批准配对），统一提示「演示实例不可修改」 |
@@ -174,8 +175,8 @@ TOKEN_USAGE_DEMO_PASSWORD=…            # 服务端专用，绝不进浏览器�
 | Supabase Free 项目 7 天闲置暂停 | 每晚 reseed 保活；workflow 停跑需人工补一次 |
 | Free 组织项目数上限 | 若操作者已有 2 个项目需先腾位或升级，P3 前确认 |
 | 共享演示账号没有访客隔离 | 纯只读 + 每晚重灌；业务写闸门在服务端（proxy），不靠 UI |
-| 浏览器→Supabase 的认证写（display_name / avatar / password）绕过 proxy 闸门 | 账户区三张卡在 UI 层锁死（见 §5）；残余风险是对 `/settings` 持有该会话者可直接调 auth API 改名/换头像/改口令 → 若需堵死，只能在 demo 专属 Supabase 侧做（Auth 设置或 storage policy），不改应用架构 |
-| 登录表单在公网 demo 上可被当作发信入口（魔法链接 / 重置密码邮件） | `/login` 在 demo 模式重定到 demo-login（见 §5）；即便绕开 UI，Supabase 侧的邮件速率限制与关闭注册是第二道防线 |
+| 浏览器→Supabase 的认证写（display_name / avatar / password）绕过 proxy 闸门 | 账户区三张卡在 UI 层锁死（见 §5）；残余风险是对 `/settings` 持有该会话者可直接调 auth API 改名/换头像/改口令——改名/换头像每晚重灌自愈，改口令由 seed 脚本的 `ensureUser` 每晚重置回 env 值（最长 24h，运维手册 §7 有排障条目）；avatars 桶写策略已在 demo 库侧摘除（2026-11-17，运维手册 §1 第 5 步），任意公开文件托管面关闭 |
+| 登录表单在公网 demo 上可被当作发信入口（魔法链接 / 重置密码邮件） | 双层闸门（2026-11-17 补齐）：matcher 含 `/login` + proxy 重定到 demo-login（见 §5），demo 构建的登录页渲染只读提示而非表单，`?error=` 旁路同样拿不到发信控件；即便有人直调 Supabase Auth API，邮件速率限制与关闭注册仍是第二道防线 |
 | 契约层改动 | 403 只做部署级 proxy 闸门，不动 handler 与错误码；文档先行并经操作者确认 |
 | 子域绑域不可由 Agent 完成 | P3 由操作者控制台操作，Agent 提供逐条清单与自检 |
 | 种子内容泄露真实信息 | 全部虚构项目名与仓库；脚本不读任何本机采集数据 |

@@ -42,8 +42,20 @@ npx supabase db push
 4. Auth → URL Configuration：
    - Site URL：`https://demo.token-usage.cc`
    - Redirect URLs：`https://demo.token-usage.cc/**`（通配，精确条目盖不住 `?next=`）
+5. **demo 侧加固（偏离共享迁移，只在 demo 库执行）**：在 SQL Editor 摘掉 avatars 桶的
+   三条写策略——demo 不需要头像上传（UI 已锁），留着等于把公共桶开放给任何持有演示会话
+   的人当免费图床，且上传对象种子脚本不会清：
 
-**完成条件**：Table Editor 里有 12 张 `token_*` 表且**没有任何 policy**。
+```sql
+drop policy if exists "user upload own avatar" on storage.objects;
+drop policy if exists "user update own avatar" on storage.objects;
+drop policy if exists "user delete own avatar" on storage.objects;
+```
+
+   公共读策略（`public read avatars`）保留；**生产库不得执行**——生产头像上传依赖这三条。
+
+**完成条件**：Table Editor 里有 12 张 `token_*` 表且**没有任何 policy**（storage 的
+avatars 读策略除外，见第 5 步）。
 
 ## 2. Vercel 项目
 
@@ -116,7 +128,7 @@ GitHub → Settings → Secrets and variables → Actions：
 | Secret | `DEMO_SUPABASE_URL` | `https://<demo-ref>.supabase.co` |
 | Secret | `DEMO_SUPABASE_SECRET_KEY` | demo 项目的 secret key |
 | Secret | `DEMO_DEMO_PASSWORD` | 演示账号口令（与 Vercel 上一致） |
-| Variable | `DEMO_EMAIL` | `demo@token-usage.cc` |
+| Secret | `DEMO_EMAIL` | `demo@token-usage.cc`（演示账号邮箱；勿用 Variable——公开仓库的 Variables 任何人可读） |
 
 启用前先本地手动跑通一次 §4；首次可用 `workflow_dispatch` 手动触发确认。
 
@@ -126,6 +138,7 @@ GitHub → Settings → Secrets and variables → Actions：
 | --- | --- |
 | 匿名打开 `https://demo.token-usage.cc/` | ≤2 跳直达仪表盘（proxy → demo-login → 302） |
 | 顶部横幅 | 显示「演示实例 · 只读」及重置说明（无底色，与顶栏一起 sticky） |
+| 匿名打开 `/login` | 302 到 demo-login 后进仪表盘；带任意 `?error=` 打开则渲染只读提示卡，**无表单** |
 | `POST /api/app/badge` | `403 {"error":"Demo instance is read-only"}` |
 | `POST /api/functions/token-usage-ingest` | 同上 403 |
 | `PUT /api/functions/token-usage-ingest` | `405 Method not allowed`（契约层先判） |
@@ -140,7 +153,9 @@ GitHub → Settings → Secrets and variables → Actions：
 - **页面全部 500 `Demo instance misconfigured`**：演示账号口令缺失，或
   `TOKEN_USAGE_DASHBOARD_URL` 写成了生产域名。
 - **匿名打开跳 `/login?error=demo_unavailable`**：演示账号不存在或口令与 Vercel 上不一致，
-  重跑 §4（脚本会更新口令）。
+  重跑 §4（脚本会更新口令；每晚 reseed 也会自动把口令改回 env 值，最长 24h 自愈）。
+  流量陡增时也可能因 Supabase Auth 对单 IP 的限流批量出现——Vercel 出口 IP 共享，属
+  可用性抖动，稍后即恢复。
 - **数字全 0 / 成本全 0**：种子没跑完，或模型不在定价表内；`pnpm --filter @token-usage/web
   exec vitest run tests/unit/demo-seed-generator.test.ts` 会校验定价覆盖。
 - **Supabase 项目被暂停**：Free 档 7 天无活动会暂停；恢复后重跑 §4。
