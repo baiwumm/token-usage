@@ -4,6 +4,13 @@
 发版时在顶部新增一节，`## <版本号>` 行会被 release workflow 取作 GitHub Release
 正文。
 
+## 0.4.3
+
+2026-11-17。生产实例域名迁移配套（`app.token-usage.cc`，详见仓库 `docs/rewrite-plan.md` §7-8）。零契约变更，采集侧不受影响。
+
+- **仪表盘地址退役域归位**：托盘「打开 Web 仪表盘」与监控盘页头链接按 `config.dashboardUrl → baseUrl → 内置默认` 解析，但 CLI 的 init 会故意把退役实例 URL 留在 config.json 当迁移标记，桌面端裸读会打开已注销域名——现在读取时镜像 CLI resolver 的 retired-host 集合，被 CLI 丢弃的地址同样视为未设置并落到下一级。
+- **内置默认仪表盘地址换新域** `app.token-usage.cc`（仅作为 config 缺失时的兜底）。
+
 ## 0.4.2
 
 2026-11-15。维护与加固版本。采集队列（queue.jsonl）超过 8 MiB 整读上限后监控盘不再静默空白：改为聚合最近 2 MiB 的尾部窗口（今日 / 7D / 30D 等最近窗口不受影响，总计口径偏小），并在页头下方显示警示条引导 `tokenusage reconcile`。会话视图修复：侧车文件恰好对齐行尾时，最新一条会话会被误丢弃。来源显示名跟随 CLI：ACode 更名 AStudio，补齐 Claude Code / Claude Science 的名称与图标。安全加固：打开外部链接（托盘仪表盘、配对浏览器、页头深链）改用 explorer.exe 直开，URL 中的特殊字符不再可能被命令行解释器二次解析。
