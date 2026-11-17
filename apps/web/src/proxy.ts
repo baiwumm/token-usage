@@ -18,7 +18,11 @@
 // 3. Demo gate (2026-11-16, docs/demo-instance-plan.md §5): when the
 //    deployment runs with TOKEN_USAGE_DEMO=on, every write verb under /api/**
 //    answers 403 with one stable envelope, and anonymous page hits go straight
-//    to /api/app/demo-login instead of the login form. Gating here — not in
+//    to /api/app/demo-login instead of the login form. /login itself is in
+//    the matcher (the one non-protected extra) so the login-form redirect
+//    below actually fires; the login page also renders a read-only note
+//    instead of the form on demo builds (components/login/login-demo-note.tsx)
+//    — the UI layer is what closes the ?error= bypass. Gating here — not in
 //    each handler — keeps the frozen contract error codes untouched.
 
 import { createServerClient } from "@supabase/ssr";
@@ -104,6 +108,12 @@ function isProtectedPage(pathname: string): boolean {
  * instance — and the shared account signs in server-side anyway. Visitors are
  * forwarded to /api/app/demo-login instead, carrying a ?next= when one is
  * present.
+ *
+ * This only fires where the matcher routes the proxy: "/login" is the one
+ * non-protected matcher entry, kept in exact sync with the route-guard test.
+ * The redirect cannot cover /login?error=… (demo-login's own failure target —
+ * forwarding again would loop), so the form itself is closed at the UI layer:
+ * on demo builds the login page renders login-demo-note instead of LoginBody.
  *
  * Two conditions keep this from turning into a redirect loop or a blank page:
  * `?error=` is the direct check above (demo-login's own failure target is
@@ -266,5 +276,9 @@ export const config = {
     "/wrapped/:path*",
     "/achievements/:path*",
     "/device/:path*",
+    // Not a protected page: production passes /login straight through (the
+    // route-guard test carves it out of the parity check). The demo login-form
+    // gate above needs the proxy to run here.
+    "/login",
   ],
 };

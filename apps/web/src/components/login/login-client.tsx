@@ -12,6 +12,7 @@ import { Suspense } from "react";
 
 import { LoginBrandPanel } from "./login-brand-panel";
 import { LoginBody } from "./login-body";
+import { LoginDemoNote } from "./login-demo-note";
 
 import {
   GitHubLink,
@@ -20,6 +21,7 @@ import {
   ThemeModeToggle,
 } from "@/components/top-actions";
 import { resolvePostLoginPath } from "@/lib/auth/next-path";
+import { isDemoUi } from "@/lib/demo";
 
 function LoginClientInner() {
   const searchParams = useSearchParams();
@@ -40,7 +42,14 @@ function LoginClientInner() {
       </div>
 
       <LoginBrandPanel />
-      <LoginBody callbackError={callbackError} next={next} />
+      {/* Demo builds never render the form (docs/demo-instance-plan.md §5):
+          the mailer entry points stay closed even behind the proxy's ?error=
+          pass-through; visitors get the read-only note instead. */}
+      {isDemoUi() ? (
+        <LoginDemoNote callbackError={callbackError} />
+      ) : (
+        <LoginBody callbackError={callbackError} next={next} />
+      )}
     </main>
   );
 }
