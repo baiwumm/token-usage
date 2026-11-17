@@ -16,7 +16,10 @@ npm 包 `tokenusage-cli`（命令 `tokenusage`）的发布流程。机制由
 2. 安全审计：`pnpm audit --prod --registry=https://registry.npmjs.org` 应为
    "No known vulnerabilities found"。npmmirror 没有 audit 端点（报 404 而非漏洞），必须显式带
    官方 registry 参数。
-3. 提交并推送 main，确认 CI 绿。
+3. 提交并推送 main，确认 CI 绿。触及 `packages/cli/**` 的推送还会跑 **CLI schedule smoke**
+   （`.github/workflows/cli-schedule-smoke.yml`）：GitHub 托管 macOS / Ubuntu 真机 VM 上
+   对发版产物（`npm pack` 全局安装）做 init → launchd / systemd 注册断言 → uninstall 对称
+   拆卸，发版即附带跨平台调度验证（见 `docs/rewrite-plan.md` §7-1）。
 4. 打 annotated tag 并推送：
    `git tag -a cli-vX.Y.Z -m "tokenusage-cli X.Y.Z" && git push origin cli-vX.Y.Z`。
    tag 必须打在**已推送**的 main 提交上——打在旧提交上不会触发任何东西且无报错。
