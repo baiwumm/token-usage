@@ -9,7 +9,7 @@
  *
  * Usage (run ON the machine whose device identity should own the history):
  *   node scripts/replay-legacy-history.mjs company-legacy-hourly.json
- *   node scripts/replay-legacy-history.mjs file.json --base-url https://token-usage.baiwumm.com
+ *   node scripts/replay-legacy-history.mjs file.json --base-url https://app.token-usage.cc
  *
  * Reads the paired device token from ~/.tokenusage/tracker/config.json
  * (pair first: `tokenusage device-login`). Only aggregate bucket data rides
@@ -24,7 +24,7 @@ import { randomUUID } from "node:crypto";
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith("--"));
 const baseUrlArg = args.includes("--base-url") ? args[args.indexOf("--base-url") + 1] : null;
-const BASE_URL = (baseUrlArg || "https://token-usage.baiwumm.com").replace(/\/$/, "");
+const BASE_URL = (baseUrlArg || "https://app.token-usage.cc").replace(/\/$/, "");
 const BATCH = 400; // contract caps hourly at 500; stay under
 
 if (!file) {
