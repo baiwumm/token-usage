@@ -1,0 +1,51 @@
+title: "[Idea] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea? Describe the problem first, then the proposal — that makes it much easier to discuss.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Collector CLI
+        - Dashboard
+        - Desktop app
+        - Sources & pricing
+        - Achievements & badges
+        - Deployment & docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The situation you hit today, and who else would benefit.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Mockups, links, related discussions.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before posting
+      options:
+        - label: I searched existing discussions and the docs.
+          required: true
+        - label: This is one idea, not several bundled together.
+          required: true

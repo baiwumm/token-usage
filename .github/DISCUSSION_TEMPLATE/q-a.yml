@@ -1,0 +1,67 @@
+title: "[Q&A] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for asking. Please search existing discussions and the [docs](https://www.token-usage.cc/docs/) first.
+
+        **Never paste secrets** — service-role keys, device tokens, pairing codes, Supabase credentials. Redact them from logs and screenshots.
+  - type: input
+    id: version
+    attributes:
+      label: Collector / app version
+      description: Output of `tokenusage --version`, or the desktop app version.
+      placeholder: tokenusage 1.x.x
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen?
+      options:
+        - Collector CLI
+        - Dashboard (web)
+        - Desktop app
+        - Self-hosted deployment
+        - Docs or landing page
+        - Somewhere else
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How are you running Token Usage?
+      options:
+        - Self-hosted (my own Supabase)
+        - Official demo instance (demo.token-usage.cc)
+        - Local development (pnpm dev)
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: What are you trying to do?
+      description: What you expected, what actually happened, and the exact error message.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce (if applicable)
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Paste only the lines that matter. Remove secrets and absolute paths first.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before posting
+      options:
+        - label: I searched existing discussions and the docs.
+          required: true
+        - label: I removed every secret (service-role key, device token, pairing code) from this post.
+          required: true
