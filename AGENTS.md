@@ -118,25 +118,7 @@ workspace）。开源、可自部署；每个实例只写自己的 Supabase，�
 - **不可逆操作**（退役项目、删除数据、切换域名）必须操作者明确放行，Agent 代行即违规。
 - 单人维护，直推 main；推送前本地 `pnpm verify`，CI 兜底，出问题 `git revert`。
 - 提交信息用 conventional commits（feat / fix / docs / test / chore / refactor）。
-- **AI 参与**的提交在正文后空一行追加两条 trailer，身份固定，不即兴发明：
-
-  ```
-  Co-authored-by: <产品名> <已绑定 GitHub 的邮箱>
-  Assisted-by: <产品名>:<实际模型>
-  ```
-
-  `Co-authored-by` 是唯一会被 GitHub 解析的一条：邮箱未绑定账号就不计入 Contributors，
-  优先用 `<login>@users.noreply.github.com`。`Assisted-by` 只作披露，GitHub 不解析，用来
-  记录实际模型；模型不得塞进 `Co-authored-by` 的名字里。**纯人工改动不加 trailer。**
-
-  | Agent | 身份 | 状态 |
-  | --- | --- | --- |
-  | Trae | `Trae <trae-agent@users.noreply.github.com>` | 已实测关联 |
-
-  未列入的 agent 先在仓库 Contributors 里实测能否关联，再登记；不得凭猜测填邮箱。
-
-  两条 trailer 必须落在**同一个段落**里。用 `git commit -F <msg-file>`，或在单次 `-m` 的字符串
-  里放真实换行。分开写多个 `-m` 会让每条 trailer 各自成段，`Co-authored-by` 落到上一个段落里，
-  GitHub 解析不到。
+- **AI 参与**的提交按 `ai-commit-trailer` skill 的格式与校验流程处理（trailer 写法、身份表、
+  `check` 校验）。该 skill 是唯一规范，本文不重复其定义。
 - 文档与实现同步：改了行为就回写对应文档；需求变更回写 `docs/requirements.md`，历史性记录只
   写进 `docs/archive/`。
