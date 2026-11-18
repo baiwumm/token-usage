@@ -117,7 +117,18 @@ workspace）。开源、可自部署；每个实例只写自己的 Supabase，�
 
 - **不可逆操作**（退役项目、删除数据、切换域名）必须操作者明确放行，Agent 代行即违规。
 - 单人维护，直推 main；推送前本地 `pnpm verify`，CI 兜底，出问题 `git revert`。
-- 提交信息用 conventional commits（feat / fix / docs / test / chore / refactor），AI 提交带
-  `Co-Authored-By:` trailer。
+- 提交信息用 conventional commits（feat / fix / docs / test / chore / refactor）。
+- **AI 参与**的提交在正文后空一行追加 trailer，身份固定，不即兴发明：
+
+  | Agent | Trailer |
+  | --- | --- |
+  | Trae / TraeCode | `Co-Authored-By: Trae <noreply@trae.ai>` |
+  | Claude Code | `Co-Authored-By: Claude <noreply@anthropic.com>` |
+  | Codex | `Co-Authored-By: Codex <noreply@openai.com>` |
+
+  其它 agent 按 `<产品名> <noreply@官方域名>` 补进本表后再用。邮箱缺失的 trailer GitHub 不
+  识别；同一 agent 不得使用第二个邮箱。**纯人工改动不加 trailer。** 写入用
+  `git commit -m "<subject>" -m "<body>" -m "Co-Authored-By: ..."`，trailer 必须是独立段落，
+  否则会被当成正文。
 - 文档与实现同步：改了行为就回写对应文档；需求变更回写 `docs/requirements.md`，历史性记录只
   写进 `docs/archive/`。
