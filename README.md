@@ -51,7 +51,7 @@
 </p>
 
 <p align="center">
-  <img src="apps/landing/public/dashboard/app-overview.png" alt="Token Usage dashboard overview: token KPIs, trend chart and activity heatmap" width="100%" />
+  <img src="apps/landing/public/dashboard/app-overview.webp" alt="Token Usage dashboard overview: token KPIs, trend chart and activity heatmap" width="100%" />
 </p>
 
 ## ✨ Features

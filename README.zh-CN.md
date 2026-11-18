@@ -51,7 +51,7 @@
 </p>
 
 <p align="center">
-  <img src="apps/landing/public/dashboard/app-overview.png" alt="Token Usage 仪表盘总览：token KPI、趋势图与热力图" width="100%" />
+  <img src="apps/landing/public/dashboard/app-overview.webp" alt="Token Usage 仪表盘总览：token KPI、趋势图与热力图" width="100%" />
 </p>
 
 ## ✨ 项目特性

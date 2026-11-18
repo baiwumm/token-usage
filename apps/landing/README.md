@@ -217,8 +217,9 @@ CJS `require()` 加载它 → Turbopack 在 `globals.css` 上报
 
 - `public/fonts/maple-mono-cn-regular.woff2`：与 apps/web 同一份字体子集
   （OFL-1.1，见 globals.css 头注）。
-- `public/share-cards/*.png`：由 apps/web 的 Canvas 分享卡引擎以 mock 数据
-  导出（四风格：特刊/小票/霓虹/唱片），非操作者真实数据。
+- `public/share-cards/*.webp`、`public/dashboard/*.webp`：由 apps/web 的 Canvas 分享卡引擎
+  与真实实例截图导出（四风格：特刊/小票/霓虹/唱片），非操作者真实数据；发布前统一转
+  WebP（quality 82），`images.unoptimized` 下没有再压缩的环节，源图不要改回 PNG。
 - `public/brand-logos/`、`public/achievement-art/`：从 apps/web public 复制的
   子集，更新时两边同步。
 - `public/beian/icp.png` / `public/beian/police.png`：页脚备案图标（14px 展示），

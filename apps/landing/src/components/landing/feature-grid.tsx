@@ -116,7 +116,7 @@ function AchievementCoins() {
   );
 }
 
-// 四风格分享卡展示：由真实 Canvas 引擎（apps/web share-card）导出的 PNG，
+// 四风格分享卡展示：由真实 Canvas 引擎（apps/web share-card）导出的 WebP，
 // mock 数据（伪造值）；导出失败时整块隐藏（含标题），不出现破图。
 // width/height 是导出图的真实像素尺寸：让浏览器在图片加载前就按比例占位，
 // 图片走 unoptimized，尺寸属性是唯一的 CLS 防线。
@@ -127,25 +127,25 @@ const SHARE_CARDS: Array<{
   width: number;
 }> = [
   {
-    file: "/share-cards/broadsheet.png",
+    file: "/share-cards/broadsheet.webp",
     height: 3260,
     label: "特刊 Broadsheet",
     width: 2400,
   },
   {
-    file: "/share-cards/receipt.png",
+    file: "/share-cards/receipt.webp",
     height: 2480,
     label: "小票 Receipt",
     width: 1600,
   },
   {
-    file: "/share-cards/neon.png",
+    file: "/share-cards/neon.webp",
     height: 1620,
     label: "霓虹 Neon",
     width: 1080,
   },
   {
-    file: "/share-cards/vinyl.png",
+    file: "/share-cards/vinyl.webp",
     height: 2160,
     label: "唱片 Vinyl",
     width: 2160,

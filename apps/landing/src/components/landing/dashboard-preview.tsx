@@ -214,10 +214,10 @@ function MiniHeatmap({ cells }: { cells: Array<[string, number, number]> }) {
 // 区域已打码）。四张全部预载（absolute 叠放 + opacity 过渡即交叉淡入）；
 // 每 6s 自动前进，悬停暂停；prefers-reduced-motion 时不自动轮播。
 const SHOTS = [
-  { file: "/dashboard/app-overview.png", alt: "仪表盘总览截图" },
-  { file: "/dashboard/app-trends.png", alt: "用量趋势截图" },
-  { file: "/dashboard/app-achievements.png", alt: "成就墙截图" },
-  { file: "/dashboard/app-wrapped.png", alt: "年度回顾截图" },
+  { file: "/dashboard/app-overview.webp", alt: "仪表盘总览截图" },
+  { file: "/dashboard/app-trends.webp", alt: "用量趋势截图" },
+  { file: "/dashboard/app-achievements.webp", alt: "成就墙截图" },
+  { file: "/dashboard/app-wrapped.webp", alt: "年度回顾截图" },
 ];
 
 const SHOT_INTERVAL_MS = 6000;

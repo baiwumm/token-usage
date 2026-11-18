@@ -34,7 +34,7 @@ const SOFTWARE_JSON_LD = {
   sameAs: [REPO_URL, NPM_CLI_URL],
   author: { "@id": SITE_ORGANIZATION_ID },
   publisher: { "@id": SITE_ORGANIZATION_ID },
-  screenshot: `${SITE_URL}/dashboard/app-overview.png`,
+  screenshot: `${SITE_URL}/dashboard/app-overview.webp`,
   license: `${REPO_URL}/blob/main/LICENSE`,
   isAccessibleForFree: true,
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
