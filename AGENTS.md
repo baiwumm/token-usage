@@ -118,7 +118,11 @@ workspace）。开源、可自部署；每个实例只写自己的 Supabase，�
 - **不可逆操作**（退役项目、删除数据、切换域名）必须操作者明确放行，Agent 代行即违规。
 - 单人维护，直推 main；推送前本地 `pnpm verify`，CI 兜底，出问题 `git revert`。
 - 提交信息用 conventional commits（feat / fix / docs / test / chore / refactor）。
-- **AI 参与**的提交按 `ai-commit-trailer` skill 的格式与校验流程处理（trailer 写法、身份表、
-  `check` 校验）。该 skill 是唯一规范，本文不重复其定义。
+- **AI 参与**的提交必须带 trailer：正文后空一行追加连续的 trailer 块；具体写法（`Co-authored-by`
+  只写产品名与 registry 邮箱，模型名只进 `Assisted-by` 的 `host:model`）、身份表与校验流程一律
+  以 `ai-commit-trailer` skill 为唯一规范，本文不重复其定义；身份按实际运行本次会话的产品匹配
+  `references/agents.json`，不得照抄其它产品；纯人工改动不加 trailer。
+- 提交前用该 skill 的 `normalize.mjs check --message <文件>` 自检，exit 0 才算通过
+  （`fix --write` 可自动归位 trailer）。
 - 文档与实现同步：改了行为就回写对应文档；需求变更回写 `docs/requirements.md`，历史性记录只
   写进 `docs/archive/`。
