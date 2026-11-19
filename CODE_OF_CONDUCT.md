@@ -1,13 +1,3 @@
-# 贡献者公约行为准则
-
-本仓库采用 [Contributor Covenant 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html)。Token Usage 目前由单人维护，违规举报请发送至 **me@baiwumm.com**，会在力所能及的范围内尽快处理。
-
-安全漏洞不属于本准则的受理范围，请按 [SECURITY.md](./SECURITY.md) 的私密渠道报告。
-
-以下是 Contributor Covenant 2.1 的官方英文原文，不作改写。
-
----
-
 # Contributor Covenant Code of Conduct
 
 ## Our Pledge
@@ -140,3 +130,11 @@ For answers to common questions about this code of conduct, see the FAQ at
 [Mozilla CoC]: https://github.com/mozilla/diversity
 [FAQ]: https://www.contributor-covenant.org/faq
 [translations]: https://www.contributor-covenant.org/translations
+
+---
+
+## 中文说明
+
+本仓库采用 Contributor Covenant 2.1（上为官方英文原文，不作改写）。Token Usage 目前由单人维护，违规举报请发送至 **me@baiwumm.com**，会在力所能及的范围内尽快处理。
+
+安全漏洞不属于本准则的受理范围，请按 [SECURITY.md](./SECURITY.md) 的私密渠道报告。
