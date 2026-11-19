@@ -9029,8 +9029,12 @@ async function readKiroCliSessionTurns(jsonPath) {
     // Prefer real token counts if kiro-cli populated them.
     let inputTokens = toNonNegativeInt(turn.input_token_count);
     let outputTokens = toNonNegativeInt(turn.output_token_count);
+    // The SQLite and char-based paths only persist character lengths, so the
+    // derived counts are estimates; the queue row must say so for the UI.
+    let tokensEstimated = false;
 
     if (inputTokens === 0 && outputTokens === 0) {
+      tokensEstimated = true;
       // Fall back to char-count approximation. Input chars come from the
       // sequential Prompt attribution (see readKiroCliMessageChars);
       // output chars come from AssistantMessage+toolUse bodies referenced
@@ -9087,6 +9091,7 @@ async function readKiroCliSessionTurns(jsonPath) {
       // KIRO_CLI_CHARS_PER_TOKEN; bypass that by pre-multiplying here.
       user_prompt_length: inputTokens * KIRO_CLI_CHARS_PER_TOKEN,
       response_size: outputTokens * KIRO_CLI_CHARS_PER_TOKEN,
+      estimated: tokensEstimated,
     });
   }
   return flat;
@@ -9536,6 +9541,9 @@ function readKiroCliRequests(dbPath, env = process.env, sqliteOptions = {}) {
         response_size: r.response_size,
         model_id: r.model_id || null,
         request_start_timestamp_ms: r.request_start_timestamp_ms,
+        // devdata.sqlite only stores character lengths, so every row read from
+        // this path is a chars/4 estimate.
+        estimated: true,
       });
     }
   }
@@ -9893,6 +9901,7 @@ async function parseKiroCliIncremental({ sessionFiles, cursors, queuePath, onPro
       input_tokens: approxInput,
       output_tokens: approxOutput,
       reasoning_output_tokens: approxReasoning,
+      ...(r.estimated === true ? { estimated: true } : {}),
       ...(r.session_id ? { session_id: r.session_id } : {}),
     };
 
@@ -9945,6 +9954,20 @@ function clampAndCapKiroCliState({ requestState, hourlyState, touchedBuckets }) 
     if (bucket && bucket.totals && bucket.totals.conversation_count < 0) {
       bucket.totals.conversation_count = 0;
     }
+  }
+  // Precision follows the surviving contributions: a bucket is estimated only
+  // while at least one of its retained requests came from the chars/4 path.
+  // Recompute from the ledger so a later real-token rewrite clears the flag.
+  const estimatedBuckets = new Set();
+  for (const entry of Object.values(requestState || {})) {
+    if (!entry || typeof entry !== "object" || entry.estimated !== true) continue;
+    const key = bucketKey("kiro", entry.model, entry.bucketStart);
+    if (touchedBuckets.has(key)) estimatedBuckets.add(key);
+  }
+  for (const key of touchedBuckets) {
+    const bucket = hourlyState.buckets && hourlyState.buckets[key];
+    if (!bucket) continue;
+    bucket.usage_precision = estimatedBuckets.has(key) ? "estimated" : null;
   }
   // TASK-004: cap cursors.kiroCli.requests by age + count. Runs LAST so
   // nothing active or just-retracted is pruned mid-flight.

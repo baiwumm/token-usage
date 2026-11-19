@@ -6,6 +6,18 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.6.5
+
+2026-11-19。来源口径卫生：Trae 本地与账户级互斥，Kiro CLI 估算值显式标记。零契约变更
+（`docs/cli-contract.md` 未动，队列字段与桶主键不变），服务端无需同步升级。
+
+- **Trae 本地与账户级互斥**：`trae-cn` 账户级 API 与本地 `trae` 描述同一批会话，同时开启会在
+  仪表盘双计（展示层都合并成 "Trae"）。现在本地存在 `Trae` / `TRAE SOLO` / `Trae CN` 数据库且
+  `trae` 源启用时，跳过账户级 API 并打印一行说明；本地逐请求口径优先。
+- **Kiro CLI 估算标记**：SQLite 的 `user_prompt_length` / `response_size` 与字符回退都是
+  chars/4 估算，现在随桶携带 `usage_precision: "estimated"`；session 文件带真实
+  `input_token_count` / `output_token_count` 时仍优先真实值，且一个桶不再包含估算贡献时清除标记。
+
 ## 0.6.4
 
 2026-11-19。Trae 采集口径改为逐请求，修正 agent 工具循环下 10 倍以上的系统性少计。零契约变更

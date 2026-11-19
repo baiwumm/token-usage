@@ -240,6 +240,7 @@ const {
   resolveTraeCnStoragePath,
   isTraeCnUsageEnabled,
 } = require("../lib/trae-cn-config");
+const { resolveTraeDbPaths } = require("../lib/trae-db");
 const {
   isCodexSessionCursorPath,
   isCursorStoreRetry,
@@ -2479,11 +2480,23 @@ async function cmdSync(argv, context = {}) {
     // any other fetch/page/schema/auth failure) skips the parser and leaves
     // prior data untouched while unrelated providers continue.
     let traeCnResult = { recordsProcessed: 0, eventsAggregated: 0, bucketsQueued: 0 };
-    if (
+    // The local TRAE database and the account-level API describe the same
+    // sessions. Local per-request rows are finer-grained, so they win: running
+    // both would count every session twice in the dashboard (both render as
+    // "Trae"). Only skip the API when local collection is actually enabled.
+    const traeCnRequested =
       !isBackgroundLightweightSync &&
       isTraeCnUsageEnabled(process.env) &&
-      sourceAllowed("trae-cn")
-    ) {
+      sourceAllowed("trae-cn");
+    const traeCnBlockedByLocal =
+      traeCnRequested && sourceAllowed("trae") && resolveTraeDbPaths(process.env).length > 0;
+    if (traeCnBlockedByLocal) {
+      if (!opts.auto) {
+        process.stderr.write(
+          "TRAE Work CN sync: local TRAE database is present; account-level usage is skipped to avoid double counting (local per-request data takes precedence).\n",
+        );
+      }
+    } else if (traeCnRequested) {
       const nowMs = Number.isFinite(traeCnNowMs) ? traeCnNowMs : Date.now();
       const fetchImpl = typeof traeCnFetchImpl === "function" ? traeCnFetchImpl : fetch;
       const endTime = Math.floor(nowMs / 1000);
