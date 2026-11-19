@@ -95,6 +95,49 @@ function normalizeTraeUsage(raw, { model } = {}) {
   return totals;
 }
 
+// TRAE writes one exact provider usage per model request into
+// server_history_info.extra_info for agent loops that issue many requests per
+// turn; chat_turn keeps only the last request. The exact counters use the same
+// inclusive-completion semantics as chat_turn, so the same normalizer applies.
+const TRAE_REQUEST_SEMANTICS = "provider_raw_usage_completion_includes_reasoning";
+
+function traeExactCount(value, fallback = null) {
+  if (value == null) return fallback;
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) && value >= 0 ? value : null;
+  }
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (!/^\d+$/.test(text)) return null;
+    const parsed = Number(text);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeTraeRequestUsage(usage, { model } = {}) {
+  if (!usage || typeof usage !== "object" || Array.isArray(usage)) return null;
+  if (usage.usage_kind !== "chat_completion" || usage.semantics !== TRAE_REQUEST_SEMANTICS) return null;
+  const prompt = traeExactCount(usage.prompt_tokens);
+  const completion = traeExactCount(usage.completion_tokens);
+  const reasoning = traeExactCount(usage.reasoning_tokens, 0);
+  const total = traeExactCount(usage.total_tokens);
+  if (prompt == null || completion == null || reasoning == null || total == null) return null;
+  // Provider semantics: completion includes reasoning, and the exact total is
+  // prompt + completion. Anything else is a malformed row, not a new layout.
+  if (reasoning > completion || prompt + completion !== total) return null;
+  return normalizeTraeUsage({
+    prompt_tokens: prompt,
+    completion_tokens: completion,
+    reasoning_tokens: reasoning,
+    total_tokens: total,
+    prompt_tokens_total: 0,
+    completion_tokens_total: 0,
+    cache_read_input_tokens: 0,
+    cache_creation_input_tokens: 0,
+  }, { model });
+}
+
 function normalizeTraeModel(value) {
   if (typeof value !== "string") return "trae-unknown";
   const model = value.trim().split("__")[0].toLowerCase().replace(/\s+/g, "-");
@@ -118,4 +161,9 @@ function traeTimestamp(value) {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-module.exports = { normalizeTraeUsage, normalizeTraeModel, traeTimestamp };
+module.exports = {
+  normalizeTraeUsage,
+  normalizeTraeRequestUsage,
+  normalizeTraeModel,
+  traeTimestamp,
+};

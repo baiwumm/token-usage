@@ -6,6 +6,26 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.6.4
+
+2026-11-19。Trae 采集口径改为逐请求，修正 agent 工具循环下 10 倍以上的系统性少计。零契约变更
+（`docs/cli-contract.md` 未动，队列字段与桶主键不变），服务端无需同步升级；升版后首次 sync 会重建
+全部 `trae` 桶并由既有 last-wins 覆盖云端历史值。
+
+- **逐请求优先**：`server_history_info` 的 `source='llm_default'` 每次模型请求一行，
+  `extra_info.exact_prompt/output/reasoning/total_tokens` 是权威计数；`chat_turn.context.token_usage`
+  只保留一轮里最后一次请求（`last_turn_total_tokens`），agent 工具循环中十几次请求只记最后一次。
+  本机实测同一时段 7,827 次请求 11.6 亿 token vs 558 轮 8,621 万。准入校验：semantics 必须为
+  `provider_raw_usage_completion_includes_reasoning`、`exact_usage_v1` 必须为 `chat_completion`、
+  `prompt + completion == total`、`reasoning <= completion`，异常行计入 `recordsSkipped`。
+- **按会话兜底**：某会话没有任何可用逐请求行时回退 `chat_turn`（本机 2 个 CN 旧会话；国际版/
+  `TRAE SOLO` 旧构建只写 `token_usage` 总数、没有 `exact_*` 分项的会话仍按轮级口径）。同一会话
+  绝不混算；被逐请求覆盖的会话会显式回撤旧的轮级贡献，避免重复计数。
+- **账本升级**：`TRAE_CURSOR_VERSION` 2 → 3，旧账本无法回撤，首次 sync 清空并重建 `trae` 桶。
+  旧构建的请求行在 SQL 层排除，不再刷 "unsupported usage metadata" 警告。
+- **隐私不变**：只在 SQLite 内投影 token 计数与模型名，prompt、消息、标题、路径不出库；
+  SQLCipher 快照读取与重试语义不变。
+
 ## 0.6.3
 
 2026-11-17。运行时副本漂移自愈：全局 `npm i -g` 升级后，`<trackerDir>/app` 里那份给钩子与计划任务兜底的

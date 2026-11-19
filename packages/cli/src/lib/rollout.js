@@ -51,7 +51,7 @@ const {
 } = require("./devin-usage");
 const { USD_TICKS_PER_USD, normalizeGrokUsage } = require("./grok-usage");
 const { resolveTraeDbPaths, readTraeUsageRows } = require("./trae-db");
-const { normalizeTraeUsage, normalizeTraeModel, traeTimestamp } = require("./trae-usage");
+const { normalizeTraeUsage, normalizeTraeRequestUsage, normalizeTraeModel, traeTimestamp } = require("./trae-usage");
 
 const DEFAULT_SOURCE = "codex";
 const DEFAULT_MODEL = "unknown";
@@ -23418,13 +23418,18 @@ function isCjkCodePoint(code) {
 // ── Trae SOLO (ByteDance AI IDE) ─────────────────────────────────────────────
 // https://www.trae.ai
 //
-// International TRAE usage comes from local encrypted chat_turn metadata.
+// International TRAE usage comes from local encrypted application metadata.
+// chat_turn stores one usage snapshot per turn but keeps only the LAST request
+// of it; agent turns issue many requests, so server_history_info (one exact
+// provider usage per model request) is the primary source and chat_turn is the
+// fallback for conversations without any request row.
 //
-// The ledger keeps one compact tuple per turn, keyed by a 128-bit digest, so a
-// correction can retract exactly what the turn contributed even after TRAE
-// deletes its history. total_tokens is the five token columns plus any input
-// without a cache split, which is counted but unpriced (normalizeTraeUsage).
-const TRAE_CURSOR_VERSION = 2;
+// The ledger keeps one compact tuple per contribution, keyed by a 128-bit
+// digest, so a correction can retract exactly what it contributed even after
+// TRAE deletes its history. total_tokens is the five token columns plus any
+// input without a cache split, which is counted but unpriced
+// (normalizeTraeUsage).
+const TRAE_CURSOR_VERSION = 3;
 const HALF_HOUR_MS = 30 * 60 * 1000;
 const [T_SESSION, T_MODEL, T_BUCKET, T_MODIFIED, T_STORE, T_INPUT, T_CACHED, T_WRITTEN,
   T_OUTPUT, T_REASONING, T_CONVERSATIONS, T_ESTIMATED, T_UNPRICED] = Array.from({ length: 13 }, (_, i) => i);
@@ -23491,11 +23496,16 @@ async function parseTraeIncremental({
   let estimatedRecords = 0;
   let unpricedRecords = 0;
   const errors = [];
+  // Read every changed store first: a conversation covered by per-request rows
+  // must not also contribute its chat_turn snapshot, and coverage is global
+  // across stores because copies share conversation and history ids.
+  const loaded = [];
+  const coveredSessions = new Set();
   for (const dbPath of [...new Set(paths)]) {
     const databaseKey = digest(path.resolve(dbPath));
     let store = stores.indexOf(databaseKey);
     if (store < 0) store = stores.push(databaseKey) - 1;
-    let rows;
+    let read;
     let fingerprint;
     let finalFingerprint;
     try {
@@ -23504,7 +23514,7 @@ async function parseTraeIncremental({
       fssync.statSync(dbPath);
       fingerprint = devinSqliteFingerprint(dbPath);
       if (sameSqliteFingerprint(fingerprint, databases[databaseKey])) continue;
-      rows = await readUsageRows(dbPath, { env });
+      read = await readUsageRows(dbPath, { env });
       finalFingerprint = devinSqliteFingerprint(dbPath);
     } catch (err) {
       // One install can be locked, corrupt, or use a different key while
@@ -23513,55 +23523,117 @@ async function parseTraeIncremental({
       errors.push({ database: dbPath, message: err?.message || String(err) });
       continue;
     }
-    for (const row of rows) {
-      recordsProcessed += 1;
-      const totals = normalizeTraeUsage(row.usage, { model: row.model });
+    // The reader always returns both projections; a legacy injected reader may
+    // still hand back the chat_turn array.
+    const requests = Array.isArray(read) ? [] : Array.isArray(read?.requests) ? read.requests : [];
+    const turnRows = Array.isArray(read) ? read : Array.isArray(read?.turns) ? read.turns : [];
+    const normalizedRequests = requests.map((row) => {
       const timestamp = traeTimestamp(row.created_at);
-      const bucketStart = timestamp && toUtcHalfHourStart(timestamp);
-      const rowId = row.turn_id || row.id;
-      if (!totals || !bucketStart || rowId == null || rowId === "") {
+      return {
+        row,
+        totals: normalizeTraeRequestUsage(row.usage, { model: row.model }),
+        session: digest(String(row.session_id || `${databaseKey}:${row.id}`)),
+        bucketStart: timestamp && toUtcHalfHourStart(timestamp),
+        modifiedAt: Date.parse(traeTimestamp(row.updated_at) || timestamp),
+      };
+    });
+    for (const request of normalizedRequests) {
+      // A conversation whose request rows are all malformed still falls back to
+      // chat_turn; only a usable row retires the turn snapshot.
+      const { row, totals, bucketStart } = request;
+      if (totals && bucketStart && row.id != null && row.id !== "") coveredSessions.add(request.session);
+    }
+    loaded.push({
+      store, databaseKey, fingerprint, finalFingerprint,
+      requests: normalizedRequests, turns: turnRows,
+    });
+  }
+
+  const applyContribution = (identity, session, model, bucketStart, totals, modifiedAt, store) => {
+    const previous = turns[identity];
+    // A copied contribution in another install can lag behind the original.
+    // Never let an unrelated rescan of that stale store retract newer usage.
+    // Without a newer timestamp, conflicting copies retain their owner.
+    if (previous && previous[T_STORE] !== store && modifiedAt <= previous[T_MODIFIED]) return false;
+    if (!previous && totals.total_tokens === 0) return false;
+    totals.conversation_count = previous
+      ? previous[T_CONVERSATIONS]
+      : conversations.has(session) ? 0 : 1;
+    conversations.add(session);
+    const next = packTraeTurn({ session, model, bucketStart, totals, modifiedAt, store });
+    if (previous && next.every((value, i) => i === T_MODIFIED || i === T_STORE || value === previous[i])) {
+      turns[identity] = next;
+      return false;
+    }
+    if (previous) {
+      const previousBucket = traeTurnBucketStart(previous);
+      const old = getHourlyBucket(hourlyState, "trae", previous[T_MODEL], previousBucket);
+      subtractTotals(old.totals, unpackTraeTotals(previous));
+      touchedBuckets.add(bucketKey("trae", previous[T_MODEL], previousBucket));
+    }
+    const bucket = getHourlyBucket(hourlyState, "trae", model, bucketStart);
+    addTotals(bucket.totals, totals);
+    touchedBuckets.add(bucketKey("trae", model, bucketStart));
+    turns[identity] = next;
+    return true;
+  };
+
+  const retractContribution = (identity) => {
+    const previous = turns[identity];
+    if (!previous) return;
+    const previousBucket = traeTurnBucketStart(previous);
+    const old = getHourlyBucket(hourlyState, "trae", previous[T_MODEL], previousBucket);
+    subtractTotals(old.totals, unpackTraeTotals(previous));
+    touchedBuckets.add(bucketKey("trae", previous[T_MODEL], previousBucket));
+    delete turns[identity];
+  };
+
+  for (const entry of loaded) {
+    const { store, databaseKey } = entry;
+    for (const { row, totals, session, bucketStart, modifiedAt } of entry.requests) {
+      recordsProcessed += 1;
+      if (!totals || !bucketStart || row.id == null || row.id === "") {
         recordsSkipped += 1;
         continue;
       }
+      const identity = digest(JSON.stringify(["request", row.id]));
+      if (applyContribution(identity, session, normalizeTraeModel(row.model), bucketStart, totals,
+        modifiedAt, store)) {
+        eventsAggregated += 1;
+      }
+    }
+    for (const row of entry.turns) {
+      const rowId = row.turn_id || row.id;
       const session = digest(String(row.session_id || `${databaseKey}:${rowId}`));
       // Stable turn ids deduplicate copies across the two international app
       // stores. Numeric SQLite ids are only unique within their database.
       const identity = digest(JSON.stringify(row.turn_id
         ? [session, row.turn_id] : [databaseKey, rowId]));
-      const previous = turns[identity];
-      const modifiedAt = Date.parse(traeTimestamp(row.updated_at) || timestamp);
-      // A copied turn in another install can lag behind the original. Never
-      // let an unrelated rescan of that stale store retract newer usage.
-      // Without a newer timestamp, conflicting copies retain their owner.
-      if (previous && previous[T_STORE] !== store && modifiedAt <= previous[T_MODIFIED]) continue;
-      if (!previous && totals.total_tokens === 0) continue;
-      if (totals.usage_precision === "estimated") estimatedRecords += 1;
-      if (totals.unpriced_input_tokens > 0) unpricedRecords += 1;
-      totals.conversation_count = previous
-        ? previous[T_CONVERSATIONS]
-        : conversations.has(session) ? 0 : 1;
-      conversations.add(session);
-      const model = normalizeTraeModel(row.model);
-      const next = packTraeTurn({ session, model, bucketStart, totals, modifiedAt, store });
-      if (previous && next.every((value, i) => i === T_MODIFIED || i === T_STORE || value === previous[i])) {
-        turns[identity] = next;
+      if (coveredSessions.has(session)) {
+        // The conversation now has per-request rows: retire a stale turn
+        // snapshot instead of counting the same usage twice.
+        retractContribution(identity);
         continue;
       }
-      if (previous) {
-        const previousBucket = traeTurnBucketStart(previous);
-        const old = getHourlyBucket(hourlyState, "trae", previous[T_MODEL], previousBucket);
-        subtractTotals(old.totals, unpackTraeTotals(previous));
-        touchedBuckets.add(bucketKey("trae", previous[T_MODEL], previousBucket));
+      recordsProcessed += 1;
+      const totals = normalizeTraeUsage(row.usage, { model: row.model });
+      const timestamp = traeTimestamp(row.created_at);
+      const bucketStart = timestamp && toUtcHalfHourStart(timestamp);
+      if (!totals || !bucketStart || rowId == null || rowId === "") {
+        recordsSkipped += 1;
+        continue;
       }
-      const bucket = getHourlyBucket(hourlyState, "trae", model, bucketStart);
-      addTotals(bucket.totals, totals);
-      touchedBuckets.add(bucketKey("trae", model, bucketStart));
-      turns[identity] = next;
-      eventsAggregated += 1;
+      if (totals.usage_precision === "estimated") estimatedRecords += 1;
+      if (totals.unpriced_input_tokens > 0) unpricedRecords += 1;
+      const modifiedAt = Date.parse(traeTimestamp(row.updated_at) || timestamp);
+      if (applyContribution(identity, session, normalizeTraeModel(row.model), bucketStart, totals,
+        modifiedAt, store)) {
+        eventsAggregated += 1;
+      }
     }
     // A read that races with a writer must be retried on the next sync.
-    databases[databaseKey] = sameSqliteFingerprint(fingerprint, finalFingerprint)
-      ? fingerprint : null;
+    databases[databaseKey] = sameSqliteFingerprint(entry.fingerprint, entry.finalFingerprint)
+      ? entry.fingerprint : null;
     if (typeof onProgress === "function") {
       onProgress({ recordsProcessed, eventsAggregated, bucketsQueued: touchedBuckets.size });
     }
