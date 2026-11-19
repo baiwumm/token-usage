@@ -117,6 +117,9 @@ workspace）。开源、可自部署；每个实例只写自己的 Supabase，�
 
 - **不可逆操作**（退役项目、删除数据、切换域名）必须操作者明确放行，Agent 代行即违规。
 - 单人维护，直推 main；推送前本地 `pnpm verify`，CI 兜底，出问题 `git revert`。
+  main 的 ruleset 对 owner 走 bypass，所以直推不受必过检查影响。
+- 依赖升级 PR 由 `.github/workflows/dependabot-auto-merge.yml` 打开 auto-merge，等
+  CI 三项检查全绿后自动 squash 合并；major 升级同样必须先过 CI。
 - 提交信息用 conventional commits（feat / fix / docs / test / chore / refactor）。
 - **AI 参与**的提交必须带 trailer：正文后空一行追加连续的 trailer 块；具体写法（`Co-authored-by`
   只写产品名与 registry 邮箱，模型名只进 `Assisted-by` 的 `host:model`）、身份表与校验流程一律
