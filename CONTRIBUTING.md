@@ -39,6 +39,10 @@ New runtime dependencies need maintainer approval and an update to the budget in
 
 Never commit service-role keys, device tokens, pairing codes or real Supabase credentials. Tests, fixtures and documentation must use fake values. Push protection is enabled on this repository, so a commit containing a detected secret is rejected.
 
+## Community
+
+By participating in this project you agree to the [Code of Conduct](./CODE_OF_CONDUCT.md). Report unacceptable behavior to me@baiwumm.com.
+
 ## Security
 
 Do not open public issues or pull requests for vulnerabilities. Use [private reporting](https://github.com/baiwumm/token-usage/security/advisories/new) and see [SECURITY.md](./SECURITY.md).
