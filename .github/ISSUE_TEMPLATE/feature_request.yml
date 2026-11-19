@@ -1,0 +1,54 @@
+name: Feature request
+description: Suggest a feature or improvement
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem first, then the proposal — that makes it much easier to discuss. For open-ended ideas, [Discussions → Ideas](https://github.com/baiwumm/token-usage/discussions/categories/ideas) is a better fit.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Collector CLI
+        - Dashboard
+        - Desktop app
+        - Sources & pricing
+        - Achievements & badges
+        - Deployment & docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The situation you hit today, and who else would benefit.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Mockups, links, related issues or discussions.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues, discussions and the docs.
+          required: true
+        - label: This is one request, not several bundled together.
+          required: true

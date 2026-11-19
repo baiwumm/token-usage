@@ -1,0 +1,56 @@
+version: 2
+
+updates:
+  # pnpm workspace（apps/*、packages/*）统一在仓库根目录处理。
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+
+  # 桌面端 Rust 依赖；Cargo.lock 入库，--locked 门禁依赖它保持一致。
+  - package-ecosystem: cargo
+    directory: /apps/desktop/src-tauri
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      cargo-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+
+  # 工作流里 pin 的 actions 版本（checkout / setup-node / pnpm 等）。
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
