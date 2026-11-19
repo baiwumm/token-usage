@@ -287,8 +287,7 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
       attribution: "代码来源与第三方许可见 LICENSE 与 THIRD_PARTY_NOTICES。",
       beian: {
         icp: "粤ICP备2023007649号-5",
-        // 公安网备尚未提交，拿到备案号后填在这里（数字部分会自动进查询链接）。
-        police: "",
+        police: "粤公网安备44030002019701号",
       },
       rights: "© 2026 Token Usage · token-usage.cc",
     },

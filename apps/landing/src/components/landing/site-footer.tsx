@@ -1,7 +1,7 @@
 // Footer（设计定稿 08 段）：实时徽章直链演示（<img> 零脚本，README 解析）
 // + 三列链接 + 署名指向（AGENTS 规则 10：只指向 LICENSE /
-// THIRD_PARTY_NOTICES）+ 备案信息（ICP 链接工信部；公安网备拿到号后填
-// `copy.footer.beian.police`，数字自动进查询链接）。
+// THIRD_PARTY_NOTICES）+ 备案信息（ICP 链接工信部，公安网备链接公安查询页，
+// 文案见 `copy.footer.beian`，数字自动进查询链接）。
 
 import { Typography } from "@heroui/react";
 

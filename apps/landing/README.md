@@ -204,10 +204,9 @@ CJS `require()` 加载它 → Turbopack 在 `globals.css` 上报
 
 - 域名 `token-usage.cc` 与 `www.token-usage.cc` 均绑定到 EdgeOne，**www 为规范域**（apex
   由 `edgeone.json` 301 到 www）；
-- 备案：域名已备案（粤ICP备2023007649号-5），页脚右下角展示
-  ICP 号并链接工信部；文案在 `src/lib/copy.ts` 的 `footer.beian`（`icp` / `police`，
-  空串隐藏对应条目）。公安网备待部署后提交，拿到号填 `beian.police` 即可（数字部分
-  自动拼进 `beian.mps.gov.cn` 查询链接）。
+- 备案：域名已备案（粤ICP备2023007649号-5、粤公网安备44030002019701号），页脚右下角展示
+  两枚备案号并分别链接工信部与公安查询页；文案在 `src/lib/copy.ts` 的 `footer.beian`
+  （`icp` / `police`，空串隐藏对应条目，公安号数字自动拼进 `beian.mps.gov.cn` 查询链接）。
 
 **对外口径仍为 Vercel**：落地页上的 Deploy to Vercel 按钮与部署指南面向的是
 **自部署用户**（部署 `apps/web` 仪表盘），与本站的托管选择无关，保持不变；
