@@ -19,7 +19,11 @@ Vercel 注销，**改回旧 base URL 的回滚路径不存在**；存量 CLI 安
    `apps/landing`。`20261114000000` 把公开名称收紧到 30 字符、新徽章默认折线。
 2. **配环境变量**：新增变量按 `docs/rewrite-plan.md` §5 与 `apps/web/.env.example` 补到
    Production 与 Preview 各一份。
-3. **部署**：main 出 Production，push 出 Preview（Vercel Git 集成）。
+3. **部署**：main 出 Production，push 出 Preview（Vercel Git 集成）。`apps/web/vercel.json`
+   的 `ignoreCommand` 会在提交未触及 `apps/web`、根 `pnpm-lock.yaml` / `pnpm-workspace.yaml` /
+   `package.json` / `.npmrc` 时跳过构建（Production 与 `token-usage-demo` 共用 Root
+   `apps/web`，一并生效；Vercel 显示 Skipped）。依赖升级仍需重建，所以根 lockfile 与安装
+   配置变化不会被跳过。删除该字段即恢复每次提交全量构建。
 4. **冒烟**（下节），全绿后再逐台升级采集机。
 
 采集机升级 CLI 后**必须**跑一次 `tokenusage init --yes --no-integrations --no-open` 刷新运行时
@@ -49,6 +53,8 @@ Vercel 注销，**改回旧 base URL 的回滚路径不存在**；存量 CLI 安
 
 与 web 部署相互独立：纯静态产物（`pnpm build:landing:deploy` 的 `out/`），无环境变量、无服务端，
 托管腾讯云 EdgeOne Pages。接线、素材与快照说明见 [`apps/landing/README.md`](../apps/landing/README.md)。
+main 上未触及 `apps/landing/**` 的提交不会触发部署：`deploy-landing.yml` 已用 `paths`
+限定，并只把变更镜像到 `landing-release` 分支供 EdgeOne 自动构建。
 回滚 = 在 EdgeOne 重新部署上一版产物；页脚实时徽章依赖操作者实例在线（挂掉只影响该 `<img>`）。
 
 ## 自动发版
