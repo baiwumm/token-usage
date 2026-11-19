@@ -18,6 +18,12 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # typescript-eslint 尚不支持 TS 7（2026-11），升 major 会让 lint 直接失败；
+      # 等上游支持后删掉这条再手动升。
+      - dependency-name: "typescript"
+        update-types:
+          - version-update:semver-major
 
   # 桌面端 Rust 依赖；Cargo.lock 入库，--locked 门禁依赖它保持一致。
   - package-ecosystem: cargo
