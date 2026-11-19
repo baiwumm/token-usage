@@ -117,9 +117,10 @@ UI 基准与桌面端约定属可查阅事实，也收在文末。数据与业�
      单日峰值；再下成本行（存在未定价模型时加 `≥` 前缀 + ⓘ `Tooltip` 说明估算下限，行尾小字
      「全部时间」累计成本）、日期区间、按来源占比的堆叠色条，以及「全部 + 每来源」占比卡
      （`SourceIcon` + 占比 `text-base` + 模型数）。
-   - 「全部」与每来源卡均可点击，打开模型明细 `ModelListModal`（列 模型 / Token / 占比 / 成本；
-     「全部」为跨来源同名模型合并；明细桶只有逐模型 Token、无成本时成本列自动隐藏）。数值列
-     定宽（Token `w-36`、成本 `w-28`），整表 `min-w-[26rem]` 保底，窄视口横向滚动而不溢出到邻列。
+   - 「全部」与每来源卡均可点击，打开模型明细 `ModelListModal`（列 模型 / Token / 占比 / 成本 /
+     积分——积分列仅在范围内有 model 级 credits 上报时出现，与明细表同口径；「全部」为跨来源同名
+     模型合并；明细桶只有逐模型 Token、无成本时成本列自动隐藏）。弹窗 `max-w-3xl`，数值列定宽
+     （Token `w-36`、成本与积分 `w-24`），整表 `min-w-[26rem]` 保底，窄视口横向滚动而不溢出到邻列。
    - 口径：总 Token = `totals.total_tokens`，计费 = `totals.billable_total_tokens`，成本 =
      `totals.total_cost_usd`，会话数 = `totals.conversation_count`，活跃天数 = `days`，日均
      （30 天）= `rolling.last_30d.avg_per_active_day`（计费 Token ÷ 活跃天），单日峰值 =

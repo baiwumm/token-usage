@@ -53,6 +53,8 @@ export interface MergedModelRow {
     total_tokens: number;
     billable_total_tokens: number;
     total_cost_usd: number;
+    /** Vendor credits summed across sources (display-only). */
+    credits: number;
   };
   /** Any source listed the model with tokens but no pricing match. */
   unpriced: boolean;
@@ -82,6 +84,7 @@ export function mergeModelsAcrossSources(
           total_tokens: 0,
           billable_total_tokens: 0,
           total_cost_usd: 0,
+          credits: 0,
         },
         unpriced: false,
       };
@@ -89,6 +92,7 @@ export function mergeModelsAcrossSources(
       agg.totals.total_tokens += entry.totals.total_tokens;
       agg.totals.billable_total_tokens += entry.totals.billable_total_tokens;
       agg.totals.total_cost_usd += Number(entry.totals.total_cost_usd) || 0;
+      agg.totals.credits += Number(entry.totals.credits) || 0;
       agg.unpriced =
         agg.unpriced ||
         (entry.pricing.status === "unpriced" && entry.totals.total_tokens > 0);

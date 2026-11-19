@@ -23,6 +23,8 @@ export interface ModelListRow {
   /** Owning source id when the caller knows it — lets models without a
    *  vendor mark ("auto", "lite") fall back to the source logo. */
   source?: string;
+  /** Vendor credits when the caller has them (display-only, never tokens). */
+  credits?: number | null;
 }
 
 export function ModelListModal({
@@ -47,8 +49,8 @@ export function ModelListModal({
     <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
       {/* scroll=inside + a dialog max-height: short lists render fully with
             no scrollbar; only the 全部 ranking scrolls, header stays pinned. */}
-      <Modal.Container scroll="inside" size="lg">
-        <Modal.Dialog className="max-h-[85vh]">
+      <Modal.Container scroll="inside">
+        <Modal.Dialog className="max-h-[85vh] w-[calc(100vw-1rem)] max-w-3xl">
           <Modal.CloseTrigger aria-label={copy.cost.close} />
           <Modal.Header>
             <Modal.Heading>{title}</Modal.Heading>
@@ -82,6 +84,12 @@ export function ModelListModal({
                   share: total > 0 ? row.tokens / total : undefined,
                   // Cost stays hidden unless the caller has it at all.
                   cost: row.cost ?? undefined,
+                  // Credits column appears only when some row actually spent
+                  // credits; rows without them render an em dash.
+                  credits:
+                    row.credits != null && row.credits > 0
+                      ? row.credits
+                      : undefined,
                 }))}
               />
             )}
