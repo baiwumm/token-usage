@@ -73,6 +73,27 @@ describe("lookupPricing resolve order", () => {
     expect(result.value).toMatchObject({ input: 1.25, output: 10 });
   });
 
+  it("prices free preview and free-suffix routes at zero", () => {
+    const cases: Array<[string, string]> = [
+      ["space-bunny", "dsh"],
+      ["union-alpha", "opencode"],
+      ["mimo-v2.6-flash:free", "dsh"],
+      ["conatus-free", "dsh"],
+    ];
+
+    for (const [model, source] of cases) {
+      const result = lookupPricing(model, { curated: mergedCurated, litellm: litellmMap, source });
+
+      expect(result.hit).toBe(true);
+      expect(result.value).toMatchObject({
+        input: 0,
+        output: 0,
+        cache_read: 0,
+        cache_write: 0,
+      });
+    }
+  });
+
   it("strips reasoning suffixes for litellm lookups", () => {
     expect(stripReasoningSuffix("gpt-5-codex-high-fast")).toBe("gpt-5-codex");
     expect(stripReasoningSuffix("gpt-5-codex")).toBe("gpt-5-codex");

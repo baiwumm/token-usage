@@ -41,3 +41,24 @@ test("u2-flash and step-5-preview resolve via curated exact", () => {
     { input: 1, output: 2.7, cache_read: 0.1 },
   );
 });
+
+// Free preview aliases and free SKUs must resolve to an explicit $0 instead of
+// staying unpriced (which would add the ">= lower bound" caveat to totals).
+test("free preview aliases and free suffixes stay at $0", () => {
+  const cases = [
+    ["space-bunny", "dsh"],
+    ["union-alpha", "opencode"],
+    ["mimo-v2.6-flash:free", "dsh"],
+    ["conatus-free", "dsh"],
+  ];
+
+  for (const [model, source] of cases) {
+    const info = getModelPricingInfo(model, { source });
+    assert.equal(info.status, "free", `${model} should be free`);
+    assert.deepEqual(
+      { input: info.input, output: info.output, cache_read: info.cache_read, cache_write: info.cache_write },
+      { input: 0, output: 0, cache_read: 0, cache_write: 0 },
+      `${model} must price at zero`,
+    );
+  }
+});
