@@ -10,7 +10,7 @@ import type { SessionsCopy } from "@/lib/copy/sessions";
 import type { SessionsPayload } from "@/lib/dashboard/api";
 import type { Filters } from "./filters";
 
-import { ArrowDownToLine, Layers } from "@gravity-ui/icons";
+import { ArrowDownToLine, Calendar, Layers, Xmark } from "@gravity-ui/icons";
 import {
   Button,
   ListBox,
@@ -25,6 +25,7 @@ import { DeviceFilterSelect } from "@/components/device-filter-select";
 import { RangePresetToolbar } from "@/components/range-preset-toolbar";
 import { RefreshButton } from "@/components/refresh-button";
 import { SourceIcon } from "@/components/source-icon";
+import { useFormat } from "@/lib/format/format";
 import { sourceDisplayLabel } from "@/lib/sources";
 
 export function SessionsFilterBar({
@@ -56,14 +57,48 @@ export function SessionsFilterBar({
   onExport: () => void;
   onRetry: () => void;
 }) {
+  const { formatDate } = useFormat();
+  // Custom window (heatmap deep link) has no preset to light up, so show the
+  // exact day(s) beside the toolbar; the button clears back to all time.
+  const customLabel =
+    filters.range === "custom" && filters.from
+      ? filters.from === filters.to
+        ? formatDate(`${filters.from}T12:00:00Z`, {
+            dateStyle: "medium",
+            timeZone: "UTC",
+          })
+        : `${formatDate(`${filters.from}T12:00:00Z`, {
+            dateStyle: "medium",
+            timeZone: "UTC",
+          })} – ${formatDate(`${filters.to}T12:00:00Z`, {
+            dateStyle: "medium",
+            timeZone: "UTC",
+          })}`
+      : "";
+
   return (
     <div className="flex flex-wrap items-center gap-3">
       <RangePresetToolbar
         ariaLabel={copy.rangeLabel}
         labels={copy.ranges}
         selected={filters.range}
-        onSelect={(range) => onApply({ range, from: "", to: "" })}
+        onSelect={(range) => onApply({ range, from: "", to: "", tz: "" })}
       />
+
+      {customLabel ? (
+        <Button
+          aria-label={`${copy.customRangeLabel}: ${customLabel} — ${copy.clearCustomRange}`}
+          className="whitespace-nowrap"
+          size="sm"
+          variant="outline"
+          onPress={() => onApply({ range: "all", from: "", to: "", tz: "" })}
+        >
+          <Calendar aria-hidden="true" className="size-3.5" />
+          <span className="text-muted">{copy.customRangeLabel}</span>
+          <span className="tabular-nums">{customLabel}</span>
+          <Xmark aria-hidden="true" className="size-3.5" />
+        </Button>
+      ) : null}
 
       <DeviceFilterSelect
         placeholderMode

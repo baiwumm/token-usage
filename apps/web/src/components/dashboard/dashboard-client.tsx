@@ -628,13 +628,18 @@ export function DashboardClient() {
 
   const openCostModal = useCallback(() => setCostOpen(true), []);
 
-  // Heatmap cell → sessions for that exact day (D1). Sessions reads from/to
-  // once as an initial window; its own filter edits never round-trip them.
+  // Heatmap cell → sessions for that exact day (D1). The cell's day belongs to
+  // the dashboard's effective timezone; only an explicit dashboard override
+  // travels with the link — the browser zone needs no param because Sessions
+  // falls back to it, and carrying it would leak the default into the URL.
   const openSessionsForDay = useCallback(
     (day: string) => {
-      router.push(`/sessions?from=${day}&to=${day}`);
+      const query = new URLSearchParams({ from: day, to: day });
+
+      if (filters.tz) query.set("tz", filters.tz);
+      router.push(`/sessions?${query.toString()}`);
     },
-    [router],
+    [filters.tz, router],
   );
 
   // Empty-state escape hatch: the runs list carries the per-device capture

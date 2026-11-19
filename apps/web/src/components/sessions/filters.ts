@@ -4,7 +4,7 @@
 
 import type { RangeKey } from "@/lib/dashboard/ranges";
 
-import { isValidDayKey } from "@/lib/dashboard/ranges";
+import { isValidDayKey, isValidTimeZone } from "@/lib/dashboard/ranges";
 import { PAGE_SIZE_OPTIONS } from "@/lib/ui/pagination";
 
 export const DEFAULT_PAGE_SIZE = 20;
@@ -13,6 +13,8 @@ export interface Filters {
   range: RangeKey;
   from: string;
   to: string;
+  /** Zone of the custom day keys; empty means the browser zone. */
+  tz: string;
   deviceId: string;
   source: string;
   offset: number;
@@ -33,11 +35,16 @@ export function parseFilters(params: {
   const from = params.get("from") ?? "";
   const to = params.get("to") ?? "";
   const hasWindow = isValidDayKey(from) && isValidDayKey(to) && from <= to;
+  // The heatmap deep link carries the dashboard zone its day keys came from.
+  // Only meaningful together with a custom window; presets stay relative to
+  // the browser zone.
+  const rawTz = params.get("tz") ?? "";
 
   return {
     range: hasWindow ? "custom" : "all",
     from: hasWindow ? from : "",
     to: hasWindow ? to : "",
+    tz: hasWindow && isValidTimeZone(rawTz) ? rawTz : "",
     deviceId: params.get("device_id") ?? "",
     source: params.get("source") ?? "",
     offset:
@@ -59,6 +66,7 @@ export function serializeFilters(filters: Filters): string {
   ) {
     query.set("from", filters.from);
     query.set("to", filters.to);
+    if (filters.tz) query.set("tz", filters.tz);
   }
   if (filters.deviceId) query.set("device_id", filters.deviceId);
   if (filters.source) query.set("source", filters.source);

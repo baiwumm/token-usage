@@ -20,17 +20,20 @@ import { useFormat } from "@/lib/format/format";
 export function SessionDetailModal({
   session,
   copy,
+  timezone,
   onOpenChange,
 }: {
   session: SessionItem | null;
   copy: SessionsCopy;
+  /** Zone the range was resolved in; the end time renders in it too. */
+  timezone: string;
   onOpenChange: (open: boolean) => void;
 }) {
   const {
     formatTokens,
     formatCredits,
     formatDuration,
-    formatDateTime,
+    formatDate,
     formatRelativeTime,
   } = useFormat();
   const models = session ? sortedModels(session.models) : [];
@@ -109,7 +112,11 @@ export function SessionDetailModal({
                       type="body-sm"
                       weight="medium"
                     >
-                      {formatDateTime(session.ended_at)}
+                      {formatDate(session.ended_at, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                        timeZone: timezone,
+                      })}
                     </Typography>
                     <Typography color="muted" type="body-xs">
                       {formatRelativeTime(session.ended_at)}

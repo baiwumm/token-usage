@@ -36,6 +36,7 @@ export function SessionsTable({
   payload,
   status,
   refreshing,
+  timezone,
   offset,
   pageSize,
   hasNarrowingFilters,
@@ -51,6 +52,8 @@ export function SessionsTable({
   payload: SessionsPayload | null;
   status: LoadStatus;
   refreshing: boolean;
+  /** Zone the range was resolved in; session times render in it too. */
+  timezone: string;
   /** Offset the current page starts at (from the URL). */
   offset: number;
   pageSize: number;
@@ -68,9 +71,20 @@ export function SessionsTable({
     formatCost,
     formatCredits,
     formatDuration,
-    formatDateTime,
+    formatDate,
   } = useFormat();
   const router = useRouter();
+  // Times follow the zone the day window came from (browser zone by default),
+  // so the list never shows a date outside the selected custom day.
+  const formatEndedAt = useMemo(
+    () => (value: string) =>
+      formatDate(value, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: timezone,
+      }),
+    [formatDate, timezone],
+  );
 
   const totalPages =
     payload && payload.total > 0 ? Math.ceil(payload.total / pageSize) : 1;
@@ -85,7 +99,7 @@ export function SessionsTable({
         id: "endedAt",
         header: copy.list.endedAt,
         className: "whitespace-nowrap",
-        cell: (session) => formatDateTime(session.ended_at),
+        cell: (session) => formatEndedAt(session.ended_at),
       },
       {
         id: "source",
@@ -167,7 +181,7 @@ export function SessionsTable({
       copy,
       formatCost,
       formatCredits,
-      formatDateTime,
+      formatEndedAt,
       formatDuration,
       formatTokens,
       payload,
@@ -180,7 +194,7 @@ export function SessionsTable({
       <Card.Content className="gap-2">
         <div className="flex items-center justify-between gap-2">
           <Typography type="body-sm" weight="semibold">
-            {formatDateTime(session.ended_at)}
+            {formatEndedAt(session.ended_at)}
           </Typography>
           <Chip size="sm" variant="soft">
             {session.source}

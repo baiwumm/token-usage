@@ -17,6 +17,8 @@ export interface SessionsCopy {
   lastUpdated: string;
   lastUpdatedNone: string;
   clearFilters: string;
+  customRangeLabel: string;
+  clearCustomRange: string;
   cards: {
     sessions: string;
     tokens: string;
@@ -106,6 +108,8 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
     lastUpdated: "上次更新 {time}",
     lastUpdatedNone: "尚未加载数据",
     clearFilters: "清除筛选",
+    customRangeLabel: "自定义",
+    clearCustomRange: "清除自定义日期",
     cards: {
       sessions: "会话数",
       tokens: "总 Tokens",
@@ -196,6 +200,8 @@ export const SESSIONS_COPY: Record<"zh" | "en", SessionsCopy> = {
     lastUpdated: "Updated {time}",
     lastUpdatedNone: "No data loaded yet",
     clearFilters: "Clear filters",
+    customRangeLabel: "Custom",
+    clearCustomRange: "Clear custom date",
     cards: {
       sessions: "Sessions",
       tokens: "Total tokens",

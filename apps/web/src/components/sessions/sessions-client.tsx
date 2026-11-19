@@ -33,7 +33,7 @@ import { useLocale } from "@/lib/copy/locale";
 import { formatMessage } from "@/lib/copy/message";
 import { SESSIONS_COPY } from "@/lib/copy/sessions";
 import { useUrlFilters } from "@/lib/dashboard/url-filters";
-import { loadable, type Loadable } from "@/lib/loadable";
+import { loadable, type Loadable, type LoadStatus } from "@/lib/loadable";
 import {
   DashboardApiError,
   exportSessionsCsv,
@@ -46,6 +46,12 @@ import { browserTimezone, rangeForSelection } from "@/lib/dashboard/ranges";
 function isUnauthorized(error: unknown): boolean {
   return error instanceof DashboardApiError && error.status === 401;
 }
+
+// The payload is only valid for the query that produced it: when the window or
+// a narrowing filter changes, the previous rows must not stand in for the new
+// query (an empty previous page would flash its empty state instead of the
+// initial skeleton). Manual refreshes keep the same key and stay non-destructive.
+type SessionsState = Loadable<SessionsPayload> & { key?: string };
 
 export function SessionsClient() {
   const [locale] = useLocale();
@@ -60,7 +66,7 @@ export function SessionsClient() {
     merge: mergeSessionFilters,
     initialParams: searchParams,
   });
-  const [state, setState] = useState<Loadable<SessionsPayload>>(loadable);
+  const [state, setState] = useState<SessionsState>(loadable);
   const [facets, setFacets] = useState<SessionsPayload["facets"]>({
     sources: [],
     devices: [],
@@ -72,20 +78,37 @@ export function SessionsClient() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const requestId = useRef(0);
 
-  const timezone = browserTimezone();
+  // Custom windows carry the zone their day keys came from (heatmap deep
+  // link); presets and plain visits resolve in the browser zone.
+  const timezone = filters.tz || browserTimezone();
   const range = useMemo(
     () => rangeForSelection(filters.range, timezone, filters.from, filters.to),
     [filters.range, filters.from, filters.to, timezone],
   );
+  const queryKey = useMemo(
+    () =>
+      `${range.fromIso}|${range.toIso}|${filters.deviceId}|${filters.source}`,
+    [range.fromIso, range.toIso, filters.deviceId, filters.source],
+  );
+  // Rows from another query are not rendered at all, so a filter change goes
+  // straight to the initial skeleton instead of the old empty state.
+  const stateMatchesQuery = state.key === queryKey;
+  const payload = stateMatchesQuery ? state.data : null;
+  const status: LoadStatus = stateMatchesQuery ? state.status : "loading";
 
   const load = useCallback(
     async (token: string) => {
       const id = requestId.current + 1;
+      const key = queryKey;
 
       requestId.current = id;
       setRefreshing(true);
+      // Same query (manual refresh / paging): keep the rows and overlay a
+      // spinner. New query: drop them so the initial skeleton can show.
       setState((previous) =>
-        previous.data == null ? { status: "loading", data: null } : previous,
+        previous.key === key && previous.data != null
+          ? previous
+          : { status: "loading", data: null, key },
       );
 
       try {
@@ -99,7 +122,7 @@ export function SessionsClient() {
         });
 
         if (requestId.current !== id) return;
-        setState({ status: "ready", data: payload });
+        setState({ status: "ready", data: payload, key });
         setRefreshing(false);
         setLastUpdatedAt(Date.now());
         setFacets(payload.facets);
@@ -123,10 +146,14 @@ export function SessionsClient() {
 
           return;
         }
-        // A failed refresh keeps the previous page on screen and flags it as
-        // stale (DataTableCard shows the error bar); only an empty slot falls
-        // through to the full error state.
-        setState((previous) => ({ status: "error", data: previous.data }));
+        // A failed refresh of the same query keeps the previous page on screen
+        // and flags it as stale; a failure for a new query has no valid rows to
+        // keep, so it falls through to the full error state.
+        setState((previous) => ({
+          status: "error",
+          data: previous.key === key ? previous.data : null,
+          key,
+        }));
         setRefreshing(false);
       }
     },
@@ -135,6 +162,7 @@ export function SessionsClient() {
       filters.offset,
       filters.pageSize,
       filters.source,
+      queryKey,
       range.fromIso,
       range.toIso,
       redirectToLogin,
@@ -149,8 +177,8 @@ export function SessionsClient() {
   // Filters can shrink the result set below the current page; snap back to
   // the last valid page instead of showing an empty page.
   useEffect(() => {
-    if (state.status !== "ready" || !state.data) return;
-    const { total, offset } = state.data;
+    if (status !== "ready" || !payload) return;
+    const { total, offset } = payload;
 
     if (total === 0 && offset > 0) {
       applyFilters({ offset: 0 });
@@ -162,7 +190,7 @@ export function SessionsClient() {
         offset: Math.floor((total - 1) / filters.pageSize) * filters.pageSize,
       });
     }
-  }, [state, applyFilters, filters.pageSize]);
+  }, [status, payload, applyFilters, filters.pageSize]);
 
   const retry = useCallback(() => {
     if (accessToken) void load(accessToken);
@@ -241,6 +269,7 @@ export function SessionsClient() {
       range: "all",
       from: "",
       to: "",
+      tz: "",
       deviceId: "",
       source: "",
     });
@@ -276,8 +305,6 @@ export function SessionsClient() {
     return list;
   }, [facets.sources, filters.source]);
 
-  const payload = state.data;
-
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 md:px-8">
       <SessionsFilterBar
@@ -287,7 +314,7 @@ export function SessionsClient() {
         exporting={exporting}
         filters={filters}
         lastUpdatedAt={lastUpdatedAt}
-        loading={state.status === "loading"}
+        loading={status === "loading"}
         locale={locale}
         refreshing={refreshing}
         sourceOptions={sourceOptions}
@@ -297,7 +324,7 @@ export function SessionsClient() {
       />
 
       <div className="flex flex-col gap-5">
-        {state.status === "loading" && !payload ? (
+        {status === "loading" && !payload ? (
           <SummaryCardsSkeleton copy={copy} />
         ) : null}
 
@@ -312,7 +339,8 @@ export function SessionsClient() {
           pageSize={filters.pageSize}
           payload={payload}
           refreshing={refreshing}
-          status={state.status}
+          status={status}
+          timezone={timezone}
           onClearFilters={clearFilters}
           onOffsetChange={(offset) => applyFilters({ offset })}
           onPageSizeChange={(pageSize, offset) =>
@@ -326,6 +354,7 @@ export function SessionsClient() {
       <SessionDetailModal
         copy={copy}
         session={detail}
+        timezone={timezone}
         onOpenChange={(open) => {
           if (!open) setDetail(null);
         }}
