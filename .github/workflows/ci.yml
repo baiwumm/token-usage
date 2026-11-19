@@ -5,8 +5,8 @@ on:
     branches: [main]
   pull_request:
 
-# 同一 ref 的新一轮运行取代旧运行：PR 上取消进行中的旧任务，
-# main 上保留完整历史（发布与排障依赖每条提交都有结果）。
+# 同一 ref 只保留一轮运行：PR 上取消进行中的旧任务；
+# main 上不取消已开始的任务，但排队中的旧任务会被最新一次取代。
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
