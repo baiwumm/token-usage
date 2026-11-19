@@ -50,8 +50,10 @@
   <sub>Live usage of the author's instance — rendered by this project's <a href="docs/badge.md">public badge</a>, click through to the public page</sub>
 </p>
 
+## 🎬 Promo video
+
 <p align="center">
-  <img src="apps/landing/public/dashboard/app-overview.webp" alt="Token Usage dashboard overview: token KPIs, trend chart and activity heatmap" width="100%" />
+  <video src="https://github.com/user-attachments/assets/33e2a6f2-f98f-4cd5-8d2e-5052fd989b51" width="90%" controls muted playsinline></video>
 </p>
 
 ## ✨ Features

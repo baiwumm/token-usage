@@ -27,6 +27,11 @@ export interface LandingCopy {
     /** 「截至」日期由 snapshot.json 的 fetchedAt 派生（部署同步时刷新）。 */
     snapshotNote: (asOf: string) => string;
   };
+  promo: {
+    title: string;
+    play: string;
+    note: string;
+  };
   terminal: {
     eyebrow: string;
     title: string;
@@ -121,6 +126,11 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
       },
       snapshotNote: (asOf) =>
         `数据快照 · 截至 ${asOf} · 来自真实自部署实例的公开数据`,
+    },
+    promo: {
+      title: "58 秒看完 Token Usage",
+      play: "播放宣传片",
+      note: "从本地采集到仪表盘、成就墙与公开徽章。",
     },
     terminal: {
       eyebrow: "01 / 接入",
@@ -318,6 +328,11 @@ export const LANDING_COPY: Record<"zh" | "en", LandingCopy> = {
       },
       snapshotNote: (asOf) =>
         `Data snapshot · as of ${asOf} · from a real self-hosted instance`,
+    },
+    promo: {
+      title: "See Token Usage in 58 seconds",
+      play: "Play the promo",
+      note: "From local capture to the dashboard, achievements and the public badge.",
     },
     terminal: {
       eyebrow: "01 / Setup",

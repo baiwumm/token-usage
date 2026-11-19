@@ -219,6 +219,11 @@ CJS `require()` 加载它 → Turbopack 在 `globals.css` 上报
 - `public/share-cards/*.webp`、`public/dashboard/*.webp`：由 apps/web 的 Canvas 分享卡引擎
   与真实实例截图导出（四风格：特刊/小票/霓虹/唱片），非操作者真实数据；发布前统一转
   WebP（quality 82），`images.unoptimized` 下没有再压缩的环节，源图不要改回 PNG。
+- `public/video/token-usage-promo.mp4`：产品宣传片（1920×1080、58.8s、H.264/AAC，约 4.7MB；
+  原片按 CRF 24 重编码，兼顾画质与体积）。首页宣传片卡只在点击后挂载 `<video preload="none">`，
+  首屏不加载该文件；README 里内嵌的同一条片子是 GitHub user-attachments 副本，换片时两处一起换。
+- `public/video/token-usage-promo-cover.webp`：宣传片封面（1920×1080，WebP quality 80，约 68KB），
+  由 `.video-work/token-usage-film/covers/cover-16x9.png` 压缩，供首页视频卡使用。
 - `public/brand-logos/`、`public/achievement-art/`：从 apps/web public 复制的
   子集，更新时两边同步。
 - `public/beian/icp.png` / `public/beian/police.png`：页脚备案图标（14px 展示），

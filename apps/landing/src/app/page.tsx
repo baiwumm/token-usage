@@ -7,6 +7,7 @@ import { FeatureGrid } from "@/components/landing/feature-grid";
 import { Hero } from "@/components/landing/hero";
 import { NavBar } from "@/components/landing/nav-bar";
 import { Ownership } from "@/components/landing/ownership";
+import { PromoVideo } from "@/components/landing/promo-video";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { TerminalSteps } from "@/components/landing/terminal-steps";
 import { NPM_CLI_URL, REPO_URL } from "@/lib/repo-links";
@@ -60,6 +61,7 @@ export default function HomePage() {
       <NavBar />
       <main className="flex-1">
         <Hero />
+        <PromoVideo />
         <TerminalSteps />
         <DashboardPreview />
         <FeatureGrid />

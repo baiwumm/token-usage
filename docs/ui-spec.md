@@ -791,12 +791,13 @@ cookie 会话；Loading 骨架按三卡结构逐块占位（账户设置行/列�
 - 强调色 VERMILLION：`--accent` 覆盖为 Broadsheet 朱红（`#c2402a` → `oklch(0.5543 0.17 32.08)`）；
   热力图 `--heatmap-1..4` 由 `--accent` 派生的机制自动跟随；主 CTA 用 `variant="primary"`
   （HeroUI 3 Button 无 color prop）。
-- 单页八段：导航（单行 logo + 标题锁定 + npm / GitHub / 公开页演示三枚纯图标 `outline` 按钮，
+- 单页九段：导航（单行 logo + 标题锁定 + npm / GitHub / 公开页演示三枚纯图标 `outline` 按钮，
   公开页那枚用 `ChartLineArrowUp` 图标（对齐 web 端公开页入口）；三枚按钮均以 `<Tooltip delay={0}>`
   包裹并带箭头，`placement="bottom"`；logo 为指向根路径 `/` 的普通链接（回到顶部由右下角
   回到顶部按钮承担）；无副标题、无文字 CTA、无章节锚点）→ Hero（真实数据快照计数器 + 364 格年热力图纹样，
   热力图与左侧文案垂直居中，下方为 16 枚来源 logo 双行反向循环；双 CTA =「立即部署」滚动到
-  自部署段 +「Deploy to Vercel」一键链接）→ 三步 terminal → 仪表盘静态重绘 + 后台实拍轮播 →
+  自部署段 +「Deploy to Vercel」一键链接）→ 宣传片卡（16:9 封面 + 播放按钮，点击才加载
+  `public/video/token-usage-promo.mp4`，不自动播放）→ 三步 terminal → 仪表盘静态重绘 + 后台实拍轮播 →
   功能网格（成就币 / 四风格分享卡放大预览；来源 logo 墙已移到 Hero）→ 数据自主 → 自部署（仅
   「部署指南」外链 + `BookOpen` 文档图标）→ Footer（亮 / 暗双版实时徽章并排 + 三列文本链接
   产品 / 文档 / 资源（文档列覆盖 `/docs` 全部页面，新增 mdx 同步 `lib/copy.ts`）+ ICP 备案号，公安
@@ -805,7 +806,8 @@ cookie 会话；Loading 骨架按三卡结构逐块占位（账户设置行/列�
   部署构建）、日期派生与失败降级见 `apps/landing/README.md`「数据快照」，此处不重复；实拍截图
   不得出现操作者姓名与邮箱（顶栏问候、侧栏用户菜单均需处理）；分享卡展示用 mock 数据导出的 PNG。
 - 交互模式：轮播 6s 自动前进（悬停暂停、reduced-motion 停用）、交叉淡入、16:10 容器 + absolute
-  叠放；放大预览为 HeroUI Modal + 三条确定性关闭路径（CloseTrigger / window 级 Escape /
+  叠放；宣传片卡默认只渲染实拍截图封面与播放按钮，点击后挂载 `preload="none"` 的 `<video>`
+  （原生 controls，自动播放与循环都不开），首屏不为 4.7MB 视频买单；放大预览为 HeroUI Modal + 三条确定性关闭路径（CloseTrigger / window 级 Escape /
   backdrop 自身点击——RAC 内建 dismiss 在本页不可靠）；Hero 眉标 / 标题 / 副标 / 两枚 CTA /
   统计条 / 事实条按 80ms 步进逐块 blur→clear 淡入（`.landing-reveal`：CSS keyframes + inline
   `animation-delay`，reduced-motion 全局规则关停）；来源 logo 循环为两行反向 CSS marquee

@@ -50,8 +50,10 @@
   <sub>作者实例的实时用量——由本项目的<a href="docs/badge.md">公开徽章</a>渲染，点击进入公开页</sub>
 </p>
 
+## 🎬 产品宣传片
+
 <p align="center">
-  <img src="apps/landing/public/dashboard/app-overview.webp" alt="Token Usage 仪表盘总览：token KPI、趋势图与热力图" width="100%" />
+  <video src="https://github.com/user-attachments/assets/33e2a6f2-f98f-4cd5-8d2e-5052fd989b51" width="90%" controls muted playsinline></video>
 </p>
 
 ## ✨ 项目特性
