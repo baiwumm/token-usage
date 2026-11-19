@@ -6,6 +6,18 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.6.6
+
+2026-11-19。定价数据补齐：匿名免费预览与免费 SKU 不再显示为未定价。零契约变更
+（`docs/cli-contract.md` 未动，队列字段与桶主键不变），服务端无需同步升级。
+
+- **免费预览模型按 $0 计**：`space-bunny` / `union-alpha` 是匿名免费预览模型，现在显式
+  定价为 0，不会按 MiniMax M3.1 Flash 等付费 SKU 估算。
+- **dsh 免费后缀**：`mimo-v2.6-flash:free`、`conatus-free` 等 DeepSeek Harness 的
+  `:free` / `-free` 模型按 0 计，与 Cline/OpenCode 的 free 后缀规则一致。
+- **三端同步**：web、CLI、桌面端的 curated 定价数据与 matcher 同步；仪表盘读时定价在
+  web 部署后立即生效，CLI 本地 `status` / `doctor` 的定价口径随本版本更新。
+
 ## 0.6.5
 
 2026-11-19。来源口径卫生：Trae 本地与账户级互斥，Kiro CLI 估算值显式标记。零契约变更
