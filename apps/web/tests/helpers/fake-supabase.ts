@@ -11,6 +11,12 @@ import { createHash, randomUUID } from "node:crypto";
 
 export type Row = Record<string, unknown>;
 
+/** Forced /auth/v1/user rejection, so tests can cover 400-style verdicts. */
+export interface AuthUserError {
+	status: number;
+	message: string;
+}
+
 export interface AuthUserRecord {
 	id: string;
 	email: string;
@@ -182,6 +188,9 @@ export class FakeSupabase {
   tables = defaultTables();
   // device token → auth user accepted by /auth/v1/user
   authUsers = new Map<string, { id: string; email: string | null }>();
+  // Tokens the fake Auth server rejects with a non-401 4xx (e.g. the 400
+  // session_not_found some GoTrue versions return for a revoked session).
+  authUserErrors = new Map<string, AuthUserError>();
   // Supabase Auth surface (M2): email+password accounts, refresh tokens,
   // pending PKCE magic-link challenges, and every session minted so far.
   authPasswordUsers = new Map<string, AuthUserRecord & { password: string }>();
@@ -208,6 +217,7 @@ export class FakeSupabase {
     this.tables = defaultTables();
     this.conflictInjection = null;
     this.authUsers.clear();
+    this.authUserErrors.clear();
     this.authPasswordUsers.clear();
     this.usersByEmail.clear();
     this.refreshTokens.clear();
@@ -515,6 +525,8 @@ export class FakeSupabase {
     if (path === "/auth/v1/user" && req.method === "GET") {
       const header = req.headers.authorization || "";
       const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+      const forced = this.authUserErrors.get(token);
+      if (forced) return this.json(res, forced.status, { message: forced.message });
       const user = this.authUsers.get(token);
       if (!user) return this.json(res, 401, { message: "Invalid token" });
       return this.json(res, 200, { id: user.id, email: user.email, aud: "authenticated" });

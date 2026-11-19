@@ -385,13 +385,32 @@ export interface AuthUser {
 export async function getUser(accessToken: string): Promise<AuthUser | null> {
   if (!accessToken) return null;
   // Supabase Auth is asked to validate the token — the JWT subject is never
-  // trusted locally (docs/cli-contract.md §1.4).
-  const { data, error } = await publicAuthClient().auth.getUser(accessToken);
+  // trusted locally (docs/cli-contract.md §1.4). A network/protocol failure
+  // while validating is an upstream outage (502), never a raw 500: supabase-js
+  // rethrows non-AuthError fetch failures, which used to escape this module.
+  let result: Awaited<ReturnType<SupabaseClient["auth"]["getUser"]>>;
+
+  try {
+    result = await publicAuthClient().auth.getUser(accessToken);
+  } catch (cause) {
+    throw new SupabaseError("Supabase Auth is unavailable", 502, cause);
+  }
+  const { data, error } = result;
 
   if (error) {
     const status = (error as AuthError).status;
 
-    if (status === 401 || status === 403) return null;
+    // Any client-side rejection means the credential is invalid (expired,
+    // revoked, malformed, session_not_found …) and must map to 401, not 5xx.
+    // 429 is a temporary throttle, not a credential verdict.
+    if (
+      typeof status === "number" &&
+      status >= 400 &&
+      status < 500 &&
+      status !== 429
+    ) {
+      return null;
+    }
     throw new SupabaseError("Supabase Auth is unavailable", 502, error);
   }
   const user = data?.user;

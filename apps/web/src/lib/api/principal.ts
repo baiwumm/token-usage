@@ -15,6 +15,29 @@ export function looksLikeJwt(value: unknown): boolean {
   return typeof value === "string" && value.split(".").length === 3;
 }
 
+// An expired JWT can never resolve to a principal. Checking `exp` locally
+// avoids a doomed Supabase Auth round-trip (which, when Auth is slow or
+// unreachable, used to surface as a 500/502 instead of the contract's 401).
+// Only the expiry claim is read — the subject is never trusted.
+function jwtExpired(token: string): boolean {
+  const payload = token.split(".")[1];
+
+  if (!payload) return false;
+  try {
+    const claims = JSON.parse(
+      Buffer.from(payload, "base64url").toString("utf8"),
+    ) as { exp?: unknown };
+
+    return (
+      typeof claims.exp === "number" &&
+      Number.isFinite(claims.exp) &&
+      claims.exp * 1000 <= Date.now()
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function resolvePrincipal(
   bearer: unknown,
 ): Promise<Principal | null> {
@@ -51,6 +74,7 @@ export async function resolvePrincipal(
   }
 
   if (looksLikeJwt(token)) {
+    if (jwtExpired(token)) return null;
     const user = await getUser(token);
 
     if (user?.id) {

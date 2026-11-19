@@ -6,6 +6,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { FakeSupabase } from "../helpers/fake-supabase";
+import { resolvePrincipal } from "@/lib/api/principal";
 import {
   SupabaseError,
   getUser,
@@ -105,9 +106,48 @@ describe("getUser", () => {
     expect(await getUser("not-a-known-token")).toBeNull();
   });
 
+  it("returns null for other 4xx auth verdicts (e.g. session_not_found)", async () => {
+    fake.authUserErrors.set("revoked-session-token", {
+      status: 400,
+      message: "session_not_found",
+    });
+    try {
+      expect(await getUser("revoked-session-token")).toBeNull();
+    } finally {
+      fake.authUserErrors.clear();
+    }
+  });
+
+  it("maps an Auth transport failure to 502, never a raw 500", async () => {
+    const original = process.env[NEW_URL];
+
+    process.env[NEW_URL] = "http://127.0.0.1:9";
+    __resetClientsForTests();
+    try {
+      await expect(getUser("valid-fake-jwt")).rejects.toMatchObject({
+        status: 502,
+        name: "SupabaseError",
+      });
+    } finally {
+      process.env[NEW_URL] = original;
+      __resetClientsForTests();
+    }
+  });
+
   it("returns the validated user from Supabase Auth", async () => {
     const user = await getUser("valid-fake-jwt");
     expect(user).toMatchObject({ id: "11111111-1111-4111-8111-111111111111", email: "u@example.test" });
+  });
+});
+
+describe("resolvePrincipal JWT expiry", () => {
+  it("rejects an expired JWT locally without calling Supabase Auth", async () => {
+    const payload = Buffer.from(
+      JSON.stringify({ sub: "11111111-1111-4111-8111-111111111111", exp: 1 }),
+    ).toString("base64url");
+    const expired = `eyJhbGciOiJIUzI1NiJ9.${payload}.sig`;
+
+    expect(await resolvePrincipal(expired)).toBeNull();
   });
 });
 

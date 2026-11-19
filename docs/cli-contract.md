@@ -85,7 +85,7 @@
 `Authorization: Bearer <token>`，服务端按顺序解析：
 
 1. **设备令牌**：64 位十六进制字符串。服务端计算 `sha256(token)`，在 `token_device_tokens.token_hash` 中查找（且 `revoked_at is null`），并校验所属设备行 `revoked_at is null`。命中 → 主体 `{kind:"device", user_id, device_id}`。**明文令牌只在签发响应里出现一次，服务端只存哈希。**
-2. **Supabase JWT**（三段式）：交给 Supabase Auth `/auth/v1/user` 校验，**绝不自行解析 sub 字段**。命中 → 主体 `{kind:"user", user_id, device_id:null}`。
+2. **Supabase JWT**（三段式）：交给 Supabase Auth `/auth/v1/user` 校验，**绝不自行解析 sub 字段**。实现可先读取 `exp` 快速拒绝已过期的 JWT（只读过期时间，不信任 sub）；Supabase Auth 返回的 4xx（429 除外）一律视为凭证无效 → `401`，只有网络错误与 5xx 才按上游不可用处理。命中 → 主体 `{kind:"user", user_id, device_id:null}`。
 3. 都不命中 → `401 {"error":"Unauthorized"}`。
 
 标注"设备令牌专用"的端点跳过第 2 步；标注"设备令牌或 JWT"的端点两者皆可。**设备令牌只能操作自己那台设备**（`device_id` 不匹配 → `403`），JWT 可操作本账户任意设备。
