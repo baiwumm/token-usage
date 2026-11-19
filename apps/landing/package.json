@@ -52,6 +52,6 @@
 		"postcss": "8.5.28",
 		"prettier": "3.9.10",
 		"tailwindcss": "4.3.4",
-		"typescript": "5.9.3"
+		"typescript": "7.0.2"
 	}
 }
