@@ -3,6 +3,30 @@
 	"version": "0.0.1",
 	"type": "module",
 	"private": true,
+	"description": "Token Usage — official website and documentation, statically exported and deployed on Tencent EdgeOne.",
+	"license": "MIT",
+	"author": {
+		"name": "baiwumm",
+		"url": "https://github.com/baiwumm"
+	},
+	"homepage": "https://www.token-usage.cc",
+	"keywords": [
+		"token-usage",
+		"documentation",
+		"landing",
+		"nextjs",
+		"fumadocs",
+		"static-site",
+		"typescript"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/baiwumm/token-usage.git",
+		"directory": "apps/landing"
+	},
+	"bugs": {
+		"url": "https://github.com/baiwumm/token-usage/issues"
+	},
 	"scripts": {
 		"dev": "next dev",
 		"build": "next build",

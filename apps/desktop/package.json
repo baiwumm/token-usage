@@ -3,6 +3,30 @@
 	"version": "0.4.3",
 	"type": "module",
 	"private": true,
+	"description": "Token Usage — desktop tray companion app built with Tauri 2, sharing the dashboard frontend stack.",
+	"license": "MIT",
+	"author": {
+		"name": "baiwumm",
+		"url": "https://github.com/baiwumm"
+	},
+	"homepage": "https://www.token-usage.cc",
+	"keywords": [
+		"token-usage",
+		"desktop",
+		"tauri",
+		"tray",
+		"heroui",
+		"self-hosted",
+		"typescript"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/baiwumm/token-usage.git",
+		"directory": "apps/desktop"
+	},
+	"bugs": {
+		"url": "https://github.com/baiwumm/token-usage/issues"
+	},
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",

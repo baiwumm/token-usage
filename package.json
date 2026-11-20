@@ -1,10 +1,39 @@
 {
   "name": "token-usage",
   "private": true,
+  "description": "Self-hosted AI token usage tracker for Claude Code, Codex, Cursor and 40+ other AI coding tools: one account, many machines, your own Supabase.",
+  "license": "MIT",
+  "author": {
+    "name": "baiwumm",
+    "url": "https://github.com/baiwumm"
+  },
+  "homepage": "https://www.token-usage.cc",
+  "keywords": [
+    "token-usage",
+    "ai-token-usage",
+    "token-usage-tracker",
+    "usage-tracking",
+    "ai-cost",
+    "cost-tracking",
+    "claude-code",
+    "codex",
+    "cursor",
+    "github-copilot",
+    "llm",
+    "observability",
+    "self-hosted",
+    "supabase",
+    "dashboard",
+    "nextjs",
+    "typescript"
+  ],
   "packageManager": "pnpm@12.11.2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/baiwumm/token-usage.git"
+  },
+  "bugs": {
+    "url": "https://github.com/baiwumm/token-usage/issues"
   },
   "scripts": {
     "dev": "pnpm --filter @token-usage/web dev",

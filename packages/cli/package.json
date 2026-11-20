@@ -27,7 +27,10 @@
     "directory": "packages/cli"
   },
   "license": "MIT",
-  "author": "baiwumm",
+  "author": {
+    "name": "baiwumm",
+    "url": "https://github.com/baiwumm"
+  },
   "main": "src/cli.js",
   "bin": {
     "tokenusage": "bin/tokenusage.js"

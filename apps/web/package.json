@@ -3,6 +3,31 @@
 	"version": "0.0.1",
 	"type": "module",
 	"private": true,
+	"description": "Token Usage — self-hosted dashboard app: Next.js 16 + HeroUI 3 UI over your own Supabase, with zero direct browser access to data tables.",
+	"license": "MIT",
+	"author": {
+		"name": "baiwumm",
+		"url": "https://github.com/baiwumm"
+	},
+	"homepage": "https://app.token-usage.cc",
+	"keywords": [
+		"token-usage",
+		"dashboard",
+		"nextjs",
+		"heroui",
+		"supabase",
+		"ai-usage",
+		"self-hosted",
+		"typescript"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/baiwumm/token-usage.git",
+		"directory": "apps/web"
+	},
+	"bugs": {
+		"url": "https://github.com/baiwumm/token-usage/issues"
+	},
 	"scripts": {
 		"dev": "next dev",
 		"build": "next build",
