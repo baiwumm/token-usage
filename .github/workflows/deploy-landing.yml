@@ -11,8 +11,8 @@
 #   3. Console > 环境管理 > 生产 > 编辑 > 关联分支 = landing-release > 保存
 #      (leave 自动部署 ON — it cannot be turned off)
 # After that, only apps/landing/** changes update landing-release.
-# The existing deploy hook stays as a manual fallback; the automatic path no
-# longer uses it (a hook + this branch would deploy twice for one change).
+# Force a rebuild with no change: console 重新部署 button, or
+#   git push --force origin main:refs/heads/landing-release
 
 name: Deploy landing (EdgeOne Makers)
 
