@@ -193,15 +193,9 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
 
 **待办与待决策**：
 
-1. **macOS / Linux 调度真机验证**：**已完成（2026-11-17，CI 真机冒烟）**。GitHub 托管的
-   `macos-latest` / `ubuntu-latest` 就是真实 launchd / systemd 主机：`.github/workflows/
-   cli-schedule-smoke.yml` 在两台 VM 上非交互跑真实 `init --yes --no-integrations --no-open`
-   （纯本地安装、未配对、零服务端接触），断言 `launchctl print gui/$UID/<label>` /
-   `systemctl --user is-enabled + list-timers` 有条目，再 `uninstall` 验证对称拆卸；Linux
-   前置 linger + `user@UID` 启动（runner 用户默认无 user manager，与真实桌面对齐）。触发：
-   push 触及 `packages/cli/**` 或手动 dispatch。Windows 侧已有日常覆盖（操作者本机的
-   schtasks 小时任务）。执行断言只验证「注册/拆卸」，不验证任务体执行——后者依赖配对状态，
-   留给真机日常运行检验。
+1. **macOS / Linux 调度真机验证**：**已完成（2026-11-17，CI 真机冒烟，双平台绿；
+   `.github/workflows/cli-schedule-smoke.yml`）**。执行细节见
+   `docs/archive/rewrite-plan-2026-11.md`。
 2. **队列按月分片**：`queue/<month>.jsonl` 可控制 `queue.jsonl` 增长与读取成本；触及对账基线
    文件格式（AGENTS 约束 8），待「队列体积或读取延迟有明显体感」再立项。
 3. **keyset 分页 / 预聚合**：暂不立项，触发条件同上。
@@ -210,22 +204,7 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
    `docs/sources-capture-audit.md`）。
 6. **`deep_thinker` 成就**：reasoning 覆盖率低于 50% 门槛，阈值草案保留在
    `docs/achievements-plan.md` §2.3，覆盖率提升后复议。
-7. **demo 实例页**：**已完结——2026-11-16 上线，2026-11-17 审查修复登录封锁缺陷并完成
-   三项控制台加固（DEMO_EMAIL 迁 Secret、demo 库摘 avatars 写策略、`/login` 两态实测），
-   无遗留待办**
-   （`docs/demo-instance-plan.md`；运维步骤见 `docs/demo-instance.md`）。
-   五项决策已拍板：独立 Supabase + 确定性种子脚本、`demo.token-usage.cc` 子域、纯只读
-   演示账号、landing 保留生产公开页并新增演示入口、Free 档 + 每晚重灌。日常运维与排障
-   走运维手册 §6–§7。文档站已另立项落地（2026-11-16，不用
-   `docs.` 子域，挂在 `apps/landing` 的 `/docs` 路径，fumadocs 静态导出；内容是本站
-   自建精编——提交在 `apps/landing/src/content/docs/`，面向读者提取重点并配图，
-   与仓库根 `docs/`（开发者 / Agent 向）解耦；完整规范经文档页外链 GitHub，见
-   `apps/landing/README.md`）。
-8. **生产实例域名迁移**：**已完成（2026-11-17）**——生产实例迁至 `app.token-usage.cc`
-   （操作者放行并完成 Vercel / DNS / Supabase Auth / OAuth 控制台侧），旧生产域名已注销、
-   不保留跳转。README 徽章块（landing 徽章构建期解析 README 自动跟随）、CLI 与桌面端默认
-   `DEFAULT_DASHBOARD_URL`/`DEFAULT_BASE_URL`、web demo 防呆闸门与 seed 防呆、自检脚本、
-   相关文档全部换域；CLI 0.6.1 起旧生产域名进 `LEGACY_TOKEN_USAGE_HOSTS`（连同持久化的
-   `dashboardUrl`）自动归位到新域。桌面端 0.4.3 已发版（tag `desktop-v0.4.3`：内置默认换新域
-   + `read_instance_config` 补 retired-host 镜像归位——此前桌面端裸读 config.json，迁移机器的
-   托盘/页头会打开已注销旧域；draft Release 由操作者 publish 后 updater 生效）。
+7. **demo 实例页**：**已完结（2026-11-16 上线，2026-11-17 审查加固）**，无遗留待办；
+   运维走 `docs/demo-instance.md`。历史叙述见 `docs/archive/rewrite-plan-2026-11.md`。
+8. **生产实例域名迁移**：**已完成（2026-11-17，`app.token-usage.cc`；旧域注销、不保留
+   跳转）**。历史叙述见 `docs/archive/rewrite-plan-2026-11.md`。
