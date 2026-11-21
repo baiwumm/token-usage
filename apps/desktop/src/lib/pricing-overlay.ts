@@ -21,9 +21,6 @@ import type { CuratedTables, Rates } from "./pricing-matcher";
 const MAX_TEXT = 200;
 const MAX_NOTE = 2000;
 const MAX_ENTRIES = 2000;
-const SECTIONS = ["exact", "alias", "fuzzy", "source_exact"] as const;
-
-type Section = (typeof SECTIONS)[number];
 
 export type OverlayFetchResult = {
   overlay: CuratedTables | null;
@@ -202,12 +199,10 @@ export async function fetchPricingOverlay({
   baseUrl,
   fetchImpl = fetch,
   timeoutMs = 10_000,
-  now = () => Date.now(),
 }: {
   baseUrl?: string | null;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
-  now?: () => number;
 }): Promise<OverlayFetchResult> {
   const root = String(baseUrl || "")
     .trim()
