@@ -100,7 +100,12 @@ npx supabase db push
 必填且为非负数值。端点逐行校验，不合规行静默丢弃（只记服务端日志）；同键以云端为准，
 与打包文件按键并集合并（fuzzy 为云端条目前置）。从零起步可把
 `packages/cli/src/lib/pricing/curated-overrides.json` 的 `exact` / `alias` / `fuzzy`
-各粘成行（fuzzy 的 `model_key` 取 `match`、`value` 取 `{"ref": …}`）。
+各粘成行（fuzzy 的 `model_key` 取 `match`、`value` 取 `{"ref": …}`）。**重复灌表会
+覆盖同键行**——以数据库现存内容为准增量编辑，勿盲目重放整份打包文件。
+
+消费面：CLI 采集机在 sync 时拉取本端点（24h 磁盘缓存）；**web 仪表盘直读同一张表**
+（读时定价入口 TTL 5 分钟/实例），两端生效优先级一致：云端 overlay > 打包 curated >
+litellm/seed。
 
 ## 3. 配置 Supabase Auth
 

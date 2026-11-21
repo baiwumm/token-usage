@@ -208,18 +208,25 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
    运维走 `docs/demo-instance.md`。历史叙述见 `docs/archive/rewrite-plan-2026-11.md`。
 8. **生产实例域名迁移**：**已完成（2026-11-17，`app.token-usage.cc`；旧域注销、不保留
    跳转）**。历史叙述见 `docs/archive/rewrite-plan-2026-11.md`。
-9. **采集侧尾行/截断加固（后续）**：2026-11-21 已把 `parseClaudeFile` / kimi /
-   kimi-code 三个「readline 续读 + post-stat size 提交」的增量解析器统一到 codex
-   的完整行边界提交纪律（`physicalJsonlRecords` + committed offset；回归测试
-   `packages/cli/test/rollout-tail-cursor.test.js`）。同类的 workbuddy JSONL 流式
-   读取器与 codebuddy 流式读取器仍是旧提交语义（同步与写入竞态时会永久跳过完成中
-   的半行），待按同一模式转换并补夹具。来源接线完整性测试见
+9. **采集侧尾行/截断加固（后续）**：2026-11-21/22 已把 `parseClaudeFile` / kimi /
+   kimi-code / workbuddy（JSONL 合计 pass）/ codebuddy / copilot 六个「readline 续读 +
+   post-stat size 提交」的增量解析器统一到 codex 的完整行边界提交纪律
+   （`physicalJsonlRecords` + committed offset，copilot 另加开档 size 读窗钳制替代其
+   post-drain 重 stat 取巧；回归测试 `packages/cli/test/rollout-tail-cursor.test.js`
+   8 用例）。遗留：pi-like（`parsePiLikeIncremental`，自带
+   `min(lastCompleteOffset, postStat.size)` 半纪律，连同其 postStat.ino 轮转瑕疵）与
+   若干未逐一分类的 readline 站点，待同模式转换。来源接线完整性测试见
    `packages/cli/test/sync-source-wiring.test.js`（防「注册但无扫描分支」与
    「`sourceAllowed` 字面量越界」两类静默跳过，Prime Agent 事故类）。
-10. **远端定价 overlay（待拍板）**：2026-11-21 对比 TokenTracker/juejin-usage 采集
-    包后的 P2 候选：打包底表 + 同步时拉云端价目覆盖（新模型零发版等待）。新增
-    `app/api/functions/token-usage-*` 端点属契约层变更，须先改 `docs/cli-contract.md`
-    与 golden 测试并经操作者确认后再动实现。注：cursors 分片**已内建**（血统继承的
+10. **远端定价 overlay（已闭环 2026-11-22）**：契约 §2.16 端点 + 迁移
+    `20261122000000` + CLI（0.7.0）与 web 双端接入已上线。web 侧 `loadAccountUsage`
+    入口 TTL 5 分钟/实例直读同一张表（同库 service-role，零额外跳转），生效优先级
+    云端 overlay > selfhost > curated > seed。遗留两项：**desktop 接入待拍板**——
+    `apps/desktop/src/lib/pricing.ts` 的 D10.1 注释明示「桌面不发外联定价请求」，接
+    overlay = 反转该边界（方案：读 CLI config 的 baseUrl 后按 CLI 同款 24h 磁盘缓存
+    拉公开端点，无鉴权无密钥），且 desktop 有独立发版火车；**litellm 运行时刷新维持
+    休眠**（决策 2026-11-22：overlay 已覆盖 curated 修正传播，激活 litellm 会引入每
+    机每日出站依赖，暂无必要）。注：cursors 分片**已内建**（血统继承的
     `lib/cursor-store-v2`，16MB 阈值自动激活，生产机 2026-10-31 已触发），无需立项；
     遗留小项仅 legacy `cursors.json`（激活后冻结、变更会被 reconcile 回收）的正规
     清理路径，做成 doctor/repair 项即可，不急。
