@@ -4339,6 +4339,9 @@ function recordCodexColdScanAudit(
 module.exports = {
   cmdSync,
   acquireSyncLock,
+  AUTO_SYNC_SOURCES,
+  AUTO_SYNC_SOURCE_ALIASES,
+  BACKGROUND_AUTO_SYNC_SOURCES,
   buildSyncSummaryLines,
   readQueueBatch,
   drainQueueToCloud,
