@@ -1,4 +1,4 @@
 {
 	"installCommand": "pnpm install --frozen-lockfile",
-	"ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ../../pnpm-lock.yaml ../../pnpm-workspace.yaml ../../package.json ../../.npmrc"
+	"ignoreCommand": "git diff --quiet \"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\" HEAD -- . ../../pnpm-lock.yaml ../../pnpm-workspace.yaml ../../package.json ../../.npmrc"
 }

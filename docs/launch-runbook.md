@@ -10,9 +10,10 @@ Vercel 注销，**改回旧 base URL 的回滚路径不存在**；存量 CLI 安
 ## 升级已有部署
 
 1. **补迁移**：按文件名顺序执行 `supabase/migrations/` 中尚未应用的迁移（幂等，可重复跑）。
-   当前共 20 个；漏跑 `20261103000000`（桶级 `project_key`，是 upsert 键的一部分）会让新版 CLI
+   当前共 21 个；漏跑 `20261103000000`（桶级 `project_key`，是 upsert 键的一部分）会让新版 CLI
    的 ingest 整批失败。`20261104000000` 是纯注释迁移，`20261106000000` 只影响项目仓库链接与
-   项目 Profiles（ingest 的 `projects` 写入是 best-effort）。
+   项目 Profiles（ingest 的 `projects` 写入是 best-effort）。`20261122000000` 是可选的远端
+   价目表（写入面见 `docs/deploy-guide.md`「远端价目表」），空表不影响任何行为。
    **2026-11-13 徽章模型重置**：`20261113000000` 会 drop 旧徽章表（不可重放、历史令牌全部
    作废），`20261113000001` 重建为「账户设置 + 每枚徽章」两表；升级后需在
    `/settings?section=badges` 重新新增徽章、把新链接填回 README / 个人主页，并重建
@@ -20,10 +21,14 @@ Vercel 注销，**改回旧 base URL 的回滚路径不存在**；存量 CLI 安
 2. **配环境变量**：新增变量按 `docs/rewrite-plan.md` §5 与 `apps/web/.env.example` 补到
    Production 与 Preview 各一份。
 3. **部署**：main 出 Production，push 出 Preview（Vercel Git 集成）。`apps/web/vercel.json`
-   的 `ignoreCommand` 会在提交未触及 `apps/web`、根 `pnpm-lock.yaml` / `pnpm-workspace.yaml` /
-   `package.json` / `.npmrc` 时跳过构建（Production 与 `token-usage-demo` 共用 Root
-   `apps/web`，一并生效；Vercel 显示 Skipped）。依赖升级仍需重建，所以根 lockfile 与安装
-   配置变化不会被跳过。删除该字段即恢复每次提交全量构建。
+   的 `ignoreCommand` 会在**本次推送整批提交**未触及 `apps/web`、根 `pnpm-lock.yaml` /
+   `pnpm-workspace.yaml` / `package.json` / `.npmrc` 时跳过构建（Production 与
+   `token-usage-demo` 共用 Root `apps/web`，一并生效；Vercel 显示 Skipped）。diff 基线是
+   Vercel 注入的 `VERCEL_GIT_PREVIOUS_SHA`（推送前分支顶端），env 缺失回退 `HEAD^`——
+   单提交推送两者等价；2026-11-22 前旧命令只对比顶提交与其父，web 提交被后续 cli/docs
+   提交压在同一次推送里时会被整批漏评估（当次定价 overlay 端点即中招，靠控制台
+   Redeploy 或新提交补救）。依赖升级仍需重建，所以根 lockfile 与安装配置变化不会被跳过。
+   删除该字段即恢复每次提交全量构建。控制台手动 Redeploy 不走 ignoreCommand，必触发构建。
 4. **冒烟**（下节），全绿后再逐台升级采集机。
 
 采集机升级 CLI 后**必须**跑一次 `tokenusage init --yes --no-integrations --no-open` 刷新运行时
