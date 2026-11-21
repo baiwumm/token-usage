@@ -18,6 +18,8 @@ const {
 } = require("../src/lib/pricing/overlay");
 const pricing = require("../src/lib/pricing");
 
+const { defaultOverlayCachePath } = pricing;
+
 let tmpDir;
 let cachePath;
 
@@ -239,6 +241,46 @@ test("ensurePricingOverlay: overlay:null clears back to bundled behaviour", asyn
   const bundled = pricing.MODEL_PRICING["claude-opus-5-5"];
   assert.equal(pricing.getModelPricing("claude-opus-5-5").input, bundled.input, "bundled rate restored");
   assert.equal(pricing.getPricingMeta().overlay_source, "remote:empty");
+});
+
+test("hydratePricingOverlayFromDisk: status hydrates from the sync-persisted cache without network", () => {
+  const cachePath = path.join(tmpDir, "hydrate.json");
+  fs.writeFileSync(cachePath, JSON.stringify({
+    revision: "abc123",
+    overlay: { exact: { "claude-opus-5-5": { input: 9, output: 90 } } },
+    fetched_at: new Date(Date.now() - 3600 * 1000).toISOString(),
+  }));
+
+  const before = pricing.getPricingMeta();
+  assert.equal(before.overlay_source, null);
+
+  pricing.hydratePricingOverlayFromDisk(cachePath);
+
+  const meta = pricing.getPricingMeta();
+  assert.equal(meta.overlay_source, "cache:disk");
+  assert.equal(meta.overlay_revision, "abc123");
+  assert.equal(meta.overlay_entries, 1);
+  assert.ok(meta.overlay_fetched_at);
+  assert.equal(pricing.getModelPricing("claude-opus-5-5").input, 9);
+  assert.equal(pricing.getModelPricingInfo("claude-opus-5-5").status, "priced");
+
+  // A second hydrate does not re-bump (content unchanged).
+  const revision = pricing.getPricingRevision();
+  pricing.hydratePricingOverlayFromDisk(cachePath);
+  assert.equal(pricing.getPricingRevision(), revision);
+});
+
+test("hydratePricingOverlayFromDisk: missing or malformed cache is a no-op", () => {
+  pricing.hydratePricingOverlayFromDisk(path.join(tmpDir, "missing.json"));
+  assert.equal(pricing.getPricingMeta().overlay_source, null);
+
+  fs.writeFileSync(path.join(tmpDir, "broken.json"), "{not json");
+  pricing.hydratePricingOverlayFromDisk(path.join(tmpDir, "broken.json"));
+  assert.equal(pricing.getPricingMeta().overlay_source, null);
+});
+
+test("defaultOverlayCachePath lands in the CLI cache dir", () => {
+  assert.ok(defaultOverlayCachePath().endsWith(`${path.sep}.tokenusage${path.sep}cache${path.sep}pricing-overlay.json`));
 });
 
 test("ensurePricingOverlay: a failing refresh keeps the previous overlay active", async () => {

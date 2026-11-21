@@ -58,7 +58,7 @@ const { resolveTrackerPaths } = require("../lib/tracker-paths");
 const { resolveDeviceTokenPresence } = require("../lib/cloud-device-token");
 const { resolveLocalDeviceIdentity } = require("../lib/device-identity");
 const { formatDeviceLine } = require("../lib/progress");
-const { getPricingMeta } = require("../lib/pricing");
+const { getPricingMeta, hydratePricingOverlayFromDisk } = require("../lib/pricing");
 const {
   isCollectionPaused,
   isRunReportEnabled,
@@ -1095,6 +1095,10 @@ async function cmdStatus(argv = []) {
   const runtimeDrift = runtimeCopyDrift(runtimeCopy);
 
   if (opts.json || opts.light) {
+    // Pricing overlay provenance comes from the disk cache the last sync run
+    // persisted — status never fetches, so hydrate (no network I/O) before
+    // the meta fields are read.
+    hydratePricingOverlayFromDisk();
     const summary = {
       version: pkg.version,
       generated_at: new Date().toISOString(),

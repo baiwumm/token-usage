@@ -13,7 +13,11 @@ const {
   buildLitellmPerMillionMap,
 } = require("./matcher");
 const { loadLitellmData } = require("./litellm-fetcher");
-const { loadPricingOverlay, mergeCuratedDocs } = require("./overlay");
+const {
+  loadPricingOverlay,
+  mergeCuratedDocs,
+  readOverlayDiskCacheSync,
+} = require("./overlay");
 
 const ZERO_PRICING = { input: 0, output: 0, cache_read: 0, cache_write: 0 };
 const PI_SUBSCRIPTION_SOURCES = new Set([
@@ -81,6 +85,10 @@ function defaultCachePath() {
   return path.join(os.homedir(), ".tokenusage", "cache", "pricing.json");
 }
 
+function defaultOverlayCachePath() {
+  return path.join(os.homedir(), ".tokenusage", "cache", "pricing-overlay.json");
+}
+
 async function ensurePricingLoaded(opts = {}) {
   if (state.loaded) return state;
   if (state.loadingPromise) return state.loadingPromise;
@@ -111,7 +119,10 @@ async function ensurePricingLoaded(opts = {}) {
 // without a restart; the pricing revision only bumps when the overlay content
 // actually changed, keeping the memoized caches honest without churn.
 async function ensurePricingOverlay(opts = {}) {
-  const result = await loadPricingOverlay(opts);
+  const result = await loadPricingOverlay({
+    ...opts,
+    cachePath: opts.cachePath || defaultOverlayCachePath(),
+  });
   const merged = result.overlay
     ? mergeCuratedDocs(curatedOverrides, result.overlay)
     : curatedOverrides;
@@ -124,6 +135,31 @@ async function ensurePricingOverlay(opts = {}) {
   state.overlaySource = result.source;
   state.overlayFetchedAtMs = result.fetchedAtMs || 0;
   state.mergedCurated = merged;
+  if (changed) {
+    state.revision += 1;
+    state.negativeCache.clear();
+    pricingInfoCache.revision = -1;
+  }
+  return state;
+}
+
+// Status --json never fetches: hydrate the in-process overlay view from the
+// disk cache the last sync run persisted, so the overlay_* meta fields
+// reflect reality without any network I/O. No-op when a sync already ran in
+// this process (its in-memory state is fresher than the cache) or the cache
+// is missing/invalid.
+function hydratePricingOverlayFromDisk(cachePath = defaultOverlayCachePath()) {
+  if (state.overlayFetchedAtMs > 0) return state;
+  const cached = readOverlayDiskCacheSync(cachePath);
+  if (!cached) return state;
+  const changed = JSON.stringify(cached.overlay) !== JSON.stringify(state.overlay);
+  state.overlay = cached.overlay;
+  state.overlayRevision = cached.revision || "";
+  state.overlaySource = "cache:disk";
+  state.overlayFetchedAtMs = cached.fetchedAtMs || 0;
+  state.mergedCurated = cached.overlay
+    ? mergeCuratedDocs(curatedOverrides, cached.overlay)
+    : curatedOverrides;
   if (changed) {
     state.revision += 1;
     state.negativeCache.clear();
@@ -440,6 +476,8 @@ function computeRowCost(row) {
 module.exports = {
   ensurePricingLoaded,
   ensurePricingOverlay,
+  hydratePricingOverlayFromDisk,
+  defaultOverlayCachePath,
   getPricingRevision,
   getPricingMeta,
   getModelPricing,

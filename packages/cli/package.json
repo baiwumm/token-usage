@@ -1,6 +1,6 @@
 {
   "name": "tokenusage-cli",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Self-hosted AI token usage tracker for Claude Code, Codex, Cursor and 40+ other AI coding tools: one account, many machines, your own Supabase.",
   "keywords": [
     "token-usage",

@@ -6,6 +6,18 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.7.1
+
+2026-11-22。修复 0.7.0 的 overlay 磁盘缓存与 status 可观测缺口（真机验证时发现）。
+
+- **磁盘缓存从未写入**：`ensurePricingOverlay` 的 `cachePath` 无默认值，sync 钩子只传
+  `baseUrl`——每个 sync 都重新拉取且缓存文件不落盘（功能可用但 24h 缓存承诺未兑现）。
+  现默认写入 `~/.tokenusage/cache/pricing-overlay.json`，24h 内的 sync 只读缓存不重拉。
+- **`status --json` 的 overlay_\* 字段恒为 null**：overlay 拉取在 sync 进程内，status
+  读不到。现在 status 前从磁盘缓存水合（`hydratePricingOverlayFromDisk`，零网络 I/O），
+  $0 成本的「未拉到 overlay」与「本来就没价」分诊承诺兑现。
+- 单测补水合三态（有效缓存/缺失/损坏）与默认路径形状。
+
 ## 0.7.0
 
 2026-11-22。新增远端定价 overlay（`docs/cli-contract.md` §2.16）：curated 价目修正

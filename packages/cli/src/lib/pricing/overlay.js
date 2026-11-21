@@ -151,6 +151,25 @@ function mergeCuratedDocs(bundled, overlay) {
   return merged;
 }
 
+// Synchronous disk-cache read for status --json: a status process never
+// fetches (no network I/O), so its overlay provenance hydrates from whatever
+// the last sync run cached. Returns null on missing/invalid cache.
+function readOverlayDiskCacheSync(cachePath) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(cachePath, "utf8"));
+    if (!parsed || typeof parsed !== "object") return null;
+    const overlay = validateOverlayDoc(parsed.overlay);
+    if (parsed.overlay && !overlay) return null;
+    return {
+      overlay,
+      revision: String(parsed.revision || ""),
+      fetchedAtMs: Date.parse(parsed.fetched_at) || 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function readCache(cachePath) {
   try {
     const raw = await fsp.readFile(cachePath, "utf8");
@@ -232,5 +251,6 @@ module.exports = {
   mergeCuratedDocs,
   loadPricingOverlay,
   readCache,
+  readOverlayDiskCacheSync,
   MAX_ENTRIES,
 };
