@@ -564,8 +564,9 @@ curated 价目的云端读取面：把「实例自有数据库里的 curated 覆
   不得解析其内部结构，仅用于日志比对各机是否一致。
 - `overlay`：与 `curated-overrides.json` 同构的文档，分节可缺省：
   - `exact`：`<model_key> → 费率`；`source_exact`：`<source> → (<model_key> → 费率)`；
-    费率对象必含有限非负数值 `input`、`output`，可选 `cache_read`、`cache_write`
-    （同约束）；可选 `note`（字符串 ≤ 2000 字符）。**费率单位为 USD per million
+    费率对象必含有限非负数值 `input`、`output`，可选 `cache_read`、`cache_write`、
+    `priority_multiplier`（OpenAI 速度档乘数，> 1 才参与计价，同「有限非负」约束）；
+    可选 `note`（字符串 ≤ 2000 字符）。**费率单位为 USD per million
     tokens，与打包文件一致**；额外字段一律丢弃。
   - `alias`：`<model_key> → <exact 键>`（字符串 ≤ 200）。
   - `fuzzy`：`{ "match", "ref" }` 数组，两字段均为非空字符串 ≤ 200。

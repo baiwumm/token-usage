@@ -6,6 +6,7 @@ import type { UsageRow } from "@/lib/account/series";
 import { select, SupabaseError, type RestRow } from "./supabase-rest";
 
 import { canonicalizeUsage } from "@/lib/account/usage";
+import { ensurePricingLoaded } from "@/lib/pricing";
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 1000;
@@ -403,7 +404,13 @@ export function __resetLiveSnapshotsForTests(): void {
   liveSnapshots.clear();
 }
 
-export function loadAccountUsage(userId: string): Promise<AccountUsage> {
+export async function loadAccountUsage(userId: string): Promise<AccountUsage> {
+  // Refresh the remote pricing overlay before any read-time costing (TTL-gated
+  // inside; failures never block the load). Every dashboard cost path — the
+  // account series, summary, dashboard — funnels through this loader, so one
+  // hook covers them all (docs/cli-contract.md §2.16).
+  await ensurePricingLoaded();
+
   if (usageCacheDisabled()) return loadAccountUsageUncached(userId);
 
   const now = Date.now();

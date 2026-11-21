@@ -49,7 +49,11 @@ function parseRates(
     output: raw.output,
   };
 
-  for (const field of ["cache_read", "cache_write"] as const) {
+  for (const field of [
+    "cache_read",
+    "cache_write",
+    "priority_multiplier",
+  ] as const) {
     if (raw[field] !== undefined) {
       if (!isFiniteNonNegative(raw[field])) return null;
       entry[field] = raw[field];

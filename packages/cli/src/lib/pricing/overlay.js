@@ -106,7 +106,7 @@ function normalizeRates(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   if (!isFiniteNonNegative(value.input) || !isFiniteNonNegative(value.output)) return null;
   const rates = { input: value.input, output: value.output };
-  for (const field of ["cache_read", "cache_write"]) {
+  for (const field of ["cache_read", "cache_write", "priority_multiplier"]) {
     if (value[field] !== undefined) {
       if (!isFiniteNonNegative(value[field])) return null;
       rates[field] = value[field];

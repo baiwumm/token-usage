@@ -2,19 +2,25 @@
 // (api/_lib/pricing/index.js), TS-ported. Keeps the same synchronous shape so
 // computeRowCost and the account series behave identically.
 //
-// This copy serves the bundled static snapshot ONLY. The online price updater
-// was intentionally not ported — private instances never make outbound pricing
-// requests at runtime; ensurePricingLoaded() is a no-op marking the seed loaded.
+// Rate layers, highest precedence first: the instance's remote curated overlay
+// (token_pricing_overrides table, TTL-cached per serverless instance via
+// ensurePricingLoaded() — docs/cli-contract.md §2.16) > bundled
+// selfhost-overrides.json > bundled curated-overrides.json > LiteLLM seed.
+// The LiteLLM online updater remains intentionally not ported — no outbound
+// pricing requests happen at runtime beyond the same-instance overlay read.
 
 import curatedOverrides from "./curated-overrides.json";
 import selfhostOverridesJson from "./selfhost-overrides.json";
 import seedSnapshotJson from "./seed-snapshot.json";
+import { loadPricingOverlayRows, mergeOverlayDocs } from "./overlay";
 import {
   buildLitellmPerMillionMap,
   lookupPricing,
   type CuratedTables,
   type Rates,
 } from "./matcher";
+
+import { select } from "@/lib/api/supabase-rest";
 
 type OverrideEntry = Rates & { _selfhost?: boolean };
 type OverrideTables = {
@@ -146,6 +152,13 @@ const state = {
   litellmRawMap: seedRaw,
   litellmPerMillionMap: buildLitellmPerMillionMap(seedRaw),
   source: Object.keys(seedRaw).length ? "seed-snapshot:static" : null,
+  // Remote curated overlay (§2.16): refreshed by ensurePricingLoaded() with an
+  // in-process TTL; mergedCurated is the lookup view (cloud overlay shadowing
+  // the bundled selfhost+curated tables per key).
+  overlay: null as CuratedTables | null,
+  overlaySource: null as string | null,
+  overlayFetchedAtMs: 0,
+  mergedCurated: curatedWithSelfhost,
   // negativeCache prevents re-walking the LiteLLM map for models we've already
   // determined are unknown. Model names arrive from device payloads, so the
   // set is bounded: clearing on overflow just re-walks the table for cold
@@ -154,8 +167,57 @@ const state = {
 };
 
 const NEGATIVE_CACHE_CAP = 4096;
+// Overlay refresh cadence per serverless instance: cheap enough that a price
+// correction lands within minutes of the operator's edit, rare enough that
+// busy instances don't add a query per request. Failures are cached for the
+// same TTL — a missing table or a DB hiccup must not turn every request into
+// a probe.
+const OVERLAY_TTL_MS = 5 * 60 * 1000;
 
-export async function ensurePricingLoaded() {
+const overlayRefresh = {
+  inFlight: null as Promise<unknown> | null,
+};
+
+export async function ensurePricingLoaded(
+  opts: { selectImpl?: typeof select; now?: () => number } = {},
+) {
+  const now = opts.now || Date.now;
+
+  if (
+    now() - state.overlayFetchedAtMs < OVERLAY_TTL_MS ||
+    overlayRefresh.inFlight
+  ) {
+    state.loaded = true;
+
+    return state;
+  }
+
+  overlayRefresh.inFlight = (async () => {
+    try {
+      const { overlay } = await loadPricingOverlayRows(
+        opts.selectImpl || select,
+      );
+      const changed = JSON.stringify(overlay) !== JSON.stringify(state.overlay);
+
+      state.overlay = overlay;
+      state.overlaySource = overlay ? "table" : "table:empty";
+      state.overlayFetchedAtMs = now();
+      if (changed) {
+        state.mergedCurated = overlay
+          ? mergeOverlayDocs(curatedWithSelfhost, overlay)
+          : curatedWithSelfhost;
+        state.revision += 1;
+        state.negativeCache.clear();
+      }
+    } catch {
+      // Pricing is display-side data: a failed refresh keeps the previous
+      // overlay (or the bundled tables) and retries after the TTL.
+    } finally {
+      overlayRefresh.inFlight = null;
+    }
+  })();
+
+  await overlayRefresh.inFlight;
   state.loaded = true;
 
   return state;
@@ -167,6 +229,10 @@ export function resetPricingForTests() {
   state.litellmRawMap = seedRaw;
   state.litellmPerMillionMap = buildLitellmPerMillionMap(seedRaw);
   state.source = Object.keys(seedRaw).length ? "seed-snapshot:static" : null;
+  state.overlay = null;
+  state.overlaySource = null;
+  state.overlayFetchedAtMs = 0;
+  state.mergedCurated = curatedWithSelfhost;
   state.revision += 1;
   state.negativeCache.clear();
   rowCostCache = new WeakMap();
@@ -193,7 +259,7 @@ export function getModelPricing(
   if (state.negativeCache.has(cacheKey)) return ZERO_PRICING;
 
   const result = lookupPricing(model, {
-    curated: curatedWithSelfhost,
+    curated: state.mergedCurated,
     litellm: state.litellmPerMillionMap,
     source: lookupSource,
   });
@@ -286,7 +352,7 @@ function computeModelPricingInfo(
     };
   }
   const result = lookupPricing(model, {
-    curated: curatedWithSelfhost,
+    curated: state.mergedCurated,
     litellm: state.litellmPerMillionMap,
     source: sourceKey,
   });
@@ -582,6 +648,15 @@ export function __getSelfhostMergeForTests() {
   return {
     curated: curatedWithSelfhost,
     droppedKeys: selfhostDroppedKeys,
+  };
+}
+
+// Internal hook for tests: the loaded overlay and the lookup view it feeds.
+export function __getOverlayStateForTests() {
+  return {
+    overlay: state.overlay,
+    source: state.overlaySource,
+    merged: state.mergedCurated,
   };
 }
 

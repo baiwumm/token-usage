@@ -56,13 +56,13 @@ function jsonFetcher(payload, { status = 200 } = {}) {
 
 test("validateOverlayDoc accepts a well-formed document and drops unknown fields", () => {
   const normalized = validateOverlayDoc({
-    exact: { m: { input: 1, output: 2, cache_read: 0.5, bogus: "x" } },
+    exact: { m: { input: 1, output: 2, cache_read: 0.5, priority_multiplier: 2, bogus: "x" } },
     alias: { a: "m" },
     fuzzy: [{ match: "k", ref: "m" }],
     source_exact: { cursor: { m2: { input: 0, output: 0 } } },
   });
   assert.ok(normalized);
-  assert.deepEqual(normalized.exact.m, { input: 1, output: 2, cache_read: 0.5 });
+  assert.deepEqual(normalized.exact.m, { input: 1, output: 2, cache_read: 0.5, priority_multiplier: 2 });
   assert.deepEqual(normalized.alias, { a: "m" });
   assert.deepEqual(normalized.fuzzy, [{ match: "k", ref: "m" }]);
 });

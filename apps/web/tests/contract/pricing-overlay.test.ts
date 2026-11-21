@@ -68,7 +68,7 @@ describe("GET token-usage-pricing (§2.16)", () => {
 
   it("assembles the curated-shaped overlay with deterministic ordering", async () => {
     seedPricingRows([
-      { section: "exact", model_key: "zeta-model", value: { input: 1, output: 2, cache_read: 0.1 } },
+      { section: "exact", model_key: "zeta-model", value: { input: 1, output: 2, cache_read: 0.1, priority_multiplier: 2, bogus: "dropped" } },
       { section: "exact", model_key: "alpha-model", value: { input: 4, output: 20, cache_write: 5 }, note: "official" },
       { section: "alias", model_key: "k3-256k", value: "kimi-k3" },
       { section: "fuzzy", model_key: "b-match", value: { ref: "beta-ref" } },
@@ -84,6 +84,9 @@ describe("GET token-usage-pricing (§2.16)", () => {
     // Fields pass through only when provided — the server invents nothing.
     expect(body.overlay.exact["alpha-model"]).toEqual({
       input: 4, output: 20, cache_write: 5, note: "official",
+    });
+    expect(body.overlay.exact["zeta-model"]).toEqual({
+      input: 1, output: 2, cache_read: 0.1, priority_multiplier: 2,
     });
     expect(body.overlay.alias).toEqual({ "k3-256k": "kimi-k3" });
     expect(body.overlay.fuzzy).toEqual([
@@ -101,7 +104,7 @@ describe("GET token-usage-pricing (§2.16)", () => {
       { section: "source_exact", model_key: "plan-model", source: "workbuddy-ai", value: { input: 0, output: 0 } },
       { section: "fuzzy", model_key: "a-match", value: { ref: "alpha-ref" } },
       { section: "fuzzy", model_key: "b-match", value: { ref: "beta-ref" } },
-      { section: "exact", model_key: "zeta-model", value: { input: 1, output: 2, cache_read: 0.1 } },
+      { section: "exact", model_key: "zeta-model", value: { input: 1, output: 2, cache_read: 0.1, priority_multiplier: 2, bogus: "dropped" } },
     ]);
     const second = await pricingGet();
     expect(await second.json()).toEqual(body);
