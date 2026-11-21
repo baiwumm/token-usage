@@ -23,9 +23,12 @@ Tauri 2 托盘伴生工具：**本机采集视角的实时监控台 + CLI 操作
 2. **动作一律子进程调 `tokenusage` 子命令**（sync / status / doctor / reconcile / pause / resume /
    device-login…），desktop 不重实现解析、对账或上传逻辑；CLI 未安装时引导
    `npm i -g tokenusage-cli`。
-3. **零契约面**：desktop 不请求 `/api/functions/*`、不直连 Supabase、不把设备令牌带出 CLI 数据
-   目录；云端全景 = 浏览器打开 web。这守住「CLI 版本 ↔ 服务端版本配对演进」不被新消费者破坏。
+3. **契约面仅一条公开只读 GET**（2026-11-22 修订，此前为「零契约面」）：desktop 唯一请求的
+   `/api/functions/*` 端点是 `token-usage-pricing`（公开、无鉴权、无密钥，见
+   `docs/cli-contract.md` §2.16）——远端价目 overlay 按 24h 内存缓存拉取，失败回落打包价目表；
+   仍不直连 Supabase、不把设备令牌带出 CLI 数据目录，「CLI 版本 ↔ 服务端版本配对演进」不受破坏。
 4. **成本只读时计算**：移植 web 同源的读时计价引擎（`lib/pricing.ts`），费用与 web 同口径；
+   2026-11-22 起叠加远端价目 overlay（云端 > selfhost > curated > seed，与 web/CLI 同优先级）；
    桌面不再展示账号成就页，只留 web 深链。
 
 ## 3. 数据面

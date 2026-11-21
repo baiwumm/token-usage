@@ -1,6 +1,6 @@
 {
 	"name": "@token-usage/desktop",
-	"version": "0.4.3",
+	"version": "0.5.0",
 	"type": "module",
 	"private": true,
 	"description": "Token Usage — desktop tray companion app built with Tauri 2, sharing the dashboard frontend stack.",

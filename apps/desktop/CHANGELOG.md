@@ -4,6 +4,21 @@
 发版时在顶部新增一节，`## <版本号>` 行会被 release workflow 取作 GitHub Release
 正文。
 
+## 0.5.0
+
+2026-11-22。接入远端定价 overlay（`docs/cli-contract.md` §2.16）：托盘「预计费用」与
+监控盘成本跟随实例价目表，修价不再依赖桌面发版。实例未部署价目表 = 行为与 0.4.3
+逐字一致；需先升级 CLI 到 0.7.0 并在服务端应用价目表迁移（见
+`docs/deploy-guide.md`「远端价目表」）。
+
+- **唯一新增网络行为**：按 24h 内存缓存节奏拉取实例的公开只读端点
+  `GET /api/functions/token-usage-pricing`（无鉴权、无密钥）；拉取或校验失败静默
+  回落打包价目表，托盘与监控流程永不因此阻塞。Rust 桥保持只读，无磁盘写入。
+- 生效优先级：云端 overlay > 打包 selfhost > 打包 curated > litellm seed，与 web/CLI
+  一致（同键云端整条覆盖，fuzzy 云端条目前置）。
+- 这是对 §2「零契约面」边界的一次受控修订（desktop-plan §2-3 已回写）：仅此一条
+  公开 GET，仍不直连 Supabase、不触碰设备令牌。
+
 ## 0.4.3
 
 2026-11-17。生产实例域名迁移配套（`app.token-usage.cc`，详见仓库 `docs/rewrite-plan.md` §7-8）。零契约变更，采集侧不受影响。

@@ -9,6 +9,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { formatTokens } from "@/lib/format-tokens";
+import { ensurePricingOverlay } from "@/lib/pricing";
 import {
   buildMonitorSnapshot,
   DEFAULT_DASHBOARD_URL,
@@ -183,6 +184,12 @@ export function useMonitor(period: UsagePeriod, formatKey = "") {
         ]);
       const dashboardUrl =
         config?.dashboardUrl ?? config?.baseUrl ?? DEFAULT_DASHBOARD_URL;
+
+      // Remote pricing overlay (docs/cli-contract.md §2.16): one public GET
+      // per 24h in-memory TTL, fire-and-forget — the lib dedupes concurrent
+      // refreshes and any failure keeps the bundled tables, so the monitor
+      // cycle is never blocked by pricing.
+      void ensurePricingOverlay({ baseUrl: config?.baseUrl ?? null });
       const snapshot = buildMonitorSnapshot(
         {
           queue: queueRead.text,
