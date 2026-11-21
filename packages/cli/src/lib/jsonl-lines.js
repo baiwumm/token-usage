@@ -130,5 +130,6 @@ async function* physicalJsonlRecords(input, {
 
 module.exports = {
   PhysicalJsonlLimitError,
+  decodePhysicalLine,
   physicalJsonlRecords,
 };

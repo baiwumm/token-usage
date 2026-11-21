@@ -3143,15 +3143,26 @@ async function parseClaudeFile({
   const endOffset = st.size;
   if (startOffset >= endOffset) return { endOffset, eventsAggregated: 0 };
 
-  const stream = fssync.createReadStream(filePath, { encoding: "utf8", start: startOffset });
-  const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-
+  // Byte-exact records instead of readline: the cursor may only commit past
+  // LF-terminated lines (or a final unterminated line that already parses as
+  // complete JSON). Committing stat.size while a producer is mid-line would
+  // permanently skip the remainder of that line once it is completed.
+  const stream = fssync.createReadStream(filePath, { start: startOffset });
+  let scannedEndOffset = startOffset;
+  let committedEndOffset = startOffset;
   let eventsAggregated = 0;
   // Separator-agnostic: WSL installs are scanned over \\wsl$ UNC paths where
   // path.join produces backslashes, and a forward-slash-only check would
   // misclassify subagent transcripts as main sessions (#307).
   const isMainSession = !/[\\/]subagents[\\/]/.test(filePath);
-  for await (const line of rl) {
+  for await (const record of physicalJsonlRecords(stream, { invalidUtf8: "record" })) {
+    scannedEndOffset += record.physicalBytes;
+    if (record.terminated) committedEndOffset = scannedEndOffset;
+    if (!record.utf8Valid) {
+      if (!record.terminated) break;
+      continue;
+    }
+    const line = record.line;
     if (!line) continue;
 
     // Count user-typed messages as conversations (main sessions only).
@@ -3235,9 +3246,8 @@ async function parseClaudeFile({
     eventsAggregated += 1;
   }
 
-  rl.close();
   stream.close?.();
-  return { endOffset, eventsAggregated };
+  return { endOffset: committedEndOffset, eventsAggregated };
 }
 
 async function parseGeminiFile({
@@ -10245,14 +10255,29 @@ async function parseKimiIncremental({ wireFiles, cursors, queuePath, onProgress,
 
     let stream;
     try {
-      stream = fssync.createReadStream(filePath, { encoding: "utf8", start: startOffset });
+      stream = fssync.createReadStream(filePath, { start: startOffset });
     } catch { continue; }
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-
-    for await (const line of rl) {
+    // Byte-exact records with a committed-offset cursor: a trailing line that
+    // is not yet complete JSON must be re-read whole on the next sync, never
+    // skipped (readline + committing stat.size would lose the record once the
+    // producer finishes the line).
+    let scannedBytes = startOffset;
+    let committedBytes = startOffset;
+    for await (const record of physicalJsonlRecords(stream, { invalidUtf8: "record" })) {
+      scannedBytes += record.physicalBytes;
+      if (record.terminated) committedBytes = scannedBytes;
+      if (!record.utf8Valid) {
+        if (!record.terminated) break;
+        continue;
+      }
+      const line = record.line;
       if (!line || !line.trim()) continue;
       let entry;
-      try { entry = JSON.parse(line); } catch { continue; }
+      try { entry = JSON.parse(line); } catch {
+        if (!record.terminated) break;
+        continue;
+      }
+      if (!record.terminated) committedBytes = scannedBytes;
 
       const msg = entry.message;
       if (!msg || msg.type !== "StatusUpdate") continue;
@@ -10309,7 +10334,10 @@ async function parseKimiIncremental({ wireFiles, cursors, queuePath, onProgress,
 
     let postStat = stat;
     try { postStat = fssync.statSync(filePath); } catch {}
-    fileOffsets[filePath] = { size: postStat.size, mtimeMs: postStat.mtimeMs, ino: postStat.ino };
+    // size doubles as the resume offset AND the truncation detector
+    // (stat.size < prevSize restarts from zero), so it must be the
+    // complete-record boundary, not the post-read stat size.
+    fileOffsets[filePath] = { size: committedBytes, mtimeMs: postStat.mtimeMs, ino: postStat.ino };
   }
 
   // Cap seenIds to last 10k to bound cursor state size
@@ -10439,14 +10467,27 @@ async function parseKimiCodeIncremental({ wireFiles, cursors, queuePath, onProgr
 
     let stream;
     try {
-      stream = fssync.createReadStream(filePath, { encoding: "utf8", start: startOffset });
+      stream = fssync.createReadStream(filePath, { start: startOffset });
     } catch { continue; }
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-
-    for await (const line of rl) {
+    // Byte-exact records with a committed-offset cursor, same discipline as
+    // the kimi wire reader above: incomplete trailing JSON re-reads next sync.
+    let scannedBytes = startOffset;
+    let committedBytes = startOffset;
+    for await (const record of physicalJsonlRecords(stream, { invalidUtf8: "record" })) {
+      scannedBytes += record.physicalBytes;
+      if (record.terminated) committedBytes = scannedBytes;
+      if (!record.utf8Valid) {
+        if (!record.terminated) break;
+        continue;
+      }
+      const line = record.line;
       if (!line || !line.trim()) continue;
       let entry;
-      try { entry = JSON.parse(line); } catch { continue; }
+      try { entry = JSON.parse(line); } catch {
+        if (!record.terminated) break;
+        continue;
+      }
+      if (!record.terminated) committedBytes = scannedBytes;
 
       // Kimi Code 2.x can bind or reroute the model without config.update.
       // These records precede step.end and carry the model actually requested.
@@ -10544,7 +10585,8 @@ async function parseKimiCodeIncremental({ wireFiles, cursors, queuePath, onProgr
 
     let postStat = stat;
     try { postStat = fssync.statSync(filePath); } catch {}
-    fileOffsets[filePath] = { size: postStat.size, mtimeMs: postStat.mtimeMs, ino: postStat.ino, model: fileModel };
+    // Complete-record boundary, same reason as the kimi wire reader above.
+    fileOffsets[filePath] = { size: committedBytes, mtimeMs: postStat.mtimeMs, ino: postStat.ino, model: fileModel };
   }
 
   const seenArr = Array.from(seenIds);
