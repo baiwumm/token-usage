@@ -219,5 +219,7 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
 10. **远端定价 overlay（待拍板）**：2026-11-21 对比 TokenTracker/juejin-usage 采集
     包后的 P2 候选：打包底表 + 同步时拉云端价目覆盖（新模型零发版等待）。新增
     `app/api/functions/token-usage-*` 端点属契约层变更，须先改 `docs/cli-contract.md`
-    与 golden 测试并经操作者确认后再动实现。cursors 分片（cursors.json 膨胀防护，
-    参考 TokenTracker cursor-store-v2）为同批 P2 候选，不涉契约层。
+    与 golden 测试并经操作者确认后再动实现。注：cursors 分片**已内建**（血统继承的
+    `lib/cursor-store-v2`，16MB 阈值自动激活，生产机 2026-10-31 已触发），无需立项；
+    遗留小项仅 legacy `cursors.json`（激活后冻结、变更会被 reconcile 回收）的正规
+    清理路径，做成 doctor/repair 项即可，不急。
