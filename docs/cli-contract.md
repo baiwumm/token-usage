@@ -42,6 +42,7 @@
 | §2.13 | `GET /api/functions/token-usage-reconcile` | CLI｜仅设备令牌 |
 | §2.14 | `GET /api/app/data-version` | 内部｜仅浏览器会话 |
 | §2.15 | `GET /api/functions/token-usage-account-project-profiles` | CLI + Dashboard｜设备令牌或 JWT |
+| §2.16 | `GET /api/functions/token-usage-pricing` | CLI｜公开 |
 
 本文件与实现冲突时，**以本文件 + 契约测试（`tests/contract/`）为准**修实现，而不是反过来。
 
@@ -526,6 +527,62 @@ Query：无（账号级全集；profile 数量以项目数计，天然有界，�
   `tokenusage device-login`）；HTTP 非 2xx 报 `UsageError`（携带状态码与响应体摘要）。
   桌面经 `run_cli` 捕获 stdout 解析，字段以本节为准。
 
+### 2.16 `GET /api/functions/token-usage-pricing`（公开｜CLI 面）
+
+> 2026-11-22 契约先行（操作者已拍板方向，端点实现待确认后落地）；golden 测试
+> `tests/contract/pricing-overlay.test.ts` 随实现转正式。背景：curated 价目修正
+> 此前只能随 CLI 发版传播（改 `curated-overrides.json` → 发版 → 各机升级，时延
+> 天级），本端点把 curated 层集中到实例自有数据库，修正变为一次数据编辑。
+
+curated 价目的云端读取面：把「实例自有数据库里的 curated 覆盖」以与 CLI 打包文件
+`curated-overrides.json` 同构的文档形态返回，采集机下次 sync 即可取用，修价不再
+依赖发版。数据是非敏感公开价目，无鉴权（同 §2.5 先例）；实例空表时 `overlay` 为
+`null`，对旧/新 CLI 都等价于「无覆盖、打包 curated 生效」，即现状行为。
+
+- 请求：无参数，无鉴权（`Authorization` 头即使携带也不参与处理）。
+- 响应（200）：
+
+```json
+{
+  "revision": "9f86d081884c8d04",
+  "overlay": {
+    "exact": {
+      "claude-opus-5-5": {
+        "input": 4, "output": 20, "cache_read": 0.2, "cache_write": 5,
+        "note": "Official Anthropic pricing verified 2026-10-11: https://…"
+      }
+    },
+    "alias": { "k3-256k": "kimi-k3" },
+    "fuzzy": [ { "match": "kiro", "ref": "kiro-2" } ],
+    "source_exact": { "workbuddy-ai": { "some-plan-model": { "input": 0, "output": 0 } } }
+  }
+}
+```
+
+- `revision`：服务端对 `overlay` 内容的确定性派生（同内容同值），不透明串；客户端
+  不得解析其内部结构，仅用于日志比对各机是否一致。
+- `overlay`：与 `curated-overrides.json` 同构的文档，分节可缺省：
+  - `exact`：`<model_key> → 费率`；`source_exact`：`<source> → (<model_key> → 费率)`；
+    费率对象必含有限非负数值 `input`、`output`，可选 `cache_read`、`cache_write`
+    （同约束）；可选 `note`（字符串 ≤ 2000 字符）。**费率单位为 USD per million
+    tokens，与打包文件一致**；额外字段一律丢弃。
+  - `alias`：`<model_key> → <exact 键>`（字符串 ≤ 200）。
+  - `fuzzy`：`{ "match", "ref" }` 数组，两字段均为非空字符串 ≤ 200。
+  - `model_key` 非空字符串 ≤ 200；`source`（`source_exact` 一级键）非空 ≤ 64。
+- 服务端行校验与装配规则：不合规行**静默丢弃**（仅记服务端日志），不影响其余行；
+  全部无效或表空 → `overlay: null`。装配时 `exact`/`alias`/`source_exact` 按键
+  字典序、`fuzzy` 按 `match` 字典序排序；总条目（exact+alias+fuzzy+source_exact
+  展开）超过 **2000** 时按该排序截断。
+- 错误：数据库不可用 → `500 {"error":"Internal server error"}`（§1.3）；写动词
+  `405`、`OPTIONS 204`、`Cache-Control: no-store` 均走 §1.2 冻结行为。
+- 数据写入面不在本契约内：实例持有人直接编辑自有数据库表（service-role 侧），
+  无管理 API；表结构与 seed 策略随实现记录在 `docs/deploy-guide.md`。
+- 客户端叠加语义（描述现状，非冻结）：CLI 在既有定价刷新节奏（litellm 24h 磁盘
+  缓存）时一并拉取本端点，磁盘缓存 last-good（拉取失败静默沿用旧值，不阻塞
+  sync）；结构校验失败的 overlay 整体弃用并沿用 last-good。生效优先级：
+  **云端 overlay > 打包 `curated-overrides.json` > litellm（24h 缓存）> 打包
+  seed**；同键以更高优先级整条覆盖，键并集合并。
+
 ## 3. 冻结不变量清单（逐条对应契约测试）
 
 适用范围：涉及 §2.6–2.10 的条目（6、7 的字段形态与聚合规则，含 `sessions` series）属
@@ -565,6 +622,11 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
     落库列白名单；永不写 `token_project_profiles`；`projects_upserted + projects_skipped =
     projects.length`；写入失败尽力而为（响应省略 `projects_*` 计数，同批其他写入照常）；
     不携带时请求与响应逐字不变，仅带 `projects` 的请求合法。
+17. pricing 端点（§2.16）：公开无鉴权（携带 `Authorization` 亦不参与处理）；空表/全无效
+    行 → `200 {"revision": <opaque>, "overlay": null}`；行级校验失败静默丢弃不影响其余行；
+    费率 `input`/`output` 必为有限非负数值、单位 USD per million tokens 与打包文件一致；
+    装配排序确定性（键字典序 / fuzzy 按 `match`）、2000 条截断上限；`revision` 同内容
+    同值；错误仅 500 信封 + §1.2 冻结 405/OPTIONS/no-store。
 
 > §2.11 / §2.12 已于 2026-10-27 随 0.2.0 实现转正式：golden 测试
 > `tests/contract/sync-runs.test.ts` 覆盖两端点（校验、幂等重放、空跑派生、筛选分页、
@@ -578,6 +640,10 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
 > `projects` 可选字段于 2026-11-06 随契约 v3 立项（§2.4 新增可选请求字段，§4 规则允许）：
 > 不改变任何既有字段、校验阈值与错误码，旧 CLI 不传时请求与响应逐字不变；golden 覆盖见
 > `tests/contract/ingest.test.ts` 的 projects 分组，冻结条目为 §3 的 16。
+
+> §2.16 pricing 端点于 2026-11-22 契约先行（方向已拍板）：golden 测试
+> `tests/contract/pricing-overlay.test.ts`（冻结条目 §3 的 17）随端点实现一起转正式；
+> 实现前本端点不存在（匿名 GET 404，无别名），对既有客户端无可观察影响。
 
 ## 4. 兼容演进规则
 
