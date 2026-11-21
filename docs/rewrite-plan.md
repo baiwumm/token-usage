@@ -208,3 +208,16 @@ woff2 子集字体，站名改为中文时卡片回退默认词标。
    运维走 `docs/demo-instance.md`。历史叙述见 `docs/archive/rewrite-plan-2026-11.md`。
 8. **生产实例域名迁移**：**已完成（2026-11-17，`app.token-usage.cc`；旧域注销、不保留
    跳转）**。历史叙述见 `docs/archive/rewrite-plan-2026-11.md`。
+9. **采集侧尾行/截断加固（后续）**：2026-11-21 已把 `parseClaudeFile` / kimi /
+   kimi-code 三个「readline 续读 + post-stat size 提交」的增量解析器统一到 codex
+   的完整行边界提交纪律（`physicalJsonlRecords` + committed offset；回归测试
+   `packages/cli/test/rollout-tail-cursor.test.js`）。同类的 workbuddy JSONL 流式
+   读取器与 codebuddy 流式读取器仍是旧提交语义（同步与写入竞态时会永久跳过完成中
+   的半行），待按同一模式转换并补夹具。来源接线完整性测试见
+   `packages/cli/test/sync-source-wiring.test.js`（防「注册但无扫描分支」与
+   「`sourceAllowed` 字面量越界」两类静默跳过，Prime Agent 事故类）。
+10. **远端定价 overlay（待拍板）**：2026-11-21 对比 TokenTracker/juejin-usage 采集
+    包后的 P2 候选：打包底表 + 同步时拉云端价目覆盖（新模型零发版等待）。新增
+    `app/api/functions/token-usage-*` 端点属契约层变更，须先改 `docs/cli-contract.md`
+    与 golden 测试并经操作者确认后再动实现。cursors 分片（cursors.json 膨胀防护，
+    参考 TokenTracker cursor-store-v2）为同批 P2 候选，不涉契约层。
