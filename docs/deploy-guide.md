@@ -40,7 +40,7 @@ npx supabase db push
 
 **方式 B：SQL Editor 手动执行**
 
-在 SQL Editor 按文件名顺序逐个粘贴执行（共 20 个）：
+在 SQL Editor 按文件名顺序逐个粘贴执行（共 21 个）：
 
 | 迁移 | 作用 |
 | --- | --- |
@@ -65,6 +65,7 @@ npx supabase db push
 | `20261114000002_token_public_badge_settings_page_entry.sql` | 设置页公开页入口开关（幂等） |
 | `20261114000003_token_public_badge_settings_page_enabled.sql` | 公开页独立开关（幂等） |
 | `20261115000000_account_snapshot_watermark_idx.sql` | 账号快照增量水位的两张 `(user_id, updated_at)` 索引（幂等） |
+| `20261122000000_token_pricing_overrides.sql` | 远端价目覆盖表（可选，见下方「远端价目表」） |
 | `20261114000002_token_public_badge_settings_page_entry.sql` | 公开页令牌列（幂等；公开页改每用户一份、独立开关） |
 | `20261114000003_token_public_badge_settings_page_enabled.sql` | 公开页独立开关列（幂等；总开关只管徽章） |
 
@@ -77,6 +78,29 @@ npx supabase db push
 > **升级提示（2026-11-13 徽章模型重置）**：`20261113000000` 会 drop 旧徽章表，历史令牌全部
 > 作废。升级后需在 `/settings?section=badges` 重新新增徽章、把新的 `api/badge?token=…` 链接
 > 填回 README / 个人主页，并重建 `apps/landing`（构建期快照用新令牌拉取）。
+
+### 远端价目表（可选，2026-11-22 起）
+
+`20261122000000_token_pricing_overrides.sql` 建 `token_pricing_overrides` 表（可选）：
+实例自有的 curated 价目覆盖，经公开只读端点 `GET /api/functions/token-usage-pricing`
+（契约 §2.16）供采集机在 sync 时拉取。**空表 = `overlay:null` = 行为与建表前逐字一致**，
+不建此表也完全不影响现有部署。
+
+写入面是普通 SQL（无管理 API）——用 Table Editor 或 SQL Editor 直接编辑行：
+
+| 列 | 说明 |
+| --- | --- |
+| `section` | `exact` / `alias` / `fuzzy` / `source_exact` |
+| `model_key` | exact / source_exact 为模型键；alias 为别名键；fuzzy 为匹配子串 |
+| `source` | 仅 `source_exact` 用（来源名，如 `workbuddy-ai`），其余留空 `''` |
+| `value` | jsonb：rates 对象（`{"input":4,"output":20,"cache_read":0.2,"cache_write":5}`）、alias 的目标键字符串、fuzzy 的 `{"ref": 目标键}` |
+| `note` | 可选，≤2000 字符，随 rates 透传 |
+
+费率单位 USD per million tokens，与打包 `curated-overrides.json` 一致；`input` / `output`
+必填且为非负数值。端点逐行校验，不合规行静默丢弃（只记服务端日志）；同键以云端为准，
+与打包文件按键并集合并（fuzzy 为云端条目前置）。从零起步可把
+`packages/cli/src/lib/pricing/curated-overrides.json` 的 `exact` / `alias` / `fuzzy`
+各粘成行（fuzzy 的 `model_key` 取 `match`、`value` 取 `{"ref": …}`）。
 
 ## 3. 配置 Supabase Auth
 

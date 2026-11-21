@@ -529,10 +529,11 @@ Query：无（账号级全集；profile 数量以项目数计，天然有界，�
 
 ### 2.16 `GET /api/functions/token-usage-pricing`（公开｜CLI 面）
 
-> 2026-11-22 契约先行（操作者已拍板方向，端点实现待确认后落地）；golden 测试
-> `tests/contract/pricing-overlay.test.ts` 随实现转正式。背景：curated 价目修正
+> 2026-11-22 契约先行、当日随实现转正式（golden
+> `tests/contract/pricing-overlay.test.ts`）。背景：curated 价目修正
 > 此前只能随 CLI 发版传播（改 `curated-overrides.json` → 发版 → 各机升级，时延
-> 天级），本端点把 curated 层集中到实例自有数据库，修正变为一次数据编辑。
+> 天级），本端点把 curated 层集中到实例自有数据库，修正变为一次数据编辑；
+> 表结构与写入面见 `docs/deploy-guide.md`「远端价目表」。
 
 curated 价目的云端读取面：把「实例自有数据库里的 curated 覆盖」以与 CLI 打包文件
 `curated-overrides.json` 同构的文档形态返回，采集机下次 sync 即可取用，修价不再
@@ -577,11 +578,13 @@ curated 价目的云端读取面：把「实例自有数据库里的 curated 覆
   `405`、`OPTIONS 204`、`Cache-Control: no-store` 均走 §1.2 冻结行为。
 - 数据写入面不在本契约内：实例持有人直接编辑自有数据库表（service-role 侧），
   无管理 API；表结构与 seed 策略随实现记录在 `docs/deploy-guide.md`。
-- 客户端叠加语义（描述现状，非冻结）：CLI 在既有定价刷新节奏（litellm 24h 磁盘
-  缓存）时一并拉取本端点，磁盘缓存 last-good（拉取失败静默沿用旧值，不阻塞
-  sync）；结构校验失败的 overlay 整体弃用并沿用 last-good。生效优先级：
-  **云端 overlay > 打包 `curated-overrides.json` > litellm（24h 缓存）> 打包
-  seed**；同键以更高优先级整条覆盖，键并集合并。
+- 客户端叠加语义（描述现状，非冻结）：CLI 随 sync 周期拉取本端点（独立 24h 磁盘
+  缓存节奏，`~/.tokenusage/cache/pricing-overlay.json`；拉取失败静默沿用 last-good，
+  不阻塞 sync）；结构校验失败的 overlay 整体弃用并沿用 last-good。生效优先级：
+  **云端 overlay > 打包 `curated-overrides.json` > litellm（打包 seed 兜底）**；
+  同键以更高优先级整条覆盖，键并集合并（fuzzy 为云端条目前置）。注意 litellm 的
+  运行时上游刷新在 CLI 内当前未接线（`ensurePricingLoaded` 无调用点），采集机实际
+  计价 = 打包 seed + 打包 curated + 本 overlay。
 
 ## 3. 冻结不变量清单（逐条对应契约测试）
 
@@ -641,9 +644,10 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
 > 不改变任何既有字段、校验阈值与错误码，旧 CLI 不传时请求与响应逐字不变；golden 覆盖见
 > `tests/contract/ingest.test.ts` 的 projects 分组，冻结条目为 §3 的 16。
 
-> §2.16 pricing 端点于 2026-11-22 契约先行（方向已拍板）：golden 测试
-> `tests/contract/pricing-overlay.test.ts`（冻结条目 §3 的 17）随端点实现一起转正式；
-> 实现前本端点不存在（匿名 GET 404，无别名），对既有客户端无可观察影响。
+> §2.16 pricing 端点于 2026-11-22 契约先行、同日随实现转正式：golden 测试
+> `tests/contract/pricing-overlay.test.ts`（冻结条目 §3 的 17）覆盖公开无鉴权、空表
+> `overlay:null`、确定性装配与 revision 稳定性、坏行丢弃、2000 截断与 405/OPTIONS
+> 信封。
 
 ## 4. 兼容演进规则
 
