@@ -15,6 +15,12 @@ const { resolveInstallPaths } = require("../src/lib/install-resolver");
 
 const NATIVE_ONLY = { TOKENUSAGE_WSL_MODE: "native-only" };
 
+// path.join inside the resolver joins with the running platform's separator,
+// so the injected existsSync normalizes both spellings before matching the
+// backslash-native fixture paths (keeps these tests green on the Linux CI
+// runner without changing what production does on win32).
+const winPath = (p) => String(p).replace(/[\/]+/g, "\\");
+
 test("a missing native root is nulled instead of walked", () => {
   const resolved = resolveInstallPaths(
     { nativeValue: "C:\\tools\\missing", requireAnyChild: ["sessions"] },
@@ -30,7 +36,7 @@ test("an empty shell directory does not qualify as an install", () => {
   const empty = resolveInstallPaths(
     { nativeValue: "C:\\tools\\codex", requireAnyChild: ["sessions", "archived_sessions"] },
     NATIVE_ONLY,
-    { platform: "win32", existsSync: (p) => shellOnly.has(p) },
+    { platform: "win32", existsSync: (p) => shellOnly.has(winPath(p)) },
   );
   assert.equal(empty.native, null, "an install candidate must hold a required child");
 
@@ -38,7 +44,7 @@ test("an empty shell directory does not qualify as an install", () => {
   const real = resolveInstallPaths(
     { nativeValue: "C:\\tools\\codex", requireAnyChild: ["sessions", "archived_sessions"] },
     NATIVE_ONLY,
-    { platform: "win32", existsSync: (p) => populated.has(p) },
+    { platform: "win32", existsSync: (p) => populated.has(winPath(p)) },
   );
   assert.equal(real.native, "C:\\tools\\codex");
 });
@@ -68,7 +74,7 @@ test("union keeps both populated roots so cross-root dedup can collapse copies",
       union: true,
     },
     {},
-    { platform: "win32", existsSync: (p) => present.has(p) },
+    { platform: "win32", existsSync: (p) => present.has(winPath(p)) },
   );
   assert.equal(resolved.native, "C:\\tools\\codex");
   assert.equal(resolved.wsl, "\\\\wsl$\\Ubuntu\\home\\u\\.codex");
@@ -88,7 +94,7 @@ test("union drops an unpopulated root but keeps the populated one", () => {
       union: true,
     },
     {},
-    { platform: "win32", existsSync: (p) => present.has(p) },
+    { platform: "win32", existsSync: (p) => present.has(winPath(p)) },
   );
   assert.equal(resolved.native, null, "the empty shell must not shadow or join the populated install");
   assert.equal(resolved.wsl, "\\\\wsl$\\Ubuntu\\home\\u\\.codex");
