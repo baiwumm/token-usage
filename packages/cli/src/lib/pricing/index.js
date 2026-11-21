@@ -13,6 +13,7 @@ const {
   buildLitellmPerMillionMap,
 } = require("./matcher");
 const { loadLitellmData } = require("./litellm-fetcher");
+const { loadPricingOverlay, mergeCuratedDocs } = require("./overlay");
 
 const ZERO_PRICING = { input: 0, output: 0, cache_read: 0, cache_write: 0 };
 const PI_SUBSCRIPTION_SOURCES = new Set([
@@ -66,6 +67,14 @@ const state = {
   // negativeCache prevents re-walking the LiteLLM map for models we've already
   // determined are unknown. Cleared on every reload.
   negativeCache: new Set(),
+  // Remote curated overlay (docs/cli-contract.md §2.16): null until
+  // ensurePricingOverlay() loads one; mergedCurated is the lookup view
+  // (overlay per-key over the bundled file) that matcher consumers see.
+  overlay: null,
+  overlayRevision: "",
+  overlaySource: null,
+  overlayFetchedAtMs: 0,
+  mergedCurated: curatedOverrides,
 };
 
 function defaultCachePath() {
@@ -95,6 +104,46 @@ async function ensurePricingLoaded(opts = {}) {
   return state.loadingPromise;
 }
 
+// Remote curated overlay (§2.16). Never throws and never blocks a collection
+// run: a fresh disk cache answers with a single stat, a stale one refetches
+// with a bounded timeout, and any failure keeps the last-good document. The
+// merged curated view is rebuilt per call so lookups see cloud corrections
+// without a restart; the pricing revision only bumps when the overlay content
+// actually changed, keeping the memoized caches honest without churn.
+async function ensurePricingOverlay(opts = {}) {
+  const result = await loadPricingOverlay(opts);
+  const merged = result.overlay
+    ? mergeCuratedDocs(curatedOverrides, result.overlay)
+    : curatedOverrides;
+  const changed = result.overlay
+    ? result.revision !== state.overlayRevision ||
+      JSON.stringify(result.overlay) !== JSON.stringify(state.overlay)
+    : state.overlay !== null;
+  state.overlay = result.overlay;
+  state.overlayRevision = result.revision || "";
+  state.overlaySource = result.source;
+  state.overlayFetchedAtMs = result.fetchedAtMs || 0;
+  state.mergedCurated = merged;
+  if (changed) {
+    state.revision += 1;
+    state.negativeCache.clear();
+    pricingInfoCache.revision = -1;
+  }
+  return state;
+}
+
+function countOverlayEntries(overlay) {
+  return (
+    Object.keys(overlay.exact || {}).length +
+    Object.keys(overlay.alias || {}).length +
+    (Array.isArray(overlay.fuzzy) ? overlay.fuzzy.length : 0) +
+    Object.values(overlay.source_exact || {}).reduce(
+      (sum, models) => sum + Object.keys(models || {}).length,
+      0,
+    )
+  );
+}
+
 // For tests: drop loaded state so a fresh call can re-load. Seeds with the
 // bundled snapshot so getModelPricing() still works without ensurePricingLoaded.
 function resetPricingForTests() {
@@ -103,6 +152,11 @@ function resetPricingForTests() {
   state.litellmRawMap = seedRaw;
   state.litellmPerMillionMap = buildLitellmPerMillionMap(seedRaw);
   state.source = Object.keys(seedRaw).length ? "seed-snapshot:sync" : null;
+  state.overlay = null;
+  state.overlayRevision = "";
+  state.overlaySource = null;
+  state.overlayFetchedAtMs = 0;
+  state.mergedCurated = curatedOverrides;
   state.revision += 1;
   state.negativeCache.clear();
 }
@@ -121,6 +175,12 @@ function getPricingMeta() {
     litellm_models: Object.keys(state.litellmPerMillionMap).length,
     curated_exact: Object.keys(curatedOverrides.exact || {}).length,
     curated_fuzzy: Array.isArray(curatedOverrides.fuzzy) ? curatedOverrides.fuzzy.length : 0,
+    overlay_revision: state.overlayRevision || null,
+    overlay_source: state.overlaySource,
+    overlay_entries: state.overlay ? countOverlayEntries(state.overlay) : 0,
+    overlay_fetched_at: state.overlayFetchedAtMs
+      ? new Date(state.overlayFetchedAtMs).toISOString()
+      : null,
   };
 }
 
@@ -136,7 +196,7 @@ function getModelPricing(model, opts = {}) {
   if (state.negativeCache.has(cacheKey)) return ZERO_PRICING;
 
   const result = lookupPricing(model, {
-    curated: curatedOverrides,
+    curated: state.mergedCurated,
     litellm: state.litellmPerMillionMap,
     source: lookupSource,
   });
@@ -174,7 +234,7 @@ function computeModelPricingInfo(model, opts, sourceKey) {
     return { status: "free", source: LOCAL_INFERENCE_SOURCES.has(sourceKey) ? "local_inference" : "subscription", ...ZERO_PRICING };
   }
   const result = lookupPricing(model, {
-    curated: curatedOverrides,
+    curated: state.mergedCurated,
     litellm: state.litellmPerMillionMap,
     source: sourceKey,
   });
@@ -372,14 +432,14 @@ function computeRowCost(row) {
 
 // Backwards-compatible MODEL_PRICING export. Test at
 // test/model-breakdown.test.js:236 reads `localApi.MODEL_PRICING["kiro-agent"]`
-// and expects { input, output, cache_read, cache_write } shape. We expose the
-// CURATED.exact map (which contains the kiro entries by design); LiteLLM
-// entries are NOT included here because they're keyed dynamically and the old
-// table was authoritative for what is now CURATED.
-const MODEL_PRICING = curatedOverrides.exact;
-
+// and expects { input, output, cache_read, cache_write } shape. It exposes the
+// merged curated exact map (overlay entries shadow bundled ones); LiteLLM
+// entries are NOT included because they're keyed dynamically and the old
+// table was authoritative for what is now CURATED. A live view via getter so
+// a remote overlay correction is visible without a process restart.
 module.exports = {
   ensurePricingLoaded,
+  ensurePricingOverlay,
   getPricingRevision,
   getPricingMeta,
   getModelPricing,
@@ -387,9 +447,15 @@ module.exports = {
   getRowPricing,
   computeRowCost,
   resetPricingForTests,
-  MODEL_PRICING,
   ZERO_PRICING,
   OPENAI_LONG_CONTEXT_INPUT_THRESHOLD,
   // Internal hooks for tests.
   __getStateForTests: () => state,
 };
+
+Object.defineProperty(module.exports, "MODEL_PRICING", {
+  enumerable: true,
+  get() {
+    return state.mergedCurated.exact;
+  },
+});

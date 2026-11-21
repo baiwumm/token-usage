@@ -6,6 +6,26 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.7.0
+
+2026-11-22。新增远端定价 overlay（`docs/cli-contract.md` §2.16）：curated 价目修正
+不再依赖 CLI 发版，改到实例自有数据库的一行数据编辑，采集机下次 sync 即生效。
+服务端需先应用迁移 `20261122000000_token_pricing_overrides.sql` 并部署含新端点的
+web（写入面见 `docs/deploy-guide.md`「远端价目表」）；**不建表 / 空表 = 行为与本版
+本之前逐字一致**。
+
+- **新端点接入**：`GET /api/functions/token-usage-pricing`（公开只读）返回与打包
+  `curated-overrides.json` 同构的覆盖文档 + 不透明 `revision`（同内容同值，可核对
+  各机看到同一份价目）。
+- **叠加优先级**：云端 overlay > 打包 curated > litellm（打包 seed 兜底）。键并集
+  合并，同键以云端整条覆盖；fuzzy 为云端条目前置，保证云端修正不被旧前缀匹配遮蔽。
+- **采集永不因价目失败而失败**：sync 周期按独立 24h 磁盘缓存节奏拉取
+  （`~/.tokenusage/cache/pricing-overlay.json`）；拉取或校验失败沿用 last-good，
+  无缓存时静默回落打包 curated。
+- **可观测**：`status --json` 的 pricing meta 新增 `overlay_revision` /
+  `overlay_source` / `overlay_entries` / `overlay_fetched_at`，$0 成本可区分「未拉到
+  overlay」与「本来就没价」。
+
 ## 0.6.6
 
 2026-11-19。定价数据补齐：匿名免费预览与免费 SKU 不再显示为未定价。零契约变更

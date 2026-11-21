@@ -4,6 +4,7 @@ const fs = require("node:fs/promises");
 const fssync = require("node:fs");
 const cp = require("node:child_process");
 const { functionUrlFor, fetchFunctionResponse } = require("../lib/function-url");
+const { ensurePricingOverlay } = require("../lib/pricing");
 const { cloudUsageResetBlocksUpload, finishCloudDeviceUsageReset } = require("../lib/cloud-usage-reset");
 const { KIMI_MODEL_REPAIR_KEY, repairKimiModelAttribution } = require("../lib/kimi-model-repair");
 const { backupExistingFile } = require("../lib/queue-backup");
@@ -897,6 +898,20 @@ async function cmdSync(argv, context = {}) {
       }
     }
     let grokHookSignalConsumed = false;
+
+    // Curated pricing overlay (docs/cli-contract.md §2.16): refresh at most
+    // once per TTL from the instance's own pricing endpoint. Any failure
+    // keeps the last-good cached document (or none — bundled curated then
+    // answers exactly as before), so pricing is display-side data that can
+    // never fail a collection run. Resolved against the same runtime config
+    // the upload path uses, so local/dev instances fetch their own endpoint.
+    try {
+      const pricingRuntime = resolveRuntimeConfig({ config, env: process.env });
+      await ensurePricingOverlay({ baseUrl: pricingRuntime.baseUrl });
+    } catch {
+      // ensurePricingOverlay already swallows its own failures; this guards
+      // the runtime resolution too.
+    }
 
     // Claude Code home — dual-install aware (#307): a Windows host may carry
     // a native ~/.claude plus a WSL install reachable over \\wsl$. Unlike the
