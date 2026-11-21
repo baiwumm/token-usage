@@ -10332,12 +10332,13 @@ async function parseKimiIncremental({ wireFiles, cursors, queuePath, onProgress,
       }
     }
 
-    let postStat = stat;
-    try { postStat = fssync.statSync(filePath); } catch {}
     // size doubles as the resume offset AND the truncation detector
     // (stat.size < prevSize restarts from zero), so it must be the
-    // complete-record boundary, not the post-read stat size.
-    fileOffsets[filePath] = { size: committedBytes, mtimeMs: postStat.mtimeMs, ino: postStat.ino };
+    // complete-record boundary, not the post-read stat size. The identity
+    // fields come from the OPEN-time stat: a file rotated mid-parse must be
+    // seen as a new inode next run, or the old window's offset would resume
+    // inside the replacement file.
+    fileOffsets[filePath] = { size: committedBytes, mtimeMs: stat.mtimeMs, ino: stat.ino };
   }
 
   // Cap seenIds to last 10k to bound cursor state size
@@ -10583,10 +10584,9 @@ async function parseKimiCodeIncremental({ wireFiles, cursors, queuePath, onProgr
       }
     }
 
-    let postStat = stat;
-    try { postStat = fssync.statSync(filePath); } catch {}
-    // Complete-record boundary, same reason as the kimi wire reader above.
-    fileOffsets[filePath] = { size: committedBytes, mtimeMs: postStat.mtimeMs, ino: postStat.ino, model: fileModel };
+    // Complete-record boundary and OPEN-time identity (rotation must read as
+    // a new inode), same reason as the kimi wire reader above.
+    fileOffsets[filePath] = { size: committedBytes, mtimeMs: stat.mtimeMs, ino: stat.ino, model: fileModel };
   }
 
   const seenArr = Array.from(seenIds);
@@ -10957,19 +10957,30 @@ async function parseCodebuddyIncremental({
 
     let stream;
     try {
-      stream = fssync.createReadStream(filePath, {
-        encoding: "utf8",
-        start: startOffset,
-      });
+      stream = fssync.createReadStream(filePath, { start: startOffset });
     } catch { continue; }
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-
     const isLogFile = filePath.endsWith(".log");
     const modelsByAgent = new Map();
     const agentModelKey = (agentId) => `${filePath}::${agentId}`;
-
-    for await (const line of rl) {
+    // Byte-exact records with a committed-offset cursor, same discipline as
+    // the kimi/workbuddy readers above: incomplete trailing JSON re-reads
+    // whole next sync; unterminated non-JSON log lines re-read too so a
+    // half-written model-attribution line cannot strand its model.
+    let scannedBytes = startOffset;
+    let committedBytes = startOffset;
+    for await (const record of physicalJsonlRecords(stream, { invalidUtf8: "record" })) {
+      scannedBytes += record.physicalBytes;
+      if (record.terminated) committedBytes = scannedBytes;
+      if (!record.utf8Valid) {
+        if (!record.terminated) break;
+        continue;
+      }
+      const line = record.line;
       if (!line || !line.trim()) continue;
+      if (!record.terminated) {
+        try { JSON.parse(line); } catch { break; }
+        committedBytes = scannedBytes;
+      }
 
       if (isLogFile) {
         if (line.includes("[CraftInvokableAgent]") && line.includes("Model prepared:")) {
@@ -11273,12 +11284,12 @@ async function parseCodebuddyIncremental({
       }
     }
 
-    let postStat = stat;
-    try { postStat = fssync.statSync(filePath); } catch {}
+    // Complete-record boundary and OPEN-time identity (rotation must read as
+    // a new inode), same reason as the workbuddy reader above.
     fileOffsets[filePath] = {
-      size: postStat.size,
-      mtimeMs: postStat.mtimeMs,
-      ino: postStat.ino,
+      size: committedBytes,
+      mtimeMs: stat.mtimeMs,
+      ino: stat.ino,
     };
   }
 
@@ -11791,14 +11802,31 @@ async function parseWorkbuddyIncremental({
     let stream;
     try {
       stream = fssync.createReadStream(filePath, {
-        encoding: "utf8",
         start: startOffset,
       });
     } catch { continue; }
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-
-    for await (const line of rl) {
+    // Byte-exact records with a committed-offset cursor, same discipline as
+    // the kimi/codebuddy wire readers: a trailing line that is not yet
+    // complete JSON must be re-read whole on the next sync, never skipped
+    // (readline + committing post-stat size would lose the record once the
+    // producer finishes the line). Unterminated log-style lines are not JSON
+    // and re-read too, so a half-written attribution line cannot strand its
+    // model on the bytes before it.
+    let scannedBytes = startOffset;
+    let committedBytes = startOffset;
+    for await (const record of physicalJsonlRecords(stream, { invalidUtf8: "record" })) {
+      scannedBytes += record.physicalBytes;
+      if (record.terminated) committedBytes = scannedBytes;
+      if (!record.utf8Valid) {
+        if (!record.terminated) break;
+        continue;
+      }
+      const line = record.line;
       if (!line || !line.trim()) continue;
+      if (!record.terminated) {
+        try { JSON.parse(line); } catch { break; }
+        committedBytes = scannedBytes;
+      }
       let entry;
       try { entry = JSON.parse(line); } catch { continue; }
       if (!entry || typeof entry !== "object") continue;
@@ -11884,12 +11912,16 @@ async function parseWorkbuddyIncremental({
       }
     }
 
-    let postStat = stat;
-    try { postStat = fssync.statSync(filePath); } catch {}
+    // size doubles as the resume offset AND the truncation detector
+    // (stat.size < prevSize restarts from zero), so it must be the
+    // complete-record boundary, not the post-read stat size. The identity
+    // fields come from the OPEN-time stat: a file rotated mid-parse must be
+    // seen as a new inode next run, or the old window's offset would resume
+    // inside the replacement file.
     fileOffsets[filePath] = {
-      size: postStat.size,
-      mtimeMs: postStat.mtimeMs,
-      ino: postStat.ino,
+      size: committedBytes,
+      mtimeMs: stat.mtimeMs,
+      ino: stat.ino,
     };
   }
 
@@ -19477,16 +19509,35 @@ async function parseCopilotIncremental({
     const startOffset = stat.size < prevSize || inodeChanged ? 0 : prevSize;
     if (stat.size <= startOffset) continue;
 
+    // Bound the read window to the size at open: bytes appended while this
+    // loop drains are left for the next run, so an appended-during-parse
+    // line is never replayed (the post-drain re-stat trick below used to
+    // exist for the same reason — committed offsets give it for free without
+    // ever committing past a half-written trailing line). Cursor discipline
+    // is the codex one: only LF-terminated lines (or a final unterminated
+    // line that already parses as complete JSON) advance the offset.
+    const endOffset = stat.size;
     let stream;
     try {
-      stream = fssync.createReadStream(filePath, { encoding: "utf8", start: startOffset });
+      stream = fssync.createReadStream(filePath, { start: startOffset, end: endOffset - 1 });
     } catch (_e) {
       continue;
     }
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-
-    for await (const line of rl) {
+    let scannedBytes = startOffset;
+    let committedBytes = startOffset;
+    for await (const record of physicalJsonlRecords(stream, { invalidUtf8: "record" })) {
+      scannedBytes += record.physicalBytes;
+      if (record.terminated) committedBytes = scannedBytes;
+      if (!record.utf8Valid) {
+        if (!record.terminated) break;
+        continue;
+      }
+      const line = record.line;
       if (!line || !line.trim()) continue;
+      if (!record.terminated) {
+        try { JSON.parse(line); } catch { break; }
+        committedBytes = scannedBytes;
+      }
       const skipLineHashes = migrationSkipLineHashes.get(filePath);
       if (skipLineHashes && skipLineHashes.size > 0) {
         const lineHash = copilotLineHash(line);
@@ -19497,28 +19548,28 @@ async function parseCopilotIncremental({
           continue;
         }
       }
-      let record;
+      let spanRecord;
       try {
-        record = JSON.parse(line);
+        spanRecord = JSON.parse(line);
       } catch (_e) {
         continue;
       }
       recordsProcessed++;
-      if (!isCopilotChatSpan(record)) continue;
+      if (!isCopilotChatSpan(spanRecord)) continue;
 
-      const attrs = record.attributes || {};
+      const attrs = spanRecord.attributes || {};
       // Dedup: CLI puts traceId/spanId at the top level; the Chat extension
       // file exporter writes LogRecord-shaped entries without either, but
       // gen_ai.response.id is per-LLM-call unique.
-      const dedupKey = getCopilotDedupKey(record, attrs);
+      const dedupKey = getCopilotDedupKey(spanRecord, attrs);
       if (dedupKey && seenIds.has(dedupKey)) continue;
-      const cliSpan = isCopilotV1ChatSpan(record);
+      const cliSpan = isCopilotV1ChatSpan(spanRecord);
       if (skipCliSpans && cliSpan) {
         if (dedupKey) seenIds.add(dedupKey);
         continue;
       }
 
-      const usage = extractCopilotOtelUsage(record);
+      const usage = extractCopilotOtelUsage(spanRecord);
       if (!usage) continue;
       if (usage.cliSpan && !usage.cliSessionId) usageClaimsComplete = false;
       const matchedStoreUsage =
@@ -19561,15 +19612,12 @@ async function parseCopilotIncremental({
       }
     }
 
-    // Re-stat after readline drains: file may have been appended during the
-    // parse loop. Without this, those new lines would be replayed next run
-    // (dedup catches records with traceId+spanId, but spans missing either
-    // would be double-counted).
-    let postStat = stat;
-    try {
-      postStat = fssync.statSync(filePath);
-    } catch (_e) {}
-    fileOffsets[filePath] = { size: postStat.size, mtimeMs: postStat.mtimeMs, ino: postStat.ino };
+    // size doubles as the resume offset AND the truncation detector
+    // (stat.size < prevSize restarts from zero). The identity fields come
+    // from the OPEN-time stat: a file rotated mid-parse must be seen as a
+    // new inode next run, or the old window's offset would resume inside
+    // the replacement file.
+    fileOffsets[filePath] = { size: committedBytes, mtimeMs: stat.mtimeMs, ino: stat.ino };
   }
 
   // Cap dedup set to last 10k IDs to bound state size

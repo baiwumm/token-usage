@@ -26,6 +26,9 @@ const {
   parseRolloutIncremental,
   parseClaudeIncremental,
   parseKimiIncremental,
+  parseWorkbuddyIncremental,
+  parseCodebuddyIncremental,
+  parseCopilotIncremental,
 } = require("../src/lib/rollout");
 
 let tmpDir;
@@ -237,4 +240,125 @@ test("kimi wire: a trailing partial line is not committed until complete", async
   });
   assert.equal(second.eventsAggregated, 1, "the completed line is counted exactly once");
   assert.equal(cursors.kimi.fileOffsets[file].size, Buffer.byteLength(completeLine + grownLine));
+});
+
+// ── workbuddy / codebuddy / copilot ────────────────────────────────────────
+// Same cursor discipline after the 2026-11-22 conversion: these readers used
+// to commit the post-drain stat size off a readline stream, so a sync racing
+// the producer's write permanently skipped the completed line.
+
+function workbuddyUsageLine({ id, tsMs, input, output }) {
+  return JSON.stringify({
+    timestamp: tsMs,
+    sessionId: "wb-session",
+    providerData: {
+      messageId: id,
+      model: "wb-tail-test",
+      rawUsage: { prompt_tokens: input, completion_tokens: output },
+    },
+  });
+}
+
+test("workbuddy wire: a trailing partial line is not committed until complete", async () => {
+  const queuePath = path.join(tmpDir, "queue.jsonl");
+  const file = path.join(tmpDir, "workbuddy.jsonl");
+  const completeLine = workbuddyUsageLine({ id: "wb_1", tsMs: 1763712000000, input: 10, output: 5 }) + "\n";
+  const partialLine = '{"timestamp":1763712060000,"providerData":{"messageId":"wb_2","rawUsage":{"prompt_tok';
+  fs.writeFileSync(file, completeLine + partialLine);
+
+  const cursors = { workbuddy: { seenIds: [], fileOffsets: {} } };
+  const first = await parseWorkbuddyIncremental({
+    projectFiles: [file],
+    cursors,
+    queuePath,
+    defaultModel: "wb-tail-test",
+  });
+  assert.equal(first.eventsAggregated, 1);
+  assert.equal(
+    cursors.workbuddy.fileOffsets[file].size,
+    Buffer.byteLength(completeLine),
+    "the committed size is the complete-record boundary, not the post-drain stat size",
+  );
+
+  const grownLine = workbuddyUsageLine({ id: "wb_2", tsMs: 1763712060000, input: 20, output: 8 }) + "\n";
+  fs.writeFileSync(file, completeLine + grownLine);
+  const second = await parseWorkbuddyIncremental({
+    projectFiles: [file],
+    cursors,
+    queuePath,
+    defaultModel: "wb-tail-test",
+  });
+  assert.equal(second.eventsAggregated, 1, "the completed line is counted exactly once");
+  assert.equal(cursors.workbuddy.fileOffsets[file].size, Buffer.byteLength(completeLine + grownLine));
+});
+
+function codebuddyUsageLine({ id, tsMs, input, output }) {
+  return JSON.stringify({
+    timestamp: tsMs,
+    sessionId: "cb-session",
+    providerData: {
+      messageId: id,
+      model: "cb-tail-test",
+      rawUsage: { prompt_tokens: input, completion_tokens: output },
+    },
+  });
+}
+
+test("codebuddy wire: a trailing partial line is not committed until complete", async () => {
+  const queuePath = path.join(tmpDir, "queue.jsonl");
+  const file = path.join(tmpDir, "session.jsonl");
+  const completeLine = codebuddyUsageLine({ id: "cb_1", tsMs: 1763712000000, input: 10, output: 5 }) + "\n";
+  const partialLine = '{"timestamp":1763712060000,"providerData":{"messageId":"cb_2","rawUsage":{"prompt_tok';
+  fs.writeFileSync(file, completeLine + partialLine);
+
+  const cursors = { codebuddy: { seenIds: [], fileOffsets: {} } };
+  const first = await parseCodebuddyIncremental({
+    projectFiles: [file],
+    cursors,
+    queuePath,
+    defaultModel: "cb-tail-test",
+  });
+  assert.equal(first.eventsAggregated, 1);
+  assert.equal(
+    cursors.codebuddy.fileOffsets[file].size,
+    Buffer.byteLength(completeLine),
+  );
+
+  const grownLine = codebuddyUsageLine({ id: "cb_2", tsMs: 1763712060000, input: 20, output: 8 }) + "\n";
+  fs.writeFileSync(file, completeLine + grownLine);
+  const second = await parseCodebuddyIncremental({
+    projectFiles: [file],
+    cursors,
+    queuePath,
+    defaultModel: "cb-tail-test",
+  });
+  assert.equal(second.eventsAggregated, 1, "the completed line is counted exactly once");
+  assert.equal(cursors.codebuddy.fileOffsets[file].size, Buffer.byteLength(completeLine + grownLine));
+});
+
+test("copilot otel: the read window is bounded and the cursor stops at the last complete record", async () => {
+  const queuePath = path.join(tmpDir, "queue.jsonl");
+  const file = path.join(tmpDir, "spans.jsonl");
+  // No usage-bearing spans here — the assertions target cursor semantics:
+  // zero events, yet the offset must still stop at the complete-record
+  // boundary instead of the post-drain stat size (the old re-stat trick
+  // committed straight past a half-written trailing line).
+  const completeLine = JSON.stringify({ traceId: "t1", name: "non-usage-record" }) + "\n";
+  const partialLine = '{"traceId":"t2","name":"half-writ';
+  fs.writeFileSync(file, completeLine + partialLine);
+
+  const cursors = { copilot: { seenIds: [], fileOffsets: {} } };
+  const first = await parseCopilotIncremental({ otelPaths: [file], cursors, queuePath });
+  assert.equal(first.eventsAggregated, 0);
+  assert.equal(
+    cursors.copilot.fileOffsets[file].size,
+    Buffer.byteLength(completeLine),
+    "cursor stops at the last LF-terminated record within the bounded window",
+  );
+
+  const grownLine = JSON.stringify({ traceId: "t2", name: "second-record" }) + "\n";
+  fs.writeFileSync(file, completeLine + grownLine);
+  const second = await parseCopilotIncremental({ otelPaths: [file], cursors, queuePath });
+  assert.equal(second.eventsAggregated, 0);
+  assert.equal(cursors.copilot.fileOffsets[file].size, Buffer.byteLength(completeLine + grownLine));
 });
