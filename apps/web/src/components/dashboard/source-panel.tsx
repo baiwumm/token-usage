@@ -144,8 +144,8 @@ export function SourcePanel({
               ) : null}
             </div>
             <Modal.Backdrop isOpen={allOpen} onOpenChange={setAllOpen}>
-              <Modal.Container scroll="inside" size="lg">
-                <Modal.Dialog className="max-h-[85vh]">
+              <Modal.Container scroll="inside">
+                <Modal.Dialog className="max-h-[85vh] w-[calc(100vw-1rem)] max-w-3xl">
                   <Modal.CloseTrigger aria-label={copy.cost.close} />
                   <Modal.Header>
                     <Modal.Heading>{copy.panels.sourcesTitle}</Modal.Heading>
