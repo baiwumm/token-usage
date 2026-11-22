@@ -20,17 +20,21 @@ Vercel 注销，**改回旧 base URL 的回滚路径不存在**；存量 CLI 安
    `apps/landing`。`20261114000000` 把公开名称收紧到 30 字符、新徽章默认折线。
 2. **配环境变量**：新增变量按 `docs/rewrite-plan.md` §5 与 `apps/web/.env.example` 补到
    Production 与 Preview 各一份。
-3. **部署**：main 出 Production（Vercel Git 集成）。`apps/web/vercel.json` 的 `ignoreCommand`
-   三段判定：①非 `main` 分支（`VERCEL_GIT_COMMIT_REF`）一律跳过——`landing-release`（EdgeOne
-   镜像分支，机制见 `deploy-landing.yml` 头注释）与 dependabot 分支不再触发 preview 构建；
-   ②`main` 上先验 `VERCEL_GIT_PREVIOUS_SHA` 可达——分支久未部署时基线 commit 不在浅克隆
-   历史里（`fatal: bad object`），不可达则继续构建（fail-safe，宁可多构建不漏部署）；
-   ③**本次推送整批提交**未触及 `apps/web`、根 `pnpm-lock.yaml` / `pnpm-workspace.yaml` /
+3. **部署**：main 出 Production（Vercel Git 集成）。preview 类部署（非 main 分支 push、
+   PR——含 `landing-release` EdgeOne 镜像分支，机制见 `deploy-landing.yml` 头注释，与
+   dependabot 分支）由 `apps/web/vercel.json` 的 `git.deploymentEnabled.preview: false`
+   整体关闭，不再产生 preview 构建与红叉。`ignoreCommand` 两段判定：①先验
+   `VERCEL_GIT_PREVIOUS_SHA` 可达——分支久未部署时基线 commit 不在浅克隆历史里
+   （`fatal: bad object`），不可达则继续构建（fail-safe，宁可多构建不漏部署）；
+   ②**本次推送整批提交**未触及 `apps/web`、根 `pnpm-lock.yaml` / `pnpm-workspace.yaml` /
    `package.json` / `.npmrc` 时跳过构建（Production 与 `token-usage-demo` 共用 Root
    `apps/web`，一并生效；Vercel 显示 Skipped）。diff 基线是 Vercel 注入的
    `VERCEL_GIT_PREVIOUS_SHA`（推送前分支顶端），env 缺失回退 `HEAD^`——单提交推送两者等价。
    依赖升级仍需重建，所以根 lockfile 与安装配置变化不会被跳过。
    删除该字段即恢复每次提交全量构建。控制台手动 Redeploy 不走 ignoreCommand，必触发构建。
+   **坑**：`ignoreCommand` 里不能写 `[`/`if` 等 shell test 结构——Vercel 执行器下部署会在
+   build 前阶段直接 Error（无 build 日志、duration 空），2026-11-22 两版语法复现，纯 git
+   命令链无此问题。
 4. **冒烟**（下节），全绿后再逐台升级采集机。
 
 采集机升级 CLI 后**必须**跑一次 `tokenusage init --yes --no-integrations --no-open` 刷新运行时
