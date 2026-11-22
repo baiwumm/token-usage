@@ -77,7 +77,8 @@ test("doctor: a ready copy reports its version", async () => {
     );
     const check = await runtimeCopyCheck(trackerDir);
     assert.equal(check.status, "ok");
-    assert.match(check.detail, new RegExp(`v${CLI_VERSION.replace(/\./g, "\\.")}`));
+    const escapedVersion = CLI_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    assert.match(check.detail, new RegExp(`v${escapedVersion}`));
     assert.equal(check.meta.version, CLI_VERSION);
   });
 });

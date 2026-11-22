@@ -15,15 +15,22 @@ export function randomHex(bytes = 32): string {
 }
 
 export function randomUserCode(): string {
-  const bytes = randomBytes(8);
-  let output = "";
+  // Rejection sampling: the 31-char alphabet does not divide 256, so a bare
+  // modulo favours the first 8 letters. Bytes >= 31 * 8 are redrawn.
+  const limit = 256 - (256 % USER_CODE_ALPHABET.length);
+  const chars: string[] = [];
 
-  for (let index = 0; index < 8; index++) {
-    output += USER_CODE_ALPHABET[bytes[index] % USER_CODE_ALPHABET.length];
-    if (index === 3) output += "-";
+  while (chars.length < 8) {
+    for (const byte of randomBytes(8 - chars.length)) {
+      if (byte >= limit) continue;
+      chars.push(USER_CODE_ALPHABET[byte % USER_CODE_ALPHABET.length]);
+      if (chars.length === 8) break;
+    }
   }
 
-  return output;
+  const code = chars.join("");
+
+  return `${code.slice(0, 4)}-${code.slice(4)}`;
 }
 
 export function isValidUserCode(value: unknown): boolean {

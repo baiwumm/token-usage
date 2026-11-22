@@ -67,11 +67,18 @@ function loadEnv() {
 
 function generateTempPassword() {
   // 20 chars from an unambiguous alphabet, prefixed so password policy
-  // minimums (length / class mix) never reject it.
+  // minimums (length / class mix) never reject it. Rejection sampling: the
+  // 54-char alphabet does not divide 256, so bytes >= 54 * 4 are redrawn.
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  const bytes = crypto.randomBytes(20);
+  const limit = 256 - (256 % alphabet.length);
   let suffix = "";
-  for (const byte of bytes) suffix += alphabet[byte % alphabet.length];
+  while (suffix.length < 20) {
+    for (const byte of crypto.randomBytes(20 - suffix.length)) {
+      if (byte >= limit) continue;
+      suffix += alphabet[byte % alphabet.length];
+      if (suffix.length === 20) break;
+    }
+  }
   return `tu-${suffix}`;
 }
 
