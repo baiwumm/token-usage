@@ -233,6 +233,7 @@ export class FakeSupabase {
     this.server = createServer((req, res) => {
       void this.handle(req, res).catch((error) => {
         res.statusCode = 500;
+        res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify({ message: String(error) }));
       });
     });
