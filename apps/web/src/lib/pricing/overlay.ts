@@ -27,8 +27,6 @@ const MAX_NOTE = 2000;
 const MAX_ENTRIES = 2000;
 const SECTIONS = ["exact", "alias", "fuzzy", "source_exact"] as const;
 
-type Section = (typeof SECTIONS)[number];
-
 function isFiniteNonNegative(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
