@@ -45,15 +45,15 @@
 		"@internationalized/date": "3.12.4",
 		"@number-flow/react": "^0.6.2",
 		"@supabase/ssr": "^0.12.7",
-		"@supabase/supabase-js": "^2.119.0",
-		"intl-messageformat": "12.1.5",
+		"@supabase/supabase-js": "^2.119.2",
+		"intl-messageformat": "12.2.0",
 		"motion": "^14.14.0",
 		"next": "16.4.6",
 		"next-themes": "0.4.6",
 		"react": "19.3.1",
 		"react-dom": "19.3.1",
 		"react-easy-crop": "6.2.5",
-		"recharts": "^3.10.1",
+		"recharts": "^3.11.0",
 		"zustand": "^5.1.0"
 	},
 	"devDependencies": {
@@ -80,7 +80,7 @@
 		"prettier": "3.10.1",
 		"tailwindcss": "4.3.5",
 		"typescript": "5.9.3",
-		"vitest": "^5.1.0"
+		"vitest": "^5.1.1"
 	},
 	"packageManager": "pnpm@12.11.2"
 }
