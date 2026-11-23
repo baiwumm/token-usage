@@ -41,21 +41,21 @@
 		"@heroui/react": "3.2.7",
 		"@heroui/styles": "3.2.7",
 		"@number-flow/react": "^0.6.2",
-		"@tauri-apps/api": "2.12.4",
+		"@tauri-apps/api": "2.12.5",
 		"@tauri-apps/plugin-autostart": "2.7.0",
 		"@tauri-apps/plugin-notification": "2.8.1",
 		"@tauri-apps/plugin-process": "2.4.0",
 		"@tauri-apps/plugin-updater": "2.14.1",
 		"react": "19.3.1",
 		"react-dom": "19.3.1",
-		"recharts": "3.10.1"
+		"recharts": "3.11.0"
 	},
 	"devDependencies": {
 		"@eslint/compat": "2.1.1",
 		"@eslint/eslintrc": "3.3.7",
 		"@eslint/js": "10.0.1",
 		"@tailwindcss/postcss": "4.3.5",
-		"@tauri-apps/cli": "2.12.4",
+		"@tauri-apps/cli": "2.12.6",
 		"@types/node": "26.6.6",
 		"@types/react": "19.3.0",
 		"@types/react-dom": "19.3.0",
@@ -77,7 +77,7 @@
 		"tokenusage-cli": "workspace:*",
 		"typescript": "5.9.3",
 		"vite": "8.3.8",
-		"vitest": "^5.1.0"
+		"vitest": "^5.1.1"
 	},
 	"packageManager": "pnpm@12.11.2"
 }
