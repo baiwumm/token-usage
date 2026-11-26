@@ -205,7 +205,7 @@ export function normalizeSessionSource(value: unknown): string {
 }
 
 export function isAccountLevelSessionSource(source: string): boolean {
-  return source === "cursor" || source === "trae-cn";
+  return source === "cursor" || source === "trae-cn" || source === "freebuff";
 }
 
 // Privacy: only the basename survives. Both separators count so a Windows

@@ -21,9 +21,9 @@ const { basenameKey } = require("./project-key");
 
 const INGEST_SLUG = "token-usage-ingest";
 const MAX_SESSIONS_PER_BATCH = 200;
-// Contract: source is trimmed + lowercased; these two are account-level and
+// Contract: source is trimmed + lowercased; these are account-level and
 // the server skips them wholesale — the CLI just never uploads them.
-const ACCOUNT_LEVEL_SOURCES = new Set(["cursor", "trae-cn"]);
+const ACCOUNT_LEVEL_SOURCES = new Set(["cursor", "trae-cn", "freebuff"]);
 // Keep the watermark map bounded: sessions older than the newest N never
 // re-upload anyway (their ended_at watermark only moves forward).
 const WATERMARK_MAX_ENTRIES = 5000;

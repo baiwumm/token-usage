@@ -202,7 +202,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       resetHidden: "恢复显示全部来源",
       devicesTitle: "设备",
       devicesHint: "点击设备可只看该设备的数据。",
-      sharedNote: "cursor / trae-cn 为账户级来源，跨设备已去重。",
+      sharedNote: "cursor / trae-cn / freebuff 为账户级来源，跨设备已去重。",
       lastReport: "最后上报",
       never: "从未",
       selected: "已筛选",
@@ -346,7 +346,7 @@ export const DASHBOARD_COPY: Record<"zh" | "en", DashboardCopy> = {
       devicesTitle: "Devices",
       devicesHint: "Select a device to filter the dashboard.",
       sharedNote:
-        "cursor / trae-cn are account-level sources, deduped across devices.",
+        "cursor / trae-cn / freebuff are account-level sources, deduped across devices.",
       lastReport: "Last report",
       never: "never",
       selected: "Filtered",

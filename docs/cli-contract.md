@@ -188,7 +188,7 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 
 | 字段 | 说明 |
 |---|---|
-| `hour_start` | 可解析的 ISO 时间；**不要求整点对齐**——采集端的半小时桶（`:00` / `:30`）是既有合法形态（2026-10-27 注明），读取侧按 tz 日键聚合，非对齐起点不影响对账 |
+| `hour_start` | 可解析的 ISO 时间；**不要求整点对齐**——采集端的半小时桶（`:00` / `:30`）是既有合法形态（2026-10-27 注明），freebuff 的日总量桶（`T00:00:00.000Z`，2026-11-26 注明）同为合法形态；读取侧按 tz 日键聚合，非对齐起点不影响对账 |
 | `source` | trim + 转小写，≤100 字符，空则 `"unknown"` |
 | `model` | trim，≤200 字符，空则 `"unknown"` |
 | `input_tokens` `cached_input_tokens` `cache_creation_input_tokens` `output_tokens` `reasoning_output_tokens` `total_tokens` | 非负整数 |
@@ -203,7 +203,7 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 | 字段 | 说明 |
 |---|---|
 | `session_id` | trim，非空 ≤256，不含 `/`、`\` 与 Unicode Cc 控制字符（防止把路径当会话 ID） |
-| `source` | trim + 转小写，≤100，空则 `"unknown"`；`cursor` / `trae-cn` 为账户级来源，整条跳过（不校验其余字段、不落库、计入 `sessions_skipped`） |
+| `source` | trim + 转小写，≤100，空则 `"unknown"`；`cursor` / `trae-cn` / `freebuff` 为账户级来源，整条跳过（不校验其余字段、不落库、计入 `sessions_skipped`） |
 | `started_at` `ended_at` | 可解析的 ISO 时间；`ended_at >= started_at` |
 | `project_key` | 可选；服务端去掉尾部路径分隔符后取 basename（`/` 与 `\` 均视为分隔符）、去控制字符、截断 120；空、`.`、`..` 均记为 `null` |
 | `input_tokens` `cached_input_tokens` `cache_creation_input_tokens` `output_tokens` `reasoning_output_tokens` `total_tokens` | 非负安全整数；`total_tokens` 必须等于 `input + cached_input + cache_creation + output`（`reasoning_output_tokens` 单列，不计入 total） |
@@ -229,7 +229,7 @@ CLI 轮询配对结果。请求体：`{ "device_code": string }`。
 - 全局 1 MiB 请求体上限仍然适用（§1.2）；`sessions` 的 200 条上限与体积上限相互独立，超体积按 `413` 拒绝，CLI 需分批上报。
 - 请求内去重：用量桶按 `hour_start|source|model|project_key` 分组（2026-11-03 契约 v2 起含 project_key；缺省/未归因按空串参与分组），**保留 `total_tokens` 最大的一条**；会话按 `source|session_id` 分组，**保留 `ended_at` 最大的一条**（同刻取 `total_tokens` 最大，再同取数组靠后者）；project 条目**先逐条校验、再去重**：在合格条目中按清洗后的 `project_key` 分组，**保留数组中靠后的一条**（被覆盖的计入 `projects_skipped`；不合规的靠后条目不会顶掉合格的靠前条目）。
 - 落库 upsert 键：用量桶 `(user_id, device_id, hour_start, source, model, project_key)`（2026-11-03 契约 v2 起含 project_key，操作者放行；**桶粒度 last-wins**，这是全系统对账基线（本地 `queue.jsonl` last-wins 总数）的根基）。未归因桶的 `project_key` 在 `token_usage_hourly` 落为**空串 `''`**（主键列不可为 NULL 的工程约束；`token_sessions.project_key` 保持 `null`，两表空值形态不同属有意）。向后兼容承诺：旧客户端不携带 `project_key` 时全部落入未归因桶，键的其余部分与去重/响应行为逐字不变。
-- **客户端归因覆盖（2026-11-03 批次 3）**：CLI 对能可靠取得项目路径的来源，在 hourly 行写入 `project_key`。写法是**同键拆行**：同一 `(source, model, hour)` 下按项目各出一条行，再加一条 `project_key: ''` 的「未归因余量」行（聚合值减去各项目桶，逐列 clamp 到 0），拆行合计恒等于原聚合值——不丢行、不改数值、不重复计。项目桶按 `(project, source, model, hour)` 记账；没有项目信息的用量一律留在空串桶。已覆盖（项目解析与增量解析在同一遍、模型可配对）：`claude`、`codex`、`opencode` / `zcode`（含 SQLite 增量）、`qoder` / `qoder-cn`、`grok`、`devin`、`droid`、`antigravity`、`command-code`、`omp`/`omo` 系列、`workbuddy` / `workbuddy-ai`（2026-11-06 CLI 0.5.0 起：项目 pass 与总量 pass 使用**同一模型表达式**，项目桶因此可参与同键拆行；升级后第一次同步只重扫 workbuddy 的项目游标以回填历史，总量游标与对账基线不变）。**未归因**：`gemini`（独立扫描无逐事件模型）、`dsh`（解析器只有用量增量，不建项目桶）、`kimi`（尚未建立项目桶）。**明确不做**：`cursor`、`trae-cn`、`kiro` —— 三者按估算/账户口径产出用量，没有可对应的项目路径，写任何推断值都会污染项目口径。
+- **客户端归因覆盖（2026-11-03 批次 3）**：CLI 对能可靠取得项目路径的来源，在 hourly 行写入 `project_key`。写法是**同键拆行**：同一 `(source, model, hour)` 下按项目各出一条行，再加一条 `project_key: ''` 的「未归因余量」行（聚合值减去各项目桶，逐列 clamp 到 0），拆行合计恒等于原聚合值——不丢行、不改数值、不重复计。项目桶按 `(project, source, model, hour)` 记账；没有项目信息的用量一律留在空串桶。已覆盖（项目解析与增量解析在同一遍、模型可配对）：`claude`、`codex`、`opencode` / `zcode`（含 SQLite 增量）、`qoder` / `qoder-cn`、`grok`、`devin`、`droid`、`antigravity`、`command-code`、`omp`/`omo` 系列、`workbuddy` / `workbuddy-ai`（2026-11-06 CLI 0.5.0 起：项目 pass 与总量 pass 使用**同一模型表达式**，项目桶因此可参与同键拆行；升级后第一次同步只重扫 workbuddy 的项目游标以回填历史，总量游标与对账基线不变）。**未归因**：`gemini`（独立扫描无逐事件模型）、`dsh`（解析器只有用量增量，不建项目桶）、`kimi`（尚未建立项目桶）。**明确不做**：`cursor`、`trae-cn`、`freebuff`、`kiro` —— 前三者按账户/估算口径产出用量（freebuff 是无项目路径的账户级日总量），没有可对应的项目路径，写任何推断值都会污染项目口径；`kiro` 为字符估算。
 - 校验先于任何写入：任一条非法则整批拒绝（`400 {"error":"Invalid usage bucket"}` / `"Invalid account session state"` / `"Invalid session"`）。**例外**：账户级来源的会话按上表整条跳过，不触发 400；旧/等值 `ended_at` 快照在写入阶段跳过。
 - `account_session_states` 条目：`source` 当前**必须是 `"trae-cn"`**，`session_id` 非空 ≤256，`total_tokens` 必须等于 `input + cached_input + cache_creation + output`；按 `user_id + source + session_id` upsert。
 - 会话落库键 `(user_id, device_id, source, session_id)`；**last-wins 以 `ended_at` 严格大于现有值为准**。迁移提供原子 RPC `token_upsert_sessions` 做条件 upsert；旧快照或等值重放只计 `sessions_skipped`，不得覆盖新快照。
@@ -293,7 +293,9 @@ App Router 的动态段必须独占整段，`token-usage-account-[series]` 形�
 | `sessions` | `from`,`to` 必填（ISO 瞬时，按 `ended_at` 落在 `[from,to)`）；`device_id`、`source`、`q`（项目标签子串）、`limit`(1–200，默认 50)、`offset`、`format`（`json` 默认 / `csv`，见下） | `{from,to,total,limit,offset,totals:{sessions,total_tokens,billable_total_tokens,total_cost_usd,credits,duration_ms},facets:{sources:[{source,sessions}],devices:[{device_id,device_name,sessions}]},sessions:[{device_id,device_name,session_id,source,project_key,started_at,ended_at,duration_ms,input_tokens,cached_input_tokens,cache_creation_input_tokens,output_tokens,reasoning_output_tokens,total_tokens,billable_total_tokens,credits,total_cost_usd,models:[{model,total_tokens,total_cost_usd,share}]}]}`；按 `ended_at` 倒序（同刻按 `source`、`session_id` 升序）；`format=csv` 时返回 CSV 附件（见下） |
 | `sync-runs` | `from`,`to` 必填（ISO 瞬时，按 `started_at` 落在 `[from,to)`）；`device_id`（UUID）、`trigger`、`result`（枚举同 §2.11）、`limit`(1–200，默认 50)、`offset` | `{from,to,total,limit,offset,totals:{runs,empty_runs,tokens_ingested,sessions_uploaded,duration_ms},runs:[{device_id,device_name,run_id,started_at,ended_at,duration_ms,trigger,result,error_code,empty,parsed_files,buckets_uploaded,tokens_ingested,sessions_uploaded,sessions_skipped,queue_bytes,cli_version,os}]}`；按 `started_at` 倒序（同刻按 `run_id` 升序） |
 
-聚合语义（移植时必须保持）：`source ∈ {cursor, trae-cn}` 是**账户级来源**——cursor 桶跨设备去重（同键取 total 最大/updated_at 最新/device_id 最小者），trae-cn 由会话状态聚合而来且忽略设备状态；带 `device_id` 过滤时账户级来源**整段剔除**；已吊销设备的机器级桶**不进入账户聚合**（行保留在库，重新配对后回来）；成本按读取时定价引擎计算（grok/cline 用 provider 上报值，未知模型/订阅/本地推理计 0）。
+聚合语义（移植时必须保持）：`source ∈ {cursor, trae-cn, freebuff}` 是**账户级来源**——cursor 桶跨设备去重（同键取 total 最大/updated_at 最新/device_id 最小者），trae-cn 由会话状态聚合而来且忽略设备状态，freebuff 与 cursor 同式（账户全域日总量桶，无会话快照，跨设备整行 MAX 去重，见下「freebuff 账户级机制」）；带 `device_id` 过滤时账户级来源**整段剔除**；已吊销设备的机器级桶**不进入账户聚合**（行保留在库，重新配对后回来）；成本按读取时定价引擎计算（grok/cline 用 provider 上报值，未知模型/订阅/本地推理计 0）。
+
+**freebuff 账户级机制（2026-11-26 新增，opt-in）**：Freebuff CLI 本地只有会话客户端投影、无任何 token 消耗记录，用量唯一出口是 web 控制台 `GET https://freebuff.com/api/web/usage-summary`（Bearer = CLI 自身钥匙串令牌，Windows 凭据管理器 `freebuff-cli/<credentials.json 路径>` 条目）。CLI 以 `TOKENUSAGE_FREEBUFF_USAGE=1` 显式开启后按日拉取，把 `lifetime.days[]`（`{date, tokens}`，账户本地时区日键，滚动 365 天窗）逐日写成一桶：`hour_start = <date>T00:00:00.000Z`、`model = "unknown"`（接口无逐模型/逐会话 token 拆分，sessionsByModel 只有会话数）、六元组只有 `input_tokens = 日总量`（其余四项 0，恒等式成立；接口不提供 output/cache 拆分，按 recent 比例拆分属于估算，此来源只收精确值）、`conversation_count = 0`（无逐日会话数）、`total_cost_usd = 0`（lifetime.costUsd 是「省了多少钱」营销口径，不是支出，不导入）。**变更日才追加**（与 `cursors.freebuff.days` 上次排队值 diff），窗口外的旧日**永不清零**（缺席≠删除，同 trae-cn 语义）；多台设备同账号轮询产出相同行，靠账户级整行 MAX 去重收敛。凭据缺失（未装/未登录/钥匙串读不到）→ 探测失败静默跳过、零请求；401/403 → 重读钥匙串重试一次，再失败跳过本源且不动既有数据。
 
 **credits 增量（2026-10-31）**：`daily` / `hourly` / `monthly` 行与 `model-breakdown` 的
 `totals` 追加 `credits` 数字字段（§2.4 的可选字段透传，独立维度，不参与 token/成本聚合），
@@ -306,7 +308,7 @@ upsert 键的一部分，存储保持采集原串。
 
 Devices 序列语义（2026-10-28 增量）：`default_device_name` 是 §2.2 签发时写入 `token_devices.default_device_name` 的**创建期名称快照**（`<主机名> #<machine_id 前 8 位>`，含重名退避后缀），此后任何改名都不再更新它；该列可空，缺失时响应里为 `null`。设置页的「恢复默认名称」= 客户端把本字段原值作为 `device_name` 提交给 §2.8，**不新增写接口**；重名由 §2.8 的 `409 device_name_taken` 承担。
 
-Sessions 聚合语义（2026-10-25 新增）：仅设备级来源，`cursor` / `trae-cn` 永不出现；已吊销设备的会话行保留在库但**整段剔除**；`total` 是筛选全集计数，`totals` 是筛选全集汇总而非当前页；`billable_total_tokens` 为 `null` 时按 `total_tokens` 计入；`total_cost_usd` 读取时按定价引擎逐模型计算后求和（未知模型计 0），所有层级（`totals` / 会话 / 模型）均为固定 6 位小数字符串；`duration_ms = ended_at - started_at`（毫秒非负整数，`totals.duration_ms` 为筛选全集求和）；`models[].share = model.total_tokens / session.total_tokens`（0–1，保留 4 位小数；会话 total 为 0 时记 0）；跨窗口长会话按 `ended_at` 归属单一窗口，不按天切分（v1 无会话内桶）。`facets.sources` 基于 `from/to` + `device_id` + `q`（忽略 `source`），`facets.devices` 基于 `from/to` + `source` + `q`（忽略 `device_id`）；两者均剔除吊销设备与账户级来源，按 `sessions` 降序，供筛选下拉使用，不受 `limit` / `offset` 影响。参数：`from` / `to` 缺失或不可解析 → `400 {"error":"Missing from/to"}`；`from > to` → `400 {"error":"Invalid from/to"}`；窗口 >1095 天时把 `from` 钳制到 `to - 1095d`；`device_id` 非 UUID → `400 {"error":"Invalid device_id"}`；`source` trim + 转小写、≤100，`cursor` / `trae-cn` 按无结果处理（不 400）；`limit` 非数字按 50、钳制 1–200，`offset` 非数字或负数按 0；`q` trim、≤120、大小写不敏感子串，`%` / `_` / `\` 作为字面量转义。
+Sessions 聚合语义（2026-10-25 新增）：仅设备级来源，`cursor` / `trae-cn` / `freebuff` 永不出现；已吊销设备的会话行保留在库但**整段剔除**；`total` 是筛选全集计数，`totals` 是筛选全集汇总而非当前页；`billable_total_tokens` 为 `null` 时按 `total_tokens` 计入；`total_cost_usd` 读取时按定价引擎逐模型计算后求和（未知模型计 0），所有层级（`totals` / 会话 / 模型）均为固定 6 位小数字符串；`duration_ms = ended_at - started_at`（毫秒非负整数，`totals.duration_ms` 为筛选全集求和）；`models[].share = model.total_tokens / session.total_tokens`（0–1，保留 4 位小数；会话 total 为 0 时记 0）；跨窗口长会话按 `ended_at` 归属单一窗口，不按天切分（v1 无会话内桶）。`facets.sources` 基于 `from/to` + `device_id` + `q`（忽略 `source`），`facets.devices` 基于 `from/to` + `source` + `q`（忽略 `device_id`）；两者均剔除吊销设备与账户级来源，按 `sessions` 降序，供筛选下拉使用，不受 `limit` / `offset` 影响。参数：`from` / `to` 缺失或不可解析 → `400 {"error":"Missing from/to"}`；`from > to` → `400 {"error":"Invalid from/to"}`；窗口 >1095 天时把 `from` 钳制到 `to - 1095d`；`device_id` 非 UUID → `400 {"error":"Invalid device_id"}`；`source` trim + 转小写、≤100，`cursor` / `trae-cn` / `freebuff` 按无结果处理（不 400）；`limit` 非数字按 50、钳制 1–200，`offset` 非数字或负数按 0；`q` trim、≤120、大小写不敏感子串，`%` / `_` / `\` 作为字面量转义。
 
 **Sessions CSV 导出（2026-11-01 增量，Dashboard 面）**：`format=csv` 时响应改为
 `text/csv; charset=utf-8` 附件（`Content-Disposition: attachment; filename="token-usage-sessions-<from YYYYMMDD>-<to YYYYMMDD>.csv"`），
@@ -600,7 +602,7 @@ Dashboard 档，随 UI 版本可演进（变更需回写本文并同步前端）
 4. 令牌只存 sha256，明文仅签发响应一次；吊销即时生效。
 5. 错误信封 `{error}` 与 2.1–2.10 列出的全部稳定错误码。
 6. 响应字段名与形态（含 `total_cost_usd` 字符串 6dp、`streak_days:0`、`upload_scope:"private"`、Dashboard `models` 截断 24、Sessions `models` ≤32 等细节）。
-7. 账户级来源（cursor/trae-cn）的去重与"已吊销设备退出聚合"的规则。
+7. 账户级来源（cursor/trae-cn/freebuff）的去重与"已吊销设备退出聚合"的规则。
 8. CORS 行为、1 MiB 上限、`Cache-Control: no-store`、405/413 行为。
 9. ingest `sessions` 的 ≤200 条上限、字段白名单、`total = input + cached + cache_creation + output`、模型求和校验、账户级来源整条跳过、`project_key` 仅 basename、`session_id` 拒绝路径分隔符。
 10. `token_sessions` upsert 键 `(user_id, device_id, source, session_id)` 与 `ended_at` 严格 last-wins；旧/等值快照只计 `sessions_skipped`；请求内同键保留 `ended_at` 最大的一条。

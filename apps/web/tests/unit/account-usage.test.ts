@@ -113,6 +113,21 @@ describe("canonicalizeUsage", () => {
     expect(canonical[0].device_id).toBe("b");
   });
 
+  it("dedupes freebuff day-total rows across devices like cursor", () => {
+    const canonical = canonicalizeUsage(
+      [
+        hourlyRow({ source: "freebuff", device_id: "a", total_tokens: 500, updated_at: "2026-10-21T06:00:00.000Z" }),
+        hourlyRow({ source: "freebuff", device_id: "b", total_tokens: 700, updated_at: "2026-10-21T06:30:00.000Z" }),
+      ],
+      [],
+      null,
+    );
+    // Account-wide totals fetched by two machines: the larger observation wins.
+    expect(canonical).toHaveLength(1);
+    expect(canonical[0].device_id).toBe("b");
+    expect(canonical[0].total_tokens).toBe(700);
+  });
+
   it("machine rows of revoked devices drop out; cursor/trae-cn stay", () => {
     const active = new Set(["device-a"]);
     const canonical = canonicalizeUsage(
@@ -120,12 +135,13 @@ describe("canonicalizeUsage", () => {
         hourlyRow({ device_id: "device-a", source: "codex" }),
         hourlyRow({ device_id: "device-revoked", source: "codex", total_tokens: 11111 }),
         hourlyRow({ source: "cursor", device_id: "device-revoked", total_tokens: 900 }),
+        hourlyRow({ source: "freebuff", device_id: "device-revoked", total_tokens: 500 }),
       ],
       [SESSION_STATE],
       active,
     );
     const sources = canonical.map((r) => r.source).sort();
-    expect(sources).toEqual(["codex", "cursor", "trae-cn"]);
+    expect(sources).toEqual(["codex", "cursor", "freebuff", "trae-cn"]);
     expect(canonical.find((r) => r.source === "codex")?.total_tokens).toBe(150);
   });
 });

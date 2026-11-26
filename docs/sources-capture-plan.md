@@ -22,6 +22,7 @@
 | P1 | `credits` 可选字段全链路（浮点，如 0.642） | 契约 §2.4 + §3 语义；`ingest-sanitize.js` 清洗；迁移 `20261031000000`；`normalize.ts` 解析（缺省 0，缺失即被丢弃） |
 | P2 | Sessions 会话级 credits + `credits_ingested` 遥测 + 模型名大小写归一 | 迁移 `20261031000003` / `20261031000001`；RPC `token_upsert_sessions` 替换；读侧按 `lower(model)` 分组 |
 | 上游对齐 | Cursor CSV 准入与 userId 候选、Qoder credits/准入/时间戳、Trae CN app dirs、文档漂移 | `cursor-config.js`、`qoder-limits.js`、`qoder-*` 解析器；零契约 / 零 DB 变更 |
+| freebuff | 账户级日总量 API 接入（opt-in `TOKENUSAGE_FREEBUFF_USAGE=1`）：usage-summary 钥匙串令牌通道、`lifetime.days[]` → 日桶（model=unknown、input=日总量、变更日追加、窗口外不清零）、账户级语义全链路（ingest 会话跳过 / 整行 MAX 去重 / Sessions 永排 / device 过滤剔除） | `freebuff-config.js`、`freebuff-usage.js`、`sync.js` 闸门、`session-upload.js` 账户级集合、web `ACCOUNT_LEVEL_SOURCES` 等 8 处判定点；迁移 `20261126000000`（token_sessions CHECK 扩 freebuff）；契约 §聚合语义「freebuff 账户级机制」、audit §4#7 改判 |
 
 已明确**不做**：积分 × 系数换 token 入库；给 cursor 加探测行（未安装）；kiro credits sidecar 入桶。
 

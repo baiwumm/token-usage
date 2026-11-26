@@ -9,9 +9,10 @@
 // exactly like the page's fetchProjects switch; a `caliber` query parameter
 // overrides it for tests and one-off probes.
 //   - sessions: token_sessions rows (loadSessionRows), ended_at day keys,
-//     revoked devices and cursor / trae-cn sources excluded, cost re-estimated
-//     per model entry with computeRowCost (the same SESSION_COST_KEYS logic as
-//     projects.ts). conversation_count = number of session rows.
+//     revoked devices and cursor / trae-cn / freebuff sources excluded, cost
+//     re-estimated per model entry with computeRowCost (the same
+//     SESSION_COST_KEYS logic as projects.ts). conversation_count = number of
+//     session rows.
 //   - hourly: canonicalRows (loadAccountUsage), hour_start day keys and the
 //     absolute [from, to) instant window, revoked devices already filtered by
 //     canonicalizeUsage, cost = computeRowCost(row) at read time.
@@ -221,7 +222,11 @@ interface DetailRow {
 }
 
 function isAccountSource(rawSource: string): boolean {
-  return rawSource === "cursor" || rawSource === "trae-cn";
+  return (
+    rawSource === "cursor" ||
+    rawSource === "trae-cn" ||
+    rawSource === "freebuff"
+  );
 }
 
 async function collectSessionRows(

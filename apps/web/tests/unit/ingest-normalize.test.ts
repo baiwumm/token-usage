@@ -280,6 +280,7 @@ describe("normalizeSessionSource", () => {
   it("recognizes account-level sources", () => {
     expect(isAccountLevelSessionSource("cursor")).toBe(true);
     expect(isAccountLevelSessionSource("trae-cn")).toBe(true);
+    expect(isAccountLevelSessionSource("freebuff")).toBe(true);
     expect(isAccountLevelSessionSource("codex")).toBe(false);
   });
 });

@@ -18,7 +18,7 @@ import {
 } from "@/lib/pricing";
 import { ModelDisplayName, modelGroupKey } from "@/lib/model-names";
 
-export const ACCOUNT_LEVEL_SOURCES = new Set(["cursor", "trae-cn"]);
+export const ACCOUNT_LEVEL_SOURCES = new Set(["cursor", "trae-cn", "freebuff"]);
 
 export const MAX_RANGE_DAYS = 1095; // Same 3-year clamp as the reference daily series.
 const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;

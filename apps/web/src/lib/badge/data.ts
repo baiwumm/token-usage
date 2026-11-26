@@ -168,7 +168,8 @@ function visibleSessions(sessions: RestRow[], devices: RestRow[]): RestRow[] {
     return (
       active.has(String(row.device_id ?? "")) &&
       source !== "cursor" &&
-      source !== "trae-cn"
+      source !== "trae-cn" &&
+      source !== "freebuff"
     );
   });
 }

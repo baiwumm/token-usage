@@ -651,7 +651,7 @@ describe("series: sessions", () => {
     expect(badDevice.status).toBe(400);
     expect(await badDevice.json()).toEqual({ error: "Invalid device_id" });
 
-    for (const source of ["cursor", "trae-cn", "CURSOR"]) {
+    for (const source of ["cursor", "trae-cn", "freebuff", "CURSOR"]) {
       const res = await series("sessions", sessionQuery({ source }));
       expect(res.status).toBe(200);
       const body = await res.json();

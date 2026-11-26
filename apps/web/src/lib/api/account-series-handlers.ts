@@ -636,7 +636,7 @@ async function sessions({ url, principal }: SeriesArgs) {
 
   // Account-level sources never appear in Sessions (§2.7): an explicit filter
   // for them is an empty result, not an error.
-  if (source === "cursor" || source === "trae-cn") {
+  if (source === "cursor" || source === "trae-cn" || source === "freebuff") {
     return wantsCsv
       ? sessionsCsvResponse([], from, to)
       : jsonResponse(200, emptyPayload);
@@ -664,7 +664,12 @@ async function sessions({ url, principal }: SeriesArgs) {
 
     // Defense in depth: account-level sources are rejected at ingest and by a
     // table check, but the read face must never expose them either (§2.7).
-    if (rowSource === "cursor" || rowSource === "trae-cn") continue;
+    if (
+      rowSource === "cursor" ||
+      rowSource === "trae-cn" ||
+      rowSource === "freebuff"
+    )
+      continue;
     const startedAt = String(row.started_at ?? "");
     const endedAt = String(row.ended_at ?? "");
     const startedMs = Date.parse(startedAt);

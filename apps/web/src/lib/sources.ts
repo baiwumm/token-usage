@@ -85,6 +85,7 @@ const SOURCE_LABELS: Record<string, string> = {
   unsloth: "Unsloth",
   zed: "Zed",
   minimax: "MiniMax",
+  freebuff: "Freebuff",
 };
 
 /** Logo file under public/brand-logos per canonical id. */

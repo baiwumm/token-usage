@@ -4,9 +4,9 @@
 // NOT part of the CLI contract — docs/cli-contract.md stays untouched.
 //
 // Coverage caveats (mirrored by the in-page scope note): only session-sidecar
-// sources land in token_sessions; account-level sources (cursor / trae-cn)
-// never appear; costs are read-time list-price estimates, identical to the
-// sessions series' per-model pricing.
+// sources land in token_sessions; account-level sources (cursor / trae-cn /
+// freebuff) never appear; costs are read-time list-price estimates, identical
+// to the sessions series' per-model pricing.
 
 import type { RestRow } from "./supabase-rest";
 
@@ -313,7 +313,8 @@ export async function projectsPayloadForUser(
     if (!activeDeviceIds.has(rowDeviceId)) continue;
     const source = String(row.source ?? "");
 
-    if (source === "cursor" || source === "trae-cn") continue;
+    if (source === "cursor" || source === "trae-cn" || source === "freebuff")
+      continue;
     const endedAt = String(row.ended_at ?? "");
     const endedMs = Date.parse(endedAt);
 

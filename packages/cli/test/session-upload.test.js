@@ -119,6 +119,7 @@ test("drops account-level sources entirely", () => {
   const { rows } = buildSessionUploadRows([
     validRow({ source: "cursor", session_id: "c1" }),
     validRow({ source: "TRAE-CN ", session_id: "t1" }),
+    validRow({ source: "Freebuff", session_id: "fb1" }),
     validRow({ source: "claude", session_id: "c2" }),
   ]);
   assert.deepEqual(rows.map((r) => r.session_id), ["c2"]);

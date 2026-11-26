@@ -241,6 +241,11 @@ const {
   resolveTraeCnStoragePath,
   isTraeCnUsageEnabled,
 } = require("../lib/trae-cn-config");
+const {
+  fetchFreebuffUsageWithAuth,
+  isFreebuffUsageEnabled,
+} = require("../lib/freebuff-config");
+const { parseFreebuffUsageSummary, isFreebuffConfigured } = require("../lib/freebuff-usage");
 const { resolveTraeDbPaths } = require("../lib/trae-db");
 const {
   isCodexSessionCursorPath,
@@ -402,6 +407,7 @@ const AUTO_SYNC_SOURCES = new Set([
   "dumate",
   "dsh",
   "every-code",
+  "freebuff",
   "gemini",
   "goose",
   "grok",
@@ -2578,6 +2584,40 @@ async function cmdSync(argv, context = {}) {
       }
     }
 
+    // ── Freebuff — account-level usage API ──
+    // Freebuff keeps no local token-consumption records (client-side session
+    // projections only), so usage comes from the web console's
+    // usage-summary endpoint, authorized by the CLI's own keychain token.
+    // Strictly opt-in via TOKENUSAGE_FREEBUFF_USAGE=1 (v1: day-granular
+    // account-wide totals, no cross-device dedup mileage yet), non-lightweight
+    // syncs only. Absent credentials are a silent skip — a not-signed-in
+    // install is a normal state, not an error; any fetch/parse failure leaves
+    // prior data untouched while unrelated providers continue.
+    let freebuffResult = { recordsProcessed: 0, eventsAggregated: 0, bucketsQueued: 0 };
+    const freebuffRequested =
+      !isBackgroundLightweightSync &&
+      isFreebuffUsageEnabled(process.env) &&
+      sourceAllowed("freebuff");
+    if (freebuffRequested && isFreebuffConfigured({ env: process.env, home })) {
+      try {
+        if (progress?.enabled) {
+          progress.start(`Fetching Freebuff usage...`);
+        }
+        const summary = await fetchFreebuffUsageWithAuth({
+          fetchImpl: typeof freebuffFetchImpl === "function" ? freebuffFetchImpl : fetch,
+          env: process.env,
+          home,
+        });
+        freebuffResult = await parseFreebuffUsageSummary({
+          summary,
+          cursors,
+          queuePath,
+        });
+      } catch (err) {
+        warnProviderParseFailure("Freebuff", err, opts);
+      }
+    }
+
     // ── Kiro (SQLite-based, with JSONL fallback; dual-install aware) ──
     let kiroResult = { recordsProcessed: 0, eventsAggregated: 0, bucketsQueued: 0 };
     if (sourceAllowed("kiro")) {
@@ -3646,6 +3686,7 @@ async function cmdSync(argv, context = {}) {
       claudeScienceResult.recordsProcessed +
       cursorResult.recordsProcessed +
       traeCnResult.recordsProcessed +
+      freebuffResult.recordsProcessed +
       traeResult.recordsProcessed +
       kiroResult.recordsProcessed +
       kiroCliResult.recordsProcessed +
@@ -3693,6 +3734,7 @@ async function cmdSync(argv, context = {}) {
       claudeScienceResult.bucketsQueued +
       cursorResult.bucketsQueued +
       traeCnResult.bucketsQueued +
+      freebuffResult.bucketsQueued +
       traeResult.bucketsQueued +
       kiroResult.bucketsQueued +
       kiroCliResult.bucketsQueued +

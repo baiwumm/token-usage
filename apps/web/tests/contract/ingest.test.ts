@@ -467,6 +467,7 @@ describe("ingest sessions", () => {
       sessions: [
         { source: "cursor", session_id: "cursor-1" },
         { source: "  TRAE-CN ", session_id: "trae-1" },
+        { source: "Freebuff", session_id: "fb-1" },
         session({ source: "  CODEX " }),
       ],
     });
@@ -476,7 +477,7 @@ describe("ingest sessions", () => {
       skipped: 0,
       upload_scope: "private",
       sessions_upserted: 1,
-      sessions_skipped: 2,
+      sessions_skipped: 3,
     });
 
     const rows = fake.table("token_sessions");

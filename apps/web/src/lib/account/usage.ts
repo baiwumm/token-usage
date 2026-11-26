@@ -127,12 +127,16 @@ export function canonicalizeUsage(
   activeDeviceIds: Set<string> | null = null,
 ): UsageRow[] {
   const localRows: UsageRow[] = [];
-  const cursorRows: UsageRow[] = [];
+  const dedupedRows: UsageRow[] = [];
 
   for (const row of hourly) {
     const source = text(row.source).toLowerCase();
 
-    if (source === "cursor") cursorRows.push(row);
+    // Account-level rows without correctable session snapshots (cursor CSV
+    // events, freebuff day totals) dedupe whole-row across devices; trae-cn
+    // hourly rows are dropped entirely — its account truth arrives via
+    // session states and is aggregated separately.
+    if (source === "cursor" || source === "freebuff") dedupedRows.push(row);
     else if (source === "trae-cn") continue;
     else if (activeDeviceIds && !activeDeviceIds.has(String(row.device_id)))
       continue;
@@ -141,7 +145,7 @@ export function canonicalizeUsage(
 
   return [
     ...localRows,
-    ...dedupeCursorRows(cursorRows),
+    ...dedupeCursorRows(dedupedRows),
     ...aggregateSessionStates(sessionStates),
   ];
 }
