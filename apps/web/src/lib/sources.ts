@@ -120,6 +120,7 @@ const SOURCE_LOGOS: Record<string, string> = {
   omp: "omp.svg",
   openclaw: "openclaw.svg",
   hermes: "hermes.svg",
+  freebuff: "freebuff.png",
   kilo: "kilo.svg",
   acode: "acode.png",
   anythingllm: "anythingllm.svg",

@@ -44,6 +44,11 @@ describe("source logo and label", () => {
     expect(sourceDisplayLabel("acode")).toBe("AStudio");
   });
 
+  it("resolves the Freebuff mark and display label", () => {
+    expect(sourceDisplayLabel("freebuff")).toBe("Freebuff");
+    expect(sourceLogoFile("freebuff")).toBe("/brand-logos/freebuff.png");
+  });
+
   it("labels sources that have no brand file instead of exposing the raw id", () => {
     expect(sourceDisplayLabel("workbuddy-ai")).toBe("WorkBuddy AI");
     expect(sourceLogoFile("workbuddy-ai")).toBe("/brand-logos/workbuddy.svg");
