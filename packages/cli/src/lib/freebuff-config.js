@@ -148,7 +148,7 @@ function readFreebuffKeychainToken({ credentialsPath, spawnImpl = spawnSync } = 
   if (typeof credentialsPath !== "string" || !credentialsPath) return null;
   const script = CRED_READ_SCRIPT_TEMPLATE.replace(
     "TARGET_PLACEHOLDER",
-    credentialsPath.replace(/'/g, "''"),
+    credReadTarget(credentialsPath).replace(/'/g, "''"),
   );
   let result;
   try {
@@ -267,6 +267,7 @@ module.exports = {
   resolveFreebuffConfigDir,
   resolveFreebuffCredentialsPath,
   readFreebuffCredentials,
+  credReadTarget,
   readFreebuffKeychainToken,
   fetchFreebuffUsageSummary,
   fetchFreebuffUsageWithAuth,

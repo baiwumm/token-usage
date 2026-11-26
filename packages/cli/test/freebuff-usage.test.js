@@ -16,6 +16,7 @@ const {
   isFreebuffUsageEnabled,
   resolveFreebuffCredentialsPath,
   readFreebuffCredentials,
+  credReadTarget,
   readFreebuffKeychainToken,
   fetchFreebuffUsageSummary,
   fetchFreebuffUsageWithAuth,
@@ -105,6 +106,23 @@ test("credentials probe: absent / malformed / non-keychain → null", () => {
 
 test("keychain read maps every failure to null and decodes success", () => {
   const credentialsPath = path.join(tmpDir, "credentials.json");
+  // Regression (2026-11-26): the generated script must target the FULL
+  // Credential Manager name — keychain service + "/" + credentials path —
+  // not the bare credentials path (that entry does not exist, and the read
+  // silently degraded to "not configured").
+  let scriptTarget = null;
+  readFreebuffKeychainToken({
+    credentialsPath,
+    spawnImpl: (_cmd, args) => {
+      const encoded = args[args.indexOf("-EncodedCommand") + 1];
+      const script = Buffer.from(encoded, "base64").toString("utf16le");
+      scriptTarget = script.match(/ReadBlob\('([^']*)'\)/)?.[1] || null;
+      return { status: 0, stdout: Buffer.from("tok", "utf8").toString("base64") };
+    },
+  });
+  assert.equal(scriptTarget, credReadTarget(credentialsPath));
+  assert.ok(scriptTarget.startsWith("freebuff-cli/"));
+
   // Simulated exit-3 (entry absent) and a spawn throw both yield null.
   assert.equal(
     readFreebuffKeychainToken({
