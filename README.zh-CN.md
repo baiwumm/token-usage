@@ -53,7 +53,7 @@
 ## 🎬 产品宣传片
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/33e2a6f2-f98f-4cd5-8d2e-5052fd989b51" width="90%" controls muted playsinline></video>
+  <video src="https://github.com/user-attachments/assets/33e2a6f2-f98f-4cd5-8d2e-5052fd989b51" width="90%" autoplay loop muted playsinline controls></video>
 </p>
 
 ## ✨ 项目特性
