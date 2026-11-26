@@ -139,17 +139,28 @@ function credReadTarget(credentialsPath) {
   return `${FREEBUFF_KEYCHAIN_SERVICE}/${credentialsPath}`;
 }
 
-// Returns the token string, or null when the entry is absent (exit 3) or the
-// keychain read fails for any reason (missing PowerShell, timeout, ACL).
-// Failures are indistinguishable to callers by design: both are "no usable
-// credential this run".
-function readFreebuffKeychainToken({ credentialsPath, spawnImpl = spawnSync } = {}) {
-  if (process.platform !== "win32") return null;
-  if (typeof credentialsPath !== "string" || !credentialsPath) return null;
-  const script = CRED_READ_SCRIPT_TEMPLATE.replace(
+// Pure script builder (platform-independent so tests can assert the generated
+// PowerShell everywhere CI runs).
+function buildCredReadScript(credentialsPath) {
+  return CRED_READ_SCRIPT_TEMPLATE.replace(
     "TARGET_PLACEHOLDER",
     credReadTarget(credentialsPath).replace(/'/g, "''"),
   );
+}
+
+// Returns the token string, or null when the entry is absent (exit 3) or the
+// keychain read fails for any reason (missing PowerShell, timeout, ACL).
+// Failures are indistinguishable to callers by design: both are "no usable
+// credential this run". `platform` is injection for tests (CI runs the full
+// read path on every OS).
+function readFreebuffKeychainToken({
+  credentialsPath,
+  platform = process.platform,
+  spawnImpl = spawnSync,
+} = {}) {
+  if (platform !== "win32") return null;
+  if (typeof credentialsPath !== "string" || !credentialsPath) return null;
+  const script = buildCredReadScript(credentialsPath);
   let result;
   try {
     result = spawnImpl("powershell.exe", [
@@ -268,6 +279,7 @@ module.exports = {
   resolveFreebuffCredentialsPath,
   readFreebuffCredentials,
   credReadTarget,
+  buildCredReadScript,
   readFreebuffKeychainToken,
   fetchFreebuffUsageSummary,
   fetchFreebuffUsageWithAuth,

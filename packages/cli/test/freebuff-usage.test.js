@@ -17,6 +17,7 @@ const {
   resolveFreebuffCredentialsPath,
   readFreebuffCredentials,
   credReadTarget,
+  buildCredReadScript,
   readFreebuffKeychainToken,
   fetchFreebuffUsageSummary,
   fetchFreebuffUsageWithAuth,
@@ -109,24 +110,20 @@ test("keychain read maps every failure to null and decodes success", () => {
   // Regression (2026-11-26): the generated script must target the FULL
   // Credential Manager name — keychain service + "/" + credentials path —
   // not the bare credentials path (that entry does not exist, and the read
-  // silently degraded to "not configured").
-  let scriptTarget = null;
-  readFreebuffKeychainToken({
-    credentialsPath,
-    spawnImpl: (_cmd, args) => {
-      const encoded = args[args.indexOf("-EncodedCommand") + 1];
-      const script = Buffer.from(encoded, "base64").toString("utf16le");
-      scriptTarget = script.match(/ReadBlob\('([^']*)'\)/)?.[1] || null;
-      return { status: 0, stdout: Buffer.from("tok", "utf8").toString("base64") };
-    },
-  });
-  assert.equal(scriptTarget, credReadTarget(credentialsPath));
-  assert.ok(scriptTarget.startsWith("freebuff-cli/"));
+  // silently degraded to "not configured"). Asserted on the pure script
+  // builder so it holds on every platform CI runs on.
+  const script = buildCredReadScript(credentialsPath);
+  assert.equal(script.match(/ReadBlob\('([^']*)'\)/)?.[1], credReadTarget(credentialsPath));
+  assert.ok(script.match(/ReadBlob\('([^']*)'\)/)?.[1].startsWith("freebuff-cli/"));
+  assert.ok(!script.includes("TARGET_PLACEHOLDER"));
 
-  // Simulated exit-3 (entry absent) and a spawn throw both yield null.
+  // Simulated exit-3 (entry absent) and a spawn throw both yield null. The
+  // spawn-path assertions pin platform: "win32" so they exercise the full
+  // read path on every OS CI runs on (the real gate uses process.platform).
   assert.equal(
     readFreebuffKeychainToken({
       credentialsPath,
+      platform: "win32",
       spawnImpl: () => ({ status: 3, stdout: "" }),
     }),
     null,
@@ -134,6 +131,7 @@ test("keychain read maps every failure to null and decodes success", () => {
   assert.equal(
     readFreebuffKeychainToken({
       credentialsPath,
+      platform: "win32",
       spawnImpl: () => {
         throw new Error("powershell missing");
       },
@@ -144,6 +142,7 @@ test("keychain read maps every failure to null and decodes success", () => {
   assert.equal(
     readFreebuffKeychainToken({
       credentialsPath,
+      platform: "win32",
       spawnImpl: () => ({ status: 0, stdout: "not base64 !!\nsecond line" }),
     }),
     null,
@@ -151,12 +150,22 @@ test("keychain read maps every failure to null and decodes success", () => {
   assert.equal(
     readFreebuffKeychainToken({
       credentialsPath,
+      platform: "win32",
       spawnImpl: () => ({
         status: 0,
         stdout: Buffer.from("opaque-token-value", "utf8").toString("base64"),
       }),
     }),
     "opaque-token-value",
+  );
+  // Non-Windows platforms are a silent skip even with a spawnImpl present.
+  assert.equal(
+    readFreebuffKeychainToken({
+      credentialsPath,
+      platform: "linux",
+      spawnImpl: () => ({ status: 0, stdout: "tok" }),
+    }),
+    null,
   );
 });
 
