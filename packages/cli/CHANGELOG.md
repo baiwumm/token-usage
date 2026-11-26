@@ -6,6 +6,29 @@
 > 0.4.x 之前的条目为压缩摘要；细节与当时的验收记录见 `docs/cli-release.md`
 > 与 `docs/archive/`。
 
+## 0.8.0
+
+2026-11-26。新增 freebuff（Freebuff CLI / codebuff 后继）账户级用量采集，账户级
+来源语义全链路覆盖三源。服务端需先应用 freebuff 的 token_sessions CHECK 迁移
+（`20261126000000`）并部署含配套 web 改动的版本（本仓库 main `392532f` 起）；
+旧服务端 + 新 CLI 组合同样安全——freebuff 只产出普通小时桶，无新 ingest 字段。
+
+- **新来源 `freebuff`**：Freebuff CLI 本地只有会话客户端投影、无 token 消耗记录，
+  用量取自 web 控制台 `GET freebuff.com/api/web/usage-summary`（Bearer = CLI 自身
+  钥匙串令牌，Windows 凭据管理器条目 `freebuff-cli/<credentials.json 路径>`，
+  PowerShell CredRead 读取；macOS / Linux 暂不支持，视为未配置）。
+- **严格 opt-in**：`TOKENUSAGE_FREEBUFF_USAGE=1` 显式开启后才拉取；未开启 / 未装
+  freebuff / 未登录 / 钥匙串不可读 → 探测失败静默跳过、零请求零报错；401/403 →
+  重读钥匙串重试一次，再失败跳过本源且不动既有数据。轻量后台 sync 不跑本源。
+- **日粒度精确值**：`lifetime.days[]`（账户本地时区日键，滚动 365 天窗）逐日写一
+  桶：`hour_start = <date>T00:00:00.000Z`、model=unknown（接口无逐模型/逐会话
+  token 拆分）、input=日总量、conversation_count=0；变更日才追加，窗口外旧日永
+  不清零。跨设备同账号靠账户级整行 MAX 去重收敛。
+- **首次采集回填**：第一个 sync 直接回填窗口内全部活跃日（本机实测 20 日
+  358,324,098 tokens，逐日与控制台一致）。
+- **积分面不导入**：接口的 `sessionCharges` / streak / costUsd（「省了多少钱」营
+  销口径）均不入库，维持 `docs/sources-capture-audit.md` §2 双平面铁律。
+
 ## 0.7.1
 
 2026-11-22。修复 0.7.0 的 overlay 磁盘缓存与 status 可观测缺口（真机验证时发现）。
